@@ -16,10 +16,7 @@ pub struct CelesteMap {
 #[derive(Debug)]
 pub struct CelesteMapLevel {
     pub name: String,
-    pub x: i32,
-    pub y: i32,
-    pub width: u32,
-    pub height: u32,
+    pub bounds: CelesteMapRect,
     pub color: i32,
     pub camera_offset_x: f32,
     pub camera_offset_y: f32,
@@ -119,17 +116,6 @@ impl Error for CelesteMapError {
 }
 
 impl CelesteMapError {
-    fn parse_error(description: String) -> CelesteMapError {
-        CelesteMapError {
-            kind: CelesteMapErrorType::ParseError,
-            description,
-        }
-    }
-
-    fn parse_error_str(description: &str) -> CelesteMapError {
-        CelesteMapError::parse_error(format!("{}", description))
-    }
-
     fn missing_child(parent: &str, child: &str) -> CelesteMapError {
         CelesteMapError {
             kind: CelesteMapErrorType::MissingChild,
@@ -200,7 +186,9 @@ fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
     let height = get_attr_int(elem, "height")? as u32;
 
     Ok(CelesteMapLevel {
-        x, y, width, height,
+        bounds: CelesteMapRect {
+            x, y, width, height,
+        },
         name: get_attr_text(elem, "name")?,
         color: ok_when!(get_attr_int(elem, "c"), CelesteMapErrorType::MissingAttribute).unwrap_or(0),
         camera_offset_x: ok_when!(get_attr_float(elem, "cameraOffsetX"), CelesteMapErrorType::MissingAttribute).unwrap_or(0.),
@@ -248,7 +236,6 @@ fn parse_fgbg_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<char>, 
     let offset_y = offset_y as u32;
 
     let mut data: Vec<char> = vec!['0'; (width * height) as usize];
-    println!("Allocated {}", data.len());
     let mut x = offset_x;
     let mut y = offset_y;
     for ch in ok_when!(get_attr_text(elem, "innerText"), CelesteMapErrorType::MissingAttribute).unwrap_or("".to_string()).chars() {
@@ -278,7 +265,6 @@ fn parse_object_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<i32>,
     let offset_y = offset_y as u32;
 
     let mut data: Vec<i32> = vec![-1; (width * height) as usize];
-    println!("Allocated {}", data.len());
     let mut y = offset_y;
 
     for line in ok_when!(get_attr_text(elem, "innerText"), CelesteMapErrorType::MissingAttribute).unwrap_or("".to_string()).split('\n') {
@@ -339,7 +325,7 @@ fn parse_filler_rect(elem: & BinEl) -> Result<CelesteMapRect, CelesteMapError> {
     let w = get_attr_int(elem, "w")?;
     let h = get_attr_int(elem, "h")?;
 
-    return Ok(CelesteMapRect { x, y, width: w as u32, height: h as u32 });
+    return Ok(CelesteMapRect { x: x * 8, y: y * 8, width: w as u32 * 8, height: h as u32 * 8 });
 }
 
 fn parse_styleground(elem :&BinEl) -> Result<CelesteMapStyleground, CelesteMapError> {
