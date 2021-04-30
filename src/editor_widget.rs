@@ -1,9 +1,16 @@
-use super::map_struct;
 use fltk::{prelude::*,*};
+
+use super::map_struct;
 
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::cmp::{min, max};
+
+fn backdrop_color() -> enums::Color    { enums::Color::from_u32(0x103010) }
+fn room_empty_color() -> enums::Color  { enums::Color::from_u32(0x204020) }
+fn room_fg_color() -> enums::Color     { enums::Color::from_u32(0x3060f0) }
+fn room_bg_color() -> enums::Color     { enums::Color::from_u32(0x101040) }
+fn room_entity_color() -> enums::Color { enums::Color::from_u32(0xff0000) }
 
 pub struct EditorWidget {
     state: Rc<RefCell<EditorState>>,
@@ -44,40 +51,39 @@ impl EditorWidget {
         self.widget.redraw();
     }
 
+    pub fn reset_view(&mut self) {
+        self.state.borrow_mut().map_scale = 8;
+        self.state.borrow_mut().map_corner_x = 0;
+        self.state.borrow_mut().map_corner_y = -30;
+        self.widget.redraw();
+    }
+
     fn draw(&mut self) {
         let state = self.state.clone();
         self.widget.draw(move |b| {
-            let state = state.borrow();
-            let screen = map_struct::CelesteMapRect::from_widget(b);
+            let mut state = state.borrow_mut();
+            let screen = map_struct::Rect::from_widget(b);
             draw::push_clip(b.x(), b.y(), b.w(), b.h());
-            draw::draw_rect_fill(b.x(), b.y(), b.w(), b.h(), enums::Color::White);
+            draw::draw_rect_fill(b.x(), b.y(), b.w(), b.h(), backdrop_color());
 
-            match &state.map {
-                Some(map) => {
-                    for filler in map.filler.iter() {
-                        let filler_screen = state.rect_level_to_screen(filler);
-                        if filler_screen.intersects(&screen) {
-                            draw::draw_rect_fill(
-                                filler_screen.x,
-                                filler_screen.y,
-                                filler_screen.width as i32,
-                                filler_screen.height as i32,
-                                enums::Color::from_u32(0x804000))
-                        }
-                    }
-                    for room in map.levels.iter() {
-                        let rect_screen = state.rect_level_to_screen(&room.bounds);
-                        if rect_screen.intersects(&screen) {
-                            draw::draw_rect_fill(
-                                rect_screen.x,
-                                rect_screen.y,
-                                rect_screen.width as i32,
-                                rect_screen.height as i32,
-                                enums::Color::from_u32(0x3020c0))
-                        }
+            if state.map.is_some() {
+                for filler in state.map.as_ref().unwrap().filler.iter() {
+                    let filler_screen = state.rect_level_to_screen(filler);
+                    if filler_screen.intersects(&screen) {
+                        draw::draw_rect_fill(
+                            filler_screen.x,
+                            filler_screen.y,
+                            filler_screen.width as i32,
+                            filler_screen.height as i32,
+                            enums::Color::from_u32(0x804000))
                     }
                 }
-                _ => (),
+                for room_idx in 0..state.map.as_ref().unwrap().levels.len() {
+                    let rect_screen = state.rect_level_to_screen(&state.map.as_ref().unwrap().levels[room_idx].bounds);
+                    if rect_screen.intersects(&screen) {
+                        state.draw_room_simple(room_idx);
+                    }
+                }
             }
             draw::pop_clip();
         });
@@ -104,7 +110,7 @@ impl EditorWidget {
                     };
                     if app::event_key_down(enums::Key::ControlL) || app::event_key_down(enums::Key::ControlR) {
                         let (old_x, old_y) = state.point_screen_to_level(app::event_x(), app::event_y());
-                        state.map_scale = max(min(30, state.map_scale as i32 + ydir), 1) as u32;
+                        state.map_scale = max(min(30, state.map_scale as i32 - ydir), 1) as u32;
                         let (new_x, new_y) = state.point_screen_to_level(app::event_x(), app::event_y());
                         state.map_corner_x += old_x - new_x;
                         state.map_corner_y += old_y - new_y;
@@ -123,18 +129,44 @@ impl EditorWidget {
 }
 
 impl EditorState {
-    fn rect_level_to_screen(&self, rect: &map_struct::CelesteMapRect) -> map_struct::CelesteMapRect {
+    fn draw_room_simple(&mut self, room_idx: usize) {
+        if self.map.as_ref().is_none() {
+            return;
+        }
+        let room = &self.map.as_ref().unwrap().levels[room_idx];
+        let rect = self.rect_level_to_screen(&room.bounds);
+        draw::draw_rect_fill(rect.x, rect.y, rect.width as i32, rect.height as i32, room_empty_color());
+
+        let tstride = room.bounds.width / 8;
+        let unit = self.size_level_to_screen(8);
+        for rx in (0..room.bounds.width).step_by(8) {
+            for ry in (0..room.bounds.height).step_by(8) {
+                let tx = rx / 8;
+                let ty = ry / 8;
+                let (sx, sy) = self.point_level_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
+                let fgtile = room.fg_tiles[(tx + ty * tstride) as usize];
+                let bgtile = room.bg_tiles[(tx + ty * tstride) as usize];
+                if fgtile != '0' {
+                    draw::draw_rect_fill(sx, sy, unit as i32, unit as i32, room_fg_color());
+                } else if bgtile != '0' {
+                    draw::draw_rect_fill(sx, sy, unit as i32, unit as i32, room_bg_color());
+                }
+            }
+        }
+    }
+
+    fn rect_level_to_screen(&self, rect: &map_struct::Rect) -> map_struct::Rect {
         let (x, y) = self.point_level_to_screen(rect.x, rect.y);
-        map_struct::CelesteMapRect {
+        map_struct::Rect {
             x, y,
             width: self.size_level_to_screen(rect.width),
             height: self.size_level_to_screen(rect.height),
         }
     }
 
-    fn rect_screen_to_level(&self, rect: map_struct::CelesteMapRect) -> map_struct::CelesteMapRect {
+    fn rect_screen_to_level(&self, rect: map_struct::Rect) -> map_struct::Rect {
         let (x, y) = self.point_screen_to_level(rect.x, rect.y);
-        map_struct::CelesteMapRect {
+        map_struct::Rect {
             x, y,
             width: self.size_screen_to_level(rect.width),
             height: self.size_screen_to_level(rect.height),
@@ -160,16 +192,16 @@ impl EditorState {
     }
 }
 
-impl map_struct::CelesteMapRect {
-    pub fn intersects(&self, other: &map_struct::CelesteMapRect) -> bool {
+impl map_struct::Rect {
+    pub fn intersects(&self, other: &map_struct::Rect) -> bool {
         (   (self.x >= other.x && self.x < other.x + other.width as i32) ||
             (other.x >= self.x && other.x < self.x + self.width as i32)) && (
             (self.y >= other.y && self.y < other.y + other.height as i32) ||
             (other.y >= self.y && other.y < self.y + self.height as i32))
     }
 
-    pub fn from_widget(wid: &widget::Widget) -> map_struct::CelesteMapRect {
-        map_struct::CelesteMapRect {
+    pub fn from_widget(wid: &widget::Widget) -> map_struct::Rect {
+        map_struct::Rect {
             x: wid.x(),
             y: wid.y(),
             width: wid.w() as u32,

@@ -4,10 +4,19 @@ use celeste::binel::*;
 use std::collections::HashMap;
 use std::borrow::Borrow;
 
+
+#[derive(Debug)]
+pub struct Rect {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+}
+
 #[derive(Debug)]
 pub struct CelesteMap {
     pub name: String,
-    pub filler: Vec<CelesteMapRect>,
+    pub filler: Vec<Rect>,
     pub foregrounds: Vec<CelesteMapStyleground>,
     pub backgrounds: Vec<CelesteMapStyleground>,
     pub levels: Vec<CelesteMapLevel>,
@@ -16,7 +25,7 @@ pub struct CelesteMap {
 #[derive(Debug)]
 pub struct CelesteMapLevel {
     pub name: String,
-    pub bounds: CelesteMapRect,
+    pub bounds: Rect,
     pub color: i32,
     pub camera_offset_x: f32,
     pub camera_offset_y: f32,
@@ -26,7 +35,6 @@ pub struct CelesteMapLevel {
     pub whisper: bool,
     pub dark: bool,
     pub disable_down_transition: bool,
-    pub object_tiles_tileset: String,
 
     pub music: String,
     pub alt_music: String,
@@ -80,13 +88,6 @@ pub struct CelesteMapStyleground {
     pub blend_mode: Option<String>,
 }
 
-#[derive(Debug)]
-pub struct CelesteMapRect {
-    pub x: i32,
-    pub y: i32,
-    pub width: u32,
-    pub height: u32,
-}
 
 #[derive(Debug)]
 pub struct CelesteMapError {
@@ -179,14 +180,16 @@ pub fn from_binfile(binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
 fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
     expect_elem!(elem, "level");
 
-    let object_tiles = get_child(elem, "fgtiles")?;
     let x = get_attr_int(elem, "x")?;
     let y = get_attr_int(elem, "y")?;
     let width = get_attr_int(elem, "width")? as u32;
     let height = get_attr_int(elem, "height")? as u32;
+    let object_tiles = ok_when!(get_child(elem, "fgtiles"), CelesteMapErrorType::MissingChild);
+    let fg_decals = ok_when!(get_child(elem, "fgdecals"), CelesteMapErrorType::MissingChild);
+    let bg_decals = ok_when!(get_child(elem, "bgdecals"), CelesteMapErrorType::MissingChild);
 
     Ok(CelesteMapLevel {
-        bounds: CelesteMapRect {
+        bounds: Rect {
             x, y, width, height,
         },
         name: get_attr_text(elem, "name")?,
@@ -199,7 +202,6 @@ fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
         whisper: ok_when!(get_attr_bool(elem, "whisper"), CelesteMapErrorType::MissingAttribute).unwrap_or(false),
         dark: ok_when!(get_attr_bool(elem, "dark"), CelesteMapErrorType::MissingAttribute).unwrap_or(false),
         disable_down_transition: ok_when!(get_attr_bool(elem, "disableDownTransition"), CelesteMapErrorType::MissingAttribute).unwrap_or(false),
-        object_tiles_tileset: ok_when!(get_attr_text(object_tiles, "tileset"), CelesteMapErrorType::MissingAttribute).unwrap_or(String::from("Scenery")),
 
         music: ok_when!(get_attr_text(elem, "music"), CelesteMapErrorType::MissingAttribute).unwrap_or(String::from("")),
         alt_music: ok_when!(get_attr_text(elem, "alt_music"), CelesteMapErrorType::MissingAttribute).unwrap_or(String::from("")),
@@ -216,12 +218,21 @@ fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
         ambience_progress: ok_when!(get_attr_text(elem, "ambienceProgress"), CelesteMapErrorType::MissingAttribute).unwrap_or(String::from("")),
 
         fg_tiles: parse_fgbg_tiles(get_child(elem, "solids")?, width/8, height/8)?,
-        bg_tiles: parse_fgbg_tiles(get_child(elem, "bgtiles")?, width/8, height/8)?,
-        object_tiles: parse_object_tiles(object_tiles, width, height)?,
+        bg_tiles: parse_fgbg_tiles(get_child(elem, "bg")?, width/8, height/8)?,
+        object_tiles: match object_tiles {
+            Some(v) => parse_object_tiles(v, width, height),
+            None => Ok(vec![-1; (width/8 * height/8) as usize])
+        }?,
         entities: get_child(elem, "entities")?.children().map(|child| parse_entity_trigger(child)).collect::<Result<_, CelesteMapError>>()?,
         triggers: get_child(elem, "triggers")?.children().map(|child| parse_entity_trigger(child)).collect::<Result<_, CelesteMapError>>()?,
-        fg_decals: get_child(elem, "fgdecals")?.children().map(|child| parse_decal(child)).collect::<Result<_, CelesteMapError>>()?,
-        bg_decals: get_child(elem, "bgdecals")?.children().map(|child| parse_decal(child)).collect::<Result<_, CelesteMapError>>()?,
+        fg_decals: match fg_decals {
+            Some(v) => v.children().map(|child| parse_decal(child)).collect::<Result<_, CelesteMapError>>()?,
+            None => vec![],
+        },
+        bg_decals: match bg_decals {
+            Some(v) => v.children().map(|child| parse_decal(child)).collect::<Result<_, CelesteMapError>>()?,
+            None => vec![],
+        },
     })
 }
 
@@ -244,7 +255,8 @@ fn parse_fgbg_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<char>, 
             y += 1;
         } else if ch == '\r' {
         } else if x >= width || y >= height {
-            return exc;
+            // TODO remove this
+            println!("{:?}", elem);
         } else {
             data[(x + y * width) as usize] = ch;
             x += 1;
@@ -317,7 +329,7 @@ fn parse_decal(elem: &BinEl) -> Result<CelesteMapDecal, CelesteMapError> {
     })
 }
 
-fn parse_filler_rect(elem: & BinEl) -> Result<CelesteMapRect, CelesteMapError> {
+fn parse_filler_rect(elem: & BinEl) -> Result<Rect, CelesteMapError> {
     expect_elem!(elem, "rect");
 
     let x = get_attr_int(elem, "x")?;
@@ -325,7 +337,7 @@ fn parse_filler_rect(elem: & BinEl) -> Result<CelesteMapRect, CelesteMapError> {
     let w = get_attr_int(elem, "w")?;
     let h = get_attr_int(elem, "h")?;
 
-    return Ok(CelesteMapRect { x: x * 8, y: y * 8, width: w as u32 * 8, height: h as u32 * 8 });
+    return Ok(Rect { x: x * 8, y: y * 8, width: w as u32 * 8, height: h as u32 * 8 });
 }
 
 fn parse_styleground(elem :&BinEl) -> Result<CelesteMapStyleground, CelesteMapError> {
@@ -383,6 +395,7 @@ fn get_attr_text(elem: &BinEl, name: &str) -> Result<String, CelesteMapError> {
     let attr = elem.attributes.get(name).ok_or(CelesteMapError::missing_attribute(elem.name.as_ref(), name))?;
     return match attr {
         BinElAttr::Text(s) => Ok(s.clone()),
+        BinElAttr::Int(i) => Ok(i.to_string()),
         _ => Err(CelesteMapError { kind: CelesteMapErrorType::BadAttrType, description: format!("Expected text, found {:?}", attr) })
     }
 }

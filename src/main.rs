@@ -1,9 +1,10 @@
-mod map_struct;
 mod editor_widget;
+mod map_struct;
 
 use std::fs;
 use std::error::Error;
 use celeste;
+use celeste::binel::serialize::BinElType;
 use fltk;
 use fltk::{prelude::*,*};
 
@@ -47,7 +48,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     win.end();
 
     btn1.set_callback(move |_| {
-        let path = "/home/audrey/games/celeste/Content/Maps/1-ForsakenCity.bin";
+        let path = match dialog::file_chooser("Choose a celeste map", "*.bin", "/home/audrey/games/celeste/Content/Maps", false) {
+            Some(v) => v,
+            None => {return;}
+        };
         let buf = match fs::read(path) {
             Ok(v) => v,
             Err(e) => {
@@ -71,6 +75,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         };
 
         editor.set_map(map);
+        editor.reset_view();
     });
 
     win.make_resizable(true);
