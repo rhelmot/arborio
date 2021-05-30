@@ -8,4 +8,6 @@ edition = "2018"
 
 [dependencies]
 celeste = "^2"
-fltk = "^1"
+fltk = { version = "1.0.9", git = "https://github.com/fltk-rs/fltk-rs" }
+rand = "^0.8"
+byteorder = "1.4.3"

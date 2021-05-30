@@ -5,6 +5,8 @@ use super::map_struct;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::cmp::{min, max};
+use crate::atlas_img::{Atlas, SpriteReference};
+use std::collections::HashMap;
 
 fn backdrop_color() -> enums::Color    { enums::Color::from_u32(0x103010) }
 fn room_empty_color() -> enums::Color  { enums::Color::from_u32(0x204020) }
@@ -18,6 +20,7 @@ pub struct EditorWidget {
 }
 
 struct EditorState {
+    atlas: Rc<Atlas>,
     map: Option<map_struct::CelesteMap>,
     current_room: usize,
     map_corner_x: i32,
@@ -26,8 +29,9 @@ struct EditorState {
 }
 
 impl EditorWidget {
-    pub fn new(x: i32, y: i32, w: i32, h: i32) -> EditorWidget {
+    pub fn new(x: i32, y: i32, w: i32, h: i32, gameplay_atlas: Rc<Atlas>) -> EditorWidget {
         let state = EditorState {
+            atlas: gameplay_atlas,
             map: None,
             current_room: 0,
             map_corner_x: 0,
@@ -52,9 +56,10 @@ impl EditorWidget {
     }
 
     pub fn reset_view(&mut self) {
-        self.state.borrow_mut().map_scale = 8;
-        self.state.borrow_mut().map_corner_x = 0;
-        self.state.borrow_mut().map_corner_y = -30;
+        let mut mutstate = self.state.borrow_mut();
+        mutstate.map_scale = 8;
+        mutstate.map_corner_x = 0;
+        mutstate.map_corner_y = -30;
         self.widget.redraw();
     }
 
@@ -78,10 +83,16 @@ impl EditorWidget {
                             enums::Color::from_u32(0x804000))
                     }
                 }
+                let mut resized_sprite_cache = HashMap::new();
                 for room_idx in 0..state.map.as_ref().unwrap().levels.len() {
                     let rect_screen = state.rect_level_to_screen(&state.map.as_ref().unwrap().levels[room_idx].bounds);
                     if rect_screen.intersects(&screen) {
-                        state.draw_room_simple(room_idx);
+                        let should_draw_complex = true;
+                        if should_draw_complex {
+                            state.draw_room_complex(room_idx, &mut resized_sprite_cache);
+                        } else {
+                            state.draw_room_simple(room_idx);
+                        }
                     }
                 }
             }
@@ -150,6 +161,31 @@ impl EditorState {
                     draw::draw_rect_fill(sx, sy, unit as i32, unit as i32, room_fg_color());
                 } else if bgtile != '0' {
                     draw::draw_rect_fill(sx, sy, unit as i32, unit as i32, room_bg_color());
+                }
+            }
+        }
+    }
+
+    fn draw_room_complex(&mut self, room_idx: usize, resized_sprite_cache: &mut HashMap<SpriteReference, Vec<u8>>) {
+        if self.map.as_ref().is_none() {
+            return;
+        }
+        let room = &self.map.as_ref().unwrap().levels[room_idx];
+        let rect = self.rect_level_to_screen(&room.bounds);
+        draw::draw_rect_fill(rect.x, rect.y, rect.width as i32, rect.height as i32, room_empty_color());
+
+        let scale = self.map_scale as f32 / 8_f32;
+
+        let tstride = room.bounds.width / 8;
+        for rx in (0..room.bounds.width).step_by(8) {
+            for ry in (0..room.bounds.height).step_by(8) {
+                let tx = rx / 8;
+                let ty = ry / 8;
+                let fgtile = room.fg_tiles[(tx + ty * tstride) as usize];
+                let (sx, sy) = self.point_level_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
+                if fgtile != '0' {
+                    let strawberry = self.atlas.lookup("collectables/strawberry/normal00").unwrap();
+                    self.atlas.draw(strawberry, sx, sy, scale, resized_sprite_cache);
                 }
             }
         }

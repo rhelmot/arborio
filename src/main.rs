@@ -1,12 +1,16 @@
+#![allow(unused)]
+
 mod editor_widget;
 mod map_struct;
+mod atlas_img;
 
 use std::fs;
 use std::error::Error;
 use celeste;
-use celeste::binel::serialize::BinElType;
-use fltk;
 use fltk::{prelude::*,*};
+use std::path::Path;
+use std::rc::Rc;
+
 
 #[inline(always)]
 pub fn center() -> (i32, i32) {
@@ -21,7 +25,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let height = 600;
     let button_size = 25;
 
+    let atlas = Rc::new(atlas_img::Atlas::load(Path::new("/home/audrey/games/celeste/Content/Graphics/Atlases/Gameplay.meta"))?);
+
     let app = app::App::default();
+    app::set_visual(enums::Mode::Rgb).unwrap();
+
     let mut win = window::DoubleWindow::default()
         .with_size(width, height)
         .with_label("Arborio")
@@ -39,7 +47,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     toolbar.set_type(group::PackType::Horizontal);
     toolbar.make_resizable(false);
 
-    let mut editor = editor_widget::EditorWidget::new(0, 0, width, height - button_size);
+    let mut editor = editor_widget::EditorWidget::new(0, 0, width, height - button_size, atlas);
     vlayout.resizable(&editor.widget);
 
     vlayout.end();
