@@ -192,10 +192,10 @@ pub fn from_binfile(binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
 fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
     expect_elem!(elem, "level");
 
-    let x = require_present(get_attr_int(elem, "x"), &elem.name)?;
-    let y = require_present(get_attr_int(elem, "y"), &elem.name)?;
-    let width = require_present(get_attr_int(elem, "width"), &elem.name)? as u32;
-    let height = require_present(get_attr_int(elem, "height"), &elem.name)? as u32;
+    let x = require_present(get_attr_int(elem, "x"), &elem.name, "x")?;
+    let y = require_present(get_attr_int(elem, "y"), &elem.name, "y")?;
+    let width = require_present(get_attr_int(elem, "width"), &elem.name, "width")? as u32;
+    let height = require_present(get_attr_int(elem, "height"), &elem.name, "height")? as u32;
     let object_tiles = ok_when!(get_child(elem, "fgtiles"), CelesteMapErrorType::MissingChild);
     let fg_decals = ok_when!(get_child(elem, "fgdecals"), CelesteMapErrorType::MissingChild);
     let bg_decals = ok_when!(get_child(elem, "bgdecals"), CelesteMapErrorType::MissingChild);
@@ -249,8 +249,8 @@ fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
 }
 
 fn parse_fgbg_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<char>, CelesteMapError> {
-    let offset_x = require_present(get_attr_int(elem, "offsetX"), &elem.name)?;
-    let offset_y = require_present(get_attr_int(elem, "offsetY"), &elem.name)?;
+    let offset_x = get_attr_int(elem, "offsetX")?.unwrap_or_default();
+    let offset_y = get_attr_int(elem, "offsetY")?.unwrap_or_default();
     let exc = Err(CelesteMapError { kind: CelesteMapErrorType::OutOfRange, description: format!("{} contains out-of-range data", elem.name)});
     if offset_x < 0 || offset_y < 0 {
         return exc;
@@ -279,8 +279,8 @@ fn parse_fgbg_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<char>, 
 }
 
 fn parse_object_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<i32>, CelesteMapError> {
-    let offset_x = require_present(get_attr_int(elem, "offsetX"), &elem.name)?;
-    let offset_y = require_present(get_attr_int(elem, "offsetY"), &elem.name)?;
+    let offset_x = get_attr_int(elem, "offsetX")?.unwrap_or_default();
+    let offset_y = get_attr_int(elem, "offsetY")?.unwrap_or_default();
     let exc = Err(CelesteMapError { kind: CelesteMapErrorType::OutOfRange, description: format!("{} contains out-of-range data", elem.name)});
     if offset_x < 0 || offset_y < 0 {
         return exc;
@@ -318,10 +318,10 @@ fn parse_object_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<i32>,
 fn parse_entity_trigger(elem: &BinEl) -> Result<CelesteMapEntity, CelesteMapError> {
     let basic_attrs: Vec<String> = vec!["id".to_string(), "x".to_string(), "y".to_string(), "width".to_string(), "height".to_string()];
     Ok(CelesteMapEntity {
-        id: require_present(get_attr_int(elem, "id"), &elem.name)?,
+        id: require_present(get_attr_int(elem, "id"), &elem.name, "id")?,
         name: elem.name.clone(),
-        x: require_present(get_attr_int(elem, "x"), &elem.name)?,
-        y: require_present(get_attr_int(elem, "y"), &elem.name)?,
+        x: require_present(get_attr_int(elem, "x"), &elem.name, "x")?,
+        y: require_present(get_attr_int(elem, "y"), &elem.name, "y")?,
         width: get_attr_int(elem, "width")?.unwrap_or(0) as u32,
         height: get_attr_int(elem, "height")?.unwrap_or(0) as u32,
         attributes: elem.attributes.iter()
@@ -333,21 +333,21 @@ fn parse_entity_trigger(elem: &BinEl) -> Result<CelesteMapEntity, CelesteMapErro
 
 fn parse_decal(elem: &BinEl) -> Result<CelesteMapDecal, CelesteMapError> {
     Ok(CelesteMapDecal {
-        x: require_present(get_attr_int(elem, "x"), &elem.name)?,
-        y: require_present(get_attr_int(elem, "y"), &elem.name)?,
-        scale_x: require_present(get_attr_float(elem, "scaleX"), &elem.name)?,
-        scale_y: require_present(get_attr_float(elem, "scaleY"), &elem.name)?,
-        texture: require_present(get_attr_text(elem, "texture"), &elem.name)?,
+        x: require_present(get_attr_int(elem, "x"), &elem.name, "x")?,
+        y: require_present(get_attr_int(elem, "y"), &elem.name, "y")?,
+        scale_x: require_present(get_attr_float(elem, "scaleX"), &elem.name, "scaleX")?,
+        scale_y: require_present(get_attr_float(elem, "scaleY"), &elem.name, "scaleY")?,
+        texture: require_present(get_attr_text(elem, "texture"), &elem.name, "texture")?,
     })
 }
 
 fn parse_filler_rect(elem: & BinEl) -> Result<Rect, CelesteMapError> {
     expect_elem!(elem, "rect");
 
-    let x = require_present(get_attr_int(elem, "x"), &elem.name)?;
-    let y = require_present(get_attr_int(elem, "y"), &elem.name)?;
-    let w = require_present(get_attr_int(elem, "w"), &elem.name)?;
-    let h = require_present(get_attr_int(elem, "h"), &elem.name)?;
+    let x = require_present(get_attr_int(elem, "x"), &elem.name, "x")?;
+    let y = require_present(get_attr_int(elem, "y"), &elem.name, "y")?;
+    let w = require_present(get_attr_int(elem, "w"), &elem.name, "w")?;
+    let h = require_present(get_attr_int(elem, "h"), &elem.name, "h")?;
 
     return Ok(Rect { x: x * 8, y: y * 8, width: w as u32 * 8, height: h as u32 * 8 });
 }
@@ -412,6 +412,6 @@ fn get_attr_text(elem: &BinEl, name: &str) -> Result<Option<String>, CelesteMapE
     }
 }
 
-fn require_present<T>(result: Result<Option<T>, CelesteMapError>, element_name: &str) -> Result<T, CelesteMapError> {
-    result.and_then(|o| o.ok_or_else(||CelesteMapError::missing_attribute(element_name, "texture")))
+fn require_present<T>(result: Result<Option<T>, CelesteMapError>, element_name: &str, attribute_name: &str) -> Result<T, CelesteMapError> {
+    result.and_then(|o| o.ok_or_else(||CelesteMapError::missing_attribute(element_name, attribute_name)))
 }
