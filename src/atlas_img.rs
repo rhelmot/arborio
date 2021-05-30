@@ -195,7 +195,7 @@ pub fn load_data_file(data_file: path::PathBuf) -> Result<(Vec<u8>, i32), io::Er
             }
         }
 
-        current_px += repeat + 1 as usize;
+        current_px += repeat + 1;
     }
 
     return Ok((buf, width as i32));

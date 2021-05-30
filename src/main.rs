@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![allow(clippy::needless_return)]
 
 mod editor_widget;
 mod map_struct;
@@ -6,7 +7,6 @@ mod atlas_img;
 
 use std::fs;
 use std::error::Error;
-use celeste;
 use fltk::{prelude::*,*};
 use std::path::Path;
 use std::rc::Rc;

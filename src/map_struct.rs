@@ -193,29 +193,29 @@ fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
             x, y, width, height,
         },
         name: get_attr_text(elem, "name")?,
-        color: ok_when!(get_attr_int(elem, "c"), CelesteMapErrorType::MissingAttribute).unwrap_or(0),
-        camera_offset_x: ok_when!(get_attr_float(elem, "cameraOffsetX"), CelesteMapErrorType::MissingAttribute).unwrap_or(0.),
-        camera_offset_y: ok_when!(get_attr_float(elem, "cameraOffsetY"), CelesteMapErrorType::MissingAttribute).unwrap_or(0.),
-        wind_pattern: ok_when!(get_attr_text(elem, "windPattern"), CelesteMapErrorType::MissingAttribute).unwrap_or(String::from("None")),
-        space: ok_when!(get_attr_bool(elem, "space"), CelesteMapErrorType::MissingAttribute).unwrap_or(false),
-        underwater: ok_when!(get_attr_bool(elem, "underwater"), CelesteMapErrorType::MissingAttribute).unwrap_or(false),
-        whisper: ok_when!(get_attr_bool(elem, "whisper"), CelesteMapErrorType::MissingAttribute).unwrap_or(false),
-        dark: ok_when!(get_attr_bool(elem, "dark"), CelesteMapErrorType::MissingAttribute).unwrap_or(false),
-        disable_down_transition: ok_when!(get_attr_bool(elem, "disableDownTransition"), CelesteMapErrorType::MissingAttribute).unwrap_or(false),
+        color: ok_when!(get_attr_int(elem, "c"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+        camera_offset_x: ok_when!(get_attr_float(elem, "cameraOffsetX"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+        camera_offset_y: ok_when!(get_attr_float(elem, "cameraOffsetY"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+        wind_pattern: ok_when!(get_attr_text(elem, "windPattern"), CelesteMapErrorType::MissingAttribute).unwrap_or_else(|| String::from("None")),
+        space: ok_when!(get_attr_bool(elem, "space"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+        underwater: ok_when!(get_attr_bool(elem, "underwater"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+        whisper: ok_when!(get_attr_bool(elem, "whisper"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+        dark: ok_when!(get_attr_bool(elem, "dark"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+        disable_down_transition: ok_when!(get_attr_bool(elem, "disableDownTransition"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
 
-        music: ok_when!(get_attr_text(elem, "music"), CelesteMapErrorType::MissingAttribute).unwrap_or(String::from("")),
-        alt_music: ok_when!(get_attr_text(elem, "alt_music"), CelesteMapErrorType::MissingAttribute).unwrap_or(String::from("")),
-        ambience: ok_when!(get_attr_text(elem, "ambience"), CelesteMapErrorType::MissingAttribute).unwrap_or(String::from("")),
+        music: ok_when!(get_attr_text(elem, "music"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+        alt_music: ok_when!(get_attr_text(elem, "alt_music"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+        ambience: ok_when!(get_attr_text(elem, "ambience"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
         music_layers: [
-            ok_when!(get_attr_bool(elem, "musicLayer1"), CelesteMapErrorType::MissingAttribute).unwrap_or(true),
-            ok_when!(get_attr_bool(elem, "musicLayer2"), CelesteMapErrorType::MissingAttribute).unwrap_or(true),
-            ok_when!(get_attr_bool(elem, "musicLayer3"), CelesteMapErrorType::MissingAttribute).unwrap_or(true),
-            ok_when!(get_attr_bool(elem, "musicLayer4"), CelesteMapErrorType::MissingAttribute).unwrap_or(true),
-            ok_when!(get_attr_bool(elem, "musicLayer5"), CelesteMapErrorType::MissingAttribute).unwrap_or(true),
-            ok_when!(get_attr_bool(elem, "musicLayer6"), CelesteMapErrorType::MissingAttribute).unwrap_or(true),
+            ok_when!(get_attr_bool(elem, "musicLayer1"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+            ok_when!(get_attr_bool(elem, "musicLayer2"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+            ok_when!(get_attr_bool(elem, "musicLayer3"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+            ok_when!(get_attr_bool(elem, "musicLayer4"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+            ok_when!(get_attr_bool(elem, "musicLayer5"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+            ok_when!(get_attr_bool(elem, "musicLayer6"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
         ],
-        music_progress: ok_when!(get_attr_text(elem, "musicProgress"), CelesteMapErrorType::MissingAttribute).unwrap_or(String::from("")),
-        ambience_progress: ok_when!(get_attr_text(elem, "ambienceProgress"), CelesteMapErrorType::MissingAttribute).unwrap_or(String::from("")),
+        music_progress: ok_when!(get_attr_text(elem, "musicProgress"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
+        ambience_progress: ok_when!(get_attr_text(elem, "ambienceProgress"), CelesteMapErrorType::MissingAttribute).unwrap_or_default(),
 
         fg_tiles: parse_fgbg_tiles(get_child(elem, "solids")?, width/8, height/8)?,
         bg_tiles: parse_fgbg_tiles(get_child(elem, "bg")?, width/8, height/8)?,
@@ -249,7 +249,7 @@ fn parse_fgbg_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<char>, 
     let mut data: Vec<char> = vec!['0'; (width * height) as usize];
     let mut x = offset_x;
     let mut y = offset_y;
-    for ch in ok_when!(get_attr_text(elem, "innerText"), CelesteMapErrorType::MissingAttribute).unwrap_or("".to_string()).chars() {
+    for ch in ok_when!(get_attr_text(elem, "innerText"), CelesteMapErrorType::MissingAttribute).unwrap_or_else(|| "".to_string()).chars() {
         if ch == '\n' {
             x = offset_x;
             y += 1;
@@ -279,10 +279,10 @@ fn parse_object_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<i32>,
     let mut data: Vec<i32> = vec![-1; (width * height) as usize];
     let mut y = offset_y;
 
-    for line in ok_when!(get_attr_text(elem, "innerText"), CelesteMapErrorType::MissingAttribute).unwrap_or("".to_string()).split('\n') {
+    for line in ok_when!(get_attr_text(elem, "innerText"), CelesteMapErrorType::MissingAttribute).unwrap_or_else(|| "".to_string()).split('\n') {
         let mut x = offset_x;
         for num in line.split(',') {
-            if num == "" {
+            if num.is_empty() {
                 continue;
             }
             let ch: i32 = match num.parse() {
@@ -366,33 +366,33 @@ fn get_child<'a>(elem: &'a BinEl, name: &str) -> Result<&'a BinEl, CelesteMapErr
 }
 
 fn get_attr_int(elem: &BinEl, name: &str) -> Result<i32, CelesteMapError> {
-    let attr = elem.attributes.get(name).ok_or(CelesteMapError::missing_attribute(elem.name.as_ref(), name))?;
-    return match attr {
-        BinElAttr::Int(i) => Ok(i.clone()),
-        BinElAttr::Float(f) => Ok(f.clone() as i32),
+    let attr = elem.attributes.get(name).ok_or_else(|| CelesteMapError::missing_attribute(elem.name.as_ref(), name))?;
+    return match *attr {
+        BinElAttr::Int(i) => Ok(i),
+        BinElAttr::Float(f) => Ok(f as i32),
         _ => Err(CelesteMapError { kind: CelesteMapErrorType::BadAttrType, description: format!("Expected int, found {:?}", attr) })
     }
 }
 
 fn get_attr_bool(elem: &BinEl, name: &str) -> Result<bool, CelesteMapError> {
-    let attr = elem.attributes.get(name).ok_or(CelesteMapError::missing_attribute(elem.name.as_ref(), name))?;
-    return match attr {
-        BinElAttr::Bool(b) => Ok(b.clone()),
+    let attr = elem.attributes.get(name).ok_or_else(|| CelesteMapError::missing_attribute(elem.name.as_ref(), name))?;
+    return match *attr {
+        BinElAttr::Bool(b) => Ok(b),
         _ => Err(CelesteMapError { kind: CelesteMapErrorType::BadAttrType, description: format!("Expected bool, found {:?}", attr) })
     }
 }
 
 fn get_attr_float(elem: &BinEl, name: &str) -> Result<f32, CelesteMapError> {
-    let attr = elem.attributes.get(name).ok_or(CelesteMapError::missing_attribute(elem.name.as_ref(), name))?;
-    return match attr {
-        BinElAttr::Float(f) => Ok(f.clone()),
-        BinElAttr::Int(i) => Ok(i.clone() as f32),
+    let attr = elem.attributes.get(name).ok_or_else(|| CelesteMapError::missing_attribute(elem.name.as_ref(), name))?;
+    return match *attr {
+        BinElAttr::Float(f) => Ok(f),
+        BinElAttr::Int(i) => Ok(i as f32),
         _ => Err(CelesteMapError { kind: CelesteMapErrorType::BadAttrType, description: format!("Expected float, found {:?}", attr) })
     }
 }
 
 fn get_attr_text(elem: &BinEl, name: &str) -> Result<String, CelesteMapError> {
-    let attr = elem.attributes.get(name).ok_or(CelesteMapError::missing_attribute(elem.name.as_ref(), name))?;
+    let attr = elem.attributes.get(name).ok_or_else(|| CelesteMapError::missing_attribute(elem.name.as_ref(), name))?;
     return match attr {
         BinElAttr::Text(s) => Ok(s.clone()),
         BinElAttr::Int(i) => Ok(i.to_string()),
