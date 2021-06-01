@@ -4,12 +4,14 @@
 mod editor_widget;
 mod map_struct;
 mod atlas_img;
+mod autotiler;
 
 use std::fs;
 use std::error::Error;
 use fltk::{prelude::*,*};
 use std::path::Path;
 use std::rc::Rc;
+use std::collections::HashMap;
 
 
 #[inline(always)]
@@ -26,6 +28,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let button_size = 25;
 
     let atlas = Rc::new(atlas_img::Atlas::load(Path::new("/home/audrey/games/celeste/Content/Graphics/Atlases/Gameplay.meta"))?);
+    let mut fgtiles: HashMap<char, autotiler::Tileset> = HashMap::new();
+    let added = autotiler::Tileset::load(Path::new("/home/audrey/games/celeste/Content/Graphics/ForegroundTiles.nobom.xml"), &atlas, &mut fgtiles)?;
 
     let app = app::App::default();
     app::set_visual(enums::Mode::Rgb).unwrap();

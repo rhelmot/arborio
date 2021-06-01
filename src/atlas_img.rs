@@ -5,6 +5,7 @@ use std::io::Read;
 use std::path;
 use fltk::prelude::ImageExt;
 use byteorder::{ReadBytesExt, BigEndian, LittleEndian};
+use crate::autotiler::TileReference;
 
 #[derive(Copy, Clone, Hash, Eq, PartialEq)]
 pub struct SpriteReference {
@@ -115,19 +116,11 @@ impl Atlas {
         assert_eq!(self.identifier, sprite_ref.atlas);
         let sprite = &self.sprites[sprite_ref.idx as usize];
         let (ref blob, width) = self.blobs[sprite.blob_idx];
-        // Safety: this object will not live longer than this function, and the blob reference
-        // is all but static. No idea about the line depth stuff.
         let resized_width = ((sprite.width as f32) * scale) as usize;
         let resized_height = ((sprite.height as f32) * scale) as usize;
         let resized = resized_sprite_cache.entry(sprite_ref).or_insert_with(||Self::resize(&blob[(sprite.x * 4 + sprite.y * 4 * width as u32) as usize..], width as usize, sprite.width as usize, sprite.height as usize, resized_width, resized_height));
-        // let mut view = unsafe {
-        //     fltk::image::RgbImage::from_data2(
-        //         &blob[(sprite.x * 4 + sprite.y * 4 * *width as u32) as usize..],
-        //         sprite.width as i32,
-        //         sprite.height as i32,
-        //         4,
-        //         width * 4).unwrap()
-        // };
+        // Safety: this object will not live longer than this function, and the blob reference
+        // is all but static. No idea about the line depth stuff.
         let mut view = unsafe {
             fltk::image::RgbImage::from_data2(
                 &resized,
@@ -137,7 +130,27 @@ impl Atlas {
                 (resized_width * 4) as i32).unwrap()
         };
 
-        //view.scale((view.width() as f32 * scale) as i32, (view.height() as f32 * scale) as i32, true, true);
+        view.draw(x, y, view.width(), view.height());
+    }
+
+    pub fn draw_tile(&self, tile_ref: TileReference, x: i32, y: i32, scale: f32, resized_sprite_cache: &mut HashMap<SpriteReference, Vec<u8>>) {
+        assert_eq!(self.identifier, tile_ref.texture.atlas);
+        let sprite = &self.sprites[tile_ref.texture.idx as usize];
+        let (ref blob, width) = self.blobs[sprite.blob_idx];
+        let resized_width = ((sprite.width as f32) * scale) as usize;
+        let resized_height = ((sprite.height as f32) * scale) as usize;
+        let resized = resized_sprite_cache.entry(tile_ref.texture).or_insert_with(||Self::resize(&blob[(sprite.x * 4 + sprite.y * 4 * width as u32) as usize..], width as usize, sprite.width as usize, sprite.height as usize, resized_width, resized_height));
+        // Safety: this object will not live longer than this function, and the blob reference
+        // is all but static. No idea about the line depth stuff.
+        let mut view = unsafe {
+            fltk::image::RgbImage::from_data2(
+                &resized[(tile_ref.tile.x * 4 + tile_ref.tile.y * resized_width as u32 * 4) as usize..],
+                8*scale as i32,
+                8*scale as i32,
+                4,
+                (resized_width * 4) as i32).unwrap()
+        };
+
         view.draw(x, y, view.width(), view.height());
     }
 }
