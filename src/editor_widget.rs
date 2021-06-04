@@ -7,6 +7,7 @@ use std::rc::Rc;
 use std::cmp::{min, max};
 use crate::atlas_img::{Atlas, SpriteReference};
 use std::collections::HashMap;
+use crate::autotiler::Tileset;
 
 fn backdrop_color() -> enums::Color    { enums::Color::from_u32(0x103010) }
 fn room_empty_color() -> enums::Color  { enums::Color::from_u32(0x204020) }
@@ -20,7 +21,8 @@ pub struct EditorWidget {
 }
 
 struct EditorState {
-    atlas: Rc<Atlas>,
+    gameplay_atlas: Rc<Atlas>,
+    tilesets: Rc<HashMap<char, Tileset>>,
     map: Option<map_struct::CelesteMap>,
     current_room: usize,
     map_corner_x: i32,
@@ -29,9 +31,10 @@ struct EditorState {
 }
 
 impl EditorWidget {
-    pub fn new(x: i32, y: i32, w: i32, h: i32, gameplay_atlas: Rc<Atlas>) -> EditorWidget {
+    pub fn new(x: i32, y: i32, w: i32, h: i32, gameplay_atlas: Rc<Atlas>, tilesets: Rc<HashMap<char, Tileset>>) -> EditorWidget {
         let state = EditorState {
-            atlas: gameplay_atlas,
+            gameplay_atlas,
+            tilesets,
             map: None,
             current_room: 0,
             map_corner_x: 0,
@@ -184,8 +187,17 @@ impl EditorState {
                 let fgtile = room.fg_tiles[(tx + ty * tstride) as usize];
                 let (sx, sy) = self.point_level_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
                 if fgtile != '0' {
-                    let strawberry = self.atlas.lookup("collectables/strawberry/normal00").unwrap();
-                    self.atlas.draw(strawberry, sx, sy, scale, resized_sprite_cache);
+                    match self.tilesets.get(&fgtile) {
+                        Some(tileset) => {
+                            match tileset.tile_fg(room, tx as i32, ty as i32) {
+                                Some(tile) => {
+                                    self.gameplay_atlas.draw_tile(tile, sx, sy, scale, resized_sprite_cache);
+                                }
+                                None => ()
+                            }
+                        }
+                        None => ()
+                    }
                 }
             }
         }

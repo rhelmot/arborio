@@ -144,9 +144,9 @@ impl Atlas {
         // is all but static. No idea about the line depth stuff.
         let mut view = unsafe {
             fltk::image::RgbImage::from_data2(
-                &resized[(tile_ref.tile.x * 4 + tile_ref.tile.y * resized_width as u32 * 4) as usize..],
-                8*scale as i32,
-                8*scale as i32,
+                &resized[(tile_ref.tile.x * (4f32 * 8f32 * scale) as u32 + tile_ref.tile.y * resized_width as u32 * (4f32 * 8f32 * scale) as u32) as usize..],
+                (8f32*scale) as i32,
+                (8f32*scale) as i32,
                 4,
                 (resized_width * 4) as i32).unwrap()
         };

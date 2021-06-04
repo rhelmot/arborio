@@ -30,6 +30,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let atlas = Rc::new(atlas_img::Atlas::load(Path::new("/home/audrey/games/celeste/Content/Graphics/Atlases/Gameplay.meta"))?);
     let mut fgtiles: HashMap<char, autotiler::Tileset> = HashMap::new();
     let added = autotiler::Tileset::load(Path::new("/home/audrey/games/celeste/Content/Graphics/ForegroundTiles.nobom.xml"), &atlas, &mut fgtiles)?;
+    let fgtiles = Rc::new(fgtiles);
 
     let app = app::App::default();
     app::set_visual(enums::Mode::Rgb).unwrap();
@@ -51,7 +52,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     toolbar.set_type(group::PackType::Horizontal);
     toolbar.make_resizable(false);
 
-    let mut editor = editor_widget::EditorWidget::new(0, 0, width, height - button_size, atlas);
+    let mut editor = editor_widget::EditorWidget::new(0, 0, width, height - button_size, atlas, fgtiles);
     vlayout.resizable(&editor.widget);
 
     vlayout.end();

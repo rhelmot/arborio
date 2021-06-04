@@ -6,6 +6,7 @@ use std::fs;
 use std::collections::HashMap;
 use super::atlas_img;
 use crate::atlas_img::SpriteReference;
+use crate::map_struct::CelesteMapLevel;
 
 #[derive(Copy, Clone)]
 pub struct TextureTile {
@@ -22,6 +23,7 @@ pub struct TileReference {
 
 #[derive(Clone)]
 pub struct Tileset {
+    pub id: char,
     pub texture: SpriteReference,
     pub edges: Vec<Vec<TextureTile>>,
     pub padding: Vec<TextureTile>,
@@ -79,6 +81,8 @@ impl Tileset {
             if s_tileset.id.len() != 1 {
                 return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tileset id ({}) must be a single character", s_tileset.id)));
             }
+            let ch = s_tileset.id.chars().next().unwrap();
+
             // HACK
             let texture_sprite = match gameplay_atlas.lookup(&format!("tilesets/{}", if s_tileset.path == "template" { "dirt" } else { &s_tileset.path })) {
                 Some(v) => v,
@@ -86,6 +90,7 @@ impl Tileset {
             };
             let mut tileset = if s_tileset.copy.is_empty() {
                 Tileset {
+                    id: ch,
                     texture: texture_sprite,
                     edges: vec![Vec::new(); 256],
                     padding: vec![],
@@ -103,6 +108,7 @@ impl Tileset {
                     None => return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Can't find tileset to copy ({} copying {})", s_tileset.id, s_tileset.copy))),
                 };
                 r.texture = texture_sprite;
+                r.id = ch;
                 r
             };
 
@@ -158,14 +164,14 @@ impl Tileset {
                     };
 
                     let mut success = true;
-                    success |= process_bit(mask_vec[0], 1 >> 0);
-                    success != process_bit(mask_vec[1], 1 >> 1);
-                    success != process_bit(mask_vec[2], 1 >> 2);
-                    success != process_bit(mask_vec[4], 1 >> 3);
-                    success != process_bit(mask_vec[6], 1 >> 4);
-                    success != process_bit(mask_vec[8], 1 >> 5);
-                    success != process_bit(mask_vec[9], 1 >> 6);
-                    success != process_bit(mask_vec[10], 1 >> 7);
+                    success |= process_bit(mask_vec[0],  1 << 0);
+                    success != process_bit(mask_vec[1],  1 << 1);
+                    success != process_bit(mask_vec[2],  1 << 2);
+                    success != process_bit(mask_vec[4],  1 << 3);
+                    success != process_bit(mask_vec[6],  1 << 4);
+                    success != process_bit(mask_vec[8],  1 << 5);
+                    success != process_bit(mask_vec[9],  1 << 6);
+                    success != process_bit(mask_vec[10], 1 << 7);
 
                     if !success {
                         return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tileset mask (\"{}\" for tileset {} must be of the form xxx-xxx-xxx, or the literals `padding` or `center`", s_set.mask, s_tileset.id)));
@@ -180,12 +186,66 @@ impl Tileset {
 
             }
 
-            let ch = s_tileset.id.chars().next().unwrap();
             result.push(ch);
             out.insert(ch, tileset);
         }
 
         return Ok(result);
+    }
+
+    pub fn tile_fg(&self, level: &CelesteMapLevel, x: i32, y: i32) -> Option<TileReference> {
+        if level.fg_tile(x, y) != Some(self.id) {
+            return None;
+        }
+
+        let hash = (x as u32).wrapping_mul(536870909).wrapping_add((y as u32).wrapping_mul(1073741789)) as usize;
+
+        let mut lookup = 0_usize;
+        if self.is_filled(level, x-1, y-1) { lookup |= 1 << 0; }
+        if self.is_filled(level, x-0, y-1) { lookup |= 1 << 1; }
+        if self.is_filled(level, x+1, y-1) { lookup |= 1 << 2; }
+        if self.is_filled(level, x-1, y-0) { lookup |= 1 << 3; }
+        if self.is_filled(level, x+1, y-0) { lookup |= 1 << 4; }
+        if self.is_filled(level, x-1, y+1) { lookup |= 1 << 5; }
+        if self.is_filled(level, x-0, y+1) { lookup |= 1 << 6; }
+        if self.is_filled(level, x+1, y+1) { lookup |= 1 << 7; }
+
+        let tiles = if lookup == 0xff {
+            if self.is_filled(level, x-2, y) && self.is_filled(level, x+2, y) &&
+                self.is_filled(level, x, y-2) && self.is_filled(level, x, y+2) {
+                &self.center
+            } else {
+                &self.padding
+            }
+        } else {
+            &self.edges[lookup]
+        };
+
+        if tiles.len() == 0 {
+            return None;
+        }
+
+        return Some(TileReference {
+            tile: tiles[hash % tiles.len()],
+            texture: self.texture,
+        });
+    }
+
+    pub fn is_filled(&self, level: &CelesteMapLevel, x: i32, y: i32) -> bool {
+        return match level.fg_tile(x, y) {
+            Some(ch) => {
+                if ch == self.id {
+                    true
+                } else if ch == '0' {
+                    false
+                } else if self.ignores_all {
+                    false
+                } else {
+                    !self.ignores.contains(&ch)
+                }
+            }
+            None => true,
+        }
     }
 }
 
