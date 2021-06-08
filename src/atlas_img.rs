@@ -1,11 +1,12 @@
+use crate::autotiler::TileReference;
+use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
+use fltk::prelude::ImageExt;
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::fs;
 use std::io;
 use std::io::Read;
 use std::path;
-use fltk::prelude::ImageExt;
-use byteorder::{ReadBytesExt, BigEndian, LittleEndian};
-use crate::autotiler::TileReference;
 
 #[derive(Copy, Clone, Hash, Eq, PartialEq)]
 pub struct SpriteReference {
@@ -100,12 +101,54 @@ impl Atlas {
 
         let mut new_data = vec![0_u8; new_height * new_width * 4];
         for row in 0..new_height {
-            let old_row = row * height / new_height;
+            let source_row_start = (row * height) as f32 / new_height as f32;
+            let source_row_end = ((row + 1) * height) as f32 / new_height as f32;
             for col in 0..new_width {
+                let source_col_start = (col * width) as f32 / new_width as f32;
+                let source_col_end = ((col + 1) * width) as f32 / new_width as f32;
                 let old_col = col * width / new_width;
-                let old_pos = old_row * line_width + old_col;
+
+                let mut pixel = [0_f32; 4];
+                let mut total_overlap = 0.0;
+                for source_row in
+                    (source_row_start.floor() as usize)..(source_row_end.ceil() as usize)
+                {
+                    let vertical_overlap_start =
+                        f32::max(row as f32, (source_row * new_height) as f32 / height as f32);
+                    let vertical_overlap_end = f32::min(
+                        (row + 1) as f32,
+                        ((source_row + 1) * new_height) as f32 / height as f32,
+                    );
+                    let vertical_overlap = vertical_overlap_end - vertical_overlap_start;
+                    for source_col in
+                        (source_col_start.floor() as usize)..(source_col_end.ceil() as usize)
+                    {
+                        let horizontal_overlap_start =
+                            f32::max(col as f32, (source_col * new_width) as f32 / width as f32);
+                        let horizontal_overlap_end = f32::min(
+                            (col + 1) as f32,
+                            ((source_col + 1) * new_width) as f32 / width as f32,
+                        );
+                        let horizontal_overlap = horizontal_overlap_end - horizontal_overlap_start;
+
+                        let overlap = vertical_overlap * horizontal_overlap;
+                        total_overlap += overlap;
+
+                        let source_pos = source_row * line_width + source_col;
+
+                        let source: &[_; 4] = &data[source_pos * 4..(source_pos + 1) * 4]
+                            .try_into()
+                            .unwrap();
+                        for i in 0..4 {
+                            pixel[i] += source[i] as f32 * overlap;
+                        }
+                    }
+                }
+
+                let rounded_pixel: [u8; 4] = array_init::array_init(|i| pixel[i].round() as u8);
+
                 let pos = row * new_width + col;
-                new_data[pos * 4..(pos + 1) * 4].clone_from_slice(&data[old_pos * 4..(old_pos + 1) * 4]);
+                new_data[pos * 4..(pos + 1) * 4].clone_from_slice(&rounded_pixel);
             }
         }
 
