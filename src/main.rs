@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let atlas = Rc::new(atlas_img::Atlas::load(content_root.join("Graphics/Atlases/Gameplay.meta").as_path())?);
     let mut fgtiles: HashMap<char, autotiler::Tileset> = HashMap::new();
-    let added = autotiler::Tileset::load(content_root.join("Graphics/ForegroundTiles.nobom.xml").as_path(), &atlas, &mut fgtiles)?;
+    let added = autotiler::Tileset::load(content_root.join("Graphics/ForegroundTiles.xml").as_path(), &atlas, &mut fgtiles)?;
     let fgtiles = Rc::new(fgtiles);
 
     let app = app::App::default();
