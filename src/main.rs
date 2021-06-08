@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let atlas = Rc::new(atlas_img::Atlas::load(Path::new("/home/audrey/games/celeste/Content/Graphics/Atlases/Gameplay.meta"))?);
     let mut fgtiles: HashMap<char, autotiler::Tileset> = HashMap::new();
-    let added = autotiler::Tileset::load(Path::new("/home/audrey/games/celeste/Content/Graphics/ForegroundTiles.nobom.xml"), &atlas, &mut fgtiles)?;
+    let added = autotiler::Tileset::load(Path::new("/home/audrey/games/celeste/Content/Graphics/ForegroundTiles.xml"), &atlas, &mut fgtiles)?;
     let fgtiles = Rc::new(fgtiles);
 
     let app = app::App::default();
