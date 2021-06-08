@@ -12,7 +12,12 @@ use fltk::{prelude::*,*};
 use std::path::Path;
 use std::rc::Rc;
 use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
 
+#[derive(Serialize, Deserialize, Default)]
+struct Config {
+    celeste_path: String,
+}
 
 #[inline(always)]
 pub fn center() -> (i32, i32) {
@@ -23,13 +28,27 @@ pub fn center() -> (i32, i32) {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let mut cfg: Config = confy::load("arborio")?;
+    if cfg.celeste_path.is_empty() {
+        let celeste_path = match dialog::file_chooser("Please choose Celeste.exe", "Celeste.exe", ".", false) {
+            Some(v) => v,
+            None => {return Ok(());}
+        };
+        cfg = Config {
+            celeste_path,
+        };
+        confy::store("arborio", &cfg)?;
+    };
+
+    let content_root = Path::new(cfg.celeste_path.as_str()).parent().unwrap().join("Content");
+
     let width = 1000;
     let height = 600;
     let button_size = 25;
 
-    let atlas = Rc::new(atlas_img::Atlas::load(Path::new("/home/audrey/games/celeste/Content/Graphics/Atlases/Gameplay.meta"))?);
+    let atlas = Rc::new(atlas_img::Atlas::load(content_root.join("Graphics/Atlases/Gameplay.meta").as_path())?);
     let mut fgtiles: HashMap<char, autotiler::Tileset> = HashMap::new();
-    let added = autotiler::Tileset::load(Path::new("/home/audrey/games/celeste/Content/Graphics/ForegroundTiles.nobom.xml"), &atlas, &mut fgtiles)?;
+    let added = autotiler::Tileset::load(content_root.join("Graphics/ForegroundTiles.nobom.xml").as_path(), &atlas, &mut fgtiles)?;
     let fgtiles = Rc::new(fgtiles);
 
     let app = app::App::default();
@@ -61,7 +80,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     win.end();
 
     btn1.set_callback(move |_| {
-        let path = match dialog::file_chooser("Choose a celeste map", "*.bin", "/home/audrey/games/celeste/Content/Maps", false) {
+        // TODO store last used dir in config
+        let path = match dialog::file_chooser("Choose a celeste map", "*.bin", content_root.to_str().unwrap(), false) {
             Some(v) => v,
             None => {return;}
         };
