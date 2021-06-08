@@ -9,7 +9,6 @@ use crate::atlas_img::{Atlas, SpriteReference};
 use std::collections::HashMap;
 use crate::autotiler::Tileset;
 use enums::Key;
-use std::hint::unreachable_unchecked;
 
 fn backdrop_color() -> enums::Color    { enums::Color::from_u32(0x103010) }
 fn room_empty_color() -> enums::Color  { enums::Color::from_u32(0x204020) }
