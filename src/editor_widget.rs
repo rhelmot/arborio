@@ -8,6 +8,8 @@ use std::cmp::{min, max};
 use crate::atlas_img::{Atlas, SpriteReference};
 use std::collections::HashMap;
 use crate::autotiler::Tileset;
+use enums::Key;
+use std::hint::unreachable_unchecked;
 
 fn backdrop_color() -> enums::Color    { enums::Color::from_u32(0x103010) }
 fn room_empty_color() -> enums::Color  { enums::Color::from_u32(0x204020) }
@@ -112,26 +114,36 @@ impl EditorWidget {
                     true
                 },
                 enums::Event::MouseWheel => {
-                    let ydir = match app::event_dy() {
+                    let mouse_y = match app::event_dy() {
                         app::MouseWheel::Down => -1,
                         app::MouseWheel::Up => 1,
                         _ => 0,
                     };
-                    let xdir: i32 = match app::event_dx() {
+                    let mouse_x: i32 = match app::event_dx() {
                         app::MouseWheel::Right => -1,
                         app::MouseWheel::Left => 1,
                         _ => 0,
                     };
-                    if app::event_key_down(enums::Key::ControlL) || app::event_key_down(enums::Key::ControlR) {
+                    let (screen_y, screen_x) = if app::event_key_down(Key::ShiftL) || app::event_key_down(Key::ShiftR) {
+                        if mouse_x != 0 {
+                            unsafe {
+                                unreachable_unchecked() // Audrey said it should be undefined behavior
+                            }
+                        }
+                        (mouse_x, mouse_y)
+                    } else {
+                        (mouse_y, mouse_x)
+                    };
+                    if app::event_key_down(Key::ControlL) || app::event_key_down(Key::ControlR) {
                         let (old_x, old_y) = state.point_screen_to_level(app::event_x(), app::event_y());
-                        state.map_scale = max(min(30, state.map_scale as i32 - ydir), 1) as u32;
+                        state.map_scale = max(min(30, state.map_scale as i32 - screen_y), 1) as u32;
                         let (new_x, new_y) = state.point_screen_to_level(app::event_x(), app::event_y());
                         state.map_corner_x += old_x - new_x;
                         state.map_corner_y += old_y - new_y;
                     } else {
                         let amt = state.size_screen_to_level(30);
-                        state.map_corner_x += amt as i32 * xdir;
-                        state.map_corner_y += amt as i32 * ydir;
+                        state.map_corner_x += amt as i32 * screen_x;
+                        state.map_corner_y += amt as i32 * screen_y;
                     }
                     b.redraw();
                     true
