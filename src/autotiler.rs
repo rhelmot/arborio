@@ -72,8 +72,8 @@ macro_rules! assert_ascii {
 
 impl Tileset {
     pub fn load(path: &Path, gameplay_atlas: &atlas_img::Atlas, out: &mut HashMap<char, Tileset>) -> Result<Vec<char>, io::Error> {
-        let fp = fs::File::open(path.to_path_buf()).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset {}: {}", path.to_str().unwrap(), e)))?;
-        let data: SerData = serde_xml_rs::from_reader(fp).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset {}: {}", path.to_str().unwrap(), e)))?;
+        let string = fs::read_to_string(path).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset {}: {}", path.to_str().unwrap(), e)))?;
+        let data: SerData = serde_xml_rs::from_str(string.trim_start_matches('\u{FEFF}')).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset {}: {}", path.to_str().unwrap(), e)))?;
         let mut result: Vec<char> = vec![];
 
         for s_tileset in data.tilesets {
