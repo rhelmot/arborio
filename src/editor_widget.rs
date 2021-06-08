@@ -125,11 +125,6 @@ impl EditorWidget {
                         _ => 0,
                     };
                     let (screen_y, screen_x) = if app::event_key_down(Key::ShiftL) || app::event_key_down(Key::ShiftR) {
-                        if mouse_x != 0 {
-                            unsafe {
-                                unreachable_unchecked() // Audrey said it should be undefined behavior
-                            }
-                        }
                         (mouse_x, mouse_y)
                     } else {
                         (mouse_y, mouse_x)
