@@ -186,23 +186,17 @@ impl EditorState {
         let scale = self.map_scale as f32 / 8_f32;
 
         let tstride = room.bounds.width / 8;
-        for rx in (0..room.bounds.width).step_by(8) {
-            for ry in (0..room.bounds.height).step_by(8) {
-                let tx = rx / 8;
-                let ty = ry / 8;
+        for tx in 0..room.bounds.width / 8 {
+            for ty in 0..room.bounds.height / 8 {
+                let rx = tx * 8;
+                let ry = ty * 8;
                 let fgtile = room.fg_tiles[(tx + ty * tstride) as usize];
                 let (sx, sy) = self.point_level_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
                 if fgtile != '0' {
-                    match self.tilesets.get(&fgtile) {
-                        Some(tileset) => {
-                            match tileset.tile_fg(room, tx as i32, ty as i32) {
-                                Some(tile) => {
-                                    self.gameplay_atlas.draw_tile(tile, sx, sy, scale, resized_sprite_cache);
-                                }
-                                None => ()
-                            }
+                    if let Some(tileset) = self.tilesets.get(&fgtile) {
+                        if let Some(tile) = tileset.tile_fg(room, tx as i32, ty as i32) {
+                            self.gameplay_atlas.draw_tile(tile, sx, sy, scale, resized_sprite_cache);
                         }
-                        None => ()
                     }
                 }
             }
