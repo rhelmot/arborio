@@ -1,6 +1,7 @@
 use fltk::dialog;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;
@@ -8,6 +9,7 @@ use std::sync::Mutex;
 
 use crate::atlas_img;
 use crate::autotiler;
+use crate::atlas_img::SpriteReference;
 
 use crate::auto_saver::AutoSaver;
 use std::borrow::{Borrow, BorrowMut};
@@ -49,6 +51,8 @@ lazy_static! {
 
         bg_tiles.unwrap_or_else(|e| panic!("Failed to load BackgroundTiles.xml: {}", e))
     };
+
+    pub static ref SPRITE_CACHE: Mutex<Vec<HashMap<SpriteReference, Vec<u8>>>> = Mutex::new(Vec::new());
 }
 
 pub fn load() {
