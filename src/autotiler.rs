@@ -71,10 +71,10 @@ macro_rules! assert_ascii {
 }
 
 impl Tileset {
-    pub fn load(path: &Path, gameplay_atlas: &atlas_img::Atlas, out: &mut HashMap<char, Tileset>) -> Result<Vec<char>, io::Error> {
+    pub fn load(path: &Path, gameplay_atlas: &atlas_img::Atlas) -> Result<HashMap<char, Tileset>, io::Error> {
         let string = fs::read_to_string(path).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset {}: {}", path.to_str().unwrap(), e)))?;
         let data: SerData = serde_xml_rs::from_str(string.trim_start_matches('\u{FEFF}')).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset {}: {}", path.to_str().unwrap(), e)))?;
-        let mut result: Vec<char> = vec![];
+        let mut out: HashMap<char, Tileset> = HashMap::new();
 
         for s_tileset in data.tilesets {
             assert_ascii!(s_tileset.id);
@@ -186,11 +186,10 @@ impl Tileset {
 
             }
 
-            result.push(ch);
             out.insert(ch, tileset);
         }
 
-        return Ok(result);
+        Ok(out)
     }
 
     pub fn tile_fg(&self, level: &CelesteMapLevel, x: i32, y: i32) -> Option<TileReference> {
