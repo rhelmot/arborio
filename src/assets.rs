@@ -18,20 +18,17 @@ pub struct Config {
 lazy_static! {
     pub static ref CONFIG: Mutex<Config> = {
         let mut cfg: Result<Config, _> = confy::load("arborio");
-        if cfg.is_err() {
-            panic!(format!("Failed to load config file: {}", cfg.unwrap_err()));
-        }
-        let mut cfg = cfg.unwrap();
+        let mut cfg = cfg.unwrap_or_default();
         if cfg.celeste_root.as_os_str().is_empty() {
-            let celeste_path = match dialog::file_chooser("Please choose Celeste.exe", "Celeste.exe", ".", false) {
+            let celeste_path = PathBuf::from(match dialog::file_chooser("Please choose Celeste.exe", "Celeste.exe", ".", false) {
                 Some(v) => v,
                 None => panic!("Can't run arborio without a Celeste.exe!"),
-            };
+            });
             cfg = Config {
-                celeste_root: celeste_path.into().parent().unwrap(),
+                celeste_root: celeste_path.parent().unwrap().to_path_buf(),
             };
             if let Err(e) = confy::store("arborio", &cfg) {
-                panic!(format!("Failed to save config file: {}", e))
+                panic!("Failed to save config file: {}", e)
             }
         };
         Mutex::new(cfg)
@@ -39,8 +36,8 @@ lazy_static! {
 
     pub static ref GAMEPLAY_ATLAS: atlas_img::Atlas = {
         let atlas = atlas_img::Atlas::load(CONFIG.lock().unwrap().celeste_root.join("Content/Graphics/Atlases/Gameplay.meta").as_path());
-        if atlas.is_err() {
-            panic!(format!("Failed to load gameplay atlas: {}", atlas.unwrap_err()));
+        if let Err(e) = atlas {
+            panic!("Failed to load gameplay atlas: {}", e);
         }
 
         atlas.unwrap()
@@ -48,9 +45,10 @@ lazy_static! {
 
     pub static ref FG_TILES: HashMap<char, autotiler::Tileset> = {
         let mut fg_tiles: HashMap<char, autotiler::Tileset> = HashMap::new();
-        let result = autotiler::Tileset::load(CONFIG.lock().unwrap().celeste_root.join("Content/Graphics/ForegroundTiles.xml").as_path(), &GAMEPLAY_ATLAS, &mut fg_tiles);
-        if result.is_err() {
-            panic!(format!("Failed to load ForegroundTiles.xml: {}", result.unwrap_err()));
+        let path = CONFIG.lock().unwrap().celeste_root.join("Content/Graphics/ForegroundTiles.xml");
+        let result = autotiler::Tileset::load(path.as_path(), &GAMEPLAY_ATLAS, &mut fg_tiles);
+        if let Err(e) = result {
+            panic!("Failed to load ForegroundTiles.xml: {}", e);
         }
 
         fg_tiles
