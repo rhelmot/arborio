@@ -23,6 +23,7 @@ dependencies = [
  "celeste",
  "confy",
  "fltk",
+ "lazy_static",
  "rand",
  "serde",
  "serde-xml-rs",
@@ -165,8 +166,9 @@ dependencies = [
 
 [[package]]
 name = "fltk"
-version = "1.0.9"
-source = "git+https://github.com/fltk-rs/fltk-rs#7bf4dcb1ea0f91a0315b2759835d916e9722f003"
+version = "1.0.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4cfe515f1205029a56a5a04c7e4081ae1122bddea62f94a3b5e3ab07e6d4c2f5"
 dependencies = [
  "bitflags",
  "fltk-derive",
@@ -178,8 +180,9 @@ dependencies = [
 
 [[package]]
 name = "fltk-derive"
-version = "1.0.9"
-source = "git+https://github.com/fltk-rs/fltk-rs#7bf4dcb1ea0f91a0315b2759835d916e9722f003"
+version = "1.0.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "906ae2b1bdca59b23d7a81b3ba0464629fd54ccf0bb1e4b8d43c65801b511d15"
 dependencies = [
  "quote 1.0.9",
  "syn 1.0.72",
@@ -187,8 +190,9 @@ dependencies = [
 
 [[package]]
 name = "fltk-sys"
-version = "1.0.9"
-source = "git+https://github.com/fltk-rs/fltk-rs#7bf4dcb1ea0f91a0315b2759835d916e9722f003"
+version = "1.0.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21fe05f12fb3050b1426bd909a65786eb799f675f6e3e5dd5d39952bae7f1d53"
 dependencies = [
  "cmake",
  "libc",

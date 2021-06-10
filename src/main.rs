@@ -5,6 +5,7 @@ mod editor_widget;
 mod map_struct;
 mod atlas_img;
 mod autotiler;
+mod assets;
 
 use std::fs;
 use std::error::Error;
@@ -12,47 +13,27 @@ use fltk::{prelude::*,*};
 use std::path::Path;
 use std::rc::Rc;
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
-
-#[derive(Serialize, Deserialize, Default)]
-struct Config {
-    celeste_path: String,
-}
-
-#[inline(always)]
-pub fn center() -> (i32, i32) {
-    (
-        (app::screen_size().0 / 2.0) as i32,
-        (app::screen_size().1 / 2.0) as i32,
-    )
-}
+use std::cell::RefCell;
+#[macro_use]
+extern crate lazy_static;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut cfg: Config = confy::load("arborio")?;
-    if cfg.celeste_path.is_empty() {
-        let celeste_path = match dialog::file_chooser("Please choose Celeste.exe", "Celeste.exe", ".", false) {
-            Some(v) => v,
-            None => {return Ok(());}
-        };
-        cfg = Config {
-            celeste_path,
-        };
-        confy::store("arborio", &cfg)?;
-    };
-
-    let content_root = Path::new(cfg.celeste_path.as_str()).parent().unwrap().join("Content");
-
-    let width = 1000;
-    let height = 600;
-    let button_size = 25;
-
-    let atlas = Rc::new(atlas_img::Atlas::load(content_root.join("Graphics/Atlases/Gameplay.meta").as_path())?);
-    let mut fgtiles: HashMap<char, autotiler::Tileset> = HashMap::new();
-    let added = autotiler::Tileset::load(content_root.join("Graphics/ForegroundTiles.xml").as_path(), &atlas, &mut fgtiles)?;
-    let fgtiles = Rc::new(fgtiles);
+    assets::load();
 
     let app = app::App::default();
     app::set_visual(enums::Mode::Rgb).unwrap();
+
+    let mut win = build_main_window();
+    win.show();
+
+    app.run().unwrap();
+    return Ok(());
+}
+
+fn build_main_window() -> window::DoubleWindow {
+    let width = 1000;
+    let height = 600;
+    let button_size = 25;
 
     let mut win = window::DoubleWindow::default()
         .with_size(width, height)
@@ -71,7 +52,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     toolbar.set_type(group::PackType::Horizontal);
     toolbar.make_resizable(false);
 
-    let mut editor = editor_widget::EditorWidget::new(0, 0, width, height - button_size, atlas, fgtiles);
+    let mut editor = editor_widget::EditorWidget::new(0, 0, width, height - button_size);
     vlayout.resizable(&editor.widget);
 
     vlayout.end();
@@ -81,7 +62,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     btn1.set_callback(move |_| {
         // TODO store last used dir in config
-        let path = match dialog::file_chooser("Choose a celeste map", "*.bin", content_root.to_str().unwrap(), false) {
+        let path = match dialog::file_chooser("Choose a celeste map", "*.bin", CONFIG.celeste_root.to_str().unwrap(), false) {
             Some(v) => v,
             None => {return;}
         };
@@ -112,7 +93,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     });
 
     win.make_resizable(true);
-    win.show();
-    app.run().unwrap();
-    return Ok(());
+    return win;
+}
+
+#[inline(always)]
+pub fn center() -> (i32, i32) {
+    (
+        (app::screen_size().0 / 2.0) as i32,
+        (app::screen_size().1 / 2.0) as i32,
+    )
 }
