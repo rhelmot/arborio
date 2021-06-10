@@ -97,62 +97,84 @@ impl Atlas {
         })
     }
 
+    // This resize projects each resized pixel onto the source coordinates and sets it's color to the
+    // weighted average of all of the source pixels it intersects with, weighted by the intersection area
     fn resize(data: &[u8], line_width: usize, width: usize, height: usize, new_width: usize, new_height: usize) -> Vec<u8> {
+        let vertical_scale = new_height as f32 / height as f32;
+        let horizontal_scale = new_width as f32 / width as f32;
 
         let mut new_data = vec![0_u8; new_height * new_width * 4];
         for row in 0..new_height {
-            let source_row_start = (row * height) as f32 / new_height as f32;
-            let source_row_end = ((row + 1) * height) as f32 / new_height as f32;
             for col in 0..new_width {
-                let source_col_start = (col * width) as f32 / new_width as f32;
-                let source_col_end = ((col + 1) * width) as f32 / new_width as f32;
-                let old_col = col * width / new_width;
 
-                let mut pixel = [0_f32; 4];
-                let mut total_overlap = 0.0;
-                for source_row in
-                    (source_row_start.floor() as usize)..(source_row_end.ceil() as usize)
-                {
-                    let vertical_overlap_start =
-                        f32::max(row as f32, (source_row * new_height) as f32 / height as f32);
-                    let vertical_overlap_end = f32::min(
-                        (row + 1) as f32,
-                        ((source_row + 1) * new_height) as f32 / height as f32,
-                    );
-                    let vertical_overlap = vertical_overlap_end - vertical_overlap_start;
-                    for source_col in
-                        (source_col_start.floor() as usize)..(source_col_end.ceil() as usize)
-                    {
-                        let horizontal_overlap_start =
-                            f32::max(col as f32, (source_col * new_width) as f32 / width as f32);
-                        let horizontal_overlap_end = f32::min(
-                            (col + 1) as f32,
-                            ((source_col + 1) * new_width) as f32 / width as f32,
-                        );
-                        let horizontal_overlap = horizontal_overlap_end - horizontal_overlap_start;
-
-                        let overlap = vertical_overlap * horizontal_overlap;
-                        total_overlap += overlap;
-
-                        let source_pos = source_row * line_width + source_col;
-
-                        let source: &[_; 4] = &data[source_pos * 4..(source_pos + 1) * 4]
-                            .try_into()
-                            .unwrap();
-                        for i in 0..4 {
-                            pixel[i] += source[i] as f32 * overlap;
-                        }
-                    }
-                }
-
-                let rounded_pixel: [u8; 4] = array_init::array_init(|i| pixel[i].round() as u8);
+                let pixel = Self::composite_pixel(data, line_width, row, col, vertical_scale, horizontal_scale);
 
                 let pos = row * new_width + col;
-                new_data[pos * 4..(pos + 1) * 4].clone_from_slice(&rounded_pixel);
+                // Write out destination pixel
+                new_data[pos * 4..(pos + 1) * 4].clone_from_slice(&pixel);
             }
         }
 
         new_data
+    }
+    // Helper function for `resize`. It composites one pixel
+    fn composite_pixel(data: &[u8], line_width: usize, row: usize, col: usize, vertical_scale: f32, horizontal_scale: f32) -> [u8; 4] {
+
+        // The row range, in source coordinates that the resized pixel covers
+        let source_row_start = row as f32 / vertical_scale;
+        let source_row_end = (row + 1) as f32 / vertical_scale;
+
+        // The column range, in source coordinates that the resized pixel covers
+        let source_col_start = col as f32 / horizontal_scale;
+        let source_col_end = (col + 1) as f32 / horizontal_scale;
+
+        let mut pixel = [0_f32; 4];
+        // For each row in the source that overlaps with the resized
+        for source_row in
+        (source_row_start.floor() as usize)..(source_row_end.ceil() as usize)
+        {
+            let vertical_overlap_start =
+                f32::max(row as f32, source_row as f32 * vertical_scale);
+            let vertical_overlap_end = f32::min(
+                (row + 1) as f32,
+                (source_row + 1) as f32 * vertical_scale,
+            );
+            // Calculate the fraction of the resized row that the current source row covers
+            // This will be at most one, if it completely covers the resized row
+            let vertical_overlap = vertical_overlap_end - vertical_overlap_start;
+            // For each column in the source that overlaps with the resized
+            for source_col in
+            (source_col_start.floor() as usize)..(source_col_end.ceil() as usize)
+            {
+                let horizontal_overlap_start =
+                    f32::max(col as f32, source_col as f32 * horizontal_scale);
+                let horizontal_overlap_end = f32::min(
+                    (col + 1) as f32,
+                    (source_col + 1) as f32 * horizontal_scale,
+                );
+                // Calculate the fraction of the resized column that the current source column covers
+                // This will be at most one, if it completely covers the resized column
+                let horizontal_overlap = horizontal_overlap_end - horizontal_overlap_start;
+
+                let overlap = vertical_overlap * horizontal_overlap;
+
+                // Position in the source data to read a pixel from
+                let source_pos = source_row * line_width + source_col;
+
+                let source: &[_; 4] = &data[source_pos * 4..(source_pos + 1) * 4]
+                    .try_into()
+                    .unwrap();
+                // Add source pixel into destination pixel, weighted by overlap area
+                for i in 0..4 {
+                    pixel[i] += source[i] as f32 * overlap;
+                }
+            }
+        }
+
+        // Convert destination pixel from f32s to u8s
+        let rounded_pixel: [u8; 4] = array_init::array_init(|i| pixel[i].round() as u8);
+
+        rounded_pixel
     }
 
     pub fn draw(&self, sprite_ref: SpriteReference, x: i32, y: i32, scale: f32, resized_sprite_cache: &mut HashMap<SpriteReference, Vec<u8>>) {

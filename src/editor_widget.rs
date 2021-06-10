@@ -99,15 +99,19 @@ impl EditorWidget {
                             enums::Color::from_u32(0x804000))
                     }
                 }
-                let mut resized_sprite_cache = HashMap::new();
+                let mut resized_sprite_cache = assets::SPRITE_CACHE.lock().unwrap();
+                if resized_sprite_cache.len() <= state.map_scale as usize {
+                    resized_sprite_cache.resize_with(state.map_scale as usize + 1, HashMap::new);
+                }
+                let resized_sprite_cache = &mut resized_sprite_cache[state.map_scale as usize];
                 for room_idx in 0..state.map.as_ref().unwrap().levels.len() {
                     let rect_screen = state.rect_level_to_screen(&state.map.as_ref().unwrap().levels[room_idx].bounds);
                     if rect_screen.intersects(&screen) {
                         let should_draw_complex = state.map_scale >= 8;
                         if should_draw_complex {
                             state.draw_room_backdrop(room_idx);
-                            state.draw_room_bg_complex(room_idx, &mut resized_sprite_cache);
-                            state.draw_room_fg_complex(room_idx, &mut resized_sprite_cache);
+                            state.draw_room_bg_complex(room_idx, resized_sprite_cache);
+                            state.draw_room_fg_complex(room_idx, resized_sprite_cache);
                         } else {
                             state.draw_room_backdrop(room_idx);
                             state.draw_room_bg_simple(room_idx);
