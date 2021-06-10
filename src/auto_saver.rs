@@ -29,6 +29,7 @@ pub struct MutRef<'a, T> {
 }
 impl <T> Drop for MutRef<'_, T> {
     fn drop(&mut self) {
+        // Where the magic happens
         (self.auto_saver.saver)(&mut self.auto_saver.value);
     }
 }
