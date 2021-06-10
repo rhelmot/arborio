@@ -17,19 +17,17 @@ pub struct Config {
 
 lazy_static! {
     pub static ref CONFIG: Mutex<Config> = {
-        let mut cfg: Result<Config, _> = confy::load("arborio");
-        let mut cfg = cfg.unwrap_or_default();
+        let mut cfg: Config = confy::load("arborio").unwrap_or_default();
         if cfg.celeste_root.as_os_str().is_empty() {
-            let celeste_path = PathBuf::from(match dialog::file_chooser("Please choose Celeste.exe", "Celeste.exe", ".", false) {
-                Some(v) => v,
-                None => panic!("Can't run arborio without a Celeste.exe!"),
-            });
+            let celeste_path = PathBuf::from(
+                dialog::file_chooser("Please choose Celeste.exe", "Celeste.exe", ".", false)
+                .unwrap_or_else(|| panic!("Can't run arborio without a Celeste.exe!")));
             cfg = Config {
                 celeste_root: celeste_path.parent().unwrap().to_path_buf(),
             };
             if let Err(e) = confy::store("arborio", &cfg) {
-                panic!("Failed to save config file: {}", e)
-            }
+                panic!("Failed to save config file: {}", e);
+            };
         };
         Mutex::new(cfg)
     };
