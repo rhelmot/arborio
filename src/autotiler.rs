@@ -165,13 +165,13 @@ impl Tileset {
 
                     let mut success = true;
                     success |= process_bit(mask_vec[0],  1 << 0);
-                    success != process_bit(mask_vec[1],  1 << 1);
-                    success != process_bit(mask_vec[2],  1 << 2);
-                    success != process_bit(mask_vec[4],  1 << 3);
-                    success != process_bit(mask_vec[6],  1 << 4);
-                    success != process_bit(mask_vec[8],  1 << 5);
-                    success != process_bit(mask_vec[9],  1 << 6);
-                    success != process_bit(mask_vec[10], 1 << 7);
+                    success |= process_bit(mask_vec[1],  1 << 1);
+                    success |= process_bit(mask_vec[2],  1 << 2);
+                    success |= process_bit(mask_vec[4],  1 << 3);
+                    success |= process_bit(mask_vec[6],  1 << 4);
+                    success |= process_bit(mask_vec[8],  1 << 5);
+                    success |= process_bit(mask_vec[9],  1 << 6);
+                    success |= process_bit(mask_vec[10], 1 << 7);
 
                     if !success {
                         return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tileset mask (\"{}\" for tileset {} must be of the form xxx-xxx-xxx, or the literals `padding` or `center`", s_set.mask, s_tileset.id)));
@@ -202,12 +202,12 @@ impl Tileset {
 
         let mut lookup = 0_usize;
         if self.is_filled(level, x-1, y-1) { lookup |= 1 << 0; }
-        if self.is_filled(level, x-0, y-1) { lookup |= 1 << 1; }
+        if self.is_filled(level, x,   y-1) { lookup |= 1 << 1; }
         if self.is_filled(level, x+1, y-1) { lookup |= 1 << 2; }
-        if self.is_filled(level, x-1, y-0) { lookup |= 1 << 3; }
-        if self.is_filled(level, x+1, y-0) { lookup |= 1 << 4; }
+        if self.is_filled(level, x-1, y)   { lookup |= 1 << 3; }
+        if self.is_filled(level, x+1, y)   { lookup |= 1 << 4; }
         if self.is_filled(level, x-1, y+1) { lookup |= 1 << 5; }
-        if self.is_filled(level, x-0, y+1) { lookup |= 1 << 6; }
+        if self.is_filled(level, x,   y+1) { lookup |= 1 << 6; }
         if self.is_filled(level, x+1, y+1) { lookup |= 1 << 7; }
 
         let tiles = if lookup == 0xff {
@@ -221,7 +221,7 @@ impl Tileset {
             &self.edges[lookup]
         };
 
-        if tiles.len() == 0 {
+        if tiles.is_empty() {
             return None;
         }
 
@@ -236,9 +236,7 @@ impl Tileset {
             Some(ch) => {
                 if ch == self.id {
                     true
-                } else if ch == '0' {
-                    false
-                } else if self.ignores_all {
+                } else if ch == '0' || self.ignores_all {
                     false
                 } else {
                     !self.ignores.contains(&ch)
@@ -256,8 +254,8 @@ impl TextureTile {
             return Ok(result);
         }
 
-        for piece in text.split(";") {
-            let coords: Vec<&str> = piece.split(",").collect();
+        for piece in text.split(';') {
+            let coords: Vec<&str> = piece.split(',').collect();
             if coords.len() != 2 {
                 return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tile declaration (\"{}\") must be semicolon-separated sets of two comma-separated integers", text)));
             }
