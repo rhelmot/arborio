@@ -141,6 +141,16 @@ impl CelesteMapLevel {
 
         return Some(self.fg_tiles[(x + y * w) as usize]);
     }
+
+    pub fn bg_tile(&self, x: i32, y: i32) -> Option<char> {
+        let w = self.bounds.width as i32 / 8;
+        let h = self.bounds.height as i32 / 8;
+        if x < 0 || y < 0 || x >= w || y >= h {
+            return None;
+        }
+
+        return Some(self.bg_tiles[(x + y * w) as usize]);
+    }
 }
 
 

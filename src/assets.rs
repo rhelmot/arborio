@@ -32,19 +32,26 @@ lazy_static! {
         Mutex::new(cfg)
     };
     pub static ref GAMEPLAY_ATLAS: atlas_img::Atlas = {
-        let atlas = atlas_img::Atlas::load(CONFIG.lock().unwrap().celeste_root.join("Content/Graphics/Atlases/Gameplay.meta").as_path());
+        let path = CONFIG.lock().unwrap().celeste_root.join("Content/Graphics/Atlases/Gameplay.meta");
+        let atlas = atlas_img::Atlas::load(path.as_path());
 
         atlas.unwrap_or_else(|e| panic!("Failed to load gameplay atlas: {}", e))
     };
     pub static ref FG_TILES: HashMap<char, autotiler::Tileset> = {
         let path = CONFIG.lock().unwrap().celeste_root.join("Content/Graphics/ForegroundTiles.xml");
-        let fg_tiles = autotiler::Tileset::load(&path, &GAMEPLAY_ATLAS)
-            .unwrap_or_else(|e| panic!("Failed to load ForegroundTiles.xml: {}", e));
+        let fg_tiles = autotiler::Tileset::load(&path, &GAMEPLAY_ATLAS);
 
-        fg_tiles
+        fg_tiles.unwrap_or_else(|e| panic!("Failed to load ForegroundTiles.xml: {}", e))
+    };
+    pub static ref BG_TILES: HashMap<char, autotiler::Tileset> = {
+        let path = CONFIG.lock().unwrap().celeste_root.join("Content/Graphics/BackgroundTiles.xml");
+        let bg_tiles = autotiler::Tileset::load(path.as_path(), &GAMEPLAY_ATLAS);
+
+        bg_tiles.unwrap_or_else(|e| panic!("Failed to load BackgroundTiles.xml: {}", e))
     };
 }
 
 pub fn load() {
     assert_ne!(FG_TILES.len(), 0);
+    assert_ne!(BG_TILES.len(), 0);
 }

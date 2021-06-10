@@ -90,9 +90,13 @@ impl EditorWidget {
                     if rect_screen.intersects(&screen) {
                         let should_draw_complex = true;
                         if should_draw_complex {
-                            state.draw_room_complex(room_idx, &mut resized_sprite_cache);
+                            state.draw_room_backdrop(room_idx);
+                            state.draw_room_bg_complex(room_idx, &mut resized_sprite_cache);
+                            state.draw_room_fg_complex(room_idx, &mut resized_sprite_cache);
                         } else {
-                            state.draw_room_simple(room_idx);
+                            state.draw_room_backdrop(room_idx);
+                            state.draw_room_bg_simple(room_idx);
+                            state.draw_room_fg_simple(room_idx);
                         }
                     }
                 }
@@ -146,39 +150,63 @@ impl EditorWidget {
 }
 
 impl EditorState {
-    fn draw_room_simple(&mut self, room_idx: usize) {
+    fn draw_room_backdrop(&mut self, room_idx: usize) {
+        if self.map.as_ref().is_none() {
+            return;
+        }
+
+        let room = &self.map.as_ref().unwrap().levels[room_idx];
+        let rect = self.rect_level_to_screen(&room.bounds);
+        draw::draw_rect_fill(rect.x, rect.y, rect.width as i32, rect.height as i32, room_empty_color());
+    }
+
+    fn draw_room_fg_simple(&mut self, room_idx: usize) {
         if self.map.as_ref().is_none() {
             return;
         }
         let room = &self.map.as_ref().unwrap().levels[room_idx];
-        let rect = self.rect_level_to_screen(&room.bounds);
-        draw::draw_rect_fill(rect.x, rect.y, rect.width as i32, rect.height as i32, room_empty_color());
 
         let tstride = room.bounds.width / 8;
         let unit = self.size_level_to_screen(8);
-        for rx in (0..room.bounds.width).step_by(8) {
-            for ry in (0..room.bounds.height).step_by(8) {
-                let tx = rx / 8;
-                let ty = ry / 8;
+        for tx in 0..room.bounds.width / 8 {
+            for ty in 0..room.bounds.height / 8 {
+                let rx = tx * 8;
+                let ry = ty * 8;
                 let (sx, sy) = self.point_level_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
                 let fgtile = room.fg_tiles[(tx + ty * tstride) as usize];
-                let bgtile = room.bg_tiles[(tx + ty * tstride) as usize];
                 if fgtile != '0' {
                     draw::draw_rect_fill(sx, sy, unit as i32, unit as i32, room_fg_color());
-                } else if bgtile != '0' {
+                }
+            }
+        }
+    }
+
+    fn draw_room_bg_simple(&mut self, room_idx: usize) {
+        if self.map.as_ref().is_none() {
+            return;
+        }
+        let room = &self.map.as_ref().unwrap().levels[room_idx];
+
+        let tstride = room.bounds.width / 8;
+        let unit = self.size_level_to_screen(8);
+        for tx in 0..room.bounds.width / 8 {
+            for ty in 0..room.bounds.height / 8 {
+                let rx = tx * 8;
+                let ry = ty * 8;
+                let (sx, sy) = self.point_level_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
+                let bgtile = room.bg_tiles[(tx + ty * tstride) as usize];
+                if bgtile != '0' {
                     draw::draw_rect_fill(sx, sy, unit as i32, unit as i32, room_bg_color());
                 }
             }
         }
     }
 
-    fn draw_room_complex(&mut self, room_idx: usize, resized_sprite_cache: &mut HashMap<SpriteReference, Vec<u8>>) {
+    fn draw_room_fg_complex(&mut self, room_idx: usize, resized_sprite_cache: &mut HashMap<SpriteReference, Vec<u8>>) {
         if self.map.as_ref().is_none() {
             return;
         }
         let room = &self.map.as_ref().unwrap().levels[room_idx];
-        let rect = self.rect_level_to_screen(&room.bounds);
-        draw::draw_rect_fill(rect.x, rect.y, rect.width as i32, rect.height as i32, room_empty_color());
 
         let scale = self.map_scale as f32 / 8_f32;
 
@@ -192,6 +220,32 @@ impl EditorState {
                 if fgtile != '0' {
                     if let Some(tileset) = assets::FG_TILES.get(&fgtile) {
                         if let Some(tile) = tileset.tile_fg(room, tx as i32, ty as i32) {
+                            assets::GAMEPLAY_ATLAS.draw_tile(tile, sx, sy, scale, resized_sprite_cache);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn draw_room_bg_complex(&mut self, room_idx: usize, resized_sprite_cache: &mut HashMap<SpriteReference, Vec<u8>>) {
+        if self.map.as_ref().is_none() {
+            return;
+        }
+        let room = &self.map.as_ref().unwrap().levels[room_idx];
+
+        let scale = self.map_scale as f32 / 8_f32;
+
+        let tstride = room.bounds.width / 8;
+        for tx in 0..room.bounds.width / 8 {
+            for ty in 0..room.bounds.height / 8 {
+                let rx = tx * 8;
+                let ry = ty * 8;
+                let bgtile = room.bg_tiles[(tx + ty * tstride) as usize];
+                let (sx, sy) = self.point_level_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
+                if bgtile != '0' {
+                    if let Some(tileset) = assets::BG_TILES.get(&bgtile) {
+                        if let Some(tile) = tileset.tile_bg(room, tx as i32, ty as i32) {
                             assets::GAMEPLAY_ATLAS.draw_tile(tile, sx, sy, scale, resized_sprite_cache);
                         }
                     }

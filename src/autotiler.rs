@@ -193,25 +193,35 @@ impl Tileset {
     }
 
     pub fn tile_fg(&self, level: &CelesteMapLevel, x: i32, y: i32) -> Option<TileReference> {
-        if level.fg_tile(x, y) != Some(self.id) {
+        let mut tile = |x: i32, y: i32| level.fg_tile(x, y);
+        self.tile_g(x, y, &mut tile)
+    }
+
+    pub fn tile_bg(&self, level: &CelesteMapLevel, x: i32, y: i32) -> Option<TileReference> {
+        let mut tile = |x: i32, y: i32| level.bg_tile(x, y);
+        self.tile_g(x, y, &mut tile)
+    }
+
+    fn tile_g<F>(&self, x: i32, y: i32, tile: &mut F) -> Option<TileReference> where F: FnMut(i32, i32) -> Option<char> {
+        if tile(x, y) != Some(self.id) {
             return None;
         }
 
-        let hash = (x as u32).wrapping_mul(536870909).wrapping_add((y as u32).wrapping_mul(1073741789)) as usize;
+        let hash = ((x as u32).wrapping_mul(536870909) ^ (y as u32).wrapping_mul(1073741789)) as usize;
 
         let mut lookup = 0_usize;
-        if self.is_filled(level, x-1, y-1) { lookup |= 1 << 0; }
-        if self.is_filled(level, x,   y-1) { lookup |= 1 << 1; }
-        if self.is_filled(level, x+1, y-1) { lookup |= 1 << 2; }
-        if self.is_filled(level, x-1, y)   { lookup |= 1 << 3; }
-        if self.is_filled(level, x+1, y)   { lookup |= 1 << 4; }
-        if self.is_filled(level, x-1, y+1) { lookup |= 1 << 5; }
-        if self.is_filled(level, x,   y+1) { lookup |= 1 << 6; }
-        if self.is_filled(level, x+1, y+1) { lookup |= 1 << 7; }
+        if self.is_filled(tile(x-1, y-1)) { lookup |= 1 << 0; }
+        if self.is_filled(tile(x,   y-1)) { lookup |= 1 << 1; }
+        if self.is_filled(tile(x+1, y-1)) { lookup |= 1 << 2; }
+        if self.is_filled(tile(x-1, y))   { lookup |= 1 << 3; }
+        if self.is_filled(tile(x+1, y))   { lookup |= 1 << 4; }
+        if self.is_filled(tile(x-1, y+1)) { lookup |= 1 << 5; }
+        if self.is_filled(tile(x,   y+1)) { lookup |= 1 << 6; }
+        if self.is_filled(tile(x+1, y+1)) { lookup |= 1 << 7; }
 
         let tiles = if lookup == 0xff {
-            if self.is_filled(level, x-2, y) && self.is_filled(level, x+2, y) &&
-                self.is_filled(level, x, y-2) && self.is_filled(level, x, y+2) {
+            if self.is_filled(tile(x-2, y)) && self.is_filled(tile(x+2, y)) &&
+                self.is_filled(tile(x, y-2)) && self.is_filled(tile(x, y+2)) {
                 &self.center
             } else {
                 &self.padding
@@ -230,8 +240,8 @@ impl Tileset {
         });
     }
 
-    pub fn is_filled(&self, level: &CelesteMapLevel, x: i32, y: i32) -> bool {
-        return match level.fg_tile(x, y) {
+    pub fn is_filled(&self, tile: Option<char>) -> bool {
+        return match tile {
             Some(ch) => {
                 if ch == self.id {
                     true
