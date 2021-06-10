@@ -14,8 +14,6 @@ use std::path::Path;
 use std::rc::Rc;
 use std::collections::HashMap;
 use std::cell::RefCell;
-#[macro_use]
-extern crate lazy_static;
 
 fn main() -> Result<(), Box<dyn Error>> {
     assets::load();
@@ -62,7 +60,7 @@ fn build_main_window() -> window::DoubleWindow {
 
     btn1.set_callback(move |_| {
         // TODO store last used dir in config
-        let path = match dialog::file_chooser("Choose a celeste map", "*.bin", CONFIG.celeste_root.to_str().unwrap(), false) {
+        let path = match dialog::file_chooser("Choose a celeste map", "*.bin", assets::CONFIG.lock().unwrap().celeste_root.to_str().unwrap(), false) {
             Some(v) => v,
             None => {return;}
         };
