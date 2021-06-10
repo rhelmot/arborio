@@ -13,4 +13,5 @@ rand = "^0.8"
 byteorder = "^1.4"
 serde = { version = "^1.0", features = ["derive" ] }
 serde-xml-rs = "^0.4"
+try_or = "0.2.0"
 confy = "^0.4"

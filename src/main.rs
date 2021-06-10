@@ -13,6 +13,7 @@ use std::path::Path;
 use std::rc::Rc;
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
+use try_or::try_opt_or;
 
 #[derive(Serialize, Deserialize, Default)]
 struct Config {
@@ -28,17 +29,15 @@ pub fn center() -> (i32, i32) {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut cfg: Config = confy::load("arborio")?;
-    if cfg.celeste_path.is_empty() {
-        let celeste_path = match dialog::file_chooser("Please choose Celeste.exe", "Celeste.exe", ".", false) {
-            Some(v) => v,
-            None => {return Ok(());}
-        };
-        cfg = Config {
-            celeste_path,
-        };
-        confy::store("arborio", &cfg)?;
-    };
+    // if load from file fails, continue with default config
+    let cfg: Option<Config> = confy::load("arborio").map_or(Default::default(), |mut cfg: Config| {
+        if cfg.celeste_path.is_empty() {
+            cfg.celeste_path = dialog::file_chooser("Please choose Celeste.exe", "Celeste.exe", ".", false)?;
+            let _ = confy::store("arborio", &cfg); // If storage fails, continue anyway
+        }
+        Some(cfg)
+    });
+    let cfg = try_opt_or!(cfg, Ok(())); // If user didn't choose a path, exit cleanly
 
     let content_root = Path::new(cfg.celeste_path.as_str()).parent().unwrap().join("Content");
 
@@ -83,32 +82,27 @@ fn main() -> Result<(), Box<dyn Error>> {
         // TODO store last used dir in config
         let path = match dialog::file_chooser("Choose a celeste map", "*.bin", content_root.to_str().unwrap(), false) {
             Some(v) => v,
-            None => {return;}
-        };
-        let buf = match fs::read(path) {
-            Ok(v) => v,
-            Err(e) => {
-                dialog::alert(center().0, center().1, format!("Could not load file: {}", e).as_str());
-                return;
-            }
-        };
-        let parsed = match celeste::binel::parser::take_file(buf.as_slice()) {
-            Ok((_, v)) => v,
-            Err(e) => {
-                dialog::alert(center().0, center().1, format!("File is not a celeste map: {}", e).as_str());
-                return;
-            },
-        };
-        let map = match map_struct::from_binfile(parsed) {
-            Ok(v) => v,
-            Err(e) => {
-                dialog::alert(center().0, center().1, format!("Data validation error: {}", e).as_str());
-                return;
-            },
+            None => return,
         };
 
-        editor.set_map(map);
-        editor.reset_view();
+        let result: Result<_, String> = (|| {
+            let buf = fs::read(path).map_err(|e| format!("Could not load file: {}", e))?;
+            let (_, parsed) = celeste::binel::parser::take_file(buf.as_slice())
+                .map_err(|e| format!("File is not a celeste map: {}", e))?;
+            let map = map_struct::from_binfile(parsed)
+                .map_err(|e| format!("Data validation error: {}", e))?;
+            Ok(map)
+        })();
+
+        match result {
+            Ok(map) => {
+                editor.set_map(map);
+                editor.reset_view();
+            }
+            Err(err) => {
+                dialog::alert(center().0, center().1, &err);
+            }
+        }
     });
 
     win.make_resizable(true);
