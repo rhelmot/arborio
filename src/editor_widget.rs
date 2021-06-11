@@ -1,4 +1,4 @@
-use fltk::{prelude::*,*};
+use fltk::{prelude::*,*,enums::Key};
 
 use crate::map_struct;
 use crate::atlas_img::{Atlas, SpriteReference};
@@ -9,7 +9,15 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::cmp::{min, max};
 use std::collections::HashMap;
-use enums::Key;
+use std::env;
+use std::time;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref PERF_MONITOR: bool = {
+        env::var("ARBORIO_PERF_MONITOR").is_ok()
+    };
+}
 
 fn backdrop_color() -> enums::Color    { enums::Color::from_u32(0x103010) }
 fn room_empty_color() -> enums::Color  { enums::Color::from_u32(0x204020) }
@@ -28,6 +36,7 @@ struct EditorState {
     map_corner_x: i32,
     map_corner_y: i32,
     map_scale: u32, // screen pixels per game tile
+    last_draw: time::Instant,
 }
 
 impl EditorWidget {
@@ -38,6 +47,7 @@ impl EditorWidget {
             map_corner_x: 0,
             map_corner_y: 0,
             map_scale: 8,
+            last_draw: time::Instant::now(),
         };
 
         let mut result = EditorWidget {
@@ -68,6 +78,11 @@ impl EditorWidget {
         let state = self.state.clone();
         self.widget.draw(move |b| {
             let mut state = state.borrow_mut();
+            if *PERF_MONITOR {
+                let now = time::Instant::now();
+                println!("Drew {}ms ago", (now - state.last_draw).as_millis());
+                state.last_draw = now;
+            }
             let screen = map_struct::Rect::from_widget(b);
             draw::push_clip(b.x(), b.y(), b.w(), b.h());
             draw::draw_rect_fill(b.x(), b.y(), b.w(), b.h(), backdrop_color());
@@ -88,7 +103,7 @@ impl EditorWidget {
                 for room_idx in 0..state.map.as_ref().unwrap().levels.len() {
                     let rect_screen = state.rect_level_to_screen(&state.map.as_ref().unwrap().levels[room_idx].bounds);
                     if rect_screen.intersects(&screen) {
-                        let should_draw_complex = true;
+                        let should_draw_complex = state.map_scale >= 8;
                         if should_draw_complex {
                             state.draw_room_backdrop(room_idx);
                             state.draw_room_bg_complex(room_idx, &mut resized_sprite_cache);
@@ -102,6 +117,11 @@ impl EditorWidget {
                 }
             }
             draw::pop_clip();
+
+            if *PERF_MONITOR {
+                let now = time::Instant::now();
+                println!("Draw took {}ms", (now - state.last_draw).as_millis());
+            }
         });
     }
 
