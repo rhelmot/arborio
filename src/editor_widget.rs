@@ -188,8 +188,8 @@ impl EditorState {
 
         let tstride = room.bounds.width / 8;
         let unit = self.size_level_to_screen(8);
-        for tx in 0..room.bounds.width / 8 {
-            for ty in 0..room.bounds.height / 8 {
+        for ty in 0..room.bounds.height / 8 {
+            for tx in 0..room.bounds.width / 8 {
                 let rx = tx * 8;
                 let ry = ty * 8;
                 let (sx, sy) = self.point_level_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
@@ -209,8 +209,8 @@ impl EditorState {
 
         let tstride = room.bounds.width / 8;
         let unit = self.size_level_to_screen(8);
-        for tx in 0..room.bounds.width / 8 {
-            for ty in 0..room.bounds.height / 8 {
+        for ty in 0..room.bounds.height / 8 {
+            for tx in 0..room.bounds.width / 8 {
                 let rx = tx * 8;
                 let ry = ty * 8;
                 let (sx, sy) = self.point_level_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
@@ -231,8 +231,8 @@ impl EditorState {
         let scale = self.map_scale as f32 / 8_f32;
 
         let tstride = room.bounds.width / 8;
-        for tx in 0..room.bounds.width / 8 {
-            for ty in 0..room.bounds.height / 8 {
+        for ty in 0..room.bounds.height / 8 {
+            for tx in 0..room.bounds.width / 8 {
                 let rx = tx * 8;
                 let ry = ty * 8;
                 let fgtile = room.fg_tiles[(tx + ty * tstride) as usize];
@@ -257,8 +257,8 @@ impl EditorState {
         let scale = self.map_scale as f32 / 8_f32;
 
         let tstride = room.bounds.width / 8;
-        for tx in 0..room.bounds.width / 8 {
-            for ty in 0..room.bounds.height / 8 {
+        for ty in 0..room.bounds.height / 8 {
+            for tx in 0..room.bounds.width / 8 {
                 let rx = tx * 8;
                 let ry = ty * 8;
                 let bgtile = room.bg_tiles[(tx + ty * tstride) as usize];
