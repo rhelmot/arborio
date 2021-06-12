@@ -192,13 +192,8 @@ impl Tileset {
         Ok(out)
     }
 
-    pub fn tile_fg(&self, level: &CelesteMapLevel, x: i32, y: i32) -> Option<TileReference> {
-        let mut tile = |x: i32, y: i32| level.fg_tile(x, y);
-        self.tile_g(x, y, &mut tile)
-    }
-
-    pub fn tile_bg(&self, level: &CelesteMapLevel, x: i32, y: i32) -> Option<TileReference> {
-        let mut tile = |x: i32, y: i32| level.bg_tile(x, y);
+    pub fn tile(&self, level: &CelesteMapLevel, foreground: bool, x: i32, y: i32) -> Option<TileReference> {
+        let mut tile = |x: i32, y: i32| level.tile(x, y, foreground);
         self.tile_g(x, y, &mut tile)
     }
 

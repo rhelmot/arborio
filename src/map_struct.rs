@@ -132,22 +132,18 @@ impl CelesteMapError {
 }
 
 impl CelesteMapLevel {
-    pub fn fg_tile(&self, x: i32, y: i32) -> Option<char> {
+    pub fn tile(&self, x: i32, y: i32, foreground: bool) -> Option<char> {
         let w = self.bounds.width as i32 / 8;
         if x < 0 || x >= w {
             return None;
         }
+        let tiles = if foreground {
+            &self.fg_tiles
+        } else {
+            &self.bg_tiles
+        };
 
-        self.fg_tiles.get((x + y * w) as usize).map(|c| *c)
-    }
-
-    pub fn bg_tile(&self, x: i32, y: i32) -> Option<char> {
-        let w = self.bounds.width as i32 / 8;
-        if x < 0 || x >= w {
-            return None;
-        }
-
-        self.bg_tiles.get((x + y * w) as usize).map(|c| *c)
+        tiles.get((x + y * w) as usize).map(|c| *c)
     }
 }
 
