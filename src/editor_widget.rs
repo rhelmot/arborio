@@ -1,7 +1,7 @@
 use fltk::{prelude::*,*,enums::Key};
 
 use crate::map_struct;
-use crate::atlas_img::{Atlas, SpriteReference};
+use crate::atlas_img::{Atlas, SpriteReference, RoomBuffer};
 use crate::autotiler::Tileset;
 use crate::assets;
 
@@ -107,13 +107,14 @@ impl EditorWidget {
                 for room_idx in 0..state.map.as_ref().unwrap().levels.len() {
                     let rect_screen = state.rect_level_to_screen(&state.map.as_ref().unwrap().levels[room_idx].bounds);
                     if rect_screen.intersects(&screen) {
+                        state.draw_room_backdrop(room_idx);
+
                         let should_draw_complex = state.map_scale >= 8;
                         if should_draw_complex {
                             state.draw_room_backdrop(room_idx);
-                            state.draw_room_bg_complex(room_idx, resized_sprite_cache);
-                            state.draw_room_fg_complex(room_idx, resized_sprite_cache);
+                            state.draw_room_complex(room_idx, false, resized_sprite_cache);
+                            state.draw_room_complex(room_idx, true, resized_sprite_cache);
                         } else {
-                            state.draw_room_backdrop(room_idx);
                             state.draw_room_bg_simple(room_idx);
                             state.draw_room_fg_simple(room_idx);
                         }
@@ -155,7 +156,7 @@ impl EditorWidget {
                     };
                     if app::event_key_down(Key::ControlL) || app::event_key_down(Key::ControlR) {
                         let (old_x, old_y) = state.point_screen_to_level(app::event_x(), app::event_y());
-                        state.map_scale = max(min(30, state.map_scale as i32 - screen_y), 1) as u32;
+                        state.map_scale = (state.map_scale as i32 - screen_y).clamp(1, 30) as u32;
                         let (new_x, new_y) = state.point_screen_to_level(app::event_x(), app::event_y());
                         state.map_corner_x += old_x - new_x;
                         state.map_corner_y += old_y - new_y;
@@ -226,56 +227,46 @@ impl EditorState {
         }
     }
 
-    fn draw_room_fg_complex(&mut self, room_idx: usize, resized_sprite_cache: &mut HashMap<SpriteReference, Vec<u8>>) {
+    fn draw_room_complex(&mut self, room_idx: usize, foreground: bool, resized_sprite_cache: &mut HashMap<SpriteReference, Vec<u8>>) {
         if self.map.as_ref().is_none() {
             return;
         }
         let room = &self.map.as_ref().unwrap().levels[room_idx];
 
-        let scale = self.map_scale as f32 / 8_f32;
+        let room_buffer_width = room.bounds.height / 8 * 8;
 
+        let tiles = if foreground {
+            &room.fg_tiles
+        } else {
+            &room.bg_tiles
+        };
+
+        let tiles_asset = if foreground {
+            &*assets::FG_TILES
+        } else {
+            &*assets::BG_TILES
+        };
+
+        let rect_screen = self.rect_level_to_screen(&self.map.as_ref().unwrap().levels[room_idx].bounds);
+
+        let mut room_buffer = RoomBuffer::new(rect_screen.height, rect_screen.width);
         let tstride = room.bounds.width / 8;
         for ty in 0..room.bounds.height / 8 {
             for tx in 0..room.bounds.width / 8 {
                 let rx = tx * 8;
                 let ry = ty * 8;
-                let fgtile = room.fg_tiles[(tx + ty * tstride) as usize];
-                let (sx, sy) = self.point_level_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
-                if fgtile != '0' {
-                    if let Some(tileset) = assets::FG_TILES.get(&fgtile) {
-                        if let Some(tile) = tileset.tile_fg(room, tx as i32, ty as i32) {
-                            assets::GAMEPLAY_ATLAS.draw_tile(tile, sx, sy, scale, resized_sprite_cache);
+                let tile = tiles[(tx + ty * tstride) as usize];
+                // let (sx, sy) = self.point_level_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
+                if tile != '0' {
+                    if let Some(tileset) = tiles_asset.get(&tile) {
+                        if let Some(tile) = tileset.tile(room, foreground, tx as i32, ty as i32) {
+                            assets::GAMEPLAY_ATLAS.draw_tile(tile, tx * self.map_scale, ty * self.map_scale, self.map_scale, &mut room_buffer, resized_sprite_cache);
                         }
                     }
                 }
             }
         }
-    }
-
-    fn draw_room_bg_complex(&mut self, room_idx: usize, resized_sprite_cache: &mut HashMap<SpriteReference, Vec<u8>>) {
-        if self.map.as_ref().is_none() {
-            return;
-        }
-        let room = &self.map.as_ref().unwrap().levels[room_idx];
-
-        let scale = self.map_scale as f32 / 8_f32;
-
-        let tstride = room.bounds.width / 8;
-        for ty in 0..room.bounds.height / 8 {
-            for tx in 0..room.bounds.width / 8 {
-                let rx = tx * 8;
-                let ry = ty * 8;
-                let bgtile = room.bg_tiles[(tx + ty * tstride) as usize];
-                let (sx, sy) = self.point_level_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
-                if bgtile != '0' {
-                    if let Some(tileset) = assets::BG_TILES.get(&bgtile) {
-                        if let Some(tile) = tileset.tile_bg(room, tx as i32, ty as i32) {
-                            assets::GAMEPLAY_ATLAS.draw_tile(tile, sx, sy, scale, resized_sprite_cache);
-                        }
-                    }
-                }
-            }
-        }
+        room_buffer.draw(rect_screen.x, rect_screen.y);
     }
 
     fn rect_level_to_screen(&self, rect: &map_struct::Rect) -> map_struct::Rect {

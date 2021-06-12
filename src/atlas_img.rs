@@ -16,7 +16,7 @@ pub struct SpriteReference {
 
 pub struct Atlas {
     identifier: u32,
-    blobs: Vec<(Vec<u8>, i32)>,
+    blobs: Vec<(Vec<u8>, u32)>,
     sprites_map: HashMap<String, usize>,
     sprites: Vec<AtlasSprite>,
 }
@@ -31,6 +31,39 @@ pub struct AtlasSprite {
     offset_y: i32,
     real_width: u32,
     real_height: u32,
+}
+
+pub struct RoomBuffer {
+    pub line_width: u32,
+    pub data: Box<[u8]>,
+}
+impl RoomBuffer {
+    pub(crate) fn new(height: u32, width: u32) -> Self {
+        let line_width = width * 4;
+        Self {
+            line_width,
+            data: vec![0; line_width as usize * height as usize].into_boxed_slice(),
+        }
+    }
+    fn width(&self) -> u32 {
+        self.line_width / 4
+    }
+    fn height(&self) -> u32 {
+        (self.data.len() / self.line_width as usize) as u32
+    }
+    pub(crate) fn draw(&self, x: i32, y: i32) {
+        let mut view = unsafe {
+            fltk::image::RgbImage::from_data2(
+                &self.data,
+                self.width() as i32,
+                self.height() as i32,
+                4,
+                (self.line_width) as i32).unwrap()
+        };
+
+        view.draw(x, y, view.width(), view.height());
+        //panic!("testing");
+    }
 }
 
 impl Atlas {
@@ -99,17 +132,17 @@ impl Atlas {
 
     // This resize projects each resized pixel onto the source coordinates and sets it's color to the
     // weighted average of all of the source pixels it intersects with, weighted by the intersection area
-    fn resize(data: &[u8], line_width: usize, width: usize, height: usize, new_width: usize, new_height: usize) -> Vec<u8> {
+    fn resize(data: &[u8], line_width: u32, width: u32, height: u32, new_width: u32, new_height: u32) -> Vec<u8> {
         let vertical_scale = new_height as f32 / height as f32;
         let horizontal_scale = new_width as f32 / width as f32;
 
-        let mut new_data = vec![0_u8; new_height * new_width * 4];
+        let mut new_data = vec![0_u8; (new_height * new_width * 4) as usize];
         for row in 0..new_height {
             for col in 0..new_width {
 
-                let pixel = Self::composite_pixel(data, line_width, row, col, vertical_scale, horizontal_scale);
+                let pixel = Self::composite_pixel(data, line_width as usize, row as usize, col as usize, vertical_scale, horizontal_scale);
 
-                let pos = row * new_width + col;
+                let pos = (row * new_width + col) as usize;
                 // Write out destination pixel
                 new_data[pos * 4..(pos + 1) * 4].clone_from_slice(&pixel);
             }
@@ -177,13 +210,13 @@ impl Atlas {
         rounded_pixel
     }
 
-    pub fn draw(&self, sprite_ref: SpriteReference, x: i32, y: i32, scale: f32, resized_sprite_cache: &mut HashMap<SpriteReference, Vec<u8>>) {
+    pub fn draw(&self, sprite_ref: SpriteReference, x: i32, y: i32, map_scale: u32, resized_sprite_cache: &mut HashMap<SpriteReference, Vec<u8>>) {
         assert_eq!(self.identifier, sprite_ref.atlas);
         let sprite = &self.sprites[sprite_ref.idx as usize];
         let (ref blob, width) = self.blobs[sprite.blob_idx];
-        let resized_width = ((sprite.width as f32) * scale) as usize;
-        let resized_height = ((sprite.height as f32) * scale) as usize;
-        let resized = resized_sprite_cache.entry(sprite_ref).or_insert_with(||Self::resize(&blob[(sprite.x * 4 + sprite.y * 4 * width as u32) as usize..], width as usize, sprite.width as usize, sprite.height as usize, resized_width, resized_height));
+        let resized_width = sprite.width * map_scale / 8;
+        let resized_height = sprite.height * map_scale / 8;
+        let resized = resized_sprite_cache.entry(sprite_ref).or_insert_with(||Self::resize(&blob[(sprite.x * 4 + sprite.y * 4 * width as u32) as usize..], width as u32, sprite.width, sprite.height, resized_width, resized_height));
         // Safety: this object will not live longer than this function, and the blob reference
         // is all but static. No idea about the line depth stuff.
         let mut view = unsafe {
@@ -198,25 +231,19 @@ impl Atlas {
         view.draw(x, y, view.width(), view.height());
     }
 
-    pub fn draw_tile(&self, tile_ref: TileReference, x: i32, y: i32, scale: f32, resized_sprite_cache: &mut HashMap<SpriteReference, Vec<u8>>) {
+    pub fn draw_tile(&self, tile_ref: TileReference, x: u32, y: u32, map_scale: u32, destination: &mut RoomBuffer, resized_sprite_cache: &mut HashMap<SpriteReference, Vec<u8>>) {
         assert_eq!(self.identifier, tile_ref.texture.atlas);
         let sprite = &self.sprites[tile_ref.texture.idx as usize];
         let (ref blob, width) = self.blobs[sprite.blob_idx];
-        let resized_width = ((sprite.width as f32) * scale) as usize;
-        let resized_height = ((sprite.height as f32) * scale) as usize;
-        let resized = resized_sprite_cache.entry(tile_ref.texture).or_insert_with(||Self::resize(&blob[(sprite.x * 4 + sprite.y * 4 * width as u32) as usize..], width as usize, sprite.width as usize, sprite.height as usize, resized_width, resized_height));
-        // Safety: this object will not live longer than this function, and the blob reference
-        // is all but static. No idea about the line depth stuff.
-        let mut view = unsafe {
-            fltk::image::RgbImage::from_data2(
-                &resized[(tile_ref.tile.x * (4f32 * 8f32 * scale) as u32 + tile_ref.tile.y * resized_width as u32 * (4f32 * 8f32 * scale) as u32) as usize..],
-                (8f32*scale) as i32,
-                (8f32*scale) as i32,
-                4,
-                (resized_width * 4) as i32).unwrap()
-        };
+        let resized_width = sprite.width * map_scale / 8;
+        let resized_height = sprite.height * map_scale / 8;
+        let resized = resized_sprite_cache.entry(tile_ref.texture).or_insert_with(||Self::resize(&blob[(sprite.x * 4 + sprite.y * 4 * width as u32) as usize..], width as u32, sprite.width, sprite.height, resized_width, resized_height));
+        for row in 0..map_scale {
+            let source = (tile_ref.tile.x * 4 * map_scale + tile_ref.tile.y * resized_width * 4 * map_scale + row * resized_width * 4) as usize;
+            let dest = (x * 4 + (y + row) * destination.line_width) as usize;
 
-        view.draw(x, y, view.width(), view.height());
+            destination.data[dest..dest + map_scale as usize * 4].clone_from_slice(&resized[source..source + map_scale as usize * 4]);
+        }
     }
 }
 
@@ -232,7 +259,7 @@ fn read_string(reader: &mut io::BufReader<fs::File>) -> Result<String, io::Error
     }
 }
 
-pub fn load_data_file(data_file: path::PathBuf) -> Result<(Vec<u8>, i32), io::Error> {
+pub fn load_data_file(data_file: path::PathBuf) -> Result<(Vec<u8>, u32), io::Error> {
     let fp = fs::File::open(data_file)?;
 
     let mut reader = io::BufReader::new(fp);
@@ -276,5 +303,5 @@ pub fn load_data_file(data_file: path::PathBuf) -> Result<(Vec<u8>, i32), io::Er
         current_px += repeat + 1;
     }
 
-    return Ok((buf, width as i32));
+    return Ok((buf, width));
 }
