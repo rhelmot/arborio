@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Rect {
     pub x: i32,
     pub y: i32,
@@ -143,7 +143,7 @@ impl CelesteMapLevel {
             &self.bg_tiles
         };
 
-        tiles.get((x + y * w) as usize).map(|c| *c)
+        tiles.get((x + y * w) as usize).copied()
     }
 }
 

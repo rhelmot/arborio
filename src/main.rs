@@ -7,6 +7,7 @@ mod atlas_img;
 mod autotiler;
 mod assets;
 mod auto_saver;
+mod image_view;
 
 use std::fs;
 use std::error::Error;

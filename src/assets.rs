@@ -13,6 +13,7 @@ use crate::atlas_img::SpriteReference;
 
 use crate::auto_saver::AutoSaver;
 use std::borrow::{Borrow, BorrowMut};
+use crate::image_view::ImageBuffer;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -52,7 +53,7 @@ lazy_static! {
         bg_tiles.unwrap_or_else(|e| panic!("Failed to load BackgroundTiles.xml: {}", e))
     };
 
-    pub static ref SPRITE_CACHE: Mutex<Vec<HashMap<SpriteReference, Vec<u8>>>> = Mutex::new(Vec::new());
+    pub static ref SPRITE_CACHE: Mutex<Vec<HashMap<SpriteReference, ImageBuffer>>> = Mutex::new(Vec::new());
 }
 
 pub fn load() {

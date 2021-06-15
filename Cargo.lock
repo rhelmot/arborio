@@ -28,6 +28,7 @@ dependencies = [
  "fltk",
  "lazy_static",
  "rand",
+ "safe-transmute",
  "serde",
  "serde-xml-rs",
 ]
@@ -437,6 +438,12 @@ name = "rustc-demangle"
 version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e3bad0ee36814ca07d7968269dd4b7ec89ec2da10c4bb613928d3077083c232"
+
+[[package]]
+name = "safe-transmute"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98a01dab6acf992653be49205bdd549f32f17cb2803e8eacf1560bf97259aae8"
 
 [[package]]
 name = "serde"
