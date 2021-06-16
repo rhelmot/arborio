@@ -37,6 +37,7 @@ struct EditorState {
     map: Option<map_struct::CelesteMap>,
     transform: EditorTransform,
     last_draw: time::Instant,
+    prev_mouse: (i32, i32),
 }
 
 struct EditorTransform {
@@ -92,6 +93,7 @@ impl EditorWidget {
                 map_scale: 8,
             },
             last_draw: time::Instant::now(),
+            prev_mouse: (0, 0),
         };
 
         let mut result = EditorWidget {
@@ -217,6 +219,26 @@ impl EditorWidget {
                     b.redraw();
                     true
                 },
+                enums::Event::Push => {
+                    if app::event_button() == 2 {
+                        state.prev_mouse = state.transform.point_screen_to_level(app::event_x(), app::event_y());
+                        true
+                    } else {
+                        false
+                    }
+                }
+                enums::Event::Drag => {
+                    if app::event_button() == 2 {
+                        let new_mouse = state.transform.point_screen_to_level(app::event_x(), app::event_y());
+                        let difference = (new_mouse.0 - state.prev_mouse.0, new_mouse.1 - state.prev_mouse.1);
+                        state.transform.map_corner_x -= difference.0;
+                        state.transform.map_corner_y -= difference.1;
+                        b.redraw();
+                        true
+                    } else {
+                        false
+                    }
+                }
                 _ => false
             }
         });
