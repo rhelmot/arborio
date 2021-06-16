@@ -1,0 +1,6 @@
+[submodule "Ahorn"]
+	path = Ahorn
+	url = https://github.com/CelestialCartographers/Ahorn/
+[submodule "Maple"]
+	path = Maple
+	url = https://github.com/CelestialCartographers/Maple/

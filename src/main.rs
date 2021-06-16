@@ -19,6 +19,9 @@ use std::cell::RefCell;
 fn main() -> Result<(), Box<dyn Error>> {
     assets::load();
 
+    let mut jl = julia::api::Julia::new().unwrap();
+    println!("{}", jl.eval_string(include_str!("../Ahorn/src/entities/strawberry.jl")).unwrap());
+
     let app = app::App::default();
     app::set_visual(enums::Mode::Rgb).unwrap();
 
