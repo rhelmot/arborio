@@ -75,8 +75,8 @@ impl EditorTransform {
     }
 
     fn point_level_to_screen(&self, x: i32, y: i32) -> (i32, i32) {
-        ((x - self.map_corner_x) * self.map_scale as i32 / 8,
-         (y - self.map_corner_y) * self.map_scale as i32 / 8)
+        (((x - self.map_corner_x) * self.map_scale as i32).div_euclid(8),
+         ((y - self.map_corner_y) * self.map_scale as i32).div_euclid(8))
     }
 }
 
@@ -323,7 +323,6 @@ impl EditorState {
         }
         room_buffer.as_ref().draw_clipped(clip_box, rect_screen.x, rect_screen.y);
     }
-
 }
 
 impl map_struct::Rect {
