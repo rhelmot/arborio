@@ -158,8 +158,8 @@ impl EditorWidget {
                             state.draw_room_complex(room_idx, &screen, false, resized_sprite_cache);
                             state.draw_room_complex(room_idx, &screen, true, resized_sprite_cache);
                         } else {
-                            state.draw_room_bg_simple(room_idx);
-                            state.draw_room_fg_simple(room_idx);
+                            state.draw_room_simple(room_idx, false);
+                            state.draw_room_simple(room_idx, true);
                         }
                     }
                 }
@@ -248,11 +248,17 @@ impl EditorState {
         draw::draw_rect_fill(rect.x, rect.y, rect.width as i32, rect.height as i32, room_empty_color());
     }
 
-    fn draw_room_fg_simple(&mut self, room_idx: usize) {
+    fn draw_room_simple(&mut self, room_idx: usize, foreground: bool) {
         if self.map.as_ref().is_none() {
             return;
         }
         let room = &self.map.as_ref().unwrap().levels[room_idx];
+
+        let (tiles, color) = if foreground {
+            (&room.fg_tiles, room_fg_color())
+        } else {
+            (&room.bg_tiles, room_bg_color())
+        };
 
         let tstride = room.bounds.width / 8;
         let unit = self.transform.size_level_to_screen(8);
@@ -261,30 +267,9 @@ impl EditorState {
                 let rx = tx * 8;
                 let ry = ty * 8;
                 let (sx, sy) = self.transform.point_level_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
-                let fgtile = room.fg_tiles[(tx + ty * tstride) as usize];
-                if fgtile != '0' {
-                    draw::draw_rect_fill(sx, sy, unit as i32, unit as i32, room_fg_color());
-                }
-            }
-        }
-    }
-
-    fn draw_room_bg_simple(&mut self, room_idx: usize) {
-        if self.map.as_ref().is_none() {
-            return;
-        }
-        let room = &self.map.as_ref().unwrap().levels[room_idx];
-
-        let tstride = room.bounds.width / 8;
-        let unit = self.transform.size_level_to_screen(8);
-        for ty in 0..room.bounds.height / 8 {
-            for tx in 0..room.bounds.width / 8 {
-                let rx = tx * 8;
-                let ry = ty * 8;
-                let (sx, sy) = self.transform.point_level_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
-                let bgtile = room.bg_tiles[(tx + ty * tstride) as usize];
-                if bgtile != '0' {
-                    draw::draw_rect_fill(sx, sy, unit as i32, unit as i32, room_bg_color());
+                let tile = tiles[(tx + ty * tstride) as usize];
+                if tile != '0' {
+                    draw::draw_rect_fill(sx, sy, unit as i32, unit as i32, color);
                 }
             }
         }
