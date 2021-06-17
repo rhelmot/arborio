@@ -1,5 +1,4 @@
 use std::ops::{DerefMut, Deref};
-use std::borrow::{Borrow, BorrowMut};
 
 pub struct AutoSaver<T> {
     value: T,

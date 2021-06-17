@@ -1,5 +1,4 @@
 #![allow(unused)]
-#![allow(clippy::needless_return)]
 
 mod editor_widget;
 mod map_struct;
@@ -7,14 +6,11 @@ mod atlas_img;
 mod autotiler;
 mod assets;
 mod auto_saver;
+mod image_view;
 
 use std::fs;
 use std::error::Error;
 use fltk::{prelude::*,*};
-use std::path::Path;
-use std::rc::Rc;
-use std::collections::HashMap;
-use std::cell::RefCell;
 
 fn main() -> Result<(), Box<dyn Error>> {
     assets::load();
@@ -26,7 +22,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     win.show();
 
     app.run().unwrap();
-    return Ok(());
+    Ok(())
 }
 
 fn build_main_window() -> window::DoubleWindow {
@@ -92,7 +88,7 @@ fn build_main_window() -> window::DoubleWindow {
     });
 
     win.make_resizable(true);
-    return win;
+    win
 }
 
 #[inline(always)]

@@ -1,9 +1,7 @@
 use fltk::dialog;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -12,7 +10,7 @@ use crate::autotiler;
 use crate::atlas_img::SpriteReference;
 
 use crate::auto_saver::AutoSaver;
-use std::borrow::{Borrow, BorrowMut};
+use crate::image_view::ImageBuffer;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -21,7 +19,7 @@ pub struct Config {
 
 lazy_static! {
     pub static ref CONFIG: Mutex<AutoSaver<Config>> = {
-        let mut cfg: Config = confy::load("arborio").unwrap_or_default();
+        let cfg: Config = confy::load("arborio").unwrap_or_default();
         let mut cfg = AutoSaver::new(cfg, |cfg: &mut Config| {
             confy::store("arborio", &cfg).unwrap_or_else(|e| panic!("Failed to save config file: {}", e));
         });
@@ -52,7 +50,7 @@ lazy_static! {
         bg_tiles.unwrap_or_else(|e| panic!("Failed to load BackgroundTiles.xml: {}", e))
     };
 
-    pub static ref SPRITE_CACHE: Mutex<Vec<HashMap<SpriteReference, Vec<u8>>>> = Mutex::new(Vec::new());
+    pub static ref SPRITE_CACHE: Mutex<Vec<HashMap<SpriteReference, ImageBuffer>>> = Mutex::new(Vec::new());
 }
 
 pub fn load() {

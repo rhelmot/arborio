@@ -1,6 +1,4 @@
 use std::path::Path;
-use std::iter::Enumerate;
-use std::iter::Rev;
 use std::io;
 use std::fs;
 use std::collections::HashMap;
@@ -73,7 +71,7 @@ macro_rules! assert_ascii {
 impl Tileset {
     pub fn load(path: &Path, gameplay_atlas: &atlas_img::Atlas) -> Result<HashMap<char, Tileset>, io::Error> {
         let string = fs::read_to_string(path).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset {}: {}", path.to_str().unwrap(), e)))?;
-        let data: SerData = serde_xml_rs::from_str(string.trim_start_matches('\u{FEFF}')).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset {}: {}", path.to_str().unwrap(), e)))?;
+        let data: SerData = serde_xml_rs::from_str(string.trim_start_matches('\u{FEFF}')).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset {}: {:?}", path.to_str().unwrap(), e)))?;
         let mut out: HashMap<char, Tileset> = HashMap::new();
 
         for s_tileset in data.tilesets {
@@ -151,16 +149,16 @@ impl Tileset {
                     }
 
                     let mut process_bit = |ch: char, bit: usize| -> bool {
-                        if ch != 'x' {
-                            mask |= bit;
-                            if ch != '0' {
+                        match ch {
+                            'x' => {},
+                            '0' => mask |= bit,
+                            '1' => {
+                                mask |= bit;
                                 value |= bit;
-                                if ch != '1' {
-                                    return false;
-                                }
                             }
+                            _ => return false,
                         }
-                        return true;
+                        true
                     };
 
                     let mut success = true;
@@ -229,23 +227,21 @@ impl Tileset {
             return None;
         }
 
-        return Some(TileReference {
+        Some(TileReference {
             tile: tiles[hash % tiles.len()],
             texture: self.texture,
-        });
+        })
+    }
+
+    fn ignores(&self, tile: char) -> bool {
+        self.ignores_all || self.ignores.contains(&tile)
     }
 
     pub fn is_filled(&self, tile: Option<char>) -> bool {
-        return match tile {
-            Some(ch) => {
-                if ch == self.id {
-                    true
-                } else if ch == '0' || self.ignores_all {
-                    false
-                } else {
-                    !self.ignores.contains(&ch)
-                }
-            }
+        match tile {
+            Some(ch) if ch == self.id => true,
+            Some('0') => false,
+            Some(ch) => self.ignores(ch),
             None => true,
         }
     }
@@ -277,6 +273,6 @@ impl TextureTile {
             })
         }
 
-        return Ok(result);
+        Ok(result)
     }
 }
