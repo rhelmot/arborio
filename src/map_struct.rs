@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Rect {
     pub x: i32,
     pub y: i32,
@@ -143,7 +143,7 @@ impl CelesteMapLevel {
             &self.bg_tiles
         };
 
-        tiles.get((x + y * w) as usize).map(|c| *c)
+        tiles.get((x + y * w) as usize).copied()
     }
 }
 
@@ -173,13 +173,13 @@ pub fn from_binfile(binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
     let style_bg_parsed = style_bg.children().map(|child| parse_styleground(child)).collect::<Result<_, CelesteMapError>>()?;
     let levels_parsed = levels.children().map(|child| parse_level(child)).collect::<Result<_, CelesteMapError>>()?;
 
-    return Ok(CelesteMap {
+    Ok(CelesteMap {
         name: binfile.package,
         filler: filler_parsed,
         foregrounds: style_fg_parsed,
         backgrounds: style_bg_parsed,
         levels: levels_parsed,
-    });
+    })
 }
 
 fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
@@ -272,7 +272,7 @@ fn parse_fgbg_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<char>, 
         }
     }
 
-    return Ok(data);
+    Ok(data)
 }
 
 fn parse_object_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<i32>, CelesteMapError> {
@@ -312,7 +312,7 @@ fn parse_object_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<i32>,
         y += 1;
     }
 
-    return Ok(data);
+    Ok(data)
 }
 
 fn parse_entity_trigger(elem: &BinEl) -> Result<CelesteMapEntity, CelesteMapError> {
@@ -351,7 +351,7 @@ fn parse_filler_rect(elem: & BinEl) -> Result<Rect, CelesteMapError> {
     let w: i32 = get_attr(elem, "w")?;
     let h: i32 = get_attr(elem, "h")?;
 
-    return Ok(Rect { x: x * 8, y: y * 8, width: w as u32 * 8, height: h as u32 * 8 });
+    Ok(Rect { x: x * 8, y: y * 8, width: w as u32 * 8, height: h as u32 * 8 })
 }
 
 fn parse_styleground(elem :&BinEl) -> Result<CelesteMapStyleground, CelesteMapError> {
@@ -373,12 +373,12 @@ fn parse_styleground(elem :&BinEl) -> Result<CelesteMapStyleground, CelesteMapEr
 
 fn get_optional_child<'a>(elem: &'a BinEl, name: &str) -> Option<&'a BinEl> {
     let children_of_name = elem.get(name);
-    return if let [ref child] = children_of_name.as_slice() {
+    if let [ref child] = children_of_name.as_slice() {
         // if there is exactly one child
         Some(child)
     } else {
         None
-    };
+    }
 }
 
 fn get_child<'a>(elem: &'a BinEl, name: &str) -> Result<&'a BinEl, CelesteMapError> {
