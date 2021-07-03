@@ -155,7 +155,6 @@ impl EditorWidget {
 
                         let should_draw_complex = state.transform.map_scale >= 1;
                         if should_draw_complex {
-                            state.draw_room_backdrop(room_idx);
                             state.draw_room_complex(room_idx, &screen, false, resized_sprite_cache);
                             state.draw_room_complex(room_idx, &screen, true, resized_sprite_cache);
                         } else {
