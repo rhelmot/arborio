@@ -62,8 +62,8 @@ impl ImageBuffer {
 
 #[derive(Copy, Clone, Debug)]
 pub struct ImageView<'a> {
-    pub(crate) height: u32,
-    pub(crate) width: u32,
+    height: u32,
+    width: u32,
     line_width: u32,
     buffer: &'a [u8],
 }
