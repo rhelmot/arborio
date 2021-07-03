@@ -1,9 +1,15 @@
 Entity: struct
   hitboxes: List[Rect]
-  standard_draw: Draw
-  selected_draw: Draw
+  standard_draw: EntityDraw
+  selected_draw: EntityDraw
 
-Draw: DrawImage | DrawRect | DrawLine | DrawList | DrawEachNode
+EntityDraw: struct
+  initial_draw: DrawList
+  node_draw: DrawList
+
+DrawList: List[DrawElement]
+
+DrawElement: DrawImage | DrawRect | DrawLine
 
 DrawImage: struct
   sprite: string
@@ -19,10 +25,6 @@ DrawRect: struct
   rect: Rect
   color: Color
   color_border: Color
-
-DrawList: List[Draw]
-
-DrawEachNode: Draw
 
 Vec2: struct
   x: Expression
