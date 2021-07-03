@@ -241,7 +241,7 @@ impl Tileset {
         match tile {
             Some(ch) if ch == self.id => true,
             Some('0') => false,
-            Some(ch) => self.ignores(ch),
+            Some(ch) => !self.ignores(ch),
             None => true,
         }
     }
