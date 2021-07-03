@@ -1,0 +1,61 @@
+Entity: struct
+  hitboxes: List[Rect]
+  standard_draw: Draw
+  draw: Draw
+
+Draw: DrawImage | DrawRect | DrawLine | DrawList | DrawEachNode
+
+DrawImage: struct
+  sprite: string
+  offset: Vec2
+
+DrawLine: struct
+  start: Vec2
+  end: Vec2
+  color: Color
+  arrowhead: bool
+
+DrawRect: struct
+  rect: Rect
+  color: Color
+  color_border: Color
+
+DrawList: List[Draw]
+
+DrawEachNode: Draw
+
+Vec2: struct
+  x: Expression
+  y: Expression
+
+Color: struct
+  r: Expression
+  g: Expression
+  b: Expression
+  a: Expression
+
+Rect:
+  topleft: Vec2
+  size: Vec2
+
+Expression: Add | Sub | Mul | Div | Mod | Neg | Atom | Const
+
+Add: struct
+  lhs: Expression
+  rhs: Expression
+Sub: struct
+  lhs: Expression
+  rhs: Expression
+Mul: struct
+  lhs: Expression
+  rhs: Expression
+Div: struct
+  lhs: Expression
+  rhs: Expression
+Mod: struct
+  lhs: Expression
+  rhs: Expression
+Neg: struct
+  expr: Expression
+Atom: string  # the name of the attribute to load the value of as part of this expression
+Const: float
