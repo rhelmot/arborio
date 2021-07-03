@@ -153,7 +153,7 @@ impl EditorWidget {
                     if rect_screen.intersects(&screen) {
                         state.draw_room_backdrop(room_idx);
 
-                        let should_draw_complex = state.transform.map_scale >= 8;
+                        let should_draw_complex = state.transform.map_scale >= 1;
                         if should_draw_complex {
                             state.draw_room_backdrop(room_idx);
                             state.draw_room_complex(room_idx, &screen, false, resized_sprite_cache);
@@ -165,10 +165,6 @@ impl EditorWidget {
                     }
                 }
             }
-            // let blob = assets::GAMEPLAY_ATLAS.blobs[0].as_ref();
-            // blob
-            //     .resize(blob.width * state.map_scale / 8, blob.height * state.map_scale / 8)
-            //     .draw_clipped(&screen, -state.map_corner_x, -state.map_corner_y);
             draw::pop_clip();
 
             if *PERF_MONITOR {

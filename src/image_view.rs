@@ -100,7 +100,6 @@ impl <'a> ImageView<'a> {
         }).draw(clipped_x, clipped_y);
     }
     pub(crate) fn draw_to(self, destination: ImageViewMut, x: u32, y: u32) {
-        // dbg!(self.width, self.height, x, y, destination.width, destination.height);
         assert!(self.width + x <= destination.width);
         assert!(self.height + y <= destination.height);
         for row in 0..self.height {
@@ -125,7 +124,6 @@ impl <'a> ImageView<'a> {
         assert!(section.x >= 0);
         assert!(section.y >= 0);
         let (x, y) = (section.x as u32, section.y as u32);
-        // dbg!(section, self.width, self.height);
         assert!(section.width + x <= self.width);
         assert!(section.height + y <= self.height);
         let buffer;
