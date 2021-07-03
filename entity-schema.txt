@@ -1,7 +1,7 @@
 Entity: struct
   hitboxes: List[Rect]
   standard_draw: Draw
-  draw: Draw
+  selected_draw: Draw
 
 Draw: DrawImage | DrawRect | DrawLine | DrawList | DrawEachNode
 
