@@ -12,8 +12,8 @@ DrawList: List[DrawElement]
 DrawElement: DrawImage | DrawRect | DrawLine
 
 DrawImage: struct
-  sprite: string
-  offset: Vec2
+  sprite: Expression
+  bounds: Rect
 
 DrawLine: struct
   start: Vec2
@@ -40,7 +40,7 @@ Rect:
   topleft: Vec2
   size: Vec2
 
-Expression: Add | Sub | Mul | Div | Mod | Neg | Atom | Const
+Expression: Add | Sub | Mul | Div | Mod | Neg | Match | Atom | Const
 
 Add: struct
   lhs: Expression
@@ -59,5 +59,11 @@ Mod: struct
   rhs: Expression
 Neg: struct
   expr: Expression
+Match: struct
+  arms: List[MatchArm]
+  default: Expression
+MatchArm: struct
+  match: Const
+  value: Expression
 Atom: string  # the name of the attribute to load the value of as part of this expression
-Const: float
+Const: float | string
