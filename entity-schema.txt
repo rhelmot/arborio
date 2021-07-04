@@ -1,7 +1,18 @@
 Entity: struct
+  entity_name: string
   hitboxes: List[Rect]
   standard_draw: EntityDraw
   selected_draw: EntityDraw
+  minimum_size_x: int
+  minimum_size_y: int
+  resizable_x: bool
+  resizable_y: bool
+  attribute_info: List[AttributeInfo]
+
+AttributeInfo: struct
+  name: string
+  type: TypeString | TypeFloat | TypeInt | TypeBool
+  options: Optional[List[string] | List[float] | List[int]]
 
 EntityDraw: struct
   initial_draw: DrawList
@@ -9,9 +20,25 @@ EntityDraw: struct
 
 DrawList: List[DrawElement]
 
-DrawElement: DrawImage | DrawRect | DrawLine
+DrawElement: DrawImage | DrawRect | DrawLine | DrawCurve | DrawTiles | Draw9Slice
 
 DrawImage: struct
+  sprite: Expression
+  scale: Vec2
+  bounds: Rect
+
+DrawTiles: struct
+  tileset: Expression  # this can be either a texture path or a tileset ID
+  bounds: Rect
+  tiler: AutotilerType
+
+AutotilerType: enum
+  fg
+  bg
+  cassette
+
+# for 9slice drawings that are larger than 8*3 pixels square, treat the middles as tiled
+Draw9Slice: struct
   sprite: Expression
   bounds: Rect
 
@@ -20,6 +47,14 @@ DrawLine: struct
   end: Vec2
   color: Color
   arrowhead: bool
+  thickness: int
+
+DrawCurve: struct
+  start: Vec2
+  end: Vec2
+  middle: Vec2
+  color: Color
+  thickness: int
 
 DrawRect: struct
   rect: Rect
@@ -66,4 +101,6 @@ MatchArm: struct
   match: Const
   value: Expression
 Atom: string  # the name of the attribute to load the value of as part of this expression
+              # the following automatic attributes will also be provided:
+              # x, y, width, height, nodex, nodey, nextnodex, nextnodey, nextnodexorbase, nextnodeyorbase, prevnodex, prevnodey, prevnodexorbase, prevnodeyorbase, firstnodex, firstnodey, lastnodex, lastnodey
 Const: float | string
