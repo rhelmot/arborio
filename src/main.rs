@@ -7,12 +7,42 @@ mod autotiler;
 mod assets;
 mod auto_saver;
 mod image_view;
+mod entity_config;
 
 use std::fs;
 use std::error::Error;
 use fltk::{prelude::*,*};
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let foo = entity_config::DrawElement::DrawRect {
+        rect: entity_config::Rect {
+            topleft: entity_config::Vec2 {
+                x: entity_config::Expression::Dummy("x :)".to_owned()),
+                y: entity_config::Expression::Dummy("y :)".to_owned())
+            },
+            size: entity_config::Vec2 {
+                x: entity_config::Expression::Dummy("width :)".to_owned()),
+                y: entity_config::Expression::Dummy("height :)".to_owned()),
+            }
+        },
+        color: entity_config::Color {
+            r: entity_config::Expression::Dummy("255 :)".to_owned()),
+            g: entity_config::Expression::Dummy("0 :)".to_owned()),
+            b: entity_config::Expression::Dummy("0 :)".to_owned()),
+            a: entity_config::Expression::Dummy("200 :)".to_owned()),
+        },
+        border_color: entity_config::Color {
+            r: entity_config::Expression::Dummy("255 :)".to_owned()),
+            g: entity_config::Expression::Dummy("0 :)".to_owned()),
+            b: entity_config::Expression::Dummy("0 :)".to_owned()),
+            a: entity_config::Expression::Dummy("255 :)".to_owned()),
+        },
+        border_thickness: 1
+    };
+    println!("{}", serde_yaml::to_string(&foo).unwrap());
+
+    let parsed: entity_config::EntityConfig = serde_yaml::from_str(include_str!("../strawberry.yaml")).unwrap();
+    dbg!(parsed);
     assets::load();
 
     let app = app::App::default();

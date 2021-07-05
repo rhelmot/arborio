@@ -1,0 +1,58 @@
+entity_name: strawberry
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: 8
+        y: 8
+  node_rects:
+    - topleft:
+        x: nodex
+        y: nodey
+      size:
+        x: 8
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawImage:
+        texture: collectables/strawberry/normal00
+        bounds:
+          topleft:
+            x: x
+            y: y
+  node_draw:
+    - DrawImage:
+        texture: collectables/strawberry/seed00
+        bounds:
+          topleft:
+            x: nodex
+            y: nodey
+selected_draw:
+  node_draw:
+    - DrawLine:
+        start:
+          x: x
+          y: y
+        end:
+          x: nodex
+          y: nodey
+        arrowhead: true
+        color:
+          r: 255
+          g: 255
+          b: 0
+          a: 200
+resizable_x: false
+resizable_y: false
+nodes: true
+attribute_info:
+  winged:
+    ty: Bool
+    default:
+      Bool: false
+  moon:
+    ty: Bool
+    default:
+      Bool: false

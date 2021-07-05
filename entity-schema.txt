@@ -20,7 +20,7 @@ EntityDraw: struct
 
 DrawList: List[DrawElement]
 
-DrawElement: DrawImage | DrawRect | DrawLine | DrawCurve | DrawTiles | Draw9Slice
+DrawElement: DrawImage | DrawRect | DrawLine | DrawCurve | DrawTiles
 
 DrawImage: struct
   sprite: Expression
@@ -36,11 +36,7 @@ AutotilerType: enum
   fg
   bg
   cassette
-
-# for 9slice drawings that are larger than 8*3 pixels square, treat the middles as tiled
-Draw9Slice: struct
-  sprite: Expression
-  bounds: Rect
+  9slice
 
 DrawLine: struct
   start: Vec2
