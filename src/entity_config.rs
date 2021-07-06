@@ -1,6 +1,7 @@
 use serde;
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
+use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
+use crate::entity_expression::Expression;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EntityConfig {
@@ -134,38 +135,6 @@ pub struct Color {
     pub g: Expression,
     pub b: Expression,
     pub a: Expression,
-}
-
-#[derive(Debug)]
-pub enum Expression {
-    Dummy(String)
-}
-
-impl<'de> Deserialize<'de> for Expression {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s: String = Deserialize::deserialize(deserializer)?;
-        Ok(Expression::Dummy(s.to_owned() + " :)"))
-    }
-}
-
-impl Serialize for Expression {
-    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            Expression::Dummy(val) => val.strip_suffix(" :)")
-        }.serialize(s)
-    }
-}
-
-impl Expression {
-    pub fn mk_const(con: i32) -> Expression {
-        Expression::Dummy(con.to_string() + " :)")
-    }
 }
 
 impl Vec2 {

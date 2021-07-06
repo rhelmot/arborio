@@ -17,14 +17,14 @@ hitboxes:
 standard_draw:
   initial_draw:
     - DrawImage:
-        texture: collectables/strawberry/normal00
+        texture: '"collectables/strawberry/normal00"'
         bounds:
           topleft:
             x: x
             y: y
   node_draw:
     - DrawImage:
-        texture: collectables/strawberry/seed00
+        texture: '"collectables/strawberry/seed00"'
         bounds:
           topleft:
             x: nodex
