@@ -1,20 +1,21 @@
 use nom::{IResult, named, map_res, tuple, opt, tag, alt, delimited, recognize, one_of, many0, pair,
           character::complete::multispace0 as ws, is_not, number::complete::double, error::Error,
-          preceded, separated_list0, separated_pair, is_a, complete};
+          preceded, separated_list0, separated_pair, is_a, complete, terminated, eof, do_parse,
+          fold_many0, error::ErrorKind};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)] // WHY DO WE NEED CLONE OMG
 pub enum Expression {
     Const(Const),
     Atom(String),
     BinOp(BinOp, Box<(Expression, Expression)>),
     UnOp(UnOp, Box<Expression>),
-    Match { arms: HashMap<Const, Expression>, default: Box<Expression> }
+    Match { test: Box<Expression>, arms: HashMap<Const, Expression>, default: Box<Expression> }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BinOp {
     Add,
     Sub,
@@ -23,18 +24,18 @@ pub enum BinOp {
     Mod,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnOp {
     Neg,
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub enum Const {
     Number(Number),
     String(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Number(f64);
 
 // aggressively terrible solution to the floating point comparison problem:
@@ -110,21 +111,6 @@ named!(atom<&str, Expression>,
     )
 );
 
-named!(expression<&str, Expression>,
-    complete!(expression_3)
-);
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_atom() {
-        println!("{:?}", expression("8"));
-        assert_eq!(1, 2)
-    }
-}
-
 named!(string_const<&str, Expression>,
     map_res!(
         delimited!(ws, string_lit, ws),
@@ -172,81 +158,89 @@ named!(match_arm<&str, (Option<Const>, Expression)>,
     separated_pair!(match_case, delimited!(ws, tag!("=>"), ws), expression_3)
 );
 
-named!(match_expr<&str, Expression>,
-    preceded!(
-        delimited!(ws, tag!("match"), ws),
-        delimited!(
-            delimited!(ws, tag!("{"), ws),
-            map_res!(
-                separated_list0!(delimited!(ws, tag!(","), ws), match_arm),
-                |s: Vec<(Option<Const>, Expression)>| -> Result<Expression, ()> {
-                    let mut arms: HashMap<Const, Expression> = HashMap::new();
-                    let mut default: Option<Expression> = None;
-                    for (case, expr) in s {
-                        match case {
-                            Some(real_case) => {
-                                if arms.contains_key(&real_case) {
-                                    return Err(())
-                                }
-                                arms.insert(real_case, expr);
-                            },
-                            None => {
-                                if default.is_some() {
-                                    return Err(())
-                                }
-                                default = Some(expr);
-                            }
-                        }
-                    }
-
-                    if default.is_none() {
-                        return Err(())
-                    }
-
-                    Ok(Expression::Match {arms, default: Box::new(default.unwrap())})
+fn construct_match_expr(test: Expression, arms_list: Vec<(Option<Const>, Expression)>) -> Result<Expression, ()> {
+    let mut arms: HashMap<Const, Expression> = HashMap::new();
+    let mut default: Option<Expression> = None;
+    for (case, expr) in arms_list {
+        match case {
+            Some(real_case) => {
+                if arms.contains_key(&real_case) {
+                    return Err(())
                 }
-            ),
-            delimited!(ws, tag!("}"), ws)
-        )
+                arms.insert(real_case, expr);
+            },
+            None => {
+                if default.is_some() {
+                    return Err(())
+                }
+                default = Some(expr);
+            }
+        }
+    }
+
+    if default.is_none() {
+        Err(())
+    } else {
+        Ok(Expression::Match {test: Box::new(test), arms, default: Box::new(default.unwrap())})
+    }
+}
+
+named!(match_expr_with_errors<&str, Result<Expression, ()>>,
+    do_parse!(
+        delimited!(ws, tag!("match"), ws) >>
+        test: expression_3 >>
+        delimited!(ws, tag!("{"), ws) >>
+        arms_list: separated_list0!(delimited!(ws, tag!(","), ws), match_arm) >>
+        delimited!(ws, tag!("}"), ws) >>
+        (construct_match_expr(test, arms_list))
+    )
+);
+
+named!(match_expr<&str, Expression>,
+    map_res!(
+        match_expr_with_errors,
+        |s: Result<Expression, ()>| -> Result<Expression, Error<&str>> {
+            s.map_err(|_| Error { input: "what", code: ErrorKind::MapRes })
+        }
     )
 );
 
 named!(expression_3<&str, Expression>,
-    alt!(
-        expression_2 |
-        map_res!(
-            tuple!(
-                expression_3,
+    do_parse!(
+        init: expression_2 >>
+        res: fold_many0!(
+            complete!(pair!(
                 delimited!(ws, alt!(tag!("+") | tag!("-")), ws),
                 expression_2
-            ), |s: (Expression, &str, Expression)| -> Result<Expression, Error<&str>> {
-                Ok(Expression::BinOp(match s.1 {
-                    "+" => BinOp::Add,
-                    "-" => BinOp::Sub,
-                    _ => unreachable!(),
-                }, Box::new((s.0, s.2))))
-            }
-        )
+            )),
+            init,
+            |acc, next| Expression::BinOp(match next.0 {
+                "+" => BinOp::Add,
+                "-" => BinOp::Sub,
+                _ => unreachable!(),
+            }, Box::new((acc, next.1)))
+        ) >>
+        (res)
     )
 );
 
 named!(expression_2<&str, Expression>,
-    alt!(
-        expression_1 |
-        map_res!(
-            tuple!(
-                expression_2,
+    do_parse!(
+        init: expression_1 >>
+        res: fold_many0!(
+            complete!(pair!(
                 delimited!(ws, alt!(tag!("*") | tag!("/") | tag!("%")), ws),
                 expression_1
-            ), |s: (Expression, &str, Expression)| -> Result<Expression, Error<&str>> {
-                Ok(Expression::BinOp(match s.1 {
-                    "*" => BinOp::Mul,
-                    "/" => BinOp::Div,
-                    "%" => BinOp::Mod,
-                    _ => unreachable!(),
-                }, Box::new((s.0, s.2))))
-            }
-        )
+            )),
+            init,
+            |acc, next| Expression::BinOp(match next.0 {
+                "*" => BinOp::Mul,
+                "/" => BinOp::Div,
+                "%" => BinOp::Mod,
+                _ => unreachable!(),
+            }, Box::new((acc, next.1)))
+        ) >>
+        (res)
     )
 );
 
@@ -269,6 +263,10 @@ named!(expression_1<&str, Expression>,
 
 named!(expression_0<&str, Expression>,
     alt!(string_const | num_const | atom | parenthetical | match_expr)
+);
+
+named!(expression<&str, Expression>,
+    terminated!(expression_3, eof!())
 );
 
 impl<'de> Deserialize<'de> for Expression {
@@ -298,5 +296,53 @@ impl Serialize for Expression {
 impl Expression {
     pub fn mk_const(con: i32) -> Expression {
         Expression::Const(Const::Number(Number(con as f64)))
+    }
+}
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_expr2() {
+        assert_eq!(
+            expression("-x * y"),
+            Ok(("",
+                Expression::BinOp(
+                    BinOp::Mul,
+                    Box::new((
+                        Expression::UnOp(
+                            UnOp::Neg,
+                            Box::new(Expression::Atom("x".to_owned()))
+                        ),
+                        Expression::Atom("y".to_owned())
+                    ))
+                )
+            ))
+        );
+    }
+
+    #[test]
+    fn test_expr3() {
+        assert_eq!(
+            expression("-x + y"),
+            Ok(("",
+                Expression::BinOp(
+                    BinOp::Add,
+                    Box::new((
+                        Expression::UnOp(
+                            UnOp::Neg,
+                            Box::new(Expression::Atom("x".to_owned()))
+                        ),
+                        Expression::Atom("y".to_owned())
+                    ))
+                )
+            ))
+        );
+    }
+
+    #[test]
+    fn test_match() {
+        let expr = match_expr_with_errors("match 1 + 1 { 2 => 'yeah', _ => 'what' }");
+        assert!(expr.is_ok());
     }
 }
