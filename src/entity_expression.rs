@@ -5,8 +5,9 @@ use nom::{IResult, named, map_res, tuple, opt, tag, alt, delimited, recognize, o
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
+use std::fmt::Formatter;
 
-#[derive(Debug, Clone, PartialEq, Eq)] // WHY DO WE NEED CLONE OMG
+#[derive(Debug, Clone, PartialEq)] // WHY DO WE NEED CLONE OMG
 pub enum Expression {
     Const(Const),
     Atom(String),
@@ -24,9 +25,29 @@ pub enum BinOp {
     Mod,
 }
 
+impl std::fmt::Display for BinOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            BinOp::Add => "+",
+            BinOp::Sub => "-",
+            BinOp::Mul => "*",
+            BinOp::Div => "/",
+            BinOp::Mod => "%",
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnOp {
     Neg,
+}
+
+impl std::fmt::Display for UnOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            UnOp::Neg => "-",
+        })
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
@@ -35,8 +56,29 @@ pub enum Const {
     String(String),
 }
 
+impl std::fmt::Display for Const {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Const::Number(n) => write!(f, "{}", n),
+            Const::String(s) => {
+                if !s.contains("\"") {
+                    write!(f, "\"{}\"", s)
+                } else {
+                    write!(f, "\'{}\'", s)
+                }
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Number(f64);
+
+impl std::fmt::Display for Number {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 // aggressively terrible solution to the floating point comparison problem:
 // force all nan == nan, use normal fp comparison for others
@@ -290,7 +332,26 @@ impl Serialize for Expression {
         where
             S: Serializer,
     {
-        "can't serialize stuff yet!".serialize(s)
+        format!("{}", self).serialize(s)
+    }
+}
+
+impl std::fmt::Display for Expression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Expression::Const(c) => write!(f, "{}", c),
+            Expression::Atom(s) => write!(f, "{}", s),
+            // TODO analyze operator precedence to tell if parens are necessary
+            Expression::BinOp(op, children) => write!(f, "({} {} {})", children.as_ref().0, op, children.as_ref().1),
+            Expression::UnOp(op, child) => write!(f, "{}{}", op, child.as_ref()),
+            Expression::Match { test, arms, default } => {
+                write!(f, "match {} {{ ", test.as_ref())?;
+                for (matching, expression) in arms {
+                    write!(f, "{} => {}, ", matching, expression)?;
+                }
+                write!(f, "_ => {} }}", default.as_ref())
+            }
+        }
     }
 }
 
@@ -437,5 +498,21 @@ mod test {
         env.insert("x".to_owned(), Const::Number(Number(5f64)));
         let res = expr.evaluate(&env);
         assert_eq!(res, Ok(Const::String("foo".to_owned())));
+    }
+
+    #[test]
+    fn test_display() {
+        let expr = expression("\
+        match x + 1 {\
+          1 => x / 0,\
+          2 => -x,\
+          3 => x * 2,\
+          4 => 1 + '2',\
+          5 => 1 - '2',\
+          _ => 'foo'\
+        }").unwrap().1;
+        let expr_str = format!("{}", expr);
+        let expr2 = expression(expr_str.as_str()).unwrap().1;
+        assert_eq!(expr, expr2);
     }
 }
