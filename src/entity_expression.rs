@@ -262,7 +262,8 @@ named!(expression_1<&str, Expression>,
 );
 
 named!(expression_0<&str, Expression>,
-    alt!(string_const | num_const | atom | parenthetical | match_expr)
+    // match must go first in the list since it could be interpreted as an atom
+    alt!(match_expr | string_const | num_const | atom | parenthetical)
 );
 
 named!(expression<&str, Expression>,
@@ -297,7 +298,64 @@ impl Expression {
     pub fn mk_const(con: i32) -> Expression {
         Expression::Const(Const::Number(Number(con as f64)))
     }
+
+    pub fn evaluate(&self, env: &HashMap<String, Const>) -> Result<Const, String> {
+        match self {
+            Expression::Const(c) => Ok(c.clone()),
+            Expression::Atom(name) =>
+                env.get(name)
+                .map(|x| x.clone())
+                .ok_or_else(|| format!("Name \"{}\" undefined", name)),
+            Expression::BinOp(op, children) => {
+                let child1val = children.as_ref().0.evaluate(env)?;
+                let child2val = children.as_ref().1.evaluate(env)?;
+                match op {
+                    BinOp::Add => {
+                        if let (&Const::Number(Number(n1)), &Const::Number(Number(n2))) = (&child1val, &child2val) {
+                            Ok(Const::Number(Number(n1 + n2)))
+                        } else {
+                            Ok(Const::String(child1val.as_string()?.to_owned() + &child2val.as_string()?))
+                        }
+                    }
+                    BinOp::Sub => Ok(Const::Number(Number(child1val.as_number()?.0 - child2val.as_number()?.0))),
+                    BinOp::Mul => Ok(Const::Number(Number(child1val.as_number()?.0 * child2val.as_number()?.0))),
+                    // division by zero can produce nan and that's okay (?)
+                    BinOp::Div => Ok(Const::Number(Number(child1val.as_number()?.0 / child2val.as_number()?.0))),
+                    BinOp::Mod => Ok(Const::Number(Number(child1val.as_number()?.0 % child2val.as_number()?.0))),
+                }
+            },
+            Expression::UnOp(op, child) => {
+                let child_val = child.evaluate(env)?;
+                match op {
+                    UnOp::Neg => Ok(Const::Number(Number(-child_val.as_number()?.0)))
+                }
+            },
+            Expression::Match { test, arms, default } => {
+                let expr_val = test.evaluate(env)?;
+                let resulting_expr = arms.get(&expr_val).unwrap_or(default);
+                resulting_expr.evaluate(env)
+            }
+        }
+    }
 }
+
+impl Const {
+    pub fn as_number(&self) -> Result<Number, String> {
+        match self {
+            Const::Number(n) => Ok(n.clone()),
+            Const::String(s) => Err(format!("Expected number, found string \"{}\"", s))
+        }
+    }
+
+    // maybe we want this to be able to fail in the future
+    pub fn as_string(&self) -> Result<String, String> {
+        match self {
+            Const::Number(n) => Ok(n.0.to_string()),
+            Const::String(s) => Ok(s.clone()), // ummmm
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -342,7 +400,42 @@ mod test {
 
     #[test]
     fn test_match() {
-        let expr = match_expr_with_errors("match 1 + 1 { 2 => 'yeah', _ => 'what' }");
+        let expr = expression("match 1 + 1 { 2 => 'yeah', _ => 'what' }");
         assert!(expr.is_ok());
+    }
+
+    #[test]
+    fn test_eval() {
+        let expr = expression("\
+        match x + 1 {\
+          1 => x / 0,\
+          2 => -x,\
+          3 => x * 2,\
+          4 => 1 + '2',\
+          5 => 1 - '2',\
+          _ => 'foo'\
+        }");
+        assert!(expr.is_ok());
+        let expr = expr.unwrap().1;
+
+        let mut env: HashMap<String, Const> = HashMap::new();
+        env.insert("x".to_owned(), Const::Number(Number(0f64)));
+        let res = expr.evaluate(&env);
+        assert_eq!(res, Ok(Const::Number(Number(f64::NAN))));
+        env.insert("x".to_owned(), Const::Number(Number(1f64)));
+        let res = expr.evaluate(&env);
+        assert_eq!(res, Ok(Const::Number(Number(-1f64))));
+        env.insert("x".to_owned(), Const::Number(Number(2f64)));
+        let res = expr.evaluate(&env);
+        assert_eq!(res, Ok(Const::Number(Number(4f64))));
+        env.insert("x".to_owned(), Const::Number(Number(3f64)));
+        let res = expr.evaluate(&env);
+        assert_eq!(res, Ok(Const::String("12".to_owned())));
+        env.insert("x".to_owned(), Const::Number(Number(4f64)));
+        let res = expr.evaluate(&env);
+        assert!(res.is_err());
+        env.insert("x".to_owned(), Const::Number(Number(5f64)));
+        let res = expr.evaluate(&env);
+        assert_eq!(res, Ok(Const::String("foo".to_owned())));
     }
 }
