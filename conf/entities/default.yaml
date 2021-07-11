@@ -1,0 +1,74 @@
+entity_name: default
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: 8
+        y: 8
+  node_rects:
+    - topleft:
+        x: nodex
+        y: nodey
+      size:
+        x: 4
+        y: 4
+standard_draw:
+  initial_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+        color:
+          r: 255
+          g: 50
+          b: 50
+          a: 255
+        border_color:
+          r: 255
+          g: 0
+          b: 0
+          a: 255
+  node_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: 4
+            y: 4
+        color:
+          r: 255
+          g: 50
+          b: 50
+          a: 255
+        border_color:
+          r: 255
+          g: 0
+          b: 0
+          a: 255
+selected_draw:
+  node_draw:
+    - DrawLine:
+        start:
+          x: prevnodexorbase
+          y: prevnodeyorbase
+        end:
+          x: nodex
+          y: nodey
+        arrowhead: true
+        color:
+          r: 255
+          g: 255
+          b: 0
+          a: 200
+resizable_x: true
+resizable_y: true
+nodes: true
+attribute_info: {}

@@ -15,8 +15,6 @@ use std::error::Error;
 use fltk::{prelude::*,*};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let parsed: entity_config::EntityConfig = serde_yaml::from_str(include_str!("../strawberry.yaml")).unwrap();
-    dbg!(parsed);
     assets::load();
 
     let app = app::App::default();

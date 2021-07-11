@@ -60,6 +60,7 @@ pub struct CelesteMapEntity {
     pub width: u32,
     pub height: u32,
     pub attributes: HashMap<String, BinElAttr>,
+    pub nodes: Vec<(i32, i32)>,
 }
 
 #[derive(Debug)]
@@ -329,7 +330,10 @@ fn parse_entity_trigger(elem: &BinEl) -> Result<CelesteMapEntity, CelesteMapErro
             .iter()
             .map(|kv| (kv.0.clone(), kv.1.clone()))
             .filter(|kv| !basic_attrs.contains(kv.0.borrow()))
-            .collect()
+            .collect(),
+        nodes: elem.children().map(|child| -> Result<(i32, i32), CelesteMapError> {
+                Ok((get_attr(child, "x")?, get_attr(child, "y")?))
+            }).collect::<Result<_, CelesteMapError>>()?,
     })
 }
 

@@ -57,9 +57,9 @@ pub struct EntityRects {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EntityDraw {
     #[serde(default)]
-    initial_draw: Vec<DrawElement>,
+    pub initial_draw: Vec<DrawElement>,
     #[serde(default)]
-    node_draw: Vec<DrawElement>,
+    pub node_draw: Vec<DrawElement>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -107,6 +107,7 @@ fn one_one() -> Vec2 { Vec2 { x: Expression::mk_const(1), y: Expression::mk_cons
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum AutotilerType {
+    Repeat,
     Fg, Bg,
     Cassette,
     NineSlice,
@@ -135,6 +136,16 @@ pub struct Color {
     pub g: Expression,
     pub b: Expression,
     pub a: Expression,
+}
+
+impl Color {
+    pub fn evaluate(&self, env: &HashMap<&str, crate::entity_expression::Const>) -> Result<(fltk::enums::Color, u8), String> {
+        let r = self.r.evaluate(env)?.as_number()?.to_int() as u8;
+        let g = self.g.evaluate(env)?.as_number()?.to_int() as u8;
+        let b = self.b.evaluate(env)?.as_number()?.to_int() as u8;
+        let a = self.a.evaluate(env)?.as_number()?.to_int() as u8;
+        Ok((fltk::enums::Color::from_rgb(r, g, b), a))
+    }
 }
 
 impl Vec2 {

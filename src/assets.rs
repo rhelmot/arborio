@@ -8,6 +8,7 @@ use std::sync::Mutex;
 use crate::atlas_img;
 use crate::autotiler;
 use crate::atlas_img::SpriteReference;
+use crate::entity_config::EntityConfig;
 
 use crate::auto_saver::AutoSaver;
 use crate::image_view::ImageBuffer;
@@ -16,6 +17,8 @@ use crate::image_view::ImageBuffer;
 pub struct Config {
     pub celeste_root: PathBuf,
 }
+
+const EMBEDDED_CONFIG: include_dir::Dir = include_dir::include_dir!("conf");
 
 lazy_static! {
     pub static ref CONFIG: Mutex<AutoSaver<Config>> = {
@@ -51,9 +54,19 @@ lazy_static! {
     };
 
     pub static ref SPRITE_CACHE: Mutex<Vec<HashMap<SpriteReference, ImageBuffer>>> = Mutex::new(Vec::new());
+
+    pub static ref ENTITY_CONFIG: Mutex<HashMap<String, EntityConfig>> = {
+        Mutex::new(EMBEDDED_CONFIG.get_dir("entities").unwrap().files().iter()
+            .map(|f| {
+                let config: EntityConfig = serde_yaml::from_str(f.contents_utf8().unwrap()).unwrap();
+                (config.entity_name.clone(), config)
+            }).collect()
+        )
+    };
 }
 
 pub fn load() {
     assert_ne!(FG_TILES.len(), 0);
     assert_ne!(BG_TILES.len(), 0);
+    assert!(ENTITY_CONFIG.lock().unwrap().get("default").is_some());
 }

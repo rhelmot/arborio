@@ -6,6 +6,7 @@ use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::fmt::Formatter;
+use celeste::binel::BinElAttr;
 
 #[derive(Debug, Clone, PartialEq)] // WHY DO WE NEED CLONE OMG
 pub enum Expression {
@@ -73,6 +74,12 @@ impl std::fmt::Display for Const {
 
 #[derive(Debug, Clone)]
 pub struct Number(f64);
+
+impl Number {
+    pub fn to_int(&self) -> i32 {
+        self.0 as i32
+    }
+}
 
 impl std::fmt::Display for Number {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -360,11 +367,11 @@ impl Expression {
         Expression::Const(Const::Number(Number(con as f64)))
     }
 
-    pub fn evaluate(&self, env: &HashMap<String, Const>) -> Result<Const, String> {
+    pub fn evaluate(&self, env: &HashMap<&str, Const>) -> Result<Const, String> {
         match self {
             Expression::Const(c) => Ok(c.clone()),
             Expression::Atom(name) =>
-                env.get(name)
+                env.get(name.as_str())
                 .map(|x| x.clone())
                 .ok_or_else(|| format!("Name \"{}\" undefined", name)),
             Expression::BinOp(op, children) => {
@@ -413,6 +420,21 @@ impl Const {
         match self {
             Const::Number(n) => Ok(n.0.to_string()),
             Const::String(s) => Ok(s.clone()), // ummmm
+        }
+    }
+
+    pub fn from_num<N>(i: N) -> Const
+        where N: Into<f64>
+    {
+        Const::Number(Number(i.into()))
+    }
+
+    pub fn from_attr(a: &celeste::binel::BinElAttr) -> Const {
+        match a {
+            BinElAttr::Bool(b) => Const::from_num(if *b {1} else {0}),
+            BinElAttr::Int(i) => Const::from_num(*i),
+            BinElAttr::Float(f) => Const::from_num(*f),
+            BinElAttr::Text(s) => Const::String(s.clone()),
         }
     }
 }
