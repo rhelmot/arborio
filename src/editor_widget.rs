@@ -217,7 +217,10 @@ impl EditorWidget {
                     };
                     if app::event_key_down(Key::ControlL) || app::event_key_down(Key::ControlR) {
                         let (old_x, old_y) = state.transform.point_screen_to_map(app::event_x(), app::event_y());
-                        state.transform.map_scale = (state.transform.map_scale as i32 - screen_y).clamp(1, 30) as u32;
+                        let scale_values = [1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64];
+                        let old_index = scale_values.binary_search(&state.transform.map_scale).unwrap_or_else(|i|i);
+                        let new_index = ((old_index as i32 + screen_y) as usize).clamp(0, scale_values.len() - 1);
+                        state.transform.map_scale = scale_values[new_index];
                         let (new_x, new_y) = state.transform.point_screen_to_map(app::event_x(), app::event_y());
                         state.transform.map_corner_x += old_x - new_x;
                         state.transform.map_corner_y += old_y - new_y;
