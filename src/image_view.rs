@@ -24,7 +24,7 @@ impl ImageBuffer {
     }
     pub(crate) fn from_vec(data: Vec<u8>, line_width: u32) -> ImageBuffer {
         assert_eq!(line_width % 4, 0);
-        assert_eq!(data.len() % line_width as usize, 0);
+        assert!(data.len() == 0 || data.len() % line_width as usize == 0);
         Self {
             line_width,
             data: data.into_boxed_slice(),
