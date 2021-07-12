@@ -419,14 +419,55 @@ impl EditorState {
             }
             DrawElement::DrawLine { .. } => {}
             DrawElement::DrawCurve { .. } => {}
-            DrawElement::DrawImage { texture, bounds, scale, rot, color, tiler } => {
+            DrawElement::DrawPointImage { texture, point, scale, rot, color, } => {
                 let texture = texture.evaluate(&env)?.as_string()?;
                 let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
-                let x = bounds.topleft.x.evaluate(&env)?.as_number()?.to_int();
-                let y = bounds.topleft.y.evaluate(&env)?.as_number()?.to_int();
+                let mut x = point.x.evaluate(&env)?.as_number()?.to_int();
+                let mut y = point.y.evaluate(&env)?.as_number()?.to_int();
+                let (dx, dy) = assets::GAMEPLAY_ATLAS.dimensions(sprite);
+                x -= dx as i32 / 2;
+                y -= dy as i32 / 2;
                 let (x, y) = room.point_room_to_map(x, y);
                 let (x, y) = self.transform.point_map_to_screen(x, y);
                 assets::GAMEPLAY_ATLAS.resized_sprite(sprite, self.transform.map_scale, resized_sprite_cache).draw(x, y);
+            }
+            DrawElement::DrawRectImage { texture, bounds, slice, scale, color, tiler } => {
+                let texture = texture.evaluate(&env)?.as_string()?;
+                let slice_x = slice.topleft.x.evaluate(&env)?.as_number()?.to_int();
+                let slice_y = slice.topleft.y.evaluate(&env)?.as_number()?.to_int();
+                let slice_w = slice.size.x.evaluate(&env)?.as_number()?.to_int();
+                let slice_h = slice.size.y.evaluate(&env)?.as_number()?.to_int();
+                let bounds_x = bounds.topleft.x.evaluate(&env)?.as_number()?.to_int();
+                let bounds_y = bounds.topleft.y.evaluate(&env)?.as_number()?.to_int();
+                let bounds_w = bounds.size.x.evaluate(&env)?.as_number()?.to_int();
+                let bounds_h = bounds.size.y.evaluate(&env)?.as_number()?.to_int();
+
+                let bounds = map_struct::Rect {
+                    x: bounds_x, y: bounds_y, width: bounds_w as u32, height: bounds_h as u32
+                };
+                let bounds = self.transform.rect_map_to_screen(&room.rect_room_to_map(&bounds));
+
+                let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
+                let image = assets::GAMEPLAY_ATLAS.resized_sprite(sprite, self.transform.map_scale, resized_sprite_cache);
+                let image = if slice_w == 0 {
+                    image
+                } else {
+                    image.subsection(&map_struct::Rect {
+                        x: slice_x * self.transform.map_scale as i32 / 8,
+                        y: slice_y * self.transform.map_scale as i32 / 8,
+                        width: slice_w as u32 * self.transform.map_scale / 8,
+                        height: slice_h as u32 * self.transform.map_scale / 8,
+                    })
+                };
+
+                bounds.tile(image.width(), image.height(), |r: map_struct::Rect| {
+                    image.draw_clipped(&map_struct::Rect {
+                        x: 0,
+                        y: 0,
+                        width: r.width,
+                        height: r.height,
+                    }, r.x, r.y);
+                })
             }
         }
         Ok(())
@@ -447,6 +488,51 @@ impl map_struct::Rect {
             y: wid.y(),
             width: wid.w() as u32,
             height: wid.h() as u32,
+        }
+    }
+
+    // tiles the region of self with smaller rectangles which are at most width x height
+    pub fn tile<F>(&self, width: u32, height: u32, mut func: F)
+        where F: FnMut(map_struct::Rect) -> ()
+    {
+        let whole_count_x = self.width / width;
+        let whole_count_y = self.height / height;
+        for x in 0..whole_count_x {
+            for y in 0..whole_count_y {
+                func(map_struct::Rect {
+                    x: self.x + (x * width) as i32,
+                    y: self.y + (y * height) as i32,
+                    width, height
+                });
+            }
+        }
+        if self.width % width != 0 {
+            for x in 0..whole_count_x {
+                func(map_struct::Rect {
+                    x: self.x + (x * width) as i32,
+                    y: self.y + (whole_count_y * height) as i32,
+                    width,
+                    height: self.height - whole_count_y * height
+                });
+            }
+        }
+        if self.height % height != 0 {
+            for y in 0..whole_count_y {
+                func(map_struct::Rect {
+                    x: self.x + (whole_count_x * width) as i32,
+                    y: self.y + (y * height) as i32,
+                    width: self.width - whole_count_x * width,
+                    height
+                });
+            }
+        }
+        if self.width % width != 0 && self.height % height != 0 {
+            func(map_struct::Rect {
+                x: self.x + (whole_count_x * width) as i32,
+                y: self.y + (whole_count_y * height) as i32,
+                width: self.width - whole_count_x * width,
+                height: self.height * whole_count_y * height
+            });
         }
     }
 }

@@ -7,7 +7,9 @@ use crate::entity_expression::Expression;
 pub struct EntityConfig {
     pub entity_name: String,
     pub hitboxes: EntityRects,
+    #[serde(default)]
     pub standard_draw: EntityDraw,
+    #[serde(default)]
     pub selected_draw: EntityDraw,
     #[serde(default = "eight")]
     pub minimum_size_x: u32,
@@ -54,7 +56,7 @@ pub struct EntityRects {
     pub node_rects: Vec<Rect>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct EntityDraw {
     #[serde(default)]
     pub initial_draw: Vec<DrawElement>,
@@ -88,22 +90,38 @@ pub enum DrawElement {
         #[serde(default = "one")]
         thickness: u32,
     },
-    DrawImage {
+    DrawRectImage {
         texture: Expression,
-        bounds: Rect,  // special sematics: default (0,0) bounds size means inherit texture's size times abs(scale)
+        bounds: Rect,
+        #[serde(default = "empty_rect")]
+        slice: Rect,
         #[serde(default = "one_one")]
         scale: Vec2,
         #[serde(default)]
-        rot: i32,
-        #[serde(default)]
         color: Color,
-        #[serde(default = "fg")]
+        #[serde(default = "repeat")]
         tiler: AutotilerType,
     },
+    DrawPointImage {
+        texture: Expression,
+        point: Vec2,
+        #[serde(default = "one_one")]
+        scale: Vec2,
+        #[serde(default)]
+        color: Color,
+        #[serde(default)]
+        rot: i32,
+    }
 }
 
 fn one() -> u32 { 1 }
 fn one_one() -> Vec2 { Vec2 { x: Expression::mk_const(1), y: Expression::mk_const(1) } }
+fn empty_rect() -> Rect {
+    Rect {
+        topleft: Vec2 { x: Expression::mk_const(0), y: Expression::mk_const(0) },
+        size: Vec2 { x: Expression::mk_const(0), y: Expression::mk_const(0) },
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum AutotilerType {
@@ -113,16 +131,13 @@ pub enum AutotilerType {
     NineSlice,
 }
 
-fn fg() -> AutotilerType { AutotilerType::Fg }
+fn repeat() -> AutotilerType { AutotilerType::Repeat }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Rect {
     pub topleft: Vec2,
-    #[serde(default = "zero_zero")]
     pub size: Vec2,
 }
-
-fn zero_zero() -> Vec2 { Vec2 { x: Expression::mk_const(0), y: Expression::mk_const(0) }}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Vec2 {

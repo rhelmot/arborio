@@ -69,6 +69,14 @@ pub struct ImageView<'a> {
 }
 
 impl <'a> ImageView<'a> {
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
     pub(crate) fn draw(self, x: i32, y: i32) {
         debug_assert_eq!(self.line_width * (self.height - 1) + self.width * 4, self.buffer.len() as u32);
         let mut view = unsafe {

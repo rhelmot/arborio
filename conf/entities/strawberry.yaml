@@ -16,19 +16,17 @@ hitboxes:
         y: 8
 standard_draw:
   initial_draw:
-    - DrawImage:
-        texture: '"collectables/strawberry/normal00"'
-        bounds:
-          topleft:
-            x: x
-            y: y
+    - DrawPointImage:
+        texture: 'match winged { 1 => "collectables/strawberry/wings00", _ => "collectables/strawberry/normal00" }'
+        point:
+          x: x
+          y: y
   node_draw:
-    - DrawImage:
+    - DrawPointImage:
         texture: '"collectables/strawberry/seed00"'
-        bounds:
-          topleft:
-            x: nodex
-            y: nodey
+        point:
+          x: nodex
+          y: nodey
 selected_draw:
   node_draw:
     - DrawLine:

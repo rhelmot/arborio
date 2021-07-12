@@ -96,6 +96,17 @@ impl Atlas {
         })
     }
 
+    pub fn dimensions(&self, sprite_ref: SpriteReference) -> (u32, u32) {
+        let sprite = &self.sprites[sprite_ref.idx as usize];
+        (sprite.bounding_box.width, sprite.bounding_box.height)
+    }
+
+    pub(crate) fn sprite(&self, sprite_ref: SpriteReference) -> ImageView {
+        let sprite = &self.sprites[sprite_ref.idx as usize];
+        let image_blob = &self.blobs[sprite.blob_idx];
+        image_blob.subsection(&sprite.bounding_box)
+    }
+
     pub(crate) fn resized_sprite<'a>(&'a self, sprite_ref: SpriteReference, map_scale: u32, resized_sprite_cache: &'a mut HashMap<SpriteReference, ImageBuffer>) -> ImageView<'a> {
         assert_eq!(self.identifier, sprite_ref.atlas);
         let resized = resized_sprite_cache.entry(sprite_ref).or_insert_with(|| {
