@@ -175,10 +175,11 @@ impl <'a> ImageView<'a> {
     fn composite_pixel(&self, row: usize, col: usize, vertical_scale: f32, horizontal_scale: f32) -> [u8; 4] {
         let data = self.buffer;
         let line_width = self.line_width;
+        let line_count = data.len() / line_width as usize;
 
         // The row range, in source coordinates that the resized pixel covers
         let source_row_start = row as f32 / vertical_scale;
-        let source_row_end = (row + 1) as f32 / vertical_scale;
+        let source_row_end = f32::min((row + 1) as f32 / vertical_scale, line_count as f32 + 0.5);
 
         // The column range, in source coordinates that the resized pixel covers
         let source_col_start = col as f32 / horizontal_scale;
