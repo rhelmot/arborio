@@ -428,14 +428,14 @@ impl EditorState {
             }
             DrawElement::DrawLine { .. } => {}
             DrawElement::DrawCurve { .. } => {}
-            DrawElement::DrawPointImage { texture, point, scale, rot, color, } => {
+            DrawElement::DrawPointImage { texture, point, justify_x, justify_y, scale, rot, color, } => {
                 let texture = texture.evaluate(&env)?.as_string()?;
                 let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
                 let mut x = point.x.evaluate(&env)?.as_number()?.to_int();
                 let mut y = point.y.evaluate(&env)?.as_number()?.to_int();
                 let (dx, dy) = assets::GAMEPLAY_ATLAS.dimensions(sprite);
-                x -= dx as i32 / 2;
-                y -= dy as i32 / 2;
+                x -= (dx as f32 * justify_x) as i32;
+                y -= (dy as f32 * justify_y) as i32;
                 let (x, y) = room.point_room_to_map(x, y);
                 let (x, y) = self.transform.point_map_to_screen(x, y);
                 assets::GAMEPLAY_ATLAS.resized_sprite(sprite, self.transform.map_scale, resized_sprite_cache).draw(x, y);

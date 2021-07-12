@@ -1,0 +1,20 @@
+entity_name: player
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: 8
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"characters/player/sitDown00"'
+        justify_y: 1
+        point:
+          x: x
+          y: y
+resizable_x: false
+resizable_y: false
+nodes: false

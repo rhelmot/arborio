@@ -19,6 +19,7 @@ pub struct EntityConfig {
     pub resizable_y: bool,
     #[serde(default)]
     pub nodes: bool,
+    #[serde(default)]
     pub attribute_info: HashMap<String, AttributeInfo>,
 }
 
@@ -105,6 +106,10 @@ pub enum DrawElement {
     DrawPointImage {
         texture: Expression,
         point: Vec2,
+        #[serde(default = "half")]
+        justify_x: f32,
+        #[serde(default = "half")]
+        justify_y: f32,
         #[serde(default = "one_one")]
         scale: Vec2,
         #[serde(default)]
@@ -122,6 +127,7 @@ fn empty_rect() -> Rect {
         size: Vec2 { x: Expression::mk_const(0), y: Expression::mk_const(0) },
     }
 }
+fn half() -> f32 { 0.5 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum AutotilerType {
