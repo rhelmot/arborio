@@ -151,18 +151,18 @@ impl <'a> ImageView<'a> {
     }
     // This resize projects each resized pixel onto the source coordinates and sets it's color to the
     // weighted average of all of the source pixels it intersects with, weighted by the intersection area
-    pub(crate) fn resize(&self, new_width: u32, new_height: u32) -> ImageBuffer {
+    pub(crate) fn resize(&self, new_scale: u32, old_scale: u32) -> ImageBuffer {
         debug_assert_eq!(self.line_width * (self.height - 1) + self.width * 4, self.buffer.len() as u32);
         let ImageView { width, height, .. } = *self;
-        let vertical_scale = new_height as f32 / height as f32;
-        let horizontal_scale = new_width as f32 / width as f32;
+        let new_width = self.width * new_scale / old_scale;
+        let new_height = self.height * new_scale / old_scale;
         let line_width = new_width * 4;
 
         let mut new_data = vec![0_u8; (new_height * line_width) as usize];
         for row in 0..new_height {
             for col in 0..new_width {
 
-                let pixel = self.composite_pixel(row as usize, col as usize, vertical_scale, horizontal_scale);
+                let pixel = self.composite_pixel(row as usize, col as usize, new_scale as usize, old_scale as usize);
 
                 let pos = (row * line_width + col * 4) as usize;
                 new_data[pos..pos + 4].clone_from_slice(&pixel);
@@ -172,42 +172,40 @@ impl <'a> ImageView<'a> {
         ImageBuffer::from_vec(new_data, line_width)
     }
     // Helper function for `resize`. It composites one pixel
-    fn composite_pixel(&self, row: usize, col: usize, vertical_scale: f32, horizontal_scale: f32) -> [u8; 4] {
+    fn composite_pixel(&self, row: usize, col: usize, new_scale: usize, old_scale: usize) -> [u8; 4] {
         let data = self.buffer;
         let line_width = self.line_width;
         let line_count = data.len() / line_width as usize;
 
         // The row range, in source coordinates that the resized pixel covers
-        let source_row_start = row as f32 / vertical_scale;
-        let source_row_end = f32::min((row + 1) as f32 / vertical_scale, line_count as f32 + 0.5);
+        let source_row_start = row * old_scale / new_scale;
+        let source_row_end = ((row + 1) * old_scale - 1) / new_scale;
 
         // The column range, in source coordinates that the resized pixel covers
-        let source_col_start = col as f32 / horizontal_scale;
-        let source_col_end = (col + 1) as f32 / horizontal_scale;
+        let source_col_start = col * old_scale / new_scale;
+        let source_col_end = ((col + 1) * old_scale - 1) / new_scale;
 
-        let mut pixel = [0_f32; 4];
+        let mut pixel = [0; 4];
         // For each row in the source that overlaps with the resized
-        for source_row in
-        (source_row_start.floor() as usize)..(source_row_end.ceil() as usize)
+        for source_row in source_row_start..=source_row_end
         {
             let vertical_overlap_start =
-                f32::max(row as f32, source_row as f32 * vertical_scale);
-            let vertical_overlap_end = f32::min(
-                (row + 1) as f32,
-                (source_row + 1) as f32 * vertical_scale,
+                usize::max(row * old_scale, source_row * new_scale);
+            let vertical_overlap_end = usize::min(
+                (row + 1) * old_scale,
+                (source_row + 1) * new_scale
             );
             // Calculate the fraction of the resized row that the current source row covers
             // This will be at most one, if it completely covers the resized row
             let vertical_overlap = vertical_overlap_end - vertical_overlap_start;
             // For each column in the source that overlaps with the resized
-            for source_col in
-            (source_col_start.floor() as usize)..(source_col_end.ceil() as usize)
+            for source_col in source_col_start..=source_col_end
             {
                 let horizontal_overlap_start =
-                    f32::max(col as f32, source_col as f32 * horizontal_scale);
-                let horizontal_overlap_end = f32::min(
-                    (col + 1) as f32,
-                    (source_col + 1) as f32 * horizontal_scale,
+                    usize::max(col * old_scale, source_col * new_scale);
+                let horizontal_overlap_end = usize::min(
+                    (col + 1) * old_scale,
+                    (source_col + 1) * new_scale,
                 );
                 // Calculate the fraction of the resized column that the current source column covers
                 // This will be at most one, if it completely covers the resized column
@@ -221,13 +219,13 @@ impl <'a> ImageView<'a> {
                 let source: &[_; 4] = &data[source_pos..source_pos+4].try_into().unwrap();
                 // Add source pixel into destination pixel, weighted by overlap area
                 for i in 0..4 {
-                    pixel[i] += source[i] as f32 * overlap;
+                    pixel[i] += source[i] as usize * overlap;
                 }
             }
         }
 
         // Convert destination pixel from f32s to u8s
-        let rounded_pixel: [u8; 4] = array_init::array_init(|i| pixel[i].round() as u8);
+        let rounded_pixel: [u8; 4] = array_init::array_init(|i| (pixel[i] / old_scale / old_scale) as u8);
 
         rounded_pixel
     }

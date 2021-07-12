@@ -104,7 +104,7 @@ impl Atlas {
             let clipped_source = image_blob.subsection(&sprite.bounding_box);
             let resized_width = sprite.bounding_box.width * map_scale / 8;
             let resized_height = sprite.bounding_box.height * map_scale / 8;
-            clipped_source.resize(resized_width, resized_height)
+            clipped_source.resize(map_scale, 8)
         });
         resized.as_ref()
     }
