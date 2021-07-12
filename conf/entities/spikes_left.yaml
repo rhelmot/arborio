@@ -1,30 +1,30 @@
-entity_name: spikesUp
+entity_name: spikesLeft
 hitboxes:
   initial_rects:
     - topleft:
-        x: x
-        y: y - 8
+        x: x - 8
+        y: y
       size:
-        x: width
-        y: 8
+        x: 8
+        y: height
 standard_draw:
   initial_draw:
     - DrawRectImage:
-        texture: '"danger/spikes/" + type + "_up00"'
+        texture: '"danger/spikes/" + type + "_left00"'
         bounds:
           topleft:
-            x: x
-            y: y - 6
+            x: x - 6
+            y: y
           size:
-            x: width
-            y: 7
+            x: 7
+            y: height
         slice:
           topleft:
             x: 0
             y: 0
           size:
-            x: 8
-            y: 7
+            x: 7
+            y: 8
 resizable_x: true
 resizable_y: false
 nodes: false

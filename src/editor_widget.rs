@@ -356,7 +356,16 @@ impl EditorState {
             let config = cfg.get(&entity.name).unwrap_or_else(|| cfg.get("default").unwrap());
 
             for draw in &config.standard_draw.initial_draw {
-                self.draw_entity_directive(room, entity, draw, None, resized_sprite_cache);
+                if let Err(s) = self.draw_entity_directive(room, entity, draw, None, resized_sprite_cache) {
+                    println!("{}", s);
+                }
+            }
+            for draw in &config.standard_draw.node_draw {
+                for node_idx in 0..entity.nodes.len() {
+                    if let Err(s) = self.draw_entity_directive(room, entity, draw, Some(node_idx), resized_sprite_cache) {
+                        println!("{}", s);
+                    }
+                }
             }
         }
     }
@@ -393,7 +402,7 @@ impl EditorState {
                 env.insert("nextnodexordefault", Const::from_num(entity.x));
                 env.insert("nextnodeyordefault", Const::from_num(entity.y));
             }
-            if let Some((x, y)) = entity.nodes.get(node - 1) {
+            if let Some((x, y)) = entity.nodes.get(node.overflowing_sub(1).0) {
                 env.insert("prevnodex", Const::from_num(*x));
                 env.insert("prevnodey", Const::from_num(*y));
                 env.insert("prevnodexordefault", Const::from_num(*x));
@@ -447,26 +456,48 @@ impl EditorState {
                 };
                 let bounds = self.transform.rect_map_to_screen(&room.rect_room_to_map(&bounds));
 
+                let mut slice = map_struct::Rect {
+                    x: slice_x * self.transform.map_scale as i32 / 8,
+                    y: slice_y * self.transform.map_scale as i32 / 8,
+                    width: slice_w as u32 * self.transform.map_scale / 8,
+                    height: slice_h as u32 * self.transform.map_scale / 8,
+                };
+
                 let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
                 let image = assets::GAMEPLAY_ATLAS.resized_sprite(sprite, self.transform.map_scale, resized_sprite_cache);
                 let image = if slice_w == 0 {
+                    slice.width = image.width();
+                    slice.height = image.height();
                     image
                 } else {
+                    let new_width = if slice.x as u32 + slice.width > image.width() {
+                        image.width() - slice.x as u32
+                    } else {
+                        slice.width
+                    };
+                    let new_height = if slice.y as u32 + slice.height > image.height() {
+                        image.height() - slice.y as u32
+                    } else {
+                        slice.height
+                    };
                     image.subsection(&map_struct::Rect {
-                        x: slice_x * self.transform.map_scale as i32 / 8,
-                        y: slice_y * self.transform.map_scale as i32 / 8,
-                        width: slice_w as u32 * self.transform.map_scale / 8,
-                        height: slice_h as u32 * self.transform.map_scale / 8,
+                        x: slice.x,
+                        y: slice.y,
+                        width: new_width,
+                        height: new_height,
                     })
                 };
 
-                bounds.tile(image.width(), image.height(), |r: map_struct::Rect| {
-                    image.draw_clipped(&map_struct::Rect {
-                        x: 0,
-                        y: 0,
-                        width: r.width,
-                        height: r.height,
-                    }, r.x, r.y);
+                bounds.tile(slice.width, slice.height, |mut r: map_struct::Rect| {
+                    let draw_x = r.x;
+                    let draw_y = r.y;
+                    if r.x < 0 {
+                        r.x = 0;
+                    }
+                    if r.y < 0 {
+                        r.y = 0;
+                    }
+                    image.draw_clipped(&r, draw_x, draw_y);
                 })
             }
         }
@@ -495,6 +526,10 @@ impl map_struct::Rect {
     pub fn tile<F>(&self, width: u32, height: u32, mut func: F)
         where F: FnMut(map_struct::Rect) -> ()
     {
+        if width == 0 || height == 0 || self.width == 0 || self.height == 0 {
+            return;
+        }
+
         let whole_count_x = self.width / width;
         let whole_count_y = self.height / height;
         for x in 0..whole_count_x {
