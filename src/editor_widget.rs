@@ -219,7 +219,7 @@ impl EditorWidget {
                         let (old_x, old_y) = state.transform.point_screen_to_map(app::event_x(), app::event_y());
                         let scale_values = [1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64];
                         let old_index = scale_values.binary_search(&state.transform.map_scale).unwrap_or_else(|i|i);
-                        let new_index = ((old_index as i32 + screen_y) as usize).clamp(0, scale_values.len() - 1);
+                        let new_index = (old_index as i32 + screen_y).clamp(0, scale_values.len() as i32 - 1) as usize;
                         state.transform.map_scale = scale_values[new_index];
                         let (new_x, new_y) = state.transform.point_screen_to_map(app::event_x(), app::event_y());
                         state.transform.map_corner_x += old_x - new_x;
@@ -355,16 +355,16 @@ impl EditorState {
             let cfg = assets::ENTITY_CONFIG.lock().unwrap();
             let config = cfg.get(&entity.name).unwrap_or_else(|| cfg.get("default").unwrap());
 
-            for draw in &config.standard_draw.initial_draw {
-                if let Err(s) = self.draw_entity_directive(room, entity, draw, None, resized_sprite_cache) {
-                    println!("{}", s);
-                }
-            }
             for draw in &config.standard_draw.node_draw {
                 for node_idx in 0..entity.nodes.len() {
                     if let Err(s) = self.draw_entity_directive(room, entity, draw, Some(node_idx), resized_sprite_cache) {
                         println!("{}", s);
                     }
+                }
+            }
+            for draw in &config.standard_draw.initial_draw {
+                if let Err(s) = self.draw_entity_directive(room, entity, draw, None, resized_sprite_cache) {
+                    println!("{}", s);
                 }
             }
         }
@@ -426,7 +426,24 @@ impl EditorState {
                 fltk::draw::set_draw_color(rgb);
                 fltk::draw::draw_rect_fill(screen_rect.x, screen_rect.y, screen_rect.width as i32, screen_rect.height as i32, rgb)
             }
-            DrawElement::DrawLine { .. } => {}
+            DrawElement::DrawLine { start, end, color, arrowhead, thickness } => {
+                let x1 = start.x.evaluate(&env)?.as_number()?.to_int();
+                let y1 = start.y.evaluate(&env)?.as_number()?.to_int();
+                let x2 = end.x.evaluate(&env)?.as_number()?.to_int();
+                let y2 = end.y.evaluate(&env)?.as_number()?.to_int();
+                let (rgb, a) = color.evaluate(&env)?;
+
+                let (x1, y1) = room.point_room_to_map(x1, y1);
+                let (x1, y1) = self.transform.point_map_to_screen(x1, y1);
+                let (x2, y2) = room.point_room_to_map(x2, y2);
+                let (x2, y2) = self.transform.point_map_to_screen(x2, y2);
+
+                // TODO render line manually so we get pixels at higher zoom levels
+                fltk::draw::set_line_style(fltk::draw::LineStyle::Solid, u32::max(1, thickness * self.transform.map_scale / 8) as i32);
+                fltk::draw::set_draw_color(rgb);
+                fltk::draw::draw_line(x1, y1, x2, y2);
+                fltk::draw::draw_curve()
+            }
             DrawElement::DrawCurve { .. } => {}
             DrawElement::DrawPointImage { texture, point, justify_x, justify_y, scale, rot, color, } => {
                 let texture = texture.evaluate(&env)?.as_string()?;
@@ -488,17 +505,44 @@ impl EditorState {
                     })
                 };
 
-                bounds.tile(slice.width, slice.height, |mut r: map_struct::Rect| {
-                    let draw_x = r.x;
-                    let draw_y = r.y;
-                    if r.x < 0 {
-                        r.x = 0;
+                match tiler {
+                    AutotilerType::Repeat => {
+                        image.draw_tiled(&bounds, slice.width, slice.height);
                     }
-                    if r.y < 0 {
-                        r.y = 0;
+                    AutotilerType::NineSlice => {
+                        if image.width() < 17 * self.transform.map_scale / 8 || image.height() < 17 * self.transform.map_scale / 8 {
+                            return Err(format!("Cannot draw {} as 9slice: must be at least 17x17", texture))
+                        }
+                        let t = self.transform.map_scale;
+                        let ti = t as i32;
+                        let t2 = t * 2;
+                        let w = bounds.width as i32;
+                        let h = bounds.height as i32;
+
+                        let slice1 = image.subsection(&Rect { x: 0, y: 0, width: t, height: t });
+                        let slice2 = image.subsection(&Rect { x: ti, y: 0, width: image.width() - t2, height: t });
+                        let slice3 = image.subsection(&Rect { x: image.width() as i32 - ti, y: 0, width: t, height: t });
+                        let slice4 = image.subsection(&Rect { x: 0, y: ti, width: t, height: image.height() - t2 });
+                        let slice5 = image.subsection(&Rect { x: ti, y: ti, width: image.width() - t2, height: image.height() - t2 });
+                        let slice6 = image.subsection(&Rect { x: image.width() as i32 - ti, y: ti, width: t, height: image.height() - t2 });
+                        let slice7 = image.subsection(&Rect { x: 0, y: image.height() as i32 - ti, width: t, height: t });
+                        let slice8 = image.subsection(&Rect { x: ti, y: image.height() as i32 - ti, width: image.width() - t2, height: t });
+                        let slice9 = image.subsection(&Rect { x: image.width() as i32 - ti, y: image.height() as i32 - ti, width: t, height: t });
+                        slice1.draw_tiled( &Rect { x: bounds.x, y: bounds.y, width: t, height: t}, slice1.width(), slice1.height());
+                        slice2.draw_tiled( &Rect { x: bounds.x + ti, y: bounds.y, width: bounds.width - t2, height: t}, slice2.width(), slice2.height());
+                        slice3.draw_tiled( &Rect { x: bounds.x + w - ti, y: bounds.y, width: t, height: t}, slice3.width(), slice3.height());
+                        slice4.draw_tiled( &Rect { x: bounds.x, y: bounds.y + ti, width: t, height: bounds.height - t2}, slice4.width(), slice4.height());
+                        slice5.draw_tiled( &Rect { x: bounds.x + ti, y: bounds.y + ti, width: bounds.width - t2, height: bounds.height - t2}, slice5.width(), slice5.height());
+                        slice6.draw_tiled( &Rect { x: bounds.x + w - ti, y: bounds.y + ti, width: t, height: bounds.height - t2}, slice6.width(), slice6.height());
+                        slice7.draw_tiled( &Rect { x: bounds.x, y: bounds.y + h - ti, width: t, height: t}, slice7.width(), slice7.height());
+                        slice8.draw_tiled( &Rect { x: bounds.x + ti, y: bounds.y + h - ti, width: bounds.width - t2, height: t}, slice8.width(), slice8.height());
+                        slice9.draw_tiled( &Rect { x: bounds.x + w - ti, y: bounds.y + h - ti, width: t, height: t}, slice9.width(), slice9.height());
                     }
-                    image.draw_clipped(&r, draw_x, draw_y);
-                })
+                    AutotilerType::Fg => {}
+                    AutotilerType::Bg => {}
+                    AutotilerType::Cassette => {}
+                    AutotilerType::JumpThru => {}
+                }
             }
         }
         Ok(())

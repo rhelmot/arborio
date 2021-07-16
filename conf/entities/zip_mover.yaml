@@ -1,0 +1,89 @@
+entity_name: zipMover
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: 8
+        y: 8
+  node_rects:
+    - topleft:
+        x: nodex
+        y: nodey
+      size:
+        x: 4
+        y: 4
+standard_draw:
+  initial_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+        color:
+          r: 0
+          g: 0
+          b: 0
+          a: 0
+        border_color:
+          r: 0
+          g: 0
+          b: 0
+          a: 255
+    - DrawRectImage:
+        texture: '"objects/zipmover/block"'
+        tiler: NineSlice
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+    - DrawPointImage:
+        texture: '"objects/zipmover/light01"'
+        point:
+          x: x + width / 2
+          y: y
+        justify_y: 0
+  node_draw:
+    - DrawLine:
+        color:
+          r: 0x66
+          g: 0x39
+          b: 0x31
+          a: 0xff
+        start:
+          x: x + width / 2
+          y: y + height / 2
+        end:
+          x: nodex + width / 2
+          y: nodey + height / 2
+    - DrawPointImage:
+        texture: '"objects/zipmover/cog"'
+        point:
+          x: nodex + width / 2
+          y: nodey + height / 2
+selected_draw:
+  node_draw:
+    - DrawLine:
+        start:
+          x: prevnodexorbase
+          y: prevnodeyorbase
+        end:
+          x: nodex
+          y: nodey
+        arrowhead: true
+        color:
+          r: 255
+          g: 255
+          b: 0
+          a: 200
+resizable_x: true
+resizable_y: true
+nodes: true
+attribute_info: {}

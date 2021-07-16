@@ -132,9 +132,10 @@ fn half() -> f32 { 0.5 }
 #[derive(Debug, Serialize, Deserialize)]
 pub enum AutotilerType {
     Repeat,
+    NineSlice,
     Fg, Bg,
     Cassette,
-    NineSlice,
+    JumpThru,
 }
 
 fn repeat() -> AutotilerType { AutotilerType::Repeat }

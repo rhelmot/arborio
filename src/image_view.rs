@@ -107,6 +107,19 @@ impl <'a> ImageView<'a> {
             height: clipped_height as u32,
         }).draw(clipped_x, clipped_y);
     }
+    pub(crate) fn draw_tiled(&self, bounds: &Rect, tile_width: u32, tile_height: u32) {
+        bounds.tile(tile_width, tile_height, |mut r: Rect| {
+            let draw_x = r.x;
+            let draw_y = r.y;
+            if r.x < 0 {
+                r.x = 0;
+            }
+            if r.y < 0 {
+                r.y = 0;
+            }
+            self.draw_clipped(&r, draw_x, draw_y);
+        })
+    }
     pub(crate) fn draw_to(self, destination: ImageViewMut, x: u32, y: u32) {
         assert!(self.width + x <= destination.width);
         assert!(self.height + y <= destination.height);

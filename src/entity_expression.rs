@@ -113,18 +113,18 @@ impl Hash for Number {
 
 named!(num_lit<&str, Number>,
     map_res!(
-        alt!(double | hex_num),
+        alt!(hex_num | double),
         |s: f64| -> Result<Number, Error<&str>> { Ok(Number(s)) }
     )
 );
 
 named!(hex_num<&str, f64>,
     map_res!(
-        tuple!(
+        complete!(tuple!(
             opt!(alt!(tag!("-") | tag!("+"))),
             alt!(tag!("0x") | tag!("0X")),
             nom::character::complete::hex_digit1
-        ),
+        )),
         |t: (Option<&str>, &str, &str)| i64::from_str_radix(t.2, 16).map(
             |q: i64| q as f64 * if t.0 == Some("-") { -1f64 } else { 1f64 }
         )
