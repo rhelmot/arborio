@@ -439,12 +439,46 @@ impl EditorState {
                 let (x2, y2) = self.transform.point_map_to_screen(x2, y2);
 
                 // TODO render line manually so we get pixels at higher zoom levels
+                // http://members.chello.at/~easyfilter/bresenham.html
                 fltk::draw::set_line_style(fltk::draw::LineStyle::Solid, u32::max(1, thickness * self.transform.map_scale / 8) as i32);
                 fltk::draw::set_draw_color(rgb);
                 fltk::draw::draw_line(x1, y1, x2, y2);
-                fltk::draw::draw_curve()
             }
-            DrawElement::DrawCurve { .. } => {}
+            DrawElement::DrawCurve { start, end, middle, color, thickness } => {
+                // TODO as above
+                let x1 = start.x.evaluate(&env)?.as_number()?.to_int();
+                let y1 = start.y.evaluate(&env)?.as_number()?.to_int();
+                let x4 = end.x.evaluate(&env)?.as_number()?.to_int();
+                let y4 = end.y.evaluate(&env)?.as_number()?.to_int();
+                // the control point for the quadratic bezier
+                let xq = middle.x.evaluate(&env)?.as_number()?.to_int();
+                let yq = middle.y.evaluate(&env)?.as_number()?.to_int();
+                let (rgb, a) = color.evaluate(&env)?;
+
+                let (x1, y1) = room.point_room_to_map(x1, y1);
+                let (x1, y1) = self.transform.point_map_to_screen(x1, y1);
+                let (x4, y4) = room.point_room_to_map(x4, y4);
+                let (x4, y4) = self.transform.point_map_to_screen(x4, y4);
+                let (xq, yq) = room.point_room_to_map(xq, yq);
+                let (xq, yq) = self.transform.point_map_to_screen(xq, yq);
+
+                // the control points for the cubic bezier
+                let x2 = (x1 + xq * 2) / 3;
+                let y2 = (y1 + yq * 2) / 3;
+                let x3 = (x4 + xq * 2) / 3;
+                let y3 = (y4 + yq * 2) / 3;
+
+                fltk::draw::set_line_style(fltk::draw::LineStyle::Solid, u32::max(1, thickness * self.transform.map_scale / 8) as i32);
+                fltk::draw::set_draw_color(rgb);
+                fltk::draw::begin_line();
+                fltk::draw::draw_curve(
+                    fltk::draw::Coord(x1 as f64, y1 as f64),
+                    fltk::draw::Coord(x2 as f64, y2 as f64),
+                    fltk::draw::Coord(x3 as f64, y3 as f64),
+                    fltk::draw::Coord(x4 as f64, y4 as f64),
+                );
+                fltk::draw::end_line();
+            }
             DrawElement::DrawPointImage { texture, point, justify_x, justify_y, scale, rot, color, } => {
                 let texture = texture.evaluate(&env)?.as_string()?;
                 let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
