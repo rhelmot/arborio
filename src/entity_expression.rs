@@ -1,12 +1,23 @@
-use nom::{IResult, named, map_res, tuple, opt, tag, alt, delimited, recognize, one_of, many0, pair,
-          character::complete::multispace0 as ws, is_not, number::complete::double, error::Error,
-          preceded, separated_list0, separated_pair, is_a, complete, terminated, eof, do_parse,
-          fold_many0, error::ErrorKind};
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
-use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
-use std::fmt::Formatter;
 use celeste::binel::BinElAttr;
+use nom::branch::alt;
+use nom::bytes::complete::{is_not, tag};
+use nom::character::complete::{multispace1, one_of};
+use nom::combinator::{complete, eof, map_res, opt, recognize};
+use nom::error::ParseError;
+use nom::multi::{fold_many0, many0, many0_count, many_till, separated_list0};
+use nom::number::complete::hex_u32;
+use nom::sequence::{delimited, pair, preceded, separated_pair, terminated, tuple};
+use nom::Parser;
+use nom::{
+    character::complete::multispace0 as ws, error::Error, error::ErrorKind,
+    number::complete::double, IResult,
+};
+use nom::{error, Err};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::collections::HashMap;
+use std::fmt::Formatter;
+use std::hash::{Hash, Hasher};
+use std::num::ParseIntError;
 
 #[derive(Debug, Clone, PartialEq)] // WHY DO WE NEED CLONE OMG
 pub enum Expression {
@@ -14,7 +25,11 @@ pub enum Expression {
     Atom(String),
     BinOp(BinOp, Box<(Expression, Expression)>),
     UnOp(UnOp, Box<Expression>),
-    Match { test: Box<Expression>, arms: HashMap<Const, Expression>, default: Box<Expression> }
+    Match {
+        test: Box<Expression>,
+        arms: HashMap<Const, Expression>,
+        default: Box<Expression>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,26 +43,36 @@ pub enum BinOp {
 
 impl std::fmt::Display for BinOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            BinOp::Add => "+",
-            BinOp::Sub => "-",
-            BinOp::Mul => "*",
-            BinOp::Div => "/",
-            BinOp::Mod => "%",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                BinOp::Add => "+",
+                BinOp::Sub => "-",
+                BinOp::Mul => "*",
+                BinOp::Div => "/",
+                BinOp::Mod => "%",
+            }
+        )
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnOp {
     Neg,
+    Pos,
 }
 
 impl std::fmt::Display for UnOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            UnOp::Neg => "-",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                UnOp::Neg => "-",
+                UnOp::Pos => "+",
+            }
+        )
     }
 }
 
@@ -67,8 +92,14 @@ impl std::fmt::Display for Const {
                 } else {
                     write!(f, "\'{}\'", s)
                 }
-            },
+            }
         }
+    }
+}
+
+impl From<Number> for Const {
+    fn from(n: Number) -> Self {
+        Self::Number(n)
     }
 }
 
@@ -111,218 +142,233 @@ impl Hash for Number {
     }
 }
 
-named!(num_lit<&str, Number>,
-    map_res!(
-        alt!(hex_num | double),
-        |s: f64| -> Result<Number, Error<&str>> { Ok(Number(s)) }
-    )
-);
+fn num_lit(input: &str) -> IResult<&str, Number> {
+    map_res(
+        alt((hex_num, double)),
+        |s: f64| -> Result<Number, Error<&str>> { Ok(Number(s)) },
+    )(input)
+}
 
-named!(hex_num<&str, f64>,
-    map_res!(
-        complete!(tuple!(
-            opt!(alt!(tag!("-") | tag!("+"))),
-            alt!(tag!("0x") | tag!("0X")),
-            nom::character::complete::hex_digit1
-        )),
-        |t: (Option<&str>, &str, &str)| i64::from_str_radix(t.2, 16).map(
-            |q: i64| q as f64 * if t.0 == Some("-") { -1f64 } else { 1f64 }
-        )
-    )
-);
+fn hex_num(input: &str) -> IResult<&str, f64> {
+    map_res(
+        separated_pair(
+            opt(alt((tag("-"), tag("+")))),
+            alt((tag("0x"), tag("0X"))),
+            nom::character::complete::hex_digit1,
+        ),
+        |(sign, digits): (Option<&str>, _)| -> Result<f64, ParseIntError> {
+            let number =
+                i128::from_str_radix(&(sign.unwrap_or_default().to_owned() + digits), 16)? as f64;
+
+            Ok(if sign == Some("-") { -number } else { number })
+        },
+    )(input)
+}
 
 // TODO use escaped_transform
-named!(string_lit_dquote<&str, &str>,
-    delimited!(tag!("\""),is_not!("\""),tag!("\""))
-);
+fn string_lit_dquote(input: &str) -> IResult<&str, &str> {
+    delimited(tag("\""), is_not("\""), tag("\""))(input)
+}
 
-named!(string_lit_squote<&str, &str>,
-    delimited!(tag!("'"),is_not!("'"),tag!("'"))
-);
+fn string_lit_squote(input: &str) -> IResult<&str, &str> {
+    delimited(tag("'"), is_not("'"), tag("'"))(input)
+}
 
-named!(string_lit<&str, &str>,
-    alt!(string_lit_dquote | string_lit_squote)
-);
+fn string_lit(input: &str) -> IResult<&str, &str> {
+    alt((string_lit_dquote, string_lit_squote))(input)
+}
 
 const IDENT_START_CHARS: &str = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const IDENT_CONT_CHARS: &str = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-named!(atom<&str, Expression>,
-    map_res!(
-        delimited!(
-            ws,
-            recognize!(pair!(
-                one_of!(IDENT_START_CHARS),
-                many0!(complete!(one_of!(IDENT_CONT_CHARS)))
-            )),
-            ws),
-        |s: &str| -> Result<Expression, Error<&str>> { Ok(Expression::Atom(s.to_owned())) }
-    )
-);
+fn atom(input: &str) -> IResult<&str, Expression> {
+    recognize(pair(
+        one_of(IDENT_CONT_CHARS),
+        many0(complete(one_of(IDENT_CONT_CHARS))),
+    ))
+    .map(|s: &str| Expression::Atom(s.to_owned()))
+    .parse(input)
+}
 
-named!(string_const<&str, Expression>,
-    map_res!(
-        delimited!(ws, string_lit, ws),
-        |s: &str| -> Result<Expression, Error<&str>> { Ok(Expression::Const(Const::String(s.to_owned()))) }
-    )
-);
+fn string_const(input: &str) -> IResult<&str, Expression> {
+    string_lit
+        .map(|s: &str| Expression::Const(Const::String(s.to_owned())))
+        .parse(input)
+}
 
-named!(num_const<&str, Expression>,
-    map_res!(
-        delimited!(ws, num_lit, ws),
-        |s: Number| -> Result<Expression, Error<&str>> { Ok(Expression::Const(Const::Number(s))) }
-    )
-);
+fn num_const(input: &str) -> IResult<&str, Expression> {
+    num_lit
+        .map(|s: Number| Expression::Const(Const::Number(s)))
+        .parse(input)
+}
 
-named!(parenthetical<&str, Expression>,
-    delimited!(
-        delimited!(ws, tag!("("), ws),
+fn parenthetical(input: &str) -> IResult<&str, Expression> {
+    delimited(
+        terminated(tag("("), ws),
         expression_3,
-        delimited!(ws, tag!(")"), ws)
-    )
-);
+        preceded(ws, tag(")")),
+    )(input)
+}
 
-named!(match_case_const<&str, Option<Const>>,
-    map_res!(
-        alt!(string_const | num_const),
-        |s: Expression| -> Result<Option<Const>, Error<&str>> { Ok(Some(match s { // oops I did not architect this correctly
-            Expression::Const(c) => c,
-            _ => unreachable!()
-        })) }
-    )
-);
+fn match_case_const(input: &str) -> IResult<&str, Option<Const>> {
+    alt((string_const, num_const))
+        .map(|s: Expression| {
+            Some(if let Expression::Const(c) = s {
+                c
+            } else {
+                unreachable!()
+            })
+        })
+        .parse(input)
+}
 
-named!(match_case_default<&str, Option<Const>>,
-    map_res!(
-        delimited!(ws, tag!("_"), ws),
-        |_| -> Result<Option<Const>, Error<&str>> { Ok(None) }
-    )
-);
+fn match_case_default(input: &str) -> IResult<&str, Option<Const>> {
+    tag("_").map(|_| None).parse(input)
+}
 
-named!(match_case<&str, Option<Const>>,
-    alt!(match_case_const | match_case_default)
-);
+fn match_case(input: &str) -> IResult<&str, Option<Const>> {
+    alt((match_case_const, match_case_default))(input)
+}
 
-named!(match_arm<&str, (Option<Const>, Expression)>,
-    separated_pair!(match_case, delimited!(ws, tag!("=>"), ws), expression_3)
-);
+fn match_arm(input: &str) -> IResult<&str, (Option<Const>, Expression)> {
+    separated_pair(match_case, delimited(ws, tag("=>"), ws), expression_3)(input)
+}
 
-fn construct_match_expr(test: Expression, arms_list: Vec<(Option<Const>, Expression)>) -> Result<Expression, ()> {
+fn construct_match_expr(
+    test: Expression,
+    arms_list: Vec<(Option<Const>, Expression)>,
+) -> Result<Expression, ()> {
     let mut arms: HashMap<Const, Expression> = HashMap::new();
     let mut default: Option<Expression> = None;
     for (case, expr) in arms_list {
-        match case {
-            Some(real_case) => {
-                if arms.contains_key(&real_case) {
-                    return Err(())
-                }
-                arms.insert(real_case, expr);
-            },
-            None => {
-                if default.is_some() {
-                    return Err(())
-                }
-                default = Some(expr);
-            }
+        let old_value = match case {
+            Some(real_case) => arms.insert(real_case, expr),
+            None => default.replace(expr),
+        };
+        if old_value.is_some() {
+            return Err(());
         }
     }
 
-    if default.is_none() {
-        Err(())
-    } else {
-        Ok(Expression::Match {test: Box::new(test), arms, default: Box::new(default.unwrap())})
+    let default = default.ok_or(())?;
+
+    Ok(Expression::Match {
+        test: Box::new(test),
+        arms,
+        default: Box::new(default),
+    })
+}
+
+fn match_expr_with_errors(input: &str) -> IResult<&str, Result<Expression, ()>> {
+    separated_pair(
+        preceded(terminated(tag("match"), multispace1), expression_3),
+        ws,
+        delimited(
+            terminated(tag("{"), ws),
+            separated_list0(delimited(ws, tag(","), ws), match_arm),
+            tuple((ws, opt(pair(tag(","), ws)), tag("}"))),
+        ),
+    )
+    .map(|(test, arms)| construct_match_expr(test, arms))
+    .parse(input)
+}
+
+fn match_expr(input: &str) -> IResult<&str, Expression> {
+    map_res(
+        match_expr_with_errors,
+        |s: Result<Expression, ()>| -> Result<Expression, Error<&str>> {
+            s.map_err(|_| Error {
+                input: "what",
+                code: ErrorKind::MapRes,
+            })
+        },
+    )(input)
+}
+
+fn mut_ref_parser<P, I, O, E>(parser: &mut P) -> impl Parser<I, O, E> + '_
+where
+    P: Parser<I, O, E>,
+{
+    move |input| parser.parse(input)
+}
+
+fn fn_convert_mut<F: FnOnce(I) -> O, I, O>(f: F) -> impl FnMut(I) -> F::Output {
+    let mut f = Some(f);
+    move |i| (f.take().unwrap())(i)
+}
+
+fn left_binop<'a, B, O, T, F, Out>(
+    mut base: B,
+    mut operator: O,
+    mut fold: F,
+) -> impl FnMut(&'a str) -> IResult<&'a str, Out>
+where
+    B: Parser<&'a str, Out, nom::error::Error<&'a str>>,
+    O: Parser<&'a str, T, error::Error<&'a str>>,
+    F: FnMut(Out, T, Out) -> Out,
+{
+    move |input: &str| {
+        let (mut input, accumulator) = base.parse(input)?;
+        let mut accumulator = Some(accumulator);
+        let mut pair = pair(delimited(ws, |i| operator.parse(i), ws), |i| base.parse(i));
+        fold_many0(
+            pair,
+            move || accumulator.take().unwrap(),
+            |lhs, (op, rhs)| fold(lhs, op, rhs),
+        )(input)
     }
 }
 
-named!(match_expr_with_errors<&str, Result<Expression, ()>>,
-    do_parse!(
-        delimited!(ws, tag!("match"), ws) >>
-        test: expression_3 >>
-        delimited!(ws, tag!("{"), ws) >>
-        arms_list: separated_list0!(delimited!(ws, tag!(","), ws), match_arm) >>
-        delimited!(ws, tag!("}"), ws) >>
-        (construct_match_expr(test, arms_list))
-    )
-);
+fn expression_3(input: &str) -> IResult<&str, Expression> {
+    left_binop(
+        expression_2,
+        alt((tag("+").map(|_| BinOp::Add), tag("-").map(|_| BinOp::Sub))),
+        |lhs, operator, rhs| Expression::BinOp(operator, Box::new((lhs, rhs))),
+    )(input)
+}
 
-named!(match_expr<&str, Expression>,
-    map_res!(
-        match_expr_with_errors,
-        |s: Result<Expression, ()>| -> Result<Expression, Error<&str>> {
-            s.map_err(|_| Error { input: "what", code: ErrorKind::MapRes })
-        }
-    )
-);
+fn expression_2(input: &str) -> IResult<&str, Expression> {
+    left_binop(
+        expression_1,
+        alt((
+            tag("*").map(|_| BinOp::Mul),
+            tag("/").map(|_| BinOp::Div),
+            tag("%").map(|_| BinOp::Mod),
+        )),
+        |lhs, operator, rhs| Expression::BinOp(operator, Box::new((lhs, rhs))),
+    )(input)
+}
 
-named!(expression_3<&str, Expression>,
-    do_parse!(
-        init: expression_2 >>
-        res: fold_many0!(
-            complete!(pair!(
-                delimited!(ws, alt!(tag!("+") | tag!("-")), ws),
-                expression_2
-            )),
-            init,
-            |acc, next| Expression::BinOp(match next.0 {
-                "+" => BinOp::Add,
-                "-" => BinOp::Sub,
-                _ => unreachable!(),
-            }, Box::new((acc, next.1)))
-        ) >>
-        (res)
+fn expression_1(input: &str) -> IResult<&str, Expression> {
+    many_till(
+        terminated(
+            alt((tag("-").map(|_| UnOp::Neg), tag("+").map(|_| UnOp::Pos))),
+            ws,
+        ),
+        expression_0,
     )
-);
+    .map(|(unaries, base)| {
+        unaries
+            .into_iter()
+            .rev()
+            .fold(base, |acc, unary| Expression::UnOp(unary, Box::new(acc)))
+    })
+    .parse(input)
+}
 
-named!(expression_2<&str, Expression>,
-    do_parse!(
-        init: expression_1 >>
-        res: fold_many0!(
-            complete!(pair!(
-                delimited!(ws, alt!(tag!("*") | tag!("/") | tag!("%")), ws),
-                expression_1
-            )),
-            init,
-            |acc, next| Expression::BinOp(match next.0 {
-                "*" => BinOp::Mul,
-                "/" => BinOp::Div,
-                "%" => BinOp::Mod,
-                _ => unreachable!(),
-            }, Box::new((acc, next.1)))
-        ) >>
-        (res)
-    )
-);
-
-named!(expression_1<&str, Expression>,
-    alt!(
-        expression_0 |
-        map_res!(
-            tuple!(
-                delimited!(ws, tag!("-"), ws),
-                expression_1
-            ), |s: (&str, Expression)| -> Result<Expression, Error<&str>> {
-                Ok(Expression::UnOp(match s.0 {
-                    "-" => UnOp::Neg,
-                    _ => unreachable!(),
-                }, Box::new(s.1)))
-            }
-        )
-    )
-);
-
-named!(expression_0<&str, Expression>,
+fn expression_0(input: &str) -> IResult<&str, Expression> {
     // match must go first in the list since it could be interpreted as an atom
-    alt!(match_expr | string_const | num_const | atom | parenthetical)
-);
+    alt((match_expr, string_const, num_const, atom, parenthetical))(input)
+}
 
-named!(expression<&str, Expression>,
-    terminated!(expression_3, eof!())
-);
+fn expression(input: &str) -> IResult<&str, Expression> {
+    terminated(delimited(ws, expression_3, ws), eof)(input)
+}
 
 impl<'de> Deserialize<'de> for Expression {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         let s: String = Deserialize::deserialize(deserializer)?;
         let parsed = expression(s.as_str());
@@ -336,8 +382,8 @@ impl<'de> Deserialize<'de> for Expression {
 
 impl Serialize for Expression {
     fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         format!("{}", self).serialize(s)
     }
@@ -349,9 +395,19 @@ impl std::fmt::Display for Expression {
             Expression::Const(c) => write!(f, "{}", c),
             Expression::Atom(s) => write!(f, "{}", s),
             // TODO analyze operator precedence to tell if parens are necessary
-            Expression::BinOp(op, children) => write!(f, "({} {} {})", children.as_ref().0, op, children.as_ref().1),
+            Expression::BinOp(op, children) => write!(
+                f,
+                "({} {} {})",
+                children.as_ref().0,
+                op,
+                children.as_ref().1
+            ),
             Expression::UnOp(op, child) => write!(f, "{}{}", op, child.as_ref()),
-            Expression::Match { test, arms, default } => {
+            Expression::Match {
+                test,
+                arms,
+                default,
+            } => {
                 write!(f, "match {} {{ ", test.as_ref())?;
                 for (matching, expression) in arms {
                     write!(f, "{} => {}, ", matching, expression)?;
@@ -370,8 +426,8 @@ impl Expression {
     pub fn evaluate(&self, env: &HashMap<&str, Const>) -> Result<Const, String> {
         match self {
             Expression::Const(c) => Ok(c.clone()),
-            Expression::Atom(name) =>
-                env.get(name.as_str())
+            Expression::Atom(name) => env
+                .get(name.as_str())
                 .map(|x| x.clone())
                 .ok_or_else(|| format!("Name \"{}\" undefined", name)),
             Expression::BinOp(op, children) => {
@@ -379,26 +435,43 @@ impl Expression {
                 let child2val = children.as_ref().1.evaluate(env)?;
                 match op {
                     BinOp::Add => {
-                        if let (&Const::Number(Number(n1)), &Const::Number(Number(n2))) = (&child1val, &child2val) {
+                        if let (&Const::Number(Number(n1)), &Const::Number(Number(n2))) =
+                            (&child1val, &child2val)
+                        {
                             Ok(Const::Number(Number(n1 + n2)))
                         } else {
-                            Ok(Const::String(child1val.as_string()?.to_owned() + &child2val.as_string()?))
+                            Ok(Const::String(
+                                child1val.as_string()?.to_owned() + &child2val.as_string()?,
+                            ))
                         }
                     }
-                    BinOp::Sub => Ok(Const::Number(Number(child1val.as_number()?.0 - child2val.as_number()?.0))),
-                    BinOp::Mul => Ok(Const::Number(Number(child1val.as_number()?.0 * child2val.as_number()?.0))),
+                    BinOp::Sub => Ok(Const::Number(Number(
+                        child1val.as_number()?.0 - child2val.as_number()?.0,
+                    ))),
+                    BinOp::Mul => Ok(Const::Number(Number(
+                        child1val.as_number()?.0 * child2val.as_number()?.0,
+                    ))),
                     // division by zero can produce nan and that's okay (?)
-                    BinOp::Div => Ok(Const::Number(Number(child1val.as_number()?.0 / child2val.as_number()?.0))),
-                    BinOp::Mod => Ok(Const::Number(Number(child1val.as_number()?.0 % child2val.as_number()?.0))),
+                    BinOp::Div => Ok(Const::Number(Number(
+                        child1val.as_number()?.0 / child2val.as_number()?.0,
+                    ))),
+                    BinOp::Mod => Ok(Const::Number(Number(
+                        child1val.as_number()?.0 % child2val.as_number()?.0,
+                    ))),
                 }
-            },
+            }
             Expression::UnOp(op, child) => {
                 let child_val = child.evaluate(env)?;
                 match op {
-                    UnOp::Neg => Ok(Const::Number(Number(-child_val.as_number()?.0)))
+                    UnOp::Neg => Ok(Const::Number(Number(-child_val.as_number()?.0))),
+                    UnOp::Pos => Ok(child_val),
                 }
-            },
-            Expression::Match { test, arms, default } => {
+            }
+            Expression::Match {
+                test,
+                arms,
+                default,
+            } => {
                 let expr_val = test.evaluate(env)?;
                 let resulting_expr = arms.get(&expr_val).unwrap_or(default);
                 resulting_expr.evaluate(env)
@@ -411,7 +484,7 @@ impl Const {
     pub fn as_number(&self) -> Result<Number, String> {
         match self {
             Const::Number(n) => Ok(n.clone()),
-            Const::String(s) => Err(format!("Expected number, found string \"{}\"", s))
+            Const::String(s) => Err(format!("Expected number, found string \"{}\"", s)),
         }
     }
 
@@ -424,18 +497,28 @@ impl Const {
     }
 
     pub fn from_num<N>(i: N) -> Const
-        where N: Into<f64>
+    where
+        N: Into<f64>,
     {
         Const::Number(Number(i.into()))
     }
 
     pub fn from_attr(a: &celeste::binel::BinElAttr) -> Const {
         match a {
-            BinElAttr::Bool(b) => Const::from_num(if *b {1} else {0}),
-            BinElAttr::Int(i) => Const::from_num(*i),
-            BinElAttr::Float(f) => Const::from_num(*f),
+            BinElAttr::Bool(b) => Const::from(if *b { 1 } else { 0 }),
+            BinElAttr::Int(i) => Const::from(*i),
+            BinElAttr::Float(f) => Const::from(*f),
             BinElAttr::Text(s) => Const::String(s.clone()),
         }
+    }
+}
+
+impl<N> From<N> for Const
+where
+    N: Into<f64>,
+{
+    fn from(n: N) -> Self {
+        Const::Number(Number(n.into()))
     }
 }
 
@@ -447,14 +530,12 @@ mod test {
     fn test_expr2() {
         assert_eq!(
             expression("-x * y"),
-            Ok(("",
+            Ok((
+                "",
                 Expression::BinOp(
                     BinOp::Mul,
                     Box::new((
-                        Expression::UnOp(
-                            UnOp::Neg,
-                            Box::new(Expression::Atom("x".to_owned()))
-                        ),
+                        Expression::UnOp(UnOp::Neg, Box::new(Expression::Atom("x".to_owned()))),
                         Expression::Atom("y".to_owned())
                     ))
                 )
@@ -466,14 +547,12 @@ mod test {
     fn test_expr3() {
         assert_eq!(
             expression("-x + y"),
-            Ok(("",
+            Ok((
+                "",
                 Expression::BinOp(
                     BinOp::Add,
                     Box::new((
-                        Expression::UnOp(
-                            UnOp::Neg,
-                            Box::new(Expression::Atom("x".to_owned()))
-                        ),
+                        Expression::UnOp(UnOp::Neg, Box::new(Expression::Atom("x".to_owned()))),
                         Expression::Atom("y".to_owned())
                     ))
                 )
@@ -489,7 +568,8 @@ mod test {
 
     #[test]
     fn test_eval() {
-        let expr = expression("\
+        let expr = expression(
+            "\
         match x + 1 {\
           1 => x / 0,\
           2 => -x,\
@@ -497,34 +577,36 @@ mod test {
           4 => 1 + '2',\
           5 => 1 - '2',\
           _ => 'foo'\
-        }");
+        }",
+        );
         assert!(expr.is_ok());
         let expr = expr.unwrap().1;
 
-        let mut env: HashMap<String, Const> = HashMap::new();
-        env.insert("x".to_owned(), Const::Number(Number(0f64)));
+        let mut env: HashMap<&str, Const> = HashMap::new();
+        env.insert("x", Const::Number(Number(0f64)));
         let res = expr.evaluate(&env);
         assert_eq!(res, Ok(Const::Number(Number(f64::NAN))));
-        env.insert("x".to_owned(), Const::Number(Number(1f64)));
+        env.insert("x", Const::Number(Number(1f64)));
         let res = expr.evaluate(&env);
         assert_eq!(res, Ok(Const::Number(Number(-1f64))));
-        env.insert("x".to_owned(), Const::Number(Number(2f64)));
+        env.insert("x", Const::Number(Number(2f64)));
         let res = expr.evaluate(&env);
         assert_eq!(res, Ok(Const::Number(Number(4f64))));
-        env.insert("x".to_owned(), Const::Number(Number(3f64)));
+        env.insert("x", Const::Number(Number(3f64)));
         let res = expr.evaluate(&env);
         assert_eq!(res, Ok(Const::String("12".to_owned())));
-        env.insert("x".to_owned(), Const::Number(Number(4f64)));
+        env.insert("x", Const::Number(Number(4f64)));
         let res = expr.evaluate(&env);
         assert!(res.is_err());
-        env.insert("x".to_owned(), Const::Number(Number(5f64)));
+        env.insert("x", Const::Number(Number(5f64)));
         let res = expr.evaluate(&env);
         assert_eq!(res, Ok(Const::String("foo".to_owned())));
     }
 
     #[test]
     fn test_display() {
-        let expr = expression("\
+        let expr = expression(
+            "\
         match x + 1 {\
           1 => x / 0,\
           2 => -x,\
@@ -532,7 +614,10 @@ mod test {
           4 => 1 + '2',\
           5 => 1 - '2',\
           _ => 'foo'\
-        }").unwrap().1;
+        }",
+        )
+        .unwrap()
+        .1;
         let expr_str = format!("{}", expr);
         let expr2 = expression(expr_str.as_str()).unwrap().1;
         assert_eq!(expr, expr2);

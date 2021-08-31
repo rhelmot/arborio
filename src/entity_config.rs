@@ -1,7 +1,7 @@
-use serde;
-use serde::{Serialize, Deserialize};
-use std::collections::HashMap;
 use crate::entity_expression::Expression;
+use serde;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EntityConfig {
@@ -23,7 +23,9 @@ pub struct EntityConfig {
     pub attribute_info: HashMap<String, AttributeInfo>,
 }
 
-fn eight() -> u32 { 8 }
+fn eight() -> u32 {
+    8
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AttributeInfo {
@@ -116,29 +118,47 @@ pub enum DrawElement {
         color: Color,
         #[serde(default)]
         rot: i32,
-    }
+    },
 }
 
-fn one() -> u32 { 1 }
-fn one_one() -> Vec2 { Vec2 { x: Expression::mk_const(1), y: Expression::mk_const(1) } }
-fn empty_rect() -> Rect {
-    Rect {
-        topleft: Vec2 { x: Expression::mk_const(0), y: Expression::mk_const(0) },
-        size: Vec2 { x: Expression::mk_const(0), y: Expression::mk_const(0) },
+fn one() -> u32 {
+    1
+}
+fn one_one() -> Vec2 {
+    Vec2 {
+        x: Expression::mk_const(1),
+        y: Expression::mk_const(1),
     }
 }
-fn half() -> f32 { 0.5 }
+fn empty_rect() -> Rect {
+    Rect {
+        topleft: Vec2 {
+            x: Expression::mk_const(0),
+            y: Expression::mk_const(0),
+        },
+        size: Vec2 {
+            x: Expression::mk_const(0),
+            y: Expression::mk_const(0),
+        },
+    }
+}
+fn half() -> f32 {
+    0.5
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum AutotilerType {
     Repeat,
     NineSlice,
-    Fg, Bg,
+    Fg,
+    Bg,
     Cassette,
     JumpThru,
 }
 
-fn repeat() -> AutotilerType { AutotilerType::Repeat }
+fn repeat() -> AutotilerType {
+    AutotilerType::Repeat
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Rect {
@@ -161,7 +181,10 @@ pub struct Color {
 }
 
 impl Color {
-    pub fn evaluate(&self, env: &HashMap<&str, crate::entity_expression::Const>) -> Result<(fltk::enums::Color, u8), String> {
+    pub fn evaluate(
+        &self,
+        env: &HashMap<&str, crate::entity_expression::Const>,
+    ) -> Result<(fltk::enums::Color, u8), String> {
         let r = self.r.evaluate(env)?.as_number()?.to_int() as u8;
         let g = self.g.evaluate(env)?.as_number()?.to_int() as u8;
         let b = self.b.evaluate(env)?.as_number()?.to_int() as u8;

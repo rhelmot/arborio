@@ -1,19 +1,25 @@
-use std::path::Path;
-use std::io;
-use std::fs;
-use std::collections::HashMap;
 use super::atlas_img;
 use crate::atlas_img::SpriteReference;
 use crate::map_struct::CelesteMapLevel;
+use std::collections::HashMap;
+use std::fs;
+use std::io;
+use std::path::Path;
+use std::prelude::rust_2021::TryInto;
+use std::str::FromStr;
 
-#[derive(Copy, Clone)]
+use itertools::Itertools;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+
+#[derive(Copy, Clone, Debug)]
 pub struct TextureTile {
     pub x: u32,
     pub y: u32,
     pub sprite: Option<atlas_img::SpriteReference>,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct TileReference {
     pub tile: TextureTile,
     pub texture: SpriteReference,
@@ -23,7 +29,7 @@ pub struct TileReference {
 pub struct Tileset {
     pub id: char,
     pub texture: SpriteReference,
-    pub edges: Vec<Vec<TextureTile>>,
+    pub edges: [Vec<TextureTile>; 256],
     pub padding: Vec<TextureTile>,
     pub center: Vec<TextureTile>,
     pub ignores: Vec<char>,
@@ -32,7 +38,7 @@ pub struct Tileset {
 
 #[derive(serde::Deserialize)]
 struct SerData {
-    #[serde(rename="Tileset", default)]
+    #[serde(rename = "Tileset", default)]
     pub tilesets: Vec<SerTileset>,
 }
 
@@ -63,61 +69,115 @@ struct SerSet {
 macro_rules! assert_ascii {
     ($e:expr) => {
         if !$e.is_ascii() {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, format!("\"{}\" is not ascii!!!! Do NOT try to get funny with me!", $e)));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "\"{}\" is not ascii!!!! Do NOT try to get funny with me!",
+                    $e
+                ),
+            ));
         }
-    }
+    };
 }
 
 impl Tileset {
-    pub fn load(path: &Path, gameplay_atlas: &atlas_img::Atlas) -> Result<HashMap<char, Tileset>, io::Error> {
-        let string = fs::read_to_string(path).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset {}: {}", path.to_str().unwrap(), e)))?;
-        let data: SerData = serde_xml_rs::from_str(string.trim_start_matches('\u{FEFF}')).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset {}: {:?}", path.to_str().unwrap(), e)))?;
+    pub fn load(
+        path: &Path,
+        gameplay_atlas: &atlas_img::Atlas,
+    ) -> io::Result<HashMap<char, Tileset>> {
+        let string = fs::read_to_string(path).map_err(|e| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("Cannot open tileset {}: {}", path.to_str().unwrap(), e),
+            )
+        })?;
+        let data: SerData =
+            serde_xml_rs::from_str(string.trim_start_matches('\u{FEFF}')).map_err(|e| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("Cannot open tileset {}: {:?}", path.to_str().unwrap(), e),
+                )
+            })?;
         let mut out: HashMap<char, Tileset> = HashMap::new();
 
         for s_tileset in data.tilesets {
-            assert_ascii!(s_tileset.id);
-            if s_tileset.id.len() != 1 {
-                return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tileset id ({}) must be a single character", s_tileset.id)));
-            }
-            let ch = s_tileset.id.chars().next().unwrap();
+            let id = match s_tileset.id.as_bytes() {
+                [ch] => *ch as char,
+                _ => {
+                    assert_ascii!(s_tileset.id);
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!("Tileset id ({}) must be a single character", s_tileset.id),
+                    ));
+                }
+            };
 
             // HACK
-            let texture_sprite = match gameplay_atlas.lookup(&format!("tilesets/{}", if s_tileset.path == "template" { "dirt" } else { &s_tileset.path })) {
-                Some(v) => v,
-                None => return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Texture {} for tileset {} not found in the gameplay atlas", s_tileset.path, s_tileset.id))),
-            };
-            let mut tileset = if s_tileset.copy.is_empty() {
-                Tileset {
-                    id: ch,
+            let path = format!(
+                "tilesets/{}",
+                if s_tileset.path == "template" {
+                    "dirt"
+                } else {
+                    &s_tileset.path
+                }
+            );
+            let texture_sprite = gameplay_atlas.lookup(&path).ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "Texture {} for tileset {} not found in the gameplay atlas",
+                        s_tileset.path, s_tileset.id
+                    ),
+                )
+            })?;
+            const VEC: Vec<TextureTile> = Vec::new();
+            let mut tileset = match s_tileset.copy.as_bytes() {
+                [] => Tileset {
+                    id,
                     texture: texture_sprite,
-                    edges: vec![Vec::new(); 256],
+                    edges: [VEC; 256],
                     padding: vec![],
                     center: vec![],
                     ignores: vec![],
-                    ignores_all: false
+                    ignores_all: false,
+                },
+                // A single ASCII character
+                [copied_id] => {
+                    let copied = out.get(&(*copied_id as char)).ok_or_else(|| {
+                        io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            format!(
+                                "Can't find tileset to copy ({} copying {})",
+                                s_tileset.id, s_tileset.copy
+                            ),
+                        )
+                    })?;
+                    Tileset {
+                        texture: texture_sprite,
+                        id,
+                        ..copied.clone()
+                    }
                 }
-            } else {
-                assert_ascii!(s_tileset.copy);
-                if s_tileset.copy.len() != 1 {
-                    return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tileset copy id ({} copying {}) must be a single character", s_tileset.id, s_tileset.copy)));
+                [_, _, ..] => {
+                    assert_ascii!(s_tileset.copy);
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!(
+                            "Tileset copy id ({} copying {}) must be a single character",
+                            s_tileset.id, s_tileset.copy
+                        ),
+                    ));
                 }
-                let mut r = match out.get(&s_tileset.copy.chars().next().unwrap()) {
-                    Some(t) => t.clone(),
-                    None => return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Can't find tileset to copy ({} copying {})", s_tileset.id, s_tileset.copy))),
-                };
-                r.texture = texture_sprite;
-                r.id = ch;
-                r
             };
 
-            if s_tileset.ignores == "*" {
-                tileset.ignores_all = true;
-            } else if !s_tileset.ignores.is_empty() {
-                assert_ascii!(s_tileset.ignores);
-                if s_tileset.ignores.len() > 1 {
+            match s_tileset.ignores.as_bytes() {
+                b"*" => tileset.ignores_all = true,
+                [] => {}
+                [c] => tileset.ignores.push(*c as char),
+                [_, _, ..] => {
+                    assert_ascii!(s_tileset.ignores);
                     return Err(io::Error::new(io::ErrorKind::InvalidData, format!("I actually don't know how to load this tileset ({}). Can you send your mod to rhelmot?", s_tileset.id)));
                 }
-                tileset.ignores.push(s_tileset.ignores.chars().next().unwrap());
             }
 
             for s_set in s_tileset.set.iter().rev() {
@@ -150,7 +210,7 @@ impl Tileset {
 
                     let mut process_bit = |ch: char, bit: usize| -> bool {
                         match ch {
-                            'x' => {},
+                            'x' => {}
                             '0' => mask |= bit,
                             '1' => {
                                 mask |= bit;
@@ -162,59 +222,80 @@ impl Tileset {
                     };
 
                     let mut success = true;
-                    success |= process_bit(mask_vec[0],  1 << 0);
-                    success |= process_bit(mask_vec[1],  1 << 1);
-                    success |= process_bit(mask_vec[2],  1 << 2);
-                    success |= process_bit(mask_vec[4],  1 << 3);
-                    success |= process_bit(mask_vec[6],  1 << 4);
-                    success |= process_bit(mask_vec[8],  1 << 5);
-                    success |= process_bit(mask_vec[9],  1 << 6);
+                    success |= process_bit(mask_vec[0], 1 << 0);
+                    success |= process_bit(mask_vec[1], 1 << 1);
+                    success |= process_bit(mask_vec[2], 1 << 2);
+                    success |= process_bit(mask_vec[4], 1 << 3);
+                    success |= process_bit(mask_vec[6], 1 << 4);
+                    success |= process_bit(mask_vec[8], 1 << 5);
+                    success |= process_bit(mask_vec[9], 1 << 6);
                     success |= process_bit(mask_vec[10], 1 << 7);
 
                     if !success {
                         return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tileset mask (\"{}\" for tileset {} must be of the form xxx-xxx-xxx, or the literals `padding` or `center`", s_set.mask, s_tileset.id)));
                     }
 
-                    for i in 0..256_usize {
-                        if i & mask == value {
-                            tileset.edges[i] = tiles.clone();
-                        }
+                    for i in (0..256_usize).filter(|i| i & mask == value) {
+                        tileset.edges[i] = tiles.clone();
                     }
                 }
-
             }
 
-            out.insert(ch, tileset);
+            debug_assert_eq!(id, tileset.id);
+            out.insert(id, tileset);
         }
 
         Ok(out)
     }
 
-    pub fn tile(&self, level: &CelesteMapLevel, foreground: bool, x: i32, y: i32) -> Option<TileReference> {
-        let mut tile = |x: i32, y: i32| level.tile(x, y, foreground);
-        self.tile_g(x, y, &mut tile)
+    pub fn tile(
+        &self,
+        level: &CelesteMapLevel,
+        foreground: bool,
+        x: i32,
+        y: i32,
+    ) -> Option<TileReference> {
+        self.tile_g(x, y, |x, y| level.tile(x, y, foreground))
     }
 
-    fn tile_g<F>(&self, x: i32, y: i32, tile: &mut F) -> Option<TileReference> where F: FnMut(i32, i32) -> Option<char> {
-        if tile(x, y) != Some(self.id) {
-            return None;
-        }
-
-        let hash = ((x as u32).wrapping_mul(536870909) ^ (y as u32).wrapping_mul(1073741789)) as usize;
+    fn tile_g<F>(&self, x: i32, y: i32, tile: F) -> Option<TileReference>
+    where
+        F: Fn(i32, i32) -> Option<char>,
+    {
+        assert_eq!(tile(x, y), Some(self.id));
 
         let mut lookup = 0_usize;
-        if self.is_filled(tile(x-1, y-1)) { lookup |= 1 << 0; }
-        if self.is_filled(tile(x,   y-1)) { lookup |= 1 << 1; }
-        if self.is_filled(tile(x+1, y-1)) { lookup |= 1 << 2; }
-        if self.is_filled(tile(x-1, y))   { lookup |= 1 << 3; }
-        if self.is_filled(tile(x+1, y))   { lookup |= 1 << 4; }
-        if self.is_filled(tile(x-1, y+1)) { lookup |= 1 << 5; }
-        if self.is_filled(tile(x,   y+1)) { lookup |= 1 << 6; }
-        if self.is_filled(tile(x+1, y+1)) { lookup |= 1 << 7; }
+        if self.is_filled(tile(x - 1, y - 1)) {
+            lookup |= 1 << 0;
+        }
+        if self.is_filled(tile(x, y - 1)) {
+            lookup |= 1 << 1;
+        }
+        if self.is_filled(tile(x + 1, y - 1)) {
+            lookup |= 1 << 2;
+        }
+        if self.is_filled(tile(x - 1, y)) {
+            lookup |= 1 << 3;
+        }
+        if self.is_filled(tile(x + 1, y)) {
+            lookup |= 1 << 4;
+        }
+        if self.is_filled(tile(x - 1, y + 1)) {
+            lookup |= 1 << 5;
+        }
+        if self.is_filled(tile(x, y + 1)) {
+            lookup |= 1 << 6;
+        }
+        if self.is_filled(tile(x + 1, y + 1)) {
+            lookup |= 1 << 7;
+        }
 
         let tiles = if lookup == 0xff {
-            if self.is_filled(tile(x-2, y)) && self.is_filled(tile(x+2, y)) &&
-                self.is_filled(tile(x, y-2)) && self.is_filled(tile(x, y+2)) {
+            if self.is_filled(tile(x - 2, y))
+                && self.is_filled(tile(x + 2, y))
+                && self.is_filled(tile(x, y - 2))
+                && self.is_filled(tile(x, y + 2))
+            {
                 &self.center
             } else {
                 &self.padding
@@ -226,6 +307,12 @@ impl Tileset {
         if tiles.is_empty() {
             return None;
         }
+
+        let hash = {
+            let mut hasher = DefaultHasher::new();
+            (x, y).hash(&mut hasher);
+            hasher.finish()
+        } as usize;
 
         Some(TileReference {
             tile: tiles[hash % tiles.len()],
@@ -248,31 +335,17 @@ impl Tileset {
 }
 
 impl TextureTile {
-    fn parse_list(text: &str, sprite: Option<SpriteReference>) -> Result<Vec<TextureTile>, io::Error> {
-        let mut result = vec![];
-        if text.is_empty() {
-            return Ok(result);
-        }
-
-        for piece in text.split(';') {
-            let coords: Vec<&str> = piece.split(',').collect();
-            if coords.len() != 2 {
-                return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tile declaration (\"{}\") must be semicolon-separated sets of two comma-separated integers", text)));
+    fn parse_list(text: &str, sprite: Option<SpriteReference>) -> io::Result<Vec<TextureTile>> {
+        text.split(';').map(|piece| {
+            if let Some((Ok(x), Ok(y))) = piece.split(',').map(u32::from_str).collect_tuple() {
+                Ok(TextureTile {
+                    x,
+                    y,
+                    sprite,
+                })
+            } else {
+                Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tile declaration (\"{}\") must be semicolon-separated sets of two comma-separated integers", text)))
             }
-
-            let x = coords[0].parse::<u32>();
-            let y = coords[1].parse::<u32>();
-            if x.is_err() || y.is_err() {
-                return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tile declaration (\"{}\") must be semicolon-separated sets of two comma-separated integers", text)));
-            }
-
-            result.push(TextureTile {
-                x: x.unwrap(),
-                y: y.unwrap(),
-                sprite,
-            })
-        }
-
-        Ok(result)
+        }).collect()
     }
 }

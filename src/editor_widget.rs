@@ -1,31 +1,39 @@
-use fltk::{prelude::*,*,enums::Key};
+use fltk::{enums::Key, prelude::*, *};
 
-use crate::map_struct;
-use crate::atlas_img::SpriteReference;
 use crate::assets;
+use crate::atlas_img::SpriteReference;
+use crate::map_struct;
 
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::collections::HashMap;
-use std::time;
-use std::env;
-use lazy_static::lazy_static;
-use crate::image_view::ImageBuffer;
-use crate::map_struct::{Rect, CelesteMapEntity, CelesteMapLevel};
-use crate::entity_config::{DrawElement, AutotilerType};
+use crate::entity_config::{AutotilerType, DrawElement};
 use crate::entity_expression::Const;
+use crate::image_view::ImageBuffer;
+use crate::map_struct::{CelesteMapEntity, CelesteMapLevel, Rect};
+use lazy_static::lazy_static;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::env;
+use std::rc::Rc;
+use std::time;
 
 lazy_static! {
-    static ref PERF_MONITOR: bool = {
-        env::var("ARBORIO_PERF_MONITOR").is_ok()
-    };
+    static ref PERF_MONITOR: bool = { env::var("ARBORIO_PERF_MONITOR").is_ok() };
 }
 
-fn backdrop_color() -> enums::Color    { enums::Color::from_u32(0x103010) }
-fn room_empty_color() -> enums::Color  { enums::Color::from_u32(0x204020) }
-fn room_fg_color() -> enums::Color     { enums::Color::from_u32(0x3060f0) }
-fn room_bg_color() -> enums::Color     { enums::Color::from_u32(0x101040) }
-fn room_entity_color() -> enums::Color { enums::Color::from_u32(0xff0000) }
+fn backdrop_color() -> enums::Color {
+    enums::Color::from_u32(0x103010)
+}
+fn room_empty_color() -> enums::Color {
+    enums::Color::from_u32(0x204020)
+}
+fn room_fg_color() -> enums::Color {
+    enums::Color::from_u32(0x3060f0)
+}
+fn room_bg_color() -> enums::Color {
+    enums::Color::from_u32(0x101040)
+}
+fn room_entity_color() -> enums::Color {
+    enums::Color::from_u32(0xff0000)
+}
 
 pub struct EditorWidget {
     state: Rc<RefCell<EditorState>>,
@@ -48,7 +56,8 @@ impl EditorTransform {
     fn rect_map_to_screen(&self, rect: &map_struct::Rect) -> map_struct::Rect {
         let (x, y) = self.point_map_to_screen(rect.x, rect.y);
         map_struct::Rect {
-            x, y,
+            x,
+            y,
             width: self.size_map_to_screen(rect.width),
             height: self.size_map_to_screen(rect.height),
         }
@@ -57,7 +66,8 @@ impl EditorTransform {
     fn rect_screen_to_map(&self, rect: map_struct::Rect) -> map_struct::Rect {
         let (x, y) = self.point_screen_to_map(rect.x, rect.y);
         map_struct::Rect {
-            x, y,
+            x,
+            y,
             width: self.size_screen_to_map(rect.width),
             height: self.size_screen_to_map(rect.height),
         }
@@ -72,13 +82,17 @@ impl EditorTransform {
     }
 
     fn point_screen_to_map(&self, x: i32, y: i32) -> (i32, i32) {
-        (x * 8 / self.map_scale as i32 + self.map_corner_x,
-         y * 8 / self.map_scale as i32 + self.map_corner_y)
+        (
+            x * 8 / self.map_scale as i32 + self.map_corner_x,
+            y * 8 / self.map_scale as i32 + self.map_corner_y,
+        )
     }
 
     fn point_map_to_screen(&self, x: i32, y: i32) -> (i32, i32) {
-        (((x - self.map_corner_x) * self.map_scale as i32).div_euclid(8),
-         ((y - self.map_corner_y) * self.map_scale as i32).div_euclid(8))
+        (
+            ((x - self.map_corner_x) * self.map_scale as i32).div_euclid(8),
+            ((y - self.map_corner_y) * self.map_scale as i32).div_euclid(8),
+        )
     }
 }
 
@@ -90,7 +104,8 @@ impl CelesteMapLevel {
     fn rect_room_to_map(&self, rect: &map_struct::Rect) -> map_struct::Rect {
         let (x, y) = self.point_room_to_map(rect.x, rect.y);
         map_struct::Rect {
-            x, y,
+            x,
+            y,
             width: rect.width,
             height: rect.height,
         }
@@ -157,16 +172,21 @@ impl EditorWidget {
                             filler_screen.y,
                             filler_screen.width as i32,
                             filler_screen.height as i32,
-                            enums::Color::from_u32(0x804000))
+                            enums::Color::from_u32(0x804000),
+                        )
                     }
                 }
                 let mut resized_sprite_cache = assets::SPRITE_CACHE.lock().unwrap();
                 if resized_sprite_cache.len() <= state.transform.map_scale as usize {
-                    resized_sprite_cache.resize_with(state.transform.map_scale as usize + 1, HashMap::new);
+                    resized_sprite_cache
+                        .resize_with(state.transform.map_scale as usize + 1, HashMap::new);
                 }
-                let resized_sprite_cache = &mut resized_sprite_cache[state.transform.map_scale as usize];
+                let resized_sprite_cache =
+                    &mut resized_sprite_cache[state.transform.map_scale as usize];
                 for room_idx in 0..state.map.as_ref().unwrap().levels.len() {
-                    let rect_screen = state.transform.rect_map_to_screen(&state.map.as_ref().unwrap().levels[room_idx].bounds);
+                    let rect_screen = state
+                        .transform
+                        .rect_map_to_screen(&state.map.as_ref().unwrap().levels[room_idx].bounds);
                     if rect_screen.intersects(&screen) {
                         state.draw_room_backdrop(room_idx);
 
@@ -196,9 +216,7 @@ impl EditorWidget {
         self.widget.handle(move |b, ev| {
             let mut state = state.borrow_mut();
             match ev {
-                enums::Event::Enter => {
-                    true
-                },
+                enums::Event::Enter => true,
                 enums::Event::MouseWheel => {
                     let mouse_y = match app::event_dy() {
                         app::MouseWheel::Down => -1,
@@ -210,18 +228,28 @@ impl EditorWidget {
                         app::MouseWheel::Left => 1,
                         _ => 0,
                     };
-                    let (screen_y, screen_x) = if app::event_key_down(Key::ShiftL) || app::event_key_down(Key::ShiftR) {
-                        (mouse_x, mouse_y)
-                    } else {
-                        (mouse_y, mouse_x)
-                    };
+                    let (screen_y, screen_x) =
+                        if app::event_key_down(Key::ShiftL) || app::event_key_down(Key::ShiftR) {
+                            (mouse_x, mouse_y)
+                        } else {
+                            (mouse_y, mouse_x)
+                        };
                     if app::event_key_down(Key::ControlL) || app::event_key_down(Key::ControlR) {
-                        let (old_x, old_y) = state.transform.point_screen_to_map(app::event_x(), app::event_y());
-                        let scale_values = [1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64];
-                        let old_index = scale_values.binary_search(&state.transform.map_scale).unwrap_or_else(|i|i);
-                        let new_index = (old_index as i32 + screen_y).clamp(0, scale_values.len() as i32 - 1) as usize;
+                        let (old_x, old_y) = state
+                            .transform
+                            .point_screen_to_map(app::event_x(), app::event_y());
+                        let scale_values =
+                            [1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64];
+                        let old_index = scale_values
+                            .binary_search(&state.transform.map_scale)
+                            .unwrap_or_else(|i| i);
+                        let new_index = (old_index as i32 + screen_y)
+                            .clamp(0, scale_values.len() as i32 - 1)
+                            as usize;
                         state.transform.map_scale = scale_values[new_index];
-                        let (new_x, new_y) = state.transform.point_screen_to_map(app::event_x(), app::event_y());
+                        let (new_x, new_y) = state
+                            .transform
+                            .point_screen_to_map(app::event_x(), app::event_y());
                         state.transform.map_corner_x += old_x - new_x;
                         state.transform.map_corner_y += old_y - new_y;
                     } else {
@@ -231,10 +259,12 @@ impl EditorWidget {
                     }
                     b.redraw();
                     true
-                },
+                }
                 enums::Event::Push => {
                     if app::event_button() == 2 {
-                        state.prev_mouse = state.transform.point_screen_to_map(app::event_x(), app::event_y());
+                        state.prev_mouse = state
+                            .transform
+                            .point_screen_to_map(app::event_x(), app::event_y());
                         true
                     } else {
                         false
@@ -242,8 +272,13 @@ impl EditorWidget {
                 }
                 enums::Event::Drag => {
                     if app::event_button() == 2 {
-                        let new_mouse = state.transform.point_screen_to_map(app::event_x(), app::event_y());
-                        let difference = (new_mouse.0 - state.prev_mouse.0, new_mouse.1 - state.prev_mouse.1);
+                        let new_mouse = state
+                            .transform
+                            .point_screen_to_map(app::event_x(), app::event_y());
+                        let difference = (
+                            new_mouse.0 - state.prev_mouse.0,
+                            new_mouse.1 - state.prev_mouse.1,
+                        );
                         state.transform.map_corner_x -= difference.0;
                         state.transform.map_corner_y -= difference.1;
                         b.redraw();
@@ -252,7 +287,7 @@ impl EditorWidget {
                         false
                     }
                 }
-                _ => false
+                _ => false,
             }
         });
     }
@@ -266,7 +301,13 @@ impl EditorState {
 
         let room = &self.map.as_ref().unwrap().levels[room_idx];
         let rect = self.transform.rect_map_to_screen(&room.bounds);
-        draw::draw_rect_fill(rect.x, rect.y, rect.width as i32, rect.height as i32, room_empty_color());
+        draw::draw_rect_fill(
+            rect.x,
+            rect.y,
+            rect.width as i32,
+            rect.height as i32,
+            room_empty_color(),
+        );
     }
 
     fn draw_room_simple(&mut self, room_idx: usize, foreground: bool) {
@@ -287,7 +328,9 @@ impl EditorState {
             for tx in 0..room.bounds.width / 8 {
                 let rx = tx * 8;
                 let ry = ty * 8;
-                let (sx, sy) = self.transform.point_map_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
+                let (sx, sy) = self
+                    .transform
+                    .point_map_to_screen(rx as i32 + room.bounds.x, ry as i32 + room.bounds.y);
                 let tile = tiles[(tx + ty * tstride) as usize];
                 if tile != '0' {
                     draw::draw_rect_fill(sx, sy, unit as i32, unit as i32, color);
@@ -296,7 +339,13 @@ impl EditorState {
         }
     }
 
-    fn draw_room_complex(&mut self, room_idx: usize, clip_box: &Rect, foreground: bool, resized_sprite_cache: &mut HashMap<SpriteReference, ImageBuffer>) {
+    fn draw_room_complex(
+        &mut self,
+        room_idx: usize,
+        clip_box: &Rect,
+        foreground: bool,
+        resized_sprite_cache: &mut HashMap<SpriteReference, ImageBuffer>,
+    ) {
         if self.map.as_ref().is_none() {
             return;
         }
@@ -326,7 +375,7 @@ impl EditorState {
             for tx in 0..room.bounds.width / 8 {
                 let rx = tx * 8;
                 let ry = ty * 8;
-                let tile = tiles[(tx + ty * tstride) as usize];
+                let tile = room.tile(tx as i32, ty as i32, foreground).unwrap();
                 let (sx, sy) = (tx * self.transform.map_scale, ty * self.transform.map_scale);
                 let rect = Rect {
                     x: rx as i32,
@@ -337,15 +386,35 @@ impl EditorState {
                 if !rect.intersects(&room_in_view) {
                     continue;
                 }
-                if let Some(tile) = tiles_asset.get(&tile).and_then(|tileset| tileset.tile(room, foreground, tx as i32, ty as i32)) {
-                    assets::GAMEPLAY_ATLAS.draw_tile(tile, sx, sy, self.transform.map_scale, room_buffer.reborrow(), resized_sprite_cache);
+                if tile != '0' {
+                    if let Some(tile) = tiles_asset
+                        .get(&tile)
+                        .unwrap()
+                        .tile(room, foreground, tx as i32, ty as i32)
+                    {
+                        assets::GAMEPLAY_ATLAS.draw_tile(
+                            tile,
+                            sx,
+                            sy,
+                            self.transform.map_scale,
+                            room_buffer.reborrow(),
+                            resized_sprite_cache,
+                        );
+                    }
                 }
             }
         }
-        room_buffer.as_ref().draw_clipped(clip_box, rect_screen.x, rect_screen.y);
+        room_buffer
+            .as_ref()
+            .draw_clipped(clip_box, rect_screen.x, rect_screen.y);
     }
 
-    fn draw_entities_complex(&mut self, room_idx: usize, clip_box: &Rect, resized_sprite_cache: &mut HashMap<SpriteReference, ImageBuffer>) {
+    fn draw_entities_complex(
+        &mut self,
+        room_idx: usize,
+        clip_box: &Rect,
+        resized_sprite_cache: &mut HashMap<SpriteReference, ImageBuffer>,
+    ) {
         if self.map.as_ref().is_none() {
             return;
         }
@@ -353,30 +422,53 @@ impl EditorState {
 
         for entity in &room.entities {
             let cfg = assets::ENTITY_CONFIG.lock().unwrap();
-            let config = cfg.get(&entity.name).unwrap_or_else(|| cfg.get("default").unwrap());
+            let config = cfg
+                .get(&entity.name)
+                .unwrap_or_else(|| cfg.get("default").unwrap());
 
             for draw in &config.standard_draw.node_draw {
                 for node_idx in 0..entity.nodes.len() {
-                    if let Err(s) = self.draw_entity_directive(room, entity, draw, Some(node_idx), resized_sprite_cache) {
+                    if let Err(s) = self.draw_entity_directive(
+                        room,
+                        entity,
+                        draw,
+                        Some(node_idx),
+                        resized_sprite_cache,
+                    ) {
                         println!("{}", s);
                     }
                 }
             }
             for draw in &config.standard_draw.initial_draw {
-                if let Err(s) = self.draw_entity_directive(room, entity, draw, None, resized_sprite_cache) {
+                if let Err(s) =
+                    self.draw_entity_directive(room, entity, draw, None, resized_sprite_cache)
+                {
                     println!("{}", s);
                 }
             }
         }
     }
 
-    fn draw_entity_directive<'a>(&self, room: &CelesteMapLevel, entity: &'a CelesteMapEntity, draw: &DrawElement, node: Option<usize>, resized_sprite_cache: &mut HashMap<SpriteReference, ImageBuffer>) -> Result<(), String> {
+    fn draw_entity_directive(
+        &self,
+        room: &CelesteMapLevel,
+        entity: &CelesteMapEntity,
+        draw: &DrawElement,
+        node: Option<usize>,
+        resized_sprite_cache: &mut HashMap<SpriteReference, ImageBuffer>,
+    ) -> Result<(), String> {
         // TODO construct this one level up for reuse
-        let mut env: HashMap<&'a str, Const> = HashMap::new();
+        let mut env: HashMap<&str, Const> = HashMap::new();
         env.insert("x", Const::from_num(entity.x));
         env.insert("y", Const::from_num(entity.y));
-        env.insert("width", Const::from_num(if entity.width == 0 {8} else {entity.width}));
-        env.insert("height", Const::from_num(if entity.height == 0 {8} else {entity.height}));
+        env.insert(
+            "width",
+            Const::from_num(if entity.width == 0 { 8 } else { entity.width }),
+        );
+        env.insert(
+            "height",
+            Const::from_num(if entity.height == 0 { 8 } else { entity.height }),
+        );
         for (key, val) in &entity.attributes {
             env.insert(key.as_str(), Const::from_attr(val));
         }
@@ -414,19 +506,38 @@ impl EditorState {
         }
 
         match draw {
-            DrawElement::DrawRect { rect, color, border_color, border_thickness } => {
+            DrawElement::DrawRect {
+                rect,
+                color,
+                border_color,
+                border_thickness,
+            } => {
                 let const_rect = map_struct::Rect {
                     x: rect.topleft.x.evaluate(&env)?.as_number()?.to_int(),
                     y: rect.topleft.y.evaluate(&env)?.as_number()?.to_int(),
                     width: rect.size.x.evaluate(&env)?.as_number()?.to_int() as u32,
                     height: rect.size.y.evaluate(&env)?.as_number()?.to_int() as u32,
                 };
-                let screen_rect = self.transform.rect_map_to_screen(&room.rect_room_to_map(&const_rect));
+                let screen_rect = self
+                    .transform
+                    .rect_map_to_screen(&room.rect_room_to_map(&const_rect));
                 let (rgb, a) = color.evaluate(&env)?;
                 fltk::draw::set_draw_color(rgb);
-                fltk::draw::draw_rect_fill(screen_rect.x, screen_rect.y, screen_rect.width as i32, screen_rect.height as i32, rgb)
+                fltk::draw::draw_rect_fill(
+                    screen_rect.x,
+                    screen_rect.y,
+                    screen_rect.width as i32,
+                    screen_rect.height as i32,
+                    rgb,
+                )
             }
-            DrawElement::DrawLine { start, end, color, arrowhead, thickness } => {
+            DrawElement::DrawLine {
+                start,
+                end,
+                color,
+                arrowhead,
+                thickness,
+            } => {
                 let x1 = start.x.evaluate(&env)?.as_number()?.to_int();
                 let y1 = start.y.evaluate(&env)?.as_number()?.to_int();
                 let x2 = end.x.evaluate(&env)?.as_number()?.to_int();
@@ -440,11 +551,20 @@ impl EditorState {
 
                 // TODO render line manually so we get pixels at higher zoom levels
                 // http://members.chello.at/~easyfilter/bresenham.html
-                fltk::draw::set_line_style(fltk::draw::LineStyle::Solid, u32::max(1, thickness * self.transform.map_scale / 8) as i32);
+                fltk::draw::set_line_style(
+                    fltk::draw::LineStyle::Solid,
+                    u32::max(1, thickness * self.transform.map_scale / 8) as i32,
+                );
                 fltk::draw::set_draw_color(rgb);
                 fltk::draw::draw_line(x1, y1, x2, y2);
             }
-            DrawElement::DrawCurve { start, end, middle, color, thickness } => {
+            DrawElement::DrawCurve {
+                start,
+                end,
+                middle,
+                color,
+                thickness,
+            } => {
                 // TODO as above
                 let x1 = start.x.evaluate(&env)?.as_number()?.to_int();
                 let y1 = start.y.evaluate(&env)?.as_number()?.to_int();
@@ -468,7 +588,10 @@ impl EditorState {
                 let x3 = (x4 + xq * 2) / 3;
                 let y3 = (y4 + yq * 2) / 3;
 
-                fltk::draw::set_line_style(fltk::draw::LineStyle::Solid, u32::max(1, thickness * self.transform.map_scale / 8) as i32);
+                fltk::draw::set_line_style(
+                    fltk::draw::LineStyle::Solid,
+                    u32::max(1, thickness * self.transform.map_scale / 8) as i32,
+                );
                 fltk::draw::set_draw_color(rgb);
                 fltk::draw::begin_line();
                 fltk::draw::draw_curve(
@@ -479,9 +602,19 @@ impl EditorState {
                 );
                 fltk::draw::end_line();
             }
-            DrawElement::DrawPointImage { texture, point, justify_x, justify_y, scale, rot, color, } => {
+            DrawElement::DrawPointImage {
+                texture,
+                point,
+                justify_x,
+                justify_y,
+                scale,
+                rot,
+                color,
+            } => {
                 let texture = texture.evaluate(&env)?.as_string()?;
-                let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
+                let sprite = assets::GAMEPLAY_ATLAS
+                    .lookup(texture.as_str())
+                    .ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
                 let mut x = point.x.evaluate(&env)?.as_number()?.to_int();
                 let mut y = point.y.evaluate(&env)?.as_number()?.to_int();
                 let (dx, dy) = assets::GAMEPLAY_ATLAS.dimensions(sprite);
@@ -489,9 +622,18 @@ impl EditorState {
                 y -= (dy as f32 * justify_y) as i32;
                 let (x, y) = room.point_room_to_map(x, y);
                 let (x, y) = self.transform.point_map_to_screen(x, y);
-                assets::GAMEPLAY_ATLAS.resized_sprite(sprite, self.transform.map_scale, resized_sprite_cache).draw(x, y);
+                assets::GAMEPLAY_ATLAS
+                    .resized_sprite(sprite, self.transform.map_scale, resized_sprite_cache)
+                    .draw(x, y);
             }
-            DrawElement::DrawRectImage { texture, bounds, slice, scale, color, tiler } => {
+            DrawElement::DrawRectImage {
+                texture,
+                bounds,
+                slice,
+                scale,
+                color,
+                tiler,
+            } => {
                 let texture = texture.evaluate(&env)?.as_string()?;
                 let slice_x = slice.topleft.x.evaluate(&env)?.as_number()?.to_int();
                 let slice_y = slice.topleft.y.evaluate(&env)?.as_number()?.to_int();
@@ -503,9 +645,14 @@ impl EditorState {
                 let bounds_h = bounds.size.y.evaluate(&env)?.as_number()?.to_int();
 
                 let bounds = map_struct::Rect {
-                    x: bounds_x, y: bounds_y, width: bounds_w as u32, height: bounds_h as u32
+                    x: bounds_x,
+                    y: bounds_y,
+                    width: bounds_w as u32,
+                    height: bounds_h as u32,
                 };
-                let bounds = self.transform.rect_map_to_screen(&room.rect_room_to_map(&bounds));
+                let bounds = self
+                    .transform
+                    .rect_map_to_screen(&room.rect_room_to_map(&bounds));
 
                 let mut slice = map_struct::Rect {
                     x: slice_x * self.transform.map_scale as i32 / 8,
@@ -514,8 +661,14 @@ impl EditorState {
                     height: slice_h as u32 * self.transform.map_scale / 8,
                 };
 
-                let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
-                let image = assets::GAMEPLAY_ATLAS.resized_sprite(sprite, self.transform.map_scale, resized_sprite_cache);
+                let sprite = assets::GAMEPLAY_ATLAS
+                    .lookup(texture.as_str())
+                    .ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
+                let image = assets::GAMEPLAY_ATLAS.resized_sprite(
+                    sprite,
+                    self.transform.map_scale,
+                    resized_sprite_cache,
+                );
                 let image = if slice_w == 0 {
                     slice.width = image.width();
                     slice.height = image.height();
@@ -544,8 +697,13 @@ impl EditorState {
                         image.draw_tiled(&bounds, slice.width, slice.height);
                     }
                     AutotilerType::NineSlice => {
-                        if image.width() < 17 * self.transform.map_scale / 8 || image.height() < 17 * self.transform.map_scale / 8 {
-                            return Err(format!("Cannot draw {} as 9slice: must be at least 17x17", texture))
+                        if image.width() < 17 * self.transform.map_scale / 8
+                            || image.height() < 17 * self.transform.map_scale / 8
+                        {
+                            return Err(format!(
+                                "Cannot draw {} as 9slice: must be at least 17x17",
+                                texture
+                            ));
                         }
                         let t = self.transform.map_scale;
                         let ti = t as i32;
@@ -553,24 +711,150 @@ impl EditorState {
                         let w = bounds.width as i32;
                         let h = bounds.height as i32;
 
-                        let slice1 = image.subsection(&Rect { x: 0, y: 0, width: t, height: t });
-                        let slice2 = image.subsection(&Rect { x: ti, y: 0, width: image.width() - t2, height: t });
-                        let slice3 = image.subsection(&Rect { x: image.width() as i32 - ti, y: 0, width: t, height: t });
-                        let slice4 = image.subsection(&Rect { x: 0, y: ti, width: t, height: image.height() - t2 });
-                        let slice5 = image.subsection(&Rect { x: ti, y: ti, width: image.width() - t2, height: image.height() - t2 });
-                        let slice6 = image.subsection(&Rect { x: image.width() as i32 - ti, y: ti, width: t, height: image.height() - t2 });
-                        let slice7 = image.subsection(&Rect { x: 0, y: image.height() as i32 - ti, width: t, height: t });
-                        let slice8 = image.subsection(&Rect { x: ti, y: image.height() as i32 - ti, width: image.width() - t2, height: t });
-                        let slice9 = image.subsection(&Rect { x: image.width() as i32 - ti, y: image.height() as i32 - ti, width: t, height: t });
-                        slice1.draw_tiled( &Rect { x: bounds.x, y: bounds.y, width: t, height: t}, slice1.width(), slice1.height());
-                        slice2.draw_tiled( &Rect { x: bounds.x + ti, y: bounds.y, width: bounds.width - t2, height: t}, slice2.width(), slice2.height());
-                        slice3.draw_tiled( &Rect { x: bounds.x + w - ti, y: bounds.y, width: t, height: t}, slice3.width(), slice3.height());
-                        slice4.draw_tiled( &Rect { x: bounds.x, y: bounds.y + ti, width: t, height: bounds.height - t2}, slice4.width(), slice4.height());
-                        slice5.draw_tiled( &Rect { x: bounds.x + ti, y: bounds.y + ti, width: bounds.width - t2, height: bounds.height - t2}, slice5.width(), slice5.height());
-                        slice6.draw_tiled( &Rect { x: bounds.x + w - ti, y: bounds.y + ti, width: t, height: bounds.height - t2}, slice6.width(), slice6.height());
-                        slice7.draw_tiled( &Rect { x: bounds.x, y: bounds.y + h - ti, width: t, height: t}, slice7.width(), slice7.height());
-                        slice8.draw_tiled( &Rect { x: bounds.x + ti, y: bounds.y + h - ti, width: bounds.width - t2, height: t}, slice8.width(), slice8.height());
-                        slice9.draw_tiled( &Rect { x: bounds.x + w - ti, y: bounds.y + h - ti, width: t, height: t}, slice9.width(), slice9.height());
+                        let slice1 = image.subsection(&Rect {
+                            x: 0,
+                            y: 0,
+                            width: t,
+                            height: t,
+                        });
+                        let slice2 = image.subsection(&Rect {
+                            x: ti,
+                            y: 0,
+                            width: image.width() - t2,
+                            height: t,
+                        });
+                        let slice3 = image.subsection(&Rect {
+                            x: image.width() as i32 - ti,
+                            y: 0,
+                            width: t,
+                            height: t,
+                        });
+                        let slice4 = image.subsection(&Rect {
+                            x: 0,
+                            y: ti,
+                            width: t,
+                            height: image.height() - t2,
+                        });
+                        let slice5 = image.subsection(&Rect {
+                            x: ti,
+                            y: ti,
+                            width: image.width() - t2,
+                            height: image.height() - t2,
+                        });
+                        let slice6 = image.subsection(&Rect {
+                            x: image.width() as i32 - ti,
+                            y: ti,
+                            width: t,
+                            height: image.height() - t2,
+                        });
+                        let slice7 = image.subsection(&Rect {
+                            x: 0,
+                            y: image.height() as i32 - ti,
+                            width: t,
+                            height: t,
+                        });
+                        let slice8 = image.subsection(&Rect {
+                            x: ti,
+                            y: image.height() as i32 - ti,
+                            width: image.width() - t2,
+                            height: t,
+                        });
+                        let slice9 = image.subsection(&Rect {
+                            x: image.width() as i32 - ti,
+                            y: image.height() as i32 - ti,
+                            width: t,
+                            height: t,
+                        });
+                        slice1.draw_tiled(
+                            &Rect {
+                                x: bounds.x,
+                                y: bounds.y,
+                                width: t,
+                                height: t,
+                            },
+                            slice1.width(),
+                            slice1.height(),
+                        );
+                        slice2.draw_tiled(
+                            &Rect {
+                                x: bounds.x + ti,
+                                y: bounds.y,
+                                width: bounds.width - t2,
+                                height: t,
+                            },
+                            slice2.width(),
+                            slice2.height(),
+                        );
+                        slice3.draw_tiled(
+                            &Rect {
+                                x: bounds.x + w - ti,
+                                y: bounds.y,
+                                width: t,
+                                height: t,
+                            },
+                            slice3.width(),
+                            slice3.height(),
+                        );
+                        slice4.draw_tiled(
+                            &Rect {
+                                x: bounds.x,
+                                y: bounds.y + ti,
+                                width: t,
+                                height: bounds.height - t2,
+                            },
+                            slice4.width(),
+                            slice4.height(),
+                        );
+                        slice5.draw_tiled(
+                            &Rect {
+                                x: bounds.x + ti,
+                                y: bounds.y + ti,
+                                width: bounds.width - t2,
+                                height: bounds.height - t2,
+                            },
+                            slice5.width(),
+                            slice5.height(),
+                        );
+                        slice6.draw_tiled(
+                            &Rect {
+                                x: bounds.x + w - ti,
+                                y: bounds.y + ti,
+                                width: t,
+                                height: bounds.height - t2,
+                            },
+                            slice6.width(),
+                            slice6.height(),
+                        );
+                        slice7.draw_tiled(
+                            &Rect {
+                                x: bounds.x,
+                                y: bounds.y + h - ti,
+                                width: t,
+                                height: t,
+                            },
+                            slice7.width(),
+                            slice7.height(),
+                        );
+                        slice8.draw_tiled(
+                            &Rect {
+                                x: bounds.x + ti,
+                                y: bounds.y + h - ti,
+                                width: bounds.width - t2,
+                                height: t,
+                            },
+                            slice8.width(),
+                            slice8.height(),
+                        );
+                        slice9.draw_tiled(
+                            &Rect {
+                                x: bounds.x + w - ti,
+                                y: bounds.y + h - ti,
+                                width: t,
+                                height: t,
+                            },
+                            slice9.width(),
+                            slice9.height(),
+                        );
                     }
                     AutotilerType::Fg => {}
                     AutotilerType::Bg => {}
@@ -585,10 +869,10 @@ impl EditorState {
 
 impl map_struct::Rect {
     pub fn intersects(&self, other: &map_struct::Rect) -> bool {
-        (   (self.x >= other.x && self.x < other.x + other.width as i32) ||
-            (other.x >= self.x && other.x < self.x + self.width as i32)) && (
-            (self.y >= other.y && self.y < other.y + other.height as i32) ||
-            (other.y >= self.y && other.y < self.y + self.height as i32))
+        ((self.x >= other.x && self.x < other.x + other.width as i32)
+            || (other.x >= self.x && other.x < self.x + self.width as i32))
+            && ((self.y >= other.y && self.y < other.y + other.height as i32)
+                || (other.y >= self.y && other.y < self.y + self.height as i32))
     }
 
     pub fn from_widget(wid: &widget::Widget) -> map_struct::Rect {
@@ -602,7 +886,8 @@ impl map_struct::Rect {
 
     // tiles the region of self with smaller rectangles which are at most width x height
     pub fn tile<F>(&self, width: u32, height: u32, mut func: F)
-        where F: FnMut(map_struct::Rect) -> ()
+    where
+        F: FnMut(map_struct::Rect) -> (),
     {
         if width == 0 || height == 0 || self.width == 0 || self.height == 0 {
             return;
@@ -615,7 +900,8 @@ impl map_struct::Rect {
                 func(map_struct::Rect {
                     x: self.x + (x * width) as i32,
                     y: self.y + (y * height) as i32,
-                    width, height
+                    width,
+                    height,
                 });
             }
         }
@@ -625,7 +911,7 @@ impl map_struct::Rect {
                     x: self.x + (x * width) as i32,
                     y: self.y + (whole_count_y * height) as i32,
                     width,
-                    height: self.height - whole_count_y * height
+                    height: self.height - whole_count_y * height,
                 });
             }
         }
@@ -635,7 +921,7 @@ impl map_struct::Rect {
                     x: self.x + (whole_count_x * width) as i32,
                     y: self.y + (y * height) as i32,
                     width: self.width - whole_count_x * width,
-                    height
+                    height,
                 });
             }
         }
@@ -644,7 +930,7 @@ impl map_struct::Rect {
                 x: self.x + (whole_count_x * width) as i32,
                 y: self.y + (whole_count_y * height) as i32,
                 width: self.width - whole_count_x * width,
-                height: self.height * whole_count_y * height
+                height: self.height * whole_count_y * height,
             });
         }
     }

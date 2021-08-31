@@ -1,14 +1,14 @@
 use crate::autotiler::TileReference;
+use crate::image_view::{ImageBuffer, ImageView, ImageViewMut};
+use crate::map_struct::Rect;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::io::Read;
 use std::path;
-use crate::image_view::{ImageView, ImageBuffer, ImageViewMut};
-use crate::map_struct::Rect;
 
-#[derive(Copy, Clone, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct SpriteReference {
     atlas: u32,
     idx: u32,
@@ -89,8 +89,7 @@ impl Atlas {
 
     pub fn lookup(&self, path: &str) -> Option<SpriteReference> {
         let path = path.replace("\\", "/");
-        self.sprites_map.get(&path)
-            .map(|v| SpriteReference{
+        self.sprites_map.get(&path).map(|v| SpriteReference {
             atlas: self.identifier,
             idx: *v as u32,
         })
@@ -107,7 +106,12 @@ impl Atlas {
         image_blob.subsection(&sprite.bounding_box)
     }
 
-    pub(crate) fn resized_sprite<'a>(&'a self, sprite_ref: SpriteReference, map_scale: u32, resized_sprite_cache: &'a mut HashMap<SpriteReference, ImageBuffer>) -> ImageView<'a> {
+    pub(crate) fn resized_sprite<'a>(
+        &'a self,
+        sprite_ref: SpriteReference,
+        map_scale: u32,
+        resized_sprite_cache: &'a mut HashMap<SpriteReference, ImageBuffer>,
+    ) -> ImageView<'a> {
         assert_eq!(self.identifier, sprite_ref.atlas);
         let resized = resized_sprite_cache.entry(sprite_ref).or_insert_with(|| {
             let sprite = &self.sprites[sprite_ref.idx as usize];
@@ -120,7 +124,12 @@ impl Atlas {
         resized.as_ref()
     }
 
-    pub(crate) fn resized_tile<'a>(&'a self, tile_ref: TileReference, map_scale: u32, resized_sprite_cache: &'a mut HashMap<SpriteReference, ImageBuffer>) -> ImageView<'a> {
+    pub(crate) fn resized_tile<'a>(
+        &'a self,
+        tile_ref: TileReference,
+        map_scale: u32,
+        resized_sprite_cache: &'a mut HashMap<SpriteReference, ImageBuffer>,
+    ) -> ImageView<'a> {
         let resized_sprite = self.resized_sprite(tile_ref.texture, map_scale, resized_sprite_cache);
         resized_sprite.subsection(&Rect {
             x: (tile_ref.tile.x * map_scale) as i32,
@@ -130,12 +139,28 @@ impl Atlas {
         })
     }
 
-    pub fn draw(&self, sprite_ref: SpriteReference, x: i32, y: i32, map_scale: u32, destination: ImageViewMut, resized_sprite_cache: &mut HashMap<SpriteReference, ImageBuffer>) {
+    pub fn draw(
+        &self,
+        sprite_ref: SpriteReference,
+        x: i32,
+        y: i32,
+        map_scale: u32,
+        destination: ImageViewMut,
+        resized_sprite_cache: &mut HashMap<SpriteReference, ImageBuffer>,
+    ) {
         let resized = self.resized_sprite(sprite_ref, map_scale, resized_sprite_cache);
         resized.draw_to(destination, x as u32, y as u32);
     }
 
-    pub fn draw_tile(&self, tile_ref: TileReference, x: u32, y: u32, map_scale: u32, destination: ImageViewMut, resized_sprite_cache: &mut HashMap<SpriteReference, ImageBuffer>) {
+    pub fn draw_tile(
+        &self,
+        tile_ref: TileReference,
+        x: u32,
+        y: u32,
+        map_scale: u32,
+        destination: ImageViewMut,
+        resized_sprite_cache: &mut HashMap<SpriteReference, ImageBuffer>,
+    ) {
         let resized = self.resized_tile(tile_ref, map_scale, resized_sprite_cache);
         resized.draw_to(destination, x as u32, y as u32);
     }
@@ -146,9 +171,7 @@ fn read_string(reader: &mut io::BufReader<fs::File>) -> Result<String, io::Error
     let mut buf = vec![0u8; strlen];
     reader.read_exact(buf.as_mut_slice())?;
 
-    String::from_utf8(buf).map_err(|_| {
-        io::Error::new(io::ErrorKind::InvalidData, "Invalid utf8")
-    })
+    String::from_utf8(buf).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Invalid utf8"))
 }
 
 pub fn load_data_file(data_file: path::PathBuf) -> Result<ImageBuffer, io::Error> {
@@ -168,15 +191,11 @@ pub fn load_data_file(data_file: path::PathBuf) -> Result<ImageBuffer, io::Error
         let current_idx = current_px * 4;
         let repeat = reader.read_u8()?;
         let repeat = if repeat > 0 { repeat - 1 } else { 0 } as usize; // this is off-by-one from the julia code because it's more ergonomic
-        let alpha = if has_alpha {
-            reader.read_u8()?
-        } else {
-            255
-        };
+        let alpha = if has_alpha { reader.read_u8()? } else { 255 };
         if alpha > 0 {
-            reader.read_exact(&mut buf[current_idx..current_idx+3])?;
-            buf[current_idx..current_idx+3].reverse();
-            buf[current_idx+3] = alpha;
+            reader.read_exact(&mut buf[current_idx..current_idx + 3])?;
+            buf[current_idx..current_idx + 3].reverse();
+            buf[current_idx + 3] = alpha;
         }
         // no else case needed: they're already zeros
 
