@@ -71,7 +71,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let _ed = editor_widget::EditorWidget::new(cx)
                     .width(Stretch(1.0))
                     .height(Stretch(1.0));
-                dbg!("editor is", _ed.entity);
+                //dbg!("editor is", _ed.entity);
             });
         });
 

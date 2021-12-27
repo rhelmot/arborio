@@ -51,7 +51,7 @@ impl AppState {
                 self.transform = self.transform.pre_translate(*delta);
             }
             AppEvent::Zoom { delta, focus } => {
-                // TODO scale stepping
+                // TODO scale stepping, high and low limits
                 self.transform = self.transform
                     .pre_translate(focus.to_vector())
                     .pre_scale(*delta, *delta)
