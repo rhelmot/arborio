@@ -9,7 +9,6 @@ edition = "2018"
 [dependencies]
 array-init = "^2.0"
 celeste = "^2"
-fltk = "^1.0"
 rand = "^0.8"
 byteorder = "^1.4"
 serde = { version = "^1.0", features = ["derive" ] }
@@ -19,3 +18,9 @@ lazy_static = "^1.4"
 serde_yaml = "^0.8"
 nom = "^6.2"
 include_dir = "^0.6"
+vizia = { path = "../../rust/VIZIA" }
+femtovg = "^0.2"  # not really a dependency, since vizia depends on it
+imgref = "^1.9"  # not really a dependency either
+rgb = "^0.8"  # not really a dependency either
+dialog = "^0.3"
+euclid = "^0.22"

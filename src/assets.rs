@@ -1,9 +1,9 @@
-use fltk::dialog;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use dialog::DialogBox;
 
 use crate::atlas_img;
 use crate::autotiler;
@@ -11,7 +11,6 @@ use crate::atlas_img::SpriteReference;
 use crate::entity_config::EntityConfig;
 
 use crate::auto_saver::AutoSaver;
-use crate::image_view::ImageBuffer;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -28,8 +27,13 @@ lazy_static! {
         });
         if cfg.celeste_root.as_os_str().is_empty() {
             let celeste_path = PathBuf::from(
-                dialog::file_chooser("Please choose Celeste.exe", "Celeste.exe", ".", false)
-                .unwrap_or_else(|| panic!("Can't run arborio without a Celeste.exe!")));
+                dialog::FileSelection::new("Celeste Installation")
+                    .title("Please choose Celeste.exe")
+                    .path(".")
+                    .mode(dialog::FileSelectionMode::Open)
+                    .show()
+                    .unwrap_or_else(|_| panic!("Can't run arborio without a Celeste.exe!"))
+                    .unwrap_or_else(|| panic!("Can't run arborio without a Celeste.exe!")));
             cfg.borrow_mut().celeste_root = celeste_path.parent().unwrap().to_path_buf();
         };
         Mutex::new(cfg)
@@ -52,8 +56,6 @@ lazy_static! {
 
         bg_tiles.unwrap_or_else(|e| panic!("Failed to load BackgroundTiles.xml: {}", e))
     };
-
-    pub static ref SPRITE_CACHE: Mutex<Vec<HashMap<SpriteReference, ImageBuffer>>> = Mutex::new(Vec::new());
 
     pub static ref ENTITY_CONFIG: Mutex<HashMap<String, EntityConfig>> = {
         Mutex::new(EMBEDDED_CONFIG.get_dir("entities").unwrap().files().iter()

@@ -3,19 +3,14 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
+use euclid::{Point2D, Size2D};
 
-#[derive(Clone, Debug)]
-pub struct Rect {
-    pub x: i32,
-    pub y: i32,
-    pub width: u32,
-    pub height: u32,
-}
+use crate::units::*;
 
 #[derive(Debug)]
 pub struct CelesteMap {
     pub name: String,
-    pub filler: Vec<Rect>,
+    pub filler: Vec<MapRectStrict>,
     pub foregrounds: Vec<CelesteMapStyleground>,
     pub backgrounds: Vec<CelesteMapStyleground>,
     pub levels: Vec<CelesteMapLevel>,
@@ -24,7 +19,7 @@ pub struct CelesteMap {
 #[derive(Debug)]
 pub struct CelesteMapLevel {
     pub name: String,
-    pub bounds: Rect,
+    pub bounds: MapRectStrict,
     pub color: i32,
     pub camera_offset_x: f32,
     pub camera_offset_y: f32,
@@ -134,7 +129,7 @@ impl CelesteMapError {
 
 impl CelesteMapLevel {
     pub fn tile(&self, x: i32, y: i32, foreground: bool) -> Option<char> {
-        let w = self.bounds.width as i32 / 8;
+        let w = self.bounds.width() as i32 / 8;
         if x < 0 || x >= w {
             return None;
         }
@@ -145,6 +140,10 @@ impl CelesteMapLevel {
         };
 
         tiles.get((x + y * w) as usize).copied()
+    }
+
+    pub fn transform(&self) -> RoomToMap {
+        RoomToMap::new(self.bounds.origin.x, self.bounds.origin.y)
     }
 }
 
@@ -188,15 +187,16 @@ fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
 
     let x = get_attr(elem, "x")?;
     let y = get_attr(elem, "y")?;
-    let width = get_attr::<i32>(elem, "width")? as u32;
-    let height = get_attr::<i32>(elem, "height")? as u32;
+    let width = get_attr(elem, "width")?;
+    let height = get_attr(elem, "height")?;
     let object_tiles = get_optional_child(elem, "fgtiles");
     let fg_decals = get_optional_child(elem, "fgdecals");
     let bg_decals = get_optional_child(elem, "bgdecals");
 
     Ok(CelesteMapLevel {
-        bounds: Rect {
-            x, y, width, height,
+        bounds: MapRectStrict {
+            origin: Point2D::new(x, y),
+            size: Size2D::new(width, height),
         },
         name: get_attr(elem, "name")?,
         color: get_optional_attr(elem, "c")?.unwrap_or_default(),
@@ -243,15 +243,13 @@ fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
     })
 }
 
-fn parse_fgbg_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<char>, CelesteMapError> {
+fn parse_fgbg_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<char>, CelesteMapError> {
     let offset_x: i32 = get_optional_attr(elem, "offsetX")?.unwrap_or_default();
     let offset_y: i32 = get_optional_attr(elem, "offsetY")?.unwrap_or_default();
     let exc = Err(CelesteMapError { kind: CelesteMapErrorType::OutOfRange, description: format!("{} contains out-of-range data", elem.name)});
     if offset_x < 0 || offset_y < 0 {
         return exc;
     }
-    let offset_x = offset_x as u32;
-    let offset_y = offset_y as u32;
 
     let mut data: Vec<char> = vec!['0'; (width * height) as usize];
     let mut x = offset_x;
@@ -276,15 +274,13 @@ fn parse_fgbg_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<char>, 
     Ok(data)
 }
 
-fn parse_object_tiles(elem: &BinEl, width: u32, height: u32) -> Result<Vec<i32>, CelesteMapError> {
+fn parse_object_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<i32>, CelesteMapError> {
     let offset_x: i32 = get_optional_attr(elem, "offsetX")?.unwrap_or_default();
     let offset_y: i32 = get_optional_attr(elem, "offsetY")?.unwrap_or_default();
     let exc = Err(CelesteMapError { kind: CelesteMapErrorType::OutOfRange, description: format!("{} contains out-of-range data", elem.name)});
     if offset_x < 0 || offset_y < 0 {
         return exc;
     }
-    let offset_x = offset_x as u32;
-    let offset_y = offset_y as u32;
 
     let mut data: Vec<i32> = vec![-1; (width * height) as usize];
     let mut y = offset_y;
@@ -347,7 +343,7 @@ fn parse_decal(elem: &BinEl) -> Result<CelesteMapDecal, CelesteMapError> {
     })
 }
 
-fn parse_filler_rect(elem: & BinEl) -> Result<Rect, CelesteMapError> {
+fn parse_filler_rect(elem: & BinEl) -> Result<MapRectStrict, CelesteMapError> {
     expect_elem!(elem, "rect");
 
     let x: i32 = get_attr(elem, "x")?;
@@ -355,7 +351,7 @@ fn parse_filler_rect(elem: & BinEl) -> Result<Rect, CelesteMapError> {
     let w: i32 = get_attr(elem, "w")?;
     let h: i32 = get_attr(elem, "h")?;
 
-    Ok(Rect { x: x * 8, y: y * 8, width: w as u32 * 8, height: h as u32 * 8 })
+    Ok(MapRectStrict { origin: Point2D::new(x * 8, y * 8), size: Size2D::new(w * 8, h * 8) })
 }
 
 fn parse_styleground(elem :&BinEl) -> Result<CelesteMapStyleground, CelesteMapError> {

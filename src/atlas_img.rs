@@ -1,12 +1,14 @@
-use crate::autotiler::TileReference;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::io::Read;
 use std::path;
-use crate::image_view::{ImageView, ImageBuffer, ImageViewMut};
-use crate::map_struct::Rect;
+use femtovg::{ImageId, ImageSource, Paint};
+use imgref::Img;
+use rgb::RGBA8;
+
+use crate::autotiler::TileReference;
 
 #[derive(Copy, Clone, Hash, Eq, PartialEq)]
 pub struct SpriteReference {
@@ -14,20 +16,41 @@ pub struct SpriteReference {
     idx: u32,
 }
 
+enum BlobData {
+    Waiting(Img<Vec<RGBA8>>),
+    Loaded(ImageId),
+}
+
+impl BlobData {
+    fn image_id(&mut self, canvas: &mut vizia::Canvas) -> ImageId {
+        match self {
+            BlobData::Waiting(buf) => {
+                let res = canvas.create_image(
+                    buf.as_ref(),
+                    femtovg::ImageFlags::NEAREST)
+                    .unwrap();
+                *self = BlobData::Loaded(res);
+                res
+            }
+            BlobData::Loaded(res) => *res
+        }
+    }
+}
+
 pub struct Atlas {
     identifier: u32,
-    pub(crate) blobs: Vec<ImageBuffer>,
+    blobs: Vec<BlobData>,
     sprites_map: HashMap<String, usize>,
     sprites: Vec<AtlasSprite>,
 }
 
 pub struct AtlasSprite {
     blob_idx: usize,
-    bounding_box: Rect,
-    offset_x: i32,
-    offset_y: i32,
-    real_width: u32,
-    real_height: u32,
+    bounding_box: euclid::Rect<u16, euclid::UnknownUnit>,
+    offset_x: i16,
+    offset_y: i16,
+    real_width: u16,
+    real_height: u16,
 }
 
 impl Atlas {
@@ -52,7 +75,7 @@ impl Atlas {
             let data_file = read_string(&mut reader)? + ".data";
             let data_path = meta_file.with_file_name(&data_file);
             let blob_idx = result.blobs.len();
-            result.blobs.push(load_data_file(data_path)?);
+            result.blobs.push(BlobData::Waiting(load_data_file(data_path)?));
 
             let sprites = reader.read_u16::<LittleEndian>()?;
             for _ in 0..sprites {
@@ -70,16 +93,12 @@ impl Atlas {
                 result.sprites_map.insert(sprite_path, sprite_idx);
                 result.sprites.push(AtlasSprite {
                     blob_idx,
-                    bounding_box: Rect {
-                        x: x as i32,
-                        y: y as i32,
-                        width: width as u32,
-                        height: height as u32,
+                    bounding_box: euclid::Rect {
+                        origin: euclid::Point2D::new(x, y),
+                        size: euclid::Size2D::new(width, height),
                     },
-                    offset_x: offset_x as i32,
-                    offset_y: offset_y as i32,
-                    real_width: real_width as u32,
-                    real_height: real_height as u32,
+                    offset_x, offset_y,
+                    real_width, real_height,
                 });
             }
         }
@@ -96,48 +115,34 @@ impl Atlas {
         })
     }
 
-    pub fn dimensions(&self, sprite_ref: SpriteReference) -> (u32, u32) {
+    pub fn sprite_dimensions(&self, sprite_ref: SpriteReference) -> euclid::Size2D<u16, euclid::UnknownUnit> {
         let sprite = &self.sprites[sprite_ref.idx as usize];
-        (sprite.bounding_box.width, sprite.bounding_box.height)
+        sprite.bounding_box.size
     }
 
-    pub(crate) fn sprite(&self, sprite_ref: SpriteReference) -> ImageView {
+    pub fn sprite_paint(&mut self, sprite_ref: SpriteReference, canvas: &mut vizia::Canvas) -> Paint {
         let sprite = &self.sprites[sprite_ref.idx as usize];
-        let image_blob = &self.blobs[sprite.blob_idx];
-        image_blob.subsection(&sprite.bounding_box)
+        let image_blob = &mut self.blobs[sprite.blob_idx];
+        Paint::image(
+            image_blob.image_id(canvas),
+            sprite.bounding_box.origin.x as f32,
+            sprite.bounding_box.origin.y as f32,
+            sprite.bounding_box.width() as f32,
+            sprite.bounding_box.height() as f32,
+            0.0, 0.0
+        )
     }
 
-    pub(crate) fn resized_sprite<'a>(&'a self, sprite_ref: SpriteReference, map_scale: u32, resized_sprite_cache: &'a mut HashMap<SpriteReference, ImageBuffer>) -> ImageView<'a> {
-        assert_eq!(self.identifier, sprite_ref.atlas);
-        let resized = resized_sprite_cache.entry(sprite_ref).or_insert_with(|| {
-            let sprite = &self.sprites[sprite_ref.idx as usize];
-            let image_blob = &self.blobs[sprite.blob_idx];
-            let clipped_source = image_blob.subsection(&sprite.bounding_box);
-            let resized_width = sprite.bounding_box.width * map_scale / 8;
-            let resized_height = sprite.bounding_box.height * map_scale / 8;
-            clipped_source.resize(map_scale, 8)
-        });
-        resized.as_ref()
-    }
-
-    pub(crate) fn resized_tile<'a>(&'a self, tile_ref: TileReference, map_scale: u32, resized_sprite_cache: &'a mut HashMap<SpriteReference, ImageBuffer>) -> ImageView<'a> {
-        let resized_sprite = self.resized_sprite(tile_ref.texture, map_scale, resized_sprite_cache);
-        resized_sprite.subsection(&Rect {
-            x: (tile_ref.tile.x * map_scale) as i32,
-            y: (tile_ref.tile.y * map_scale) as i32,
-            width: map_scale,
-            height: map_scale,
-        })
-    }
-
-    pub fn draw(&self, sprite_ref: SpriteReference, x: i32, y: i32, map_scale: u32, destination: ImageViewMut, resized_sprite_cache: &mut HashMap<SpriteReference, ImageBuffer>) {
-        let resized = self.resized_sprite(sprite_ref, map_scale, resized_sprite_cache);
-        resized.draw_to(destination, x as u32, y as u32);
-    }
-
-    pub fn draw_tile(&self, tile_ref: TileReference, x: u32, y: u32, map_scale: u32, destination: ImageViewMut, resized_sprite_cache: &mut HashMap<SpriteReference, ImageBuffer>) {
-        let resized = self.resized_tile(tile_ref, map_scale, resized_sprite_cache);
-        resized.draw_to(destination, x as u32, y as u32);
+    pub fn tile_paint(&mut self, tile_ref: TileReference, canvas: &mut vizia::Canvas) -> Paint {
+        let sprite = &self.sprites[tile_ref.texture.idx as usize];
+        let image_blob = &mut self.blobs[sprite.blob_idx];
+        Paint::image(
+            image_blob.image_id(canvas),
+            (sprite.bounding_box.origin.x as u32 + tile_ref.tile.x * 8) as f32,
+            (sprite.bounding_box.origin.y as u32 + tile_ref.tile.y * 8) as f32,
+            8.0, 8.0,
+            0.0, 0.0
+        )
     }
 }
 
@@ -151,7 +156,7 @@ fn read_string(reader: &mut io::BufReader<fs::File>) -> Result<String, io::Error
     })
 }
 
-pub fn load_data_file(data_file: path::PathBuf) -> Result<ImageBuffer, io::Error> {
+pub fn load_data_file(data_file: path::PathBuf) -> Result<Img<Vec<RGBA8>>, io::Error> {
     let fp = fs::File::open(data_file)?;
 
     let mut reader = io::BufReader::new(fp);
@@ -162,10 +167,9 @@ pub fn load_data_file(data_file: path::PathBuf) -> Result<ImageBuffer, io::Error
 
     let total_px = (width * height) as usize;
     let mut current_px: usize = 0;
-    let mut buf: Vec<u8> = vec![0u8; total_px * 4];
+    let mut buf: Vec<RGBA8> = vec![RGBA8::new(0, 0, 0, 0); total_px];
 
     while current_px < total_px {
-        let current_idx = current_px * 4;
         let repeat = reader.read_u8()?;
         let repeat = if repeat > 0 { repeat - 1 } else { 0 } as usize; // this is off-by-one from the julia code because it's more ergonomic
         let alpha = if has_alpha {
@@ -174,23 +178,20 @@ pub fn load_data_file(data_file: path::PathBuf) -> Result<ImageBuffer, io::Error
             255
         };
         if alpha > 0 {
-            reader.read_exact(&mut buf[current_idx..current_idx+3])?;
-            buf[current_idx..current_idx+3].reverse();
-            buf[current_idx+3] = alpha;
+            let mut px = [0u8; 3];
+            reader.read_exact(&mut px)?;
+            buf[current_px] = RGBA8::new(px[2], px[1], px[0], alpha);
         }
         // no else case needed: they're already zeros
 
         if repeat > 0 {
-            let (first, second) = buf.split_at_mut(current_idx + 4);
-            let src = &mut first[current_idx..];
-            let dest = &mut second[..repeat * 4];
-            for chunk in dest.chunks_mut(4) {
-                chunk.clone_from_slice(&src);
+            let src = buf[current_px].clone();
+            for dst_idx in 1..=repeat {
+                buf[current_px + dst_idx] = src.clone();
             }
         }
 
         current_px += repeat + 1;
     }
-
-    Ok(ImageBuffer::from_vec(buf, width * 4))
+    Ok(Img::new(buf, width as usize, height as usize))
 }

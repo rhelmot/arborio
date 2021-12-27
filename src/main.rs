@@ -6,97 +6,76 @@ mod atlas_img;
 mod autotiler;
 mod assets;
 mod auto_saver;
-mod image_view;
 mod entity_config;
 mod entity_expression;
+mod app_state;
+mod tools;
+mod units;
 
 use std::fs;
+use std::cell::RefCell;
 use std::error::Error;
-use fltk::{prelude::*,*};
+use vizia::*;
+use dialog::{DialogBox, FileSelectionMode};
+use crate::app_state::AppEvent;
 
 fn main() -> Result<(), Box<dyn Error>> {
     assets::load();
 
-    let app = app::App::default();
-    app::set_visual(enums::Mode::Rgb).unwrap();
+    let mut app = Application::new(
+        WindowDescription::new()
+            .with_title("Arborio"),
+        |cx| {
+            app_state::AppState::new().build(cx);
 
-    let mut win = build_main_window();
-    win.show();
+            VStack::new(cx, |cx| {
+                HStack::new(cx, |cx| {
+                    Button::new(
+                        cx,
+                        |cx| {
+                            let path = match dialog::FileSelection::new("Select a map")
+                                .title("Select a map")
+                                .mode(FileSelectionMode::Open)
+                                .path(assets::CONFIG.lock().unwrap().celeste_root.to_path_buf())
+                                .show() {
+                                Ok(Some(path)) => path,
+                                _ => return
+                            };
+                            let file = match std::fs::read(path) {
+                                Ok(data) => data,
+                                Err(e) => {
+                                    dialog::Message::new(format!("Could not read file: {}", e)).show();
+                                    return
+                                }
+                            };
+                            let (_, binfile) = match celeste::binel::parser::take_file(file.as_slice()) {
+                                Ok(binel) => binel,
+                                _ => {
+                                    dialog::Message::new("Not a Celeste map").show();
+                                    return
+                                }
+                            };
+                            let map = match map_struct::from_binfile(binfile) {
+                                Ok(map) => map,
+                                Err(e) => {
+                                    dialog::Message::new(format!("Data validation error: {}", e));
+                                    return
+                                }
+                            };
+                            cx.emit(AppEvent::Load { map: RefCell::new(Some(map)) });
+                        },
+                        |cx| Label::new(cx, "Load Map")
+                    );
+                })
+                    .height(Pixels(30.0));;
+                let _ed = editor_widget::EditorWidget::new(cx)
+                    .width(Stretch(1.0))
+                    .height(Stretch(1.0));
+                dbg!("editor is", _ed.entity);
+            });
+        });
 
-    app.run().unwrap();
+    app.run();
     Ok(())
 }
 
-fn build_main_window() -> window::DoubleWindow {
-    let width = 1000;
-    let height = 600;
-    let button_size = 25;
-
-    let mut win = window::DoubleWindow::default()
-        .with_size(width, height)
-        .with_label("Arborio")
-        .center_screen();
-
-    let mut vlayout = group::Pack::new(0, 0, width, height, "");
-    let mut toolbar = group::Pack::new(0, 0, width, button_size, "");
-
-    let mut btn1 = button::Button::new(0, 0, button_size, button_size, "");
-    btn1.set_image(Some(image::PngImage::from_data(include_bytes!("../img/strawberry.png")).unwrap()));
-    let mut btn2 = button::Button::new(0, 0, button_size, button_size, "");
-    btn2.set_image(Some(image::PngImage::from_data(include_bytes!("../img/grass.png")).unwrap()));
-
-    toolbar.end();
-    toolbar.set_type(group::PackType::Horizontal);
-    toolbar.make_resizable(false);
-
-    let mut editor = editor_widget::EditorWidget::new(0, 0, width, height - button_size);
-    vlayout.resizable(&editor.widget);
-
-    vlayout.end();
-    vlayout.set_type(group::PackType::Vertical);
-
-    win.end();
-
-    btn1.set_callback(move |_| {
-        // TODO store last used dir in config
-        let path = match dialog::file_chooser("Choose a celeste map", "*.bin", assets::CONFIG.lock().unwrap().celeste_root.to_str().unwrap(), false) {
-            Some(v) => v,
-            None => {return;}
-        };
-        let buf = match fs::read(path) {
-            Ok(v) => v,
-            Err(e) => {
-                dialog::alert(center().0, center().1, format!("Could not load file: {}", e).as_str());
-                return;
-            }
-        };
-        let parsed = match celeste::binel::parser::take_file(buf.as_slice()) {
-            Ok((_, v)) => v,
-            Err(e) => {
-                dialog::alert(center().0, center().1, format!("File is not a celeste map: {}", e).as_str());
-                return;
-            },
-        };
-        let map = match map_struct::from_binfile(parsed) {
-            Ok(v) => v,
-            Err(e) => {
-                dialog::alert(center().0, center().1, format!("Data validation error: {}", e).as_str());
-                return;
-            },
-        };
-
-        editor.set_map(map);
-        editor.reset_view();
-    });
-
-    win.make_resizable(true);
-    win
-}
-
-#[inline(always)]
-pub fn center() -> (i32, i32) {
-    (
-        (app::screen_size().0 / 2.0) as i32,
-        (app::screen_size().1 / 2.0) as i32,
-    )
-}
