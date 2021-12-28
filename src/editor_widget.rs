@@ -5,7 +5,7 @@ use std::time;
 use std::env;
 use lazy_static::lazy_static;
 use vizia::*;
-use femtovg::{Color, Paint, Path};
+use femtovg::{Color, ImageFlags, Paint, Path, PixelFormat, RenderTarget};
 
 use crate::map_struct::{CelesteMapEntity, CelesteMapLevel};
 use crate::entity_config::{DrawElement, AutotilerType};
@@ -15,6 +15,7 @@ use crate::atlas_img::SpriteReference;
 use crate::assets;
 use crate::app_state::AppState;
 use crate::units::*;
+use crate::autotiler;
 
 lazy_static! {
     static ref PERF_MONITOR: bool = {
@@ -54,9 +55,15 @@ impl View for EditorWidget {
         let bounds = cx.cache.get_bounds(entity);
         canvas.clear_rect(bounds.x as u32, bounds.y as u32, bounds.w as u32, bounds.h as u32, BACKDROP_COLOR);
         let t = &state.transform;
-        canvas.set_transform(t.m11, t.m12, t.m21, t.m22, t.m31, t.m32);
+        canvas.set_transform(t.m11, t.m12, t.m21, t.m22, t.m31.round(), t.m32.round());
 
         if let Some(map) = &state.map {
+            if *PERF_MONITOR {
+                let now = time::Instant::now();
+                println!("Drew {}ms ago", (now - *state.last_draw.borrow()).as_millis());
+                *state.last_draw.borrow_mut() = now;
+            }
+
             let mut path = Path::new();
             for filler in &map.filler {
                 path.rect(
@@ -67,25 +74,84 @@ impl View for EditorWidget {
                 );
             }
             canvas.fill_path(&mut path, Paint::color(FILLER_COLOR));
+
+            for room in &map.levels {
+                canvas.save();
+                canvas.translate(room.bounds.min_x() as f32, room.bounds.min_y() as f32);
+                let mut cache = room.cache.borrow_mut();
+                let target = if let Some(target) = cache.render_cache {
+                    target
+                } else {
+                    canvas.create_image_empty(room.bounds.width() as usize, room.bounds.height() as usize, PixelFormat::Rgba8, ImageFlags::NEAREST | ImageFlags::FLIP_Y)
+                        .expect("Failed to allocate ")
+                };
+                cache.render_cache = Some(target);
+
+                if !cache.render_cache_valid {
+                    canvas.save();
+                    canvas.reset();
+                    canvas.set_render_target(RenderTarget::Image(target));
+
+                    canvas.clear_rect(
+                        0, 0,
+                        room.bounds.width() as u32,
+                        room.bounds.height() as u32,
+                        ROOM_EMPTY_COLOR,
+                    );
+                    self.draw_tiles(cx, canvas, room, false);
+                    self.draw_tiles(cx, canvas, room, true);
+
+                    canvas.restore();
+                    canvas.set_render_target(RenderTarget::Screen);
+                    cache.render_cache_valid = true;
+                }
+
+                let mut path = Path::new();
+                path.rect(
+                    0.0, 0.0,
+                    room.bounds.width() as f32,
+                    room.bounds.height() as f32,
+                );
+                let paint = Paint::image(
+                    target, 0.0, 0.0,
+                    room.bounds.width() as f32,
+                    room.bounds.height() as f32,
+                    0.0, 1.0,
+                );
+                canvas.fill_path(&mut path, paint);
+                canvas.restore();
+            }
         }
     }
 }
 
+impl EditorWidget {
+    fn draw_tiles(&self, cx: &Context, canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
+         let (tiles, tiles_asset) = if fg {
+             (&room.fg_tiles, &*assets::FG_TILES)
+         } else {
+             (&room.bg_tiles, &*assets::BG_TILES)
+         };
+
+         let tstride = room.bounds.width() / 8;
+         for ty in 0..room.bounds.height() / 8 {
+             for tx in 0..room.bounds.width() / 8 {
+                 let rx = (tx * 8) as f32;
+                 let ry = (ty * 8) as f32;
+                 let tile = tiles[(tx + ty * tstride) as usize];
+                 if let Some(tile) = tiles_asset.get(&tile).and_then(|tileset| tileset.tile(room, fg, tx as i32, ty as i32)) {
+                     let paint = assets::GAMEPLAY_ATLAS.tile_paint(tile, canvas, rx, ry);
+                     //let paint = Paint::color(if fg { ROOM_FG_COLOR } else { ROOM_BG_COLOR });
+                     let mut path = Path::new();
+                     path.rect(rx as f32, ry as f32, 8.0, 8.0);
+                     canvas.fill_path(&mut path, paint);
+                 }
+             }
+         }
+    }
+}
+
 // impl EditorWidget {
-//     pub fn set_map(&mut self, map: map_struct::CelesteMap) {
-//         self.state.borrow_mut().map = Some(map);
-//         self.widget.redraw();
-//     }
-//
-//     pub fn reset_view(&mut self) {
-//         let mut mutstate = self.state.borrow_mut();
-//         let position = &mut mutstate.transform;
-//         position.map_scale = 8;
-//         position.map_corner_x = 0;
-//         position.map_corner_y = -30;
-//         self.widget.redraw();
-//     }
-//
 //     fn draw(&mut self) {
 //         let state = self.state.clone();
 //         self.widget.draw(move |b| {

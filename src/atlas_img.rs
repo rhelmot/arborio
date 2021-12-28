@@ -1,3 +1,4 @@
+use std::sync::Mutex;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::collections::HashMap;
 use std::fs;
@@ -39,7 +40,7 @@ impl BlobData {
 
 pub struct Atlas {
     identifier: u32,
-    blobs: Vec<BlobData>,
+    blobs: Vec<Mutex<BlobData>>,
     sprites_map: HashMap<String, usize>,
     sprites: Vec<AtlasSprite>,
 }
@@ -75,7 +76,7 @@ impl Atlas {
             let data_file = read_string(&mut reader)? + ".data";
             let data_path = meta_file.with_file_name(&data_file);
             let blob_idx = result.blobs.len();
-            result.blobs.push(BlobData::Waiting(load_data_file(data_path)?));
+            result.blobs.push(Mutex::new(BlobData::Waiting(load_data_file(data_path)?)));
 
             let sprites = reader.read_u16::<LittleEndian>()?;
             for _ in 0..sprites {
@@ -122,7 +123,7 @@ impl Atlas {
 
     pub fn sprite_paint(&mut self, sprite_ref: SpriteReference, canvas: &mut vizia::Canvas) -> Paint {
         let sprite = &self.sprites[sprite_ref.idx as usize];
-        let image_blob = &mut self.blobs[sprite.blob_idx];
+        let image_blob = &mut self.blobs[sprite.blob_idx].lock().unwrap();
         Paint::image(
             image_blob.image_id(canvas),
             sprite.bounding_box.origin.x as f32,
@@ -133,15 +134,17 @@ impl Atlas {
         )
     }
 
-    pub fn tile_paint(&mut self, tile_ref: TileReference, canvas: &mut vizia::Canvas) -> Paint {
+    pub fn tile_paint(&self, tile_ref: TileReference, canvas: &mut vizia::Canvas, ox: f32, oy: f32) -> Paint {
         let sprite = &self.sprites[tile_ref.texture.idx as usize];
-        let image_blob = &mut self.blobs[sprite.blob_idx];
+        let mut image_blob = self.blobs[sprite.blob_idx].lock().unwrap();
+        let image_id = image_blob.image_id(canvas);
+        let (sx, sy) = canvas.image_size(image_id).unwrap();
         Paint::image(
-            image_blob.image_id(canvas),
-            (sprite.bounding_box.origin.x as u32 + tile_ref.tile.x * 8) as f32,
-            (sprite.bounding_box.origin.y as u32 + tile_ref.tile.y * 8) as f32,
-            8.0, 8.0,
-            0.0, 0.0
+            image_id,
+            -((sprite.bounding_box.origin.x as u32 + tile_ref.tile.x * 8) as f32) + ox,
+            -((sprite.bounding_box.origin.y as u32 + tile_ref.tile.y * 8) as f32) + oy,
+            sx as f32, sy as f32,
+            0.0, 1.0,
         )
     }
 }

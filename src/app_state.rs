@@ -15,7 +15,7 @@ pub struct AppState {
     pub current_tool: usize,
     pub map: Option<map_struct::CelesteMap>,
     pub transform: MapToScreen,
-    pub last_draw: time::Instant,
+    pub last_draw: RefCell<time::Instant>,
 }
 
 #[derive(Debug)]
@@ -41,7 +41,7 @@ impl AppState {
             current_tool: 0,
             map: None,
             transform: MapToScreen::identity(),
-            last_draw: time::Instant::now(),
+            last_draw: RefCell::new(time::Instant::now()),
         }
     }
 
@@ -63,6 +63,7 @@ impl AppState {
 
                 if swapped.is_some() {
                     self.map = swapped;
+                    self.transform = MapToScreen::identity();
                 }
             }
         }

@@ -1,8 +1,11 @@
 use celeste::binel::*;
 use std::borrow::Borrow;
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::default;
 use std::error::Error;
 use std::fmt;
+use std::fmt::{Debug, Formatter};
 use euclid::{Point2D, Size2D};
 
 use crate::units::*;
@@ -44,6 +47,22 @@ pub struct CelesteMapLevel {
     pub bg_tiles: Vec<char>,
     pub entities: Vec<CelesteMapEntity>,
     pub triggers: Vec<CelesteMapEntity>,
+
+    pub cache: RefCell<CelesteMapLevelCache>,
+}
+
+#[derive(Default)]
+pub struct CelesteMapLevelCache {
+    pub render_cache_valid: bool,
+    pub render_cache: Option<femtovg::ImageId>,
+}
+
+impl Debug for CelesteMapLevelCache {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CelesteMapLevelCache")
+            .field("render_cache_valid", &self.render_cache_valid)
+            .finish()
+    }
 }
 
 #[derive(Debug)]
@@ -240,6 +259,8 @@ fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
             Some(v) => v.children().map(|child| parse_decal(child)).collect::<Result<_, CelesteMapError>>()?,
             None => vec![],
         },
+
+        cache: default::Default::default(),
     })
 }
 
