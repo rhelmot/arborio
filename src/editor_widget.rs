@@ -152,8 +152,8 @@ fn draw_entities(canvas: &mut Canvas, room: &CelesteMapLevel) {
         let mut env: HashMap<&str, Const> = HashMap::new();
         env.insert("x", Const::from_num(entity.x));
         env.insert("y", Const::from_num(entity.y));
-        env.insert("width", Const::from_num(if entity.width == 0 { 8 } else { entity.width }));
-        env.insert("height", Const::from_num(if entity.height == 0 { 8 } else { entity.height }));
+        env.insert("width", Const::from_num(entity.width));
+        env.insert("height", Const::from_num(entity.height));
         for (key, val) in &entity.attributes {
             env.insert(key.as_str(), Const::from_attr(val));
         }
@@ -211,16 +211,22 @@ fn draw_entities(canvas: &mut Canvas, room: &CelesteMapLevel) {
 fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<&str, Const>) -> Result<(), String> {
     match draw {
         DrawElement::DrawRect { rect, color, border_color, border_thickness } => {
-            let x = rect.topleft.x.evaluate(&env)?.as_number()?.to_int();
-            let y = rect.topleft.y.evaluate(&env)?.as_number()?.to_int();
-            let width = rect.size.x.evaluate(&env)?.as_number()?.to_int();
-            let height = rect.size.y.evaluate(&env)?.as_number()?.to_int();
+            let x = rect.topleft.x.evaluate(&env)?.as_number()?.to_int() as f32;
+            let y = rect.topleft.y.evaluate(&env)?.as_number()?.to_int() as f32;
+            let width = rect.size.x.evaluate(&env)?.as_number()?.to_int() as f32;
+            let height = rect.size.y.evaluate(&env)?.as_number()?.to_int() as f32;
             let fill = Paint::color(color.evaluate(&env)?);
-            let mut border = Paint::color(border_color.evaluate(&env)?);
-            border.set_line_width(*border_thickness as f32);
+            let border_color_eval = border_color.evaluate(&env)?;
+            let border_thickness = if border_color_eval.a == 0.0 { 0.0 } else { *border_thickness as f32 };
+            let mut border = Paint::color(border_color_eval);
+            border.set_line_width(border_thickness);
+            let x = x + border_thickness;
+            let y = y + border_thickness;
+            let width = width - border_thickness * 2.0;
+            let height = height - border_thickness * 2.0;
 
             let mut path = Path::new();
-            path.rect(x as f32, y as f32, width as f32, height as f32);
+            path.rect(x, y, width, height);
             canvas.fill_path(&mut path, fill);
             canvas.stroke_path(&mut path, border);
         }

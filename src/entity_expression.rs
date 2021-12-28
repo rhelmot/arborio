@@ -41,12 +41,14 @@ impl std::fmt::Display for BinOp {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnOp {
     Neg,
+    Exists,
 }
 
 impl std::fmt::Display for UnOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", match self {
             UnOp::Neg => "-",
+            UnOp::Exists => "?",
         })
     }
 }
@@ -298,11 +300,12 @@ named!(expression_1<&str, Expression>,
         expression_0 |
         map_res!(
             tuple!(
-                delimited!(ws, tag!("-"), ws),
+                delimited!(ws, alt!(tag!("-") | tag!("?")), ws),
                 expression_1
             ), |s: (&str, Expression)| -> Result<Expression, Error<&str>> {
                 Ok(Expression::UnOp(match s.0 {
                     "-" => UnOp::Neg,
+                    "?" => UnOp::Exists,
                     _ => unreachable!(),
                 }, Box::new(s.1)))
             }
@@ -393,9 +396,10 @@ impl Expression {
                 }
             },
             Expression::UnOp(op, child) => {
-                let child_val = child.evaluate(env)?;
+                let child_val = child.evaluate(env);
                 match op {
-                    UnOp::Neg => Ok(Const::Number(Number(-child_val.as_number()?.0)))
+                    UnOp::Neg => Ok(Const::Number(Number(-child_val?.as_number()?.0))),
+                    UnOp::Exists => Ok(Const::Number(Number(if child_val.is_ok() { 1.0 } else { 0.0 }))),
                 }
             },
             Expression::Match { test, arms, default } => {
@@ -501,23 +505,23 @@ mod test {
         assert!(expr.is_ok());
         let expr = expr.unwrap().1;
 
-        let mut env: HashMap<String, Const> = HashMap::new();
-        env.insert("x".to_owned(), Const::Number(Number(0f64)));
+        let mut env: HashMap<&str, Const> = HashMap::new();
+        env.insert("x", Const::Number(Number(0f64)));
         let res = expr.evaluate(&env);
         assert_eq!(res, Ok(Const::Number(Number(f64::NAN))));
-        env.insert("x".to_owned(), Const::Number(Number(1f64)));
+        env.insert("x", Const::Number(Number(1f64)));
         let res = expr.evaluate(&env);
         assert_eq!(res, Ok(Const::Number(Number(-1f64))));
-        env.insert("x".to_owned(), Const::Number(Number(2f64)));
+        env.insert("x", Const::Number(Number(2f64)));
         let res = expr.evaluate(&env);
         assert_eq!(res, Ok(Const::Number(Number(4f64))));
-        env.insert("x".to_owned(), Const::Number(Number(3f64)));
+        env.insert("x", Const::Number(Number(3f64)));
         let res = expr.evaluate(&env);
         assert_eq!(res, Ok(Const::String("12".to_owned())));
-        env.insert("x".to_owned(), Const::Number(Number(4f64)));
+        env.insert("x", Const::Number(Number(4f64)));
         let res = expr.evaluate(&env);
         assert!(res.is_err());
-        env.insert("x".to_owned(), Const::Number(Number(5f64)));
+        env.insert("x", Const::Number(Number(5f64)));
         let res = expr.evaluate(&env);
         assert_eq!(res, Ok(Const::String("foo".to_owned())));
     }
@@ -536,5 +540,16 @@ mod test {
         let expr_str = format!("{}", expr);
         let expr2 = expression(expr_str.as_str()).unwrap().1;
         assert_eq!(expr, expr2);
+    }
+
+    #[test]
+    fn test_exists() {
+        let expr = expression("?x").unwrap().1;
+        let mut env: HashMap<&str, Const> = HashMap::new();
+        let res = expr.evaluate(&env);
+        assert_eq!(res, Ok(Const::Number(Number(0.0))));
+        env.insert("x", Const::Number(Number(0.0)));
+        let res = expr.evaluate(&env);
+        assert_eq!(res, Ok(Const::Number(Number(1.0))));
     }
 }

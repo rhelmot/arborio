@@ -2,11 +2,11 @@ entity_name: default
 hitboxes:
   initial_rects:
     - topleft:
-        x: x
-        y: y
+        x: match width + height { 0 => x - 4, _ => x }
+        y: match width + height { 0 => y - 4, _ => y }
       size:
-        x: width
-        y: height
+        x: match width { 0 => 8, _ => width }
+        y: match height { 0 => 8, _ => height }
   node_rects:
     - topleft:
         x: nodex - 2
@@ -19,11 +19,11 @@ standard_draw:
     - DrawRect:
         rect:
           topleft:
-            x: x
-            y: y
+            x: match width + height { 0 => x - 4, _ => x }
+            y: match width + height { 0 => y - 4, _ => y }
           size:
-            x: width
-            y: height
+            x: match width { 0 => 8, _ => width }
+            y: match height { 0 => 8, _ => height }
         color:
           r: 255
           g: 50
