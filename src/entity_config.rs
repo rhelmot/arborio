@@ -162,12 +162,12 @@ pub struct Color {
 }
 
 impl Color {
-    pub fn evaluate(&self, env: &HashMap<&str, crate::entity_expression::Const>) -> Result<(femtovg::Color, u8), String> {
+    pub fn evaluate(&self, env: &HashMap<&str, crate::entity_expression::Const>) -> Result<femtovg::Color, String> {
         let r = self.r.evaluate(env)?.as_number()?.to_int() as u8;
         let g = self.g.evaluate(env)?.as_number()?.to_int() as u8;
         let b = self.b.evaluate(env)?.as_number()?.to_int() as u8;
         let a = self.a.evaluate(env)?.as_number()?.to_int() as u8;
-        Ok((femtovg::Color::rgb(r, g, b), a))
+        Ok(femtovg::Color::rgba(r, g, b, a))
     }
 }
 

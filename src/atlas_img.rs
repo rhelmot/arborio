@@ -5,7 +5,7 @@ use std::fs;
 use std::io;
 use std::io::Read;
 use std::path;
-use femtovg::{ImageId, ImageSource, Paint};
+use femtovg::{ImageId, ImageSource, Paint, Path};
 use imgref::Img;
 use rgb::RGBA8;
 
@@ -121,31 +121,49 @@ impl Atlas {
         sprite.bounding_box.size
     }
 
-    pub fn sprite_paint(&mut self, sprite_ref: SpriteReference, canvas: &mut vizia::Canvas) -> Paint {
+    pub fn draw_sprite(
+        &self,
+        canvas: &mut vizia::Canvas,
+        sprite_ref: SpriteReference,
+        ox: f32, oy: f32,
+        slice: euclid::Rect<f32, euclid::UnknownUnit>
+    ) {
         let sprite = &self.sprites[sprite_ref.idx as usize];
-        let image_blob = &mut self.blobs[sprite.blob_idx].lock().unwrap();
-        Paint::image(
-            image_blob.image_id(canvas),
-            sprite.bounding_box.origin.x as f32,
-            sprite.bounding_box.origin.y as f32,
-            sprite.bounding_box.width() as f32,
-            sprite.bounding_box.height() as f32,
-            0.0, 0.0
-        )
+        let mut image_blob = self.blobs[sprite.blob_idx].lock().unwrap();
+        let image_id = image_blob.image_id(canvas);
+        let (sx, sy) = canvas.image_size(image_id).unwrap();
+        let paint = Paint::image(
+            image_id,
+            -(sprite.bounding_box.origin.x as f32) - slice.min_x() + ox,
+             -(sprite.bounding_box.origin.y as f32) - slice.min_y() + oy,
+            sx as f32, sy as f32,
+            0.0, 1.0
+        );
+        let mut path = Path::new();
+        path.rect(
+            ox as f32,
+            oy as f32,
+            slice.width(),
+            slice.height(),
+        );
+        canvas.fill_path(&mut path, paint);
     }
 
-    pub fn tile_paint(&self, tile_ref: TileReference, canvas: &mut vizia::Canvas, ox: f32, oy: f32) -> Paint {
+    pub fn draw_tile(&self, canvas: &mut vizia::Canvas, tile_ref: TileReference, ox: f32, oy: f32) {
         let sprite = &self.sprites[tile_ref.texture.idx as usize];
         let mut image_blob = self.blobs[sprite.blob_idx].lock().unwrap();
         let image_id = image_blob.image_id(canvas);
         let (sx, sy) = canvas.image_size(image_id).unwrap();
-        Paint::image(
+        let paint = Paint::image(
             image_id,
             -((sprite.bounding_box.origin.x as u32 + tile_ref.tile.x * 8) as f32) + ox,
             -((sprite.bounding_box.origin.y as u32 + tile_ref.tile.y * 8) as f32) + oy,
             sx as f32, sy as f32,
             0.0, 1.0,
-        )
+        );
+        let mut path = Path::new();
+        path.rect(ox as f32, oy as f32, 8.0, 8.0);
+        canvas.fill_path(&mut path, paint);
     }
 }
 
