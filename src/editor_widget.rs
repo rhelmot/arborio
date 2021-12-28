@@ -272,7 +272,7 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
             let y3 = (y4 + yq * 2.0) / 3.0;
 
             let mut path = Path::new();
-            path.move_to(x1, x2);
+            path.move_to(x1, y1);
             path.bezier_to(x2, y2, x3, y3, x4, y4);
             canvas.stroke_path(&mut path, line);
         }
