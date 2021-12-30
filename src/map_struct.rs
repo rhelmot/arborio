@@ -147,9 +147,9 @@ impl CelesteMapError {
 }
 
 impl CelesteMapLevel {
-    pub fn tile(&self, x: i32, y: i32, foreground: bool) -> Option<char> {
+    pub fn tile(&self, pt: TilePoint, foreground: bool) -> Option<char> {
         let w = self.bounds.width() as i32 / 8;
-        if x < 0 || x >= w {
+        if pt.x < 0 || pt.x >= w {
             return None;
         }
         let tiles = if foreground {
@@ -158,11 +158,21 @@ impl CelesteMapLevel {
             &self.bg_tiles
         };
 
-        tiles.get((x + y * w) as usize).copied()
+        tiles.get((pt.x + pt.y * w) as usize).copied()
     }
 
-    pub fn transform(&self) -> RoomToMap {
-        RoomToMap::new(self.bounds.origin.x, self.bounds.origin.y)
+    pub fn tile_mut(&mut self, pt: TilePoint, foreground: bool) -> Option<&mut char> {
+        let w = self.bounds.width() as i32 / 8;
+        if pt.x < 0 || pt.x >= w {
+            return None;
+        }
+        let tiles = if foreground {
+            &mut self.fg_tiles
+        } else {
+            &mut self.bg_tiles
+        };
+
+        tiles.get_mut((pt.x + pt.y * w) as usize)
     }
 }
 

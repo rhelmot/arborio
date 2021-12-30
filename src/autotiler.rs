@@ -2,9 +2,11 @@ use std::path::Path;
 use std::io;
 use std::fs;
 use std::collections::HashMap;
+
 use super::atlas_img;
 use crate::atlas_img::SpriteReference;
 use crate::map_struct::CelesteMapLevel;
+use crate::units::*;
 
 #[derive(Copy, Clone)]
 pub struct TextureTile {
@@ -190,15 +192,16 @@ impl Tileset {
         Ok(out)
     }
 
-    pub fn tile(&self, level: &CelesteMapLevel, foreground: bool, x: i32, y: i32) -> Option<TileReference> {
-        let mut tile = |x: i32, y: i32| level.tile(x, y, foreground);
-        self.tile_g(x, y, &mut tile)
+    pub fn tile(&self, level: &CelesteMapLevel, foreground: bool, pt: TilePoint) -> Option<TileReference> {
+        let mut tile = |x, y| level.tile(TilePoint::new(x, y), foreground);
+        self.tile_g(pt, &mut tile)
     }
 
-    fn tile_g<F>(&self, x: i32, y: i32, tile: &mut F) -> Option<TileReference> where F: FnMut(i32, i32) -> Option<char> {
-        if tile(x, y) != Some(self.id) {
+    fn tile_g<F>(&self, pt: TilePoint, tile: &mut F) -> Option<TileReference> where F: Fn(i32, i32) -> Option<char> {
+        if tile(pt.x, pt.y) != Some(self.id) {
             return None;
         }
+        let (x, y) = pt.to_tuple();
 
         let hash = ((x as u32).wrapping_mul(536870909) ^ (y as u32).wrapping_mul(1073741789)) as usize;
 

@@ -44,8 +44,9 @@ impl View for EditorWidget {
     fn event(&mut self, cx: &mut Context, event: &mut Event) {
         if let Some(window_event) = event.message.downcast() {
             let state = cx.data::<AppState>().expect("EditorWidget must have an AppState in its ancestry");
-            if let Some(app_event) = state.tool().translate_event(window_event, state, cx) {
-                cx.emit(app_event);
+            let events = state.tools.borrow_mut()[state.current_tool].event(window_event, state, cx);
+            for event in events {
+                cx.emit(event);
             }
         }
     }
@@ -137,10 +138,11 @@ fn draw_tiles(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
     let tstride = room.bounds.width() / 8;
     for ty in 0..room.bounds.height() / 8 {
         for tx in 0..room.bounds.width() / 8 {
+            let pt = TilePoint::new(tx, ty);
             let rx = (tx * 8) as f32;
             let ry = (ty * 8) as f32;
             let tile = tiles[(tx + ty * tstride) as usize];
-            if let Some(tile) = tiles_asset.get(&tile).and_then(|tileset| tileset.tile(room, fg, tx as i32, ty as i32)) {
+            if let Some(tile) = tiles_asset.get(&tile).and_then(|tileset| tileset.tile(room, fg, pt)) {
                 assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, rx, ry);
             }
         }
