@@ -14,10 +14,20 @@ pub struct AppState {
     pub tools: RefCell<Vec<Box<dyn Tool>>>, // mutable to event
     pub current_tool: usize,
     pub current_room: usize,
+    pub current_layer: Layer,
     pub map: Option<map_struct::CelesteMap>,
     pub dirty: bool,
     pub transform: MapToScreen,
     pub last_draw: RefCell<time::Instant>, // mutable to draw
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Layer {
+    Tiles(bool),
+    Decals(bool),
+    Entities,
+    Triggers,
+    ObjectTiles,
 }
 
 #[derive(Debug)]
@@ -31,6 +41,9 @@ pub enum AppEvent {
     Load { map: RefCell<Option<CelesteMap>> },
     Pan { delta: MapVectorPrecise },
     Zoom { delta: f32, focus: MapPointPrecise },
+    SelectTool { idx: usize },
+    SelectRoom { idx: usize },
+    SelectLayer { layer: Layer },
     FgTileUpdate { offset: TilePoint, data: TileFloat },
     BgTileUpdate { offset: TilePoint, data: TileFloat },
 }
@@ -44,9 +57,11 @@ impl Model for AppState {
     }
 }
 
+pub const NUM_TOOLS: usize = 2;
+
 impl AppState {
     pub fn new() -> AppState {
-        AppState {
+        let res = AppState {
             tools: RefCell::new(vec![
                 Box::new(tools::hand::HandTool::default()),
                 Box::new(tools::pencil::PencilTool::default()),
@@ -57,7 +72,10 @@ impl AppState {
             dirty: false,
             transform: MapToScreen::identity(),
             last_draw: RefCell::new(time::Instant::now()),
-        }
+            current_layer: Layer::Tiles(true)
+        };
+        assert_eq!(res.tools.borrow().len(), NUM_TOOLS);
+        res
     }
 
     pub fn apply(&mut self, event: &AppEvent) {
@@ -86,6 +104,15 @@ impl AppState {
             }
             AppEvent::BgTileUpdate { offset, data } => {
                 self.apply_tiles(offset, data, false);
+            }
+            AppEvent::SelectTool { idx } => {
+                self.current_tool = *idx;
+            }
+            AppEvent::SelectRoom { idx } => {
+                self.current_room = *idx;
+            }
+            AppEvent::SelectLayer { layer } => {
+                self.current_layer = *layer;
             }
         }
     }

@@ -17,7 +17,7 @@ use std::cell::RefCell;
 use std::error::Error;
 use vizia::*;
 use dialog::{DialogBox, FileSelectionMode};
-use crate::app_state::AppEvent;
+use crate::app_state::{AppEvent, AppState, NUM_TOOLS};
 
 fn main() -> Result<(), Box<dyn Error>> {
     assets::load();
@@ -68,10 +68,27 @@ fn main() -> Result<(), Box<dyn Error>> {
                     );
                 })
                     .height(Pixels(30.0));;
-                let _ed = editor_widget::EditorWidget::new(cx)
-                    .width(Stretch(1.0))
-                    .height(Stretch(1.0));
-                //dbg!("editor is", _ed.entity);
+                HStack::new(cx, |cx| {
+                    VStack::new(cx, |cx| {
+                        // toolbar
+                        Binding::new(cx, AppState::current_tool, |cx, tool| {
+                            for available_tool_idx in 0..NUM_TOOLS {
+                                Checkbox::new(cx, *tool.get(cx) == available_tool_idx)
+                                    .on_checked(cx, move |cx| {
+                                        cx.emit(AppEvent::SelectTool { idx: available_tool_idx });
+                                    });
+                            }
+                        });
+                    })  .width(Pixels(20.0));
+
+                    editor_widget::EditorWidget::new(cx)
+                        .width(Stretch(1.0))
+                        .height(Stretch(1.0));
+                    VStack::new(cx, |cx| {
+                        // tool settings
+
+                    })  .width(Pixels(100.0));
+                });
             });
         });
 
