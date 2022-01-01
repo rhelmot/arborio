@@ -8,6 +8,10 @@ use crate::units::*;
 pub struct PencilTool;
 
 impl Tool for PencilTool {
+    fn name(&self) -> &'static str {
+        "Pencil"
+    }
+
     fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent> {
         let scroll_events = generic_scroll(event, state, cx);
         if scroll_events.len() != 0 {

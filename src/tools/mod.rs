@@ -7,6 +7,8 @@ use crate::units::*;
 use vizia::*;
 
 pub trait Tool {
+    fn name(&self) -> &'static str;
+
     fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent>;
 
     fn switch_on(&mut self) { }

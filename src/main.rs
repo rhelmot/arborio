@@ -17,7 +17,7 @@ use std::cell::RefCell;
 use std::error::Error;
 use vizia::*;
 use dialog::{DialogBox, FileSelectionMode};
-use crate::app_state::{AppEvent, AppState, NUM_TOOLS};
+use crate::app_state::{AppEvent, AppState, Layer};
 
 fn main() -> Result<(), Box<dyn Error>> {
     assets::load();
@@ -67,25 +67,35 @@ fn main() -> Result<(), Box<dyn Error>> {
                         |cx| Label::new(cx, "Load Map")
                     );
                 })
-                    .height(Pixels(30.0));;
+                    .height(Pixels(30.0));
                 HStack::new(cx, |cx| {
                     VStack::new(cx, |cx| {
-                        // toolbar
+                        // tool picker
                         Binding::new(cx, AppState::current_tool, |cx, tool| {
-                            for available_tool_idx in 0..NUM_TOOLS {
-                                Checkbox::new(cx, *tool.get(cx) == available_tool_idx)
-                                    .on_checked(cx, move |cx| {
-                                        cx.emit(AppEvent::SelectTool { idx: available_tool_idx });
-                                    });
-                            }
+                            let state = cx.data::<AppState>().unwrap();
+                            let len = state.tools.borrow().len();
+                            RadioButtons::new(cx, *tool.get(cx), len, |cx, idx| {
+                                let state = cx.data::<AppState>().unwrap();
+                                let name = state.tools.borrow()[idx].name();
+                                Label::new(cx, name);
+                            }).on_changed(cx, |cx, idx| {
+                                cx.emit(AppEvent::SelectTool { idx })
+                            });
                         });
-                    })  .width(Pixels(20.0));
+                    })  .width(Stretch(0.0));
 
                     editor_widget::EditorWidget::new(cx)
                         .width(Stretch(1.0))
                         .height(Stretch(1.0));
                     VStack::new(cx, |cx| {
                         // tool settings
+                        Binding::new(cx, AppState::current_layer, |cx, layer| {
+                            RadioButtons::new(cx, layer.get(cx).to_idx(), Layer::all_layers().count(), |cx, idx| {
+                                Label::new(cx, Layer::from_idx(idx).name());
+                            }).on_changed(cx, |cx, idx| {
+                                cx.emit(AppEvent::SelectLayer { layer: Layer::from_idx(idx) });
+                            });
+                        })
 
                     })  .width(Pixels(100.0));
                 });
@@ -95,4 +105,3 @@ fn main() -> Result<(), Box<dyn Error>> {
     app.run();
     Ok(())
 }
-

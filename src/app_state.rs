@@ -21,13 +21,58 @@ pub struct AppState {
     pub last_draw: RefCell<time::Instant>, // mutable to draw
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Layer {
     Tiles(bool),
     Decals(bool),
     Entities,
     Triggers,
     ObjectTiles,
+}
+
+impl Data for Layer {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
+impl Layer {
+    pub fn to_idx(&self) -> usize {
+        match self {
+            Layer::Tiles(fg) => if *fg { 0 }  else { 1 },
+            Layer::Entities => 2,
+            Layer::Triggers => 3,
+            Layer::Decals(fg) => if *fg { 4 } else { 5 },
+            Layer::ObjectTiles => 6,
+        }
+    }
+
+    pub fn from_idx(idx: usize) -> Layer {
+        match idx {
+            0 => Layer::Tiles(true),
+            1 => Layer::Tiles(false),
+            2 => Layer::Entities,
+            3 => Layer::Triggers,
+            4 => Layer::Decals(true),
+            5 => Layer::Decals(false),
+            6 => Layer::ObjectTiles,
+            _ => panic!("Bad layer index")
+        }
+    }
+
+    pub fn all_layers() -> impl Iterator<Item = Layer> {
+        (0..=6).map(Layer::from_idx)
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Layer::Tiles(fg) => if *fg { "Foreground Tiles" } else { "Background Tiles" },
+            Layer::Entities => "Entities",
+            Layer::Triggers => "Triggers",
+            Layer::Decals(fg) => if *fg { "Foreground Decals" } else { "Background Decals" },
+            Layer::ObjectTiles => "Object Tiles",
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -57,8 +102,6 @@ impl Model for AppState {
     }
 }
 
-pub const NUM_TOOLS: usize = 2;
-
 impl AppState {
     pub fn new() -> AppState {
         let res = AppState {
@@ -74,7 +117,6 @@ impl AppState {
             last_draw: RefCell::new(time::Instant::now()),
             current_layer: Layer::Tiles(true)
         };
-        assert_eq!(res.tools.borrow().len(), NUM_TOOLS);
         res
     }
 

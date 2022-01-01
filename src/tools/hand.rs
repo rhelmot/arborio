@@ -11,6 +11,10 @@ pub struct HandTool {
 }
 
 impl Tool for HandTool {
+    fn name(&self) -> &'static str {
+        "Hand"
+    }
+
     fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent> {
         let scroll_events = generic_scroll(event, state, cx);
         if scroll_events.len() != 0 {
