@@ -27,6 +27,7 @@ lazy_static! {
 const BACKDROP_COLOR: Color          = Color { r: 0.08, g: 0.21, b: 0.08, a: 1.00 };
 const FILLER_COLOR: Color            = Color { r: 0.50, g: 0.25, b: 0.00, a: 1.00 };
 const ROOM_EMPTY_COLOR: Color        = Color { r: 0.13, g: 0.25, b: 0.13, a: 1.00 };
+const ROOM_DESELECTED_COLOR: Color   = Color { r: 0.00, g: 0.00, b: 0.00, a: 0.30 };
 const ROOM_FG_COLOR: Color           = Color { r: 0.21, g: 0.38, b: 0.88, a: 1.00 };
 const ROOM_BG_COLOR: Color           = Color { r: 0.08, g: 0.08, b: 0.25, a: 1.00 };
 const ROOM_ENTITY_COLOR: Color       = Color { r: 1.00, g: 0.00, b: 0.00, a: 1.00 };
@@ -77,7 +78,7 @@ impl View for EditorWidget {
             }
             canvas.fill_path(&mut path, Paint::color(FILLER_COLOR));
 
-            for room in &map.levels {
+            for (idx, room) in map.levels.iter().enumerate() {
                 canvas.save();
                 canvas.translate(room.bounds.min_x() as f32, room.bounds.min_y() as f32);
                 let mut cache = room.cache.borrow_mut();
@@ -122,6 +123,9 @@ impl View for EditorWidget {
                     0.0, 1.0,
                 );
                 canvas.fill_path(&mut path, paint);
+                if idx != state.current_room {
+                    canvas.fill_path(&mut path, Paint::color(ROOM_DESELECTED_COLOR));
+                }
                 canvas.restore();
             }
         }

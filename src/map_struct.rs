@@ -176,6 +176,17 @@ impl CelesteMapLevel {
     }
 }
 
+impl CelesteMap {
+    pub fn level_at(&self, pt: MapPointStrict) -> Option<usize> {
+        for (idx, room) in self.levels.iter().enumerate() {
+            if room.bounds.contains(pt) {
+                return Some(idx);
+            }
+        }
+        None
+    }
+}
+
 
 macro_rules! expect_elem {
     ($elem:expr, $name:expr) => {

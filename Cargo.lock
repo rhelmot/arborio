@@ -51,7 +51,7 @@ dependencies = [
  "confy",
  "dialog",
  "euclid",
- "femtovg",
+ "femtovg 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "imgref",
  "include_dir",
  "lazy_static",
@@ -526,11 +526,32 @@ dependencies = [
  "glow",
  "image",
  "imgref",
- "lru",
- "ouroboros",
+ "lru 0.6.6",
+ "ouroboros 0.12.0",
  "rgb",
  "rustybuzz",
- "ttf-parser",
+ "ttf-parser 0.12.3",
+ "unicode-bidi",
+ "unicode-segmentation",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "femtovg"
+version = "0.2.8"
+source = "git+https://github.com/femtovg/femtovg?rev=138a45d7b92419cc9eb2566acef7fadf25b81c00#138a45d7b92419cc9eb2566acef7fadf25b81c00"
+dependencies = [
+ "bitflags",
+ "fnv",
+ "generational-arena",
+ "glow",
+ "imgref",
+ "lru 0.7.2",
+ "ouroboros 0.13.0",
+ "rgb",
+ "rustybuzz",
+ "ttf-parser 0.13.4",
  "unicode-bidi",
  "unicode-segmentation",
  "wasm-bindgen",
@@ -894,6 +915,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ea2d928b485416e8908cff2d97d621db22b27f7b3b6729e438bcf42c671ba91"
 
 [[package]]
+name = "lru"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "274353858935c992b13c0ca408752e2121da852d07dec7ce5f108c77dfa14d1f"
+
+[[package]]
 name = "malloc_buf"
 version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1190,7 +1217,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c711f35b4e881534535e7d943aa158ed673baf8e73b06bdd93b31703cf968cc3"
 dependencies = [
  "aliasable",
- "ouroboros_macro",
+ "ouroboros_macro 0.12.0",
+ "stable_deref_trait",
+]
+
+[[package]]
+name = "ouroboros"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f357ef82d1b4db66fbed0b8d542cbd3c22d0bf5b393b3c257b9ba4568e70c9c3"
+dependencies = [
+ "aliasable",
+ "ouroboros_macro 0.13.0",
  "stable_deref_trait",
 ]
 
@@ -1199,6 +1237,19 @@ name = "ouroboros_macro"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "adbdedd935f91827ea19bb8b97c20dd5870221eac3e9d9a2e70367ecc813479d"
+dependencies = [
+ "Inflector",
+ "proc-macro-error",
+ "proc-macro2 1.0.36",
+ "quote 1.0.14",
+ "syn 1.0.84",
+]
+
+[[package]]
+name = "ouroboros_macro"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44a0b52c2cbaef7dffa5fec1a43274afe8bd2a644fa9fc50a9ef4ff0269b1257"
 dependencies = [
  "Inflector",
  "proc-macro-error",
@@ -1530,7 +1581,7 @@ dependencies = [
  "bitflags",
  "bytemuck",
  "smallvec",
- "ttf-parser",
+ "ttf-parser 0.12.3",
  "unicode-bidi-mirroring",
  "unicode-ccc",
  "unicode-general-category",
@@ -1716,12 +1767,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tinystr"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29738eedb4388d9ea620eeab9384884fc3f06f586a2eddb56bedc5885126c7c1"
-
-[[package]]
 name = "toml"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1737,22 +1782,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ae2f58a822f08abdaf668897e96a5656fe72f5a9ce66422423e8849384872e6"
 
 [[package]]
-name = "unic-langid"
-version = "0.9.0"
+name = "ttf-parser"
+version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73328fcd730a030bdb19ddf23e192187a6b01cd98be6d3140622a89129459ce5"
-dependencies = [
- "unic-langid-impl",
-]
-
-[[package]]
-name = "unic-langid-impl"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a4a8eeaf0494862c1404c95ec2f4c33a2acff5076f64314b465e3ddae1b934d"
-dependencies = [
- "tinystr",
-]
+checksum = "76dacc724328b3d5e2ed67f9e30cdb56893a34ab239032502cc8f19f8dae4bbc"
 
 [[package]]
 name = "unicode-bidi"
@@ -1834,10 +1867,9 @@ version = "0.1.0"
 dependencies = [
  "bitflags",
  "cssparser",
- "femtovg",
+ "femtovg 0.2.8 (git+https://github.com/femtovg/femtovg?rev=138a45d7b92419cc9eb2566acef7fadf25b81c00)",
  "keyboard-types",
  "morphorm",
- "unic-langid",
  "vizia_derive",
 ]
 
@@ -1854,7 +1886,7 @@ dependencies = [
 name = "vizia_glutin"
 version = "0.1.0"
 dependencies = [
- "femtovg",
+ "femtovg 0.2.8 (git+https://github.com/femtovg/femtovg?rev=138a45d7b92419cc9eb2566acef7fadf25b81c00)",
  "fnv",
  "glutin",
  "keyboard-types",

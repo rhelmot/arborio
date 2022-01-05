@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use crate::app_state::{AppEvent, AppState};
-use crate::tools::{Tool, generic_scroll};
+use crate::tools::{Tool, generic_nav};
 use crate::units::*;
 
 use vizia::*;
@@ -16,7 +16,7 @@ impl Tool for HandTool {
     }
 
     fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent> {
-        let scroll_events = generic_scroll(event, state, cx);
+        let scroll_events = generic_nav(event, state, cx);
         if scroll_events.len() != 0 {
             return scroll_events;
         }
