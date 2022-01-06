@@ -1,17 +1,31 @@
 pub mod hand;
 pub mod pencil;
 
+use std::sync::Mutex;
+use lazy_static::lazy_static;
+use vizia::*;
+
 use crate::app_state::{AppState, AppEvent};
 use crate::units::*;
 
-use vizia::*;
 
-pub trait Tool {
+pub trait Tool: Send {
     fn name(&self) -> &'static str;
+
+    fn new() -> Self where Self: Sized;
 
     fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent>;
 
     fn switch_on(&mut self) { }
+}
+
+lazy_static! {
+    pub static ref TOOLS: Mutex<[Box<dyn Tool>; 2]> = {
+        Mutex::new([
+            Box::new(hand::HandTool::new()),
+            Box::new(pencil::PencilTool::new()),
+        ])
+    };
 }
 
 const SCROLL_SENSITIVITY: f32 = 35.0;

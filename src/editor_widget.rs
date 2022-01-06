@@ -17,6 +17,7 @@ use crate::assets;
 use crate::app_state::AppState;
 use crate::units::*;
 use crate::autotiler;
+use crate::tools::{TOOLS, Tool};
 
 lazy_static! {
     static ref PERF_MONITOR: bool = {
@@ -45,7 +46,8 @@ impl View for EditorWidget {
     fn event(&mut self, cx: &mut Context, event: &mut Event) {
         if let Some(window_event) = event.message.downcast() {
             let state = cx.data::<AppState>().expect("EditorWidget must have an AppState in its ancestry");
-            let events = state.tools.borrow_mut()[state.current_tool].event(window_event, state, cx);
+            let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[state.current_tool];
+            let events = tool.event(window_event, state, cx);
             for event in events {
                 cx.emit(event);
             }

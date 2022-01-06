@@ -15,6 +15,10 @@ impl Tool for HandTool {
         "Hand"
     }
 
+    fn new() -> Self {
+        Self { last_pos: None }
+    }
+
     fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent> {
         let scroll_events = generic_nav(event, state, cx);
         if scroll_events.len() != 0 {

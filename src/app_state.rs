@@ -11,7 +11,6 @@ use crate::units::*;
 
 #[derive(Lens)]
 pub struct AppState {
-    pub tools: RefCell<Vec<Box<dyn Tool>>>, // mutable to event
     pub current_tool: usize,
     pub current_room: usize,
     pub current_layer: Layer,
@@ -105,10 +104,6 @@ impl Model for AppState {
 impl AppState {
     pub fn new() -> AppState {
         let res = AppState {
-            tools: RefCell::new(vec![
-                Box::new(tools::hand::HandTool::default()),
-                Box::new(tools::pencil::PencilTool::default()),
-            ]),
             current_tool: 1,
             map: None,
             current_room: 0,

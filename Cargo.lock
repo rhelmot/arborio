@@ -51,7 +51,7 @@ dependencies = [
  "confy",
  "dialog",
  "euclid",
- "femtovg 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "femtovg",
  "imgref",
  "include_dir",
  "lazy_static",
@@ -233,12 +233,6 @@ dependencies = [
  "libc",
  "objc",
 ]
-
-[[package]]
-name = "color_quant"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 
 [[package]]
 name = "confy"
@@ -517,29 +511,6 @@ dependencies = [
 [[package]]
 name = "femtovg"
 version = "0.2.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6a388bc4f67cf58eef3f66d9e070f823f57852c2d0017eb19fd8d253ce69d99"
-dependencies = [
- "bitflags",
- "fnv",
- "generational-arena",
- "glow",
- "image",
- "imgref",
- "lru 0.6.6",
- "ouroboros 0.12.0",
- "rgb",
- "rustybuzz",
- "ttf-parser 0.12.3",
- "unicode-bidi",
- "unicode-segmentation",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
-name = "femtovg"
-version = "0.2.8"
 source = "git+https://github.com/femtovg/femtovg?rev=138a45d7b92419cc9eb2566acef7fadf25b81c00#138a45d7b92419cc9eb2566acef7fadf25b81c00"
 dependencies = [
  "bitflags",
@@ -547,8 +518,8 @@ dependencies = [
  "generational-arena",
  "glow",
  "imgref",
- "lru 0.7.2",
- "ouroboros 0.13.0",
+ "lru",
+ "ouroboros",
  "rgb",
  "rustybuzz",
  "ttf-parser 0.13.4",
@@ -739,20 +710,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
-name = "image"
-version = "0.23.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24ffcb7e7244a9bf19d35bf2883b9c080c4ced3c07a9895572178cdb8f13f6a1"
-dependencies = [
- "bytemuck",
- "byteorder",
- "color_quant",
- "num-iter",
- "num-rational",
- "num-traits",
-]
-
-[[package]]
 name = "imgref"
 version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -907,12 +864,6 @@ checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if 1.0.0",
 ]
-
-[[package]]
-name = "lru"
-version = "0.6.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ea2d928b485416e8908cff2d97d621db22b27f7b3b6729e438bcf42c671ba91"
 
 [[package]]
 name = "lru"
@@ -1118,38 +1069,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num-integer"
-version = "0.1.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2cc698a63b549a70bc047073d2949cce27cd1c7b0a4a862d08a8031bc2801db"
-dependencies = [
- "autocfg",
- "num-traits",
-]
-
-[[package]]
-name = "num-iter"
-version = "0.1.42"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2021c8337a54d21aca0d59a92577a029af9431cb59b909b03252b9c164fad59"
-dependencies = [
- "autocfg",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-rational"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12ac428b1cb17fce6f731001d307d351ec70a6d202fc2e60f7d4c5e42d8f4f07"
-dependencies = [
- "autocfg",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
 name = "num-traits"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1212,37 +1131,13 @@ dependencies = [
 
 [[package]]
 name = "ouroboros"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c711f35b4e881534535e7d943aa158ed673baf8e73b06bdd93b31703cf968cc3"
-dependencies = [
- "aliasable",
- "ouroboros_macro 0.12.0",
- "stable_deref_trait",
-]
-
-[[package]]
-name = "ouroboros"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f357ef82d1b4db66fbed0b8d542cbd3c22d0bf5b393b3c257b9ba4568e70c9c3"
 dependencies = [
  "aliasable",
- "ouroboros_macro 0.13.0",
+ "ouroboros_macro",
  "stable_deref_trait",
-]
-
-[[package]]
-name = "ouroboros_macro"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adbdedd935f91827ea19bb8b97c20dd5870221eac3e9d9a2e70367ecc813479d"
-dependencies = [
- "Inflector",
- "proc-macro-error",
- "proc-macro2 1.0.36",
- "quote 1.0.14",
- "syn 1.0.84",
 ]
 
 [[package]]
@@ -1867,7 +1762,7 @@ version = "0.1.0"
 dependencies = [
  "bitflags",
  "cssparser",
- "femtovg 0.2.8 (git+https://github.com/femtovg/femtovg?rev=138a45d7b92419cc9eb2566acef7fadf25b81c00)",
+ "femtovg",
  "keyboard-types",
  "morphorm",
  "vizia_derive",
@@ -1886,7 +1781,7 @@ dependencies = [
 name = "vizia_glutin"
 version = "0.1.0"
 dependencies = [
- "femtovg 0.2.8 (git+https://github.com/femtovg/femtovg?rev=138a45d7b92419cc9eb2566acef7fadf25b81c00)",
+ "femtovg",
  "fnv",
  "glutin",
  "keyboard-types",

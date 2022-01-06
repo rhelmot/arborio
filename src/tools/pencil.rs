@@ -14,6 +14,10 @@ impl Tool for PencilTool {
         "Pencil"
     }
 
+    fn new() -> Self {
+        Self {}
+    }
+
     fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent> {
         let scroll_events = generic_nav(event, state, cx);
         if scroll_events.len() != 0 {

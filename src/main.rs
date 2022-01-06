@@ -18,6 +18,7 @@ use std::error::Error;
 use vizia::*;
 use dialog::{DialogBox, FileSelectionMode};
 use crate::app_state::{AppEvent, AppState, Layer};
+use crate::tools::TOOLS;
 
 fn main() -> Result<(), Box<dyn Error>> {
     assets::load();
@@ -27,42 +28,14 @@ fn main() -> Result<(), Box<dyn Error>> {
             .with_title("Arborio"),
         |cx| {
             app_state::AppState::new().build(cx);
+            cx.add_theme(include_str!("style.css"));
 
             VStack::new(cx, |cx| {
                 HStack::new(cx, |cx| {
-                    Button::new(
-                        cx,
-                        |cx| {
-                            let path = match dialog::FileSelection::new("Select a map")
-                                .title("Select a map")
-                                .mode(FileSelectionMode::Open)
-                                .path(assets::CONFIG.lock().unwrap().celeste_root.to_path_buf())
-                                .show() {
-                                Ok(Some(path)) => path,
-                                _ => return
-                            };
-                            let file = match std::fs::read(path) {
-                                Ok(data) => data,
-                                Err(e) => {
-                                    dialog::Message::new(format!("Could not read file: {}", e)).show();
-                                    return
-                                }
-                            };
-                            let (_, binfile) = match celeste::binel::parser::take_file(file.as_slice()) {
-                                Ok(binel) => binel,
-                                _ => {
-                                    dialog::Message::new("Not a Celeste map").show();
-                                    return
-                                }
-                            };
-                            let map = match map_struct::from_binfile(binfile) {
-                                Ok(map) => map,
-                                Err(e) => {
-                                    dialog::Message::new(format!("Data validation error: {}", e));
-                                    return
-                                }
-                            };
-                            cx.emit(AppEvent::Load { map: RefCell::new(Some(map)) });
+                    Button::new(cx, |cx| {
+                            if let Some(map) = load_workflow() {
+                                cx.emit(AppEvent::Load { map: RefCell::new(Some(map)) });
+                            }
                         },
                         |cx| Label::new(cx, "Load Map")
                     );
@@ -71,16 +44,18 @@ fn main() -> Result<(), Box<dyn Error>> {
                 HStack::new(cx, |cx| {
                     VStack::new(cx, |cx| {
                         // tool picker
-                        Binding::new(cx, AppState::current_tool, |cx, tool| {
-                            let state = cx.data::<AppState>().unwrap();
-                            let len = state.tools.borrow().len();
-                            RadioButtons::new(cx, *tool.get(cx), len, |cx, idx| {
-                                let state = cx.data::<AppState>().unwrap();
-                                let name = state.tools.borrow()[idx].name();
-                                Label::new(cx, name);
-                            }).on_changed(cx, |cx, idx| {
-                                cx.emit(AppEvent::SelectTool { idx })
-                            });
+                        Picker::new(cx, AppState::current_tool, |cx, tool_field| {
+                            let selected = *tool_field.get(cx);
+                            let count = TOOLS.lock().unwrap().len();
+                            for idx in 0..count {
+                                let btn = Button::new(cx, move |cx| {
+                                    cx.emit(AppEvent::SelectTool { idx })
+                                }, move |cx| {
+                                    Label::new(cx, TOOLS.lock().unwrap()[idx].name())
+                                });
+                                // hack!
+                                btn.checked(idx == selected);
+                            }
                         });
                     })  .width(Stretch(0.0));
 
@@ -89,14 +64,17 @@ fn main() -> Result<(), Box<dyn Error>> {
                         .height(Stretch(1.0));
                     VStack::new(cx, |cx| {
                         // tool settings
-                        Binding::new(cx, AppState::current_layer, |cx, layer| {
-                            RadioButtons::new(cx, layer.get(cx).to_idx(), Layer::all_layers().count(), |cx, idx| {
-                                Label::new(cx, Layer::from_idx(idx).name());
-                            }).on_changed(cx, |cx, idx| {
-                                cx.emit(AppEvent::SelectLayer { layer: Layer::from_idx(idx) });
-                            });
-                        })
-
+                        Picker::new(cx, AppState::current_layer, |cx, layer_field| {
+                            let selected = *layer_field.get(cx);
+                            for layer in Layer::all_layers() {
+                                let btn = Button::new(cx, move |cx| {
+                                    cx.emit(AppEvent::SelectLayer { layer });
+                                }, move |cx| {
+                                    Label::new(cx, layer.name())
+                                });
+                                btn.checked(layer == selected);
+                            }
+                        });
                     })  .width(Pixels(100.0));
                 });
             });
@@ -104,4 +82,38 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     app.run();
     Ok(())
+}
+
+fn load_workflow() -> Option<map_struct::CelesteMap>{
+    let path = match dialog::FileSelection::new("Select a map")
+        .title("Select a map")
+        .mode(FileSelectionMode::Open)
+        .path(assets::CONFIG.lock().unwrap().celeste_root.to_path_buf())
+        .show() {
+        Ok(Some(path)) => path,
+        _ => return None
+    };
+    let file = match std::fs::read(path) {
+        Ok(data) => data,
+        Err(e) => {
+            dialog::Message::new(format!("Could not read file: {}", e)).show();
+            return None
+        }
+    };
+    let (_, binfile) = match celeste::binel::parser::take_file(file.as_slice()) {
+        Ok(binel) => binel,
+        _ => {
+            dialog::Message::new("Not a Celeste map").show();
+            return None
+        }
+    };
+    let map = match map_struct::from_binfile(binfile) {
+        Ok(map) => map,
+        Err(e) => {
+            dialog::Message::new(format!("Data validation error: {}", e));
+            return None
+        }
+    };
+
+    Some(map)
 }

@@ -1,0 +1,25 @@
+button {
+    border-radius: 0;
+    background-color: #ffe4c4;
+    border-width: 1px;
+    border-color: black;
+}
+
+button label {
+    color: black;
+}
+
+button:over {
+    background-color: #ffe4c4;
+}
+
+button:checked {
+    background-color: #c0c4c4;
+}
+
+hstack {
+    child-space: 0;
+}
+vstack {
+    child-space: 0;
+}

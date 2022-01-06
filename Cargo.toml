@@ -19,7 +19,7 @@ serde_yaml = "^0.8"
 nom = "^6.2"
 include_dir = "^0.6"
 vizia = { path = "../../rust/VIZIA" }
-femtovg = "^0.2"  # not really a dependency, since vizia depends on it
+femtovg = {git = "https://github.com/femtovg/femtovg", rev = "138a45d7b92419cc9eb2566acef7fadf25b81c00", default-features = false} # not really a dependency, since vizia depends on it
 imgref = "^1.9"  # not really a dependency either
 rgb = "^0.8"  # not really a dependency either
 dialog = "^0.3"
