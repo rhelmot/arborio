@@ -1,19 +1,20 @@
-button {
+button.btn_item {
     border-radius: 0;
     background-color: #ffe4c4;
     border-width: 1px;
     border-color: black;
+    width: 1s;
 }
 
-button label {
+button.btn_item label {
     color: black;
 }
 
-button:over {
+button.btn_item:over {
     background-color: #ffe4c4;
 }
 
-button:checked {
+button.btn_item:checked {
     background-color: #c0c4c4;
 }
 

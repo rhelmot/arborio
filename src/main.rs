@@ -48,13 +48,13 @@ fn main() -> Result<(), Box<dyn Error>> {
                             let selected = *tool_field.get(cx);
                             let count = TOOLS.lock().unwrap().len();
                             for idx in 0..count {
-                                let btn = Button::new(cx, move |cx| {
+                                Button::new(cx, move |cx| {
                                     cx.emit(AppEvent::SelectTool { idx })
                                 }, move |cx| {
                                     Label::new(cx, TOOLS.lock().unwrap()[idx].name())
-                                });
-                                // hack!
-                                btn.checked(idx == selected);
+                                })
+                                    .checked(idx == selected)
+                                    .class("btn_item");
                             }
                         });
                     })  .width(Stretch(0.0));
@@ -67,12 +67,13 @@ fn main() -> Result<(), Box<dyn Error>> {
                         Picker::new(cx, AppState::current_layer, |cx, layer_field| {
                             let selected = *layer_field.get(cx);
                             for layer in Layer::all_layers() {
-                                let btn = Button::new(cx, move |cx| {
+                                Button::new(cx, move |cx| {
                                     cx.emit(AppEvent::SelectLayer { layer });
                                 }, move |cx| {
                                     Label::new(cx, layer.name())
-                                });
-                                btn.checked(layer == selected);
+                                })
+                                    .checked(layer == selected)
+                                    .class("btn_item");
                             }
                         });
                     })  .width(Pixels(100.0));

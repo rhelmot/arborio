@@ -22,6 +22,8 @@ pub struct EntityConfig {
     pub nodes: bool,
     #[serde(default)]
     pub attribute_info: HashMap<String, AttributeInfo>,
+    #[serde(default)]
+    pub templates: Vec<EntityTemplate>,
 }
 
 fn eight() -> u32 { 8 }
@@ -30,8 +32,14 @@ fn eight() -> u32 { 8 }
 pub struct AttributeInfo {
     pub ty: AttributeType,
     #[serde(default)]
-    pub options: Vec<AttributeValue>,
+    pub options: Vec<AttributeOption>,
     pub default: AttributeValue,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AttributeOption {
+    pub name: String,
+    pub value: AttributeValue,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -48,6 +56,12 @@ pub enum AttributeValue {
     Float(f32),
     Int(i32),
     Bool(bool),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EntityTemplate {
+    pub name: String,
+    pub attributes: HashMap<String, AttributeValue>
 }
 
 #[derive(Debug, Serialize, Deserialize)]
