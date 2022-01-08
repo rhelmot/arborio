@@ -51,10 +51,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                                 Button::new(cx, move |cx| {
                                     cx.emit(AppEvent::SelectTool { idx })
                                 }, move |cx| {
+                                    RadioButton::new(cx, idx == selected);
                                     Label::new(cx, TOOLS.lock().unwrap()[idx].name())
                                 })
                                     .checked(idx == selected)
-                                    .class("btn_item");
+                                    .class("btn_item")
+                                    .layout_type(LayoutType::Row);
                             }
                         });
                     })  .width(Stretch(0.0));
@@ -70,10 +72,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                                 Button::new(cx, move |cx| {
                                     cx.emit(AppEvent::SelectLayer { layer });
                                 }, move |cx| {
+                                    RadioButton::new(cx, layer == selected);
                                     Label::new(cx, layer.name())
                                 })
                                     .checked(layer == selected)
-                                    .class("btn_item");
+                                    .class("btn_item")
+                                    .layout_type(LayoutType::Row);
                             }
                         });
                     })  .width(Pixels(100.0));
