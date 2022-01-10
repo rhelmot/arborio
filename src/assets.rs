@@ -1,23 +1,25 @@
 use lazy_static::lazy_static;
+use include_dir::include_dir;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use dialog::DialogBox;
+use itertools::Itertools;
 
 use crate::atlas_img;
 use crate::autotiler;
 use crate::atlas_img::SpriteReference;
 use crate::entity_config::EntityConfig;
-
 use crate::auto_saver::AutoSaver;
+use crate::palette_widget::TileSelectable;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
     pub celeste_root: PathBuf,
 }
 
-const EMBEDDED_CONFIG: include_dir::Dir = include_dir::include_dir!("conf");
+const EMBEDDED_CONFIG: include_dir::Dir = include_dir!("conf");
 
 lazy_static! {
     pub static ref CONFIG: Mutex<AutoSaver<Config>> = {
@@ -65,6 +67,27 @@ lazy_static! {
             }).collect()
         )
     };
+
+    pub static ref FG_TILES_PALETTE: Vec<TileSelectable> = {
+        extract_tiles_palette(&FG_TILES)
+    };
+
+    pub static ref BG_TILES_PALETTE: Vec<TileSelectable> = {
+        extract_tiles_palette(&BG_TILES)
+    };
+}
+
+fn extract_tiles_palette(map: &'static HashMap<char, autotiler::Tileset>) -> Vec<TileSelectable> {
+    let mut vec: Vec<TileSelectable> = map.iter().map(|item| TileSelectable {
+        id: *item.0,
+        name: &item.1.name,
+        texture: Some(item.1.texture),
+    })
+        .filter(|ts| ts.id != 'z')
+        .sorted_by_key(|ts| ts.id)
+        .collect();
+    vec.insert(0, TileSelectable::default());
+    vec
 }
 
 pub fn load() {

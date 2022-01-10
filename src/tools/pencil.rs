@@ -1,6 +1,6 @@
 use vizia::*;
 
-use crate::app_state::{AppEvent, AppState, TileFloat};
+use crate::app_state::{AppEvent, AppState, Layer, TileFloat};
 use crate::tools::{Tool, generic_nav};
 use crate::units::*;
 
@@ -30,10 +30,10 @@ impl Tool for PencilTool {
         let tile_pos = point_room_to_tile(&(map_pos - room.bounds.origin).to_point().cast_unit());
         match event {
             WindowEvent::MouseDown(btn) if btn == &MouseButton::Left => {
-                vec![self.fg_draw(&tile_pos)]
+                self.draw(state, &tile_pos)
             }
             WindowEvent::MouseMove(..) if cx.mouse.left.state == MouseButtonState::Pressed => {
-                vec![self.fg_draw(&tile_pos)]
+                self.draw(state, &tile_pos)
             }
             _ => vec![]
         }
@@ -41,10 +41,16 @@ impl Tool for PencilTool {
 }
 
 impl PencilTool {
-    fn fg_draw(&self, tile_pos: &TilePoint) -> AppEvent {
-        AppEvent::FgTileUpdate { offset: *tile_pos, data: TileFloat {
-            tiles: vec!['0'],
-            stride: 1,
-        } }
+    fn draw(&self, state: &AppState, tile_pos: &TilePoint) -> Vec<AppEvent> {
+        match state.current_layer {
+            Layer::Tiles(fg) => {
+                let ch = if fg { state.current_fg_tile } else {state.current_bg_tile };
+                vec![AppEvent::TileUpdate { fg, offset: *tile_pos, data: TileFloat {
+                    tiles: vec![ch.id],
+                    stride: 1,
+                } }]
+            }
+            _ => vec![]
+        }
     }
 }

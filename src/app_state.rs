@@ -5,6 +5,7 @@ use vizia::*;
 use crate::editor_widget;
 use crate::map_struct;
 use crate::map_struct::CelesteMap;
+use crate::palette_widget::TileSelectable;
 use crate::tools::Tool;
 use crate::tools;
 use crate::units::*;
@@ -14,6 +15,8 @@ pub struct AppState {
     pub current_tool: usize,
     pub current_room: usize,
     pub current_layer: Layer,
+    pub current_fg_tile: TileSelectable,
+    pub current_bg_tile: TileSelectable,
     pub map: Option<map_struct::CelesteMap>,
     pub dirty: bool,
     pub transform: MapToScreen,
@@ -88,8 +91,8 @@ pub enum AppEvent {
     SelectTool { idx: usize },
     SelectRoom { idx: usize },
     SelectLayer { layer: Layer },
-    FgTileUpdate { offset: TilePoint, data: TileFloat },
-    BgTileUpdate { offset: TilePoint, data: TileFloat },
+    SelectPaletteTile { fg: bool, tile: TileSelectable },
+    TileUpdate { fg: bool, offset: TilePoint, data: TileFloat },
 }
 
 
@@ -107,10 +110,12 @@ impl AppState {
             current_tool: 1,
             map: None,
             current_room: 0,
+            current_fg_tile: TileSelectable::default(),
+            current_bg_tile: TileSelectable::default(),
             dirty: false,
             transform: MapToScreen::identity(),
             last_draw: RefCell::new(time::Instant::now()),
-            current_layer: Layer::Tiles(true)
+            current_layer: Layer::Tiles(true),
         };
         res
     }
@@ -136,11 +141,8 @@ impl AppState {
                     self.transform = MapToScreen::identity();
                 }
             }
-            AppEvent::FgTileUpdate { offset, data } => {
-                self.apply_tiles(offset, data, true);
-            }
-            AppEvent::BgTileUpdate { offset, data } => {
-                self.apply_tiles(offset, data, false);
+            AppEvent::TileUpdate { fg, offset, data } => {
+                self.apply_tiles(offset, data, *fg);
             }
             AppEvent::SelectTool { idx } => {
                 self.current_tool = *idx;
@@ -150,6 +152,13 @@ impl AppState {
             }
             AppEvent::SelectLayer { layer } => {
                 self.current_layer = *layer;
+            }
+            AppEvent::SelectPaletteTile { fg, tile } => {
+                if *fg {
+                    self.current_fg_tile = *tile;
+                } else {
+                    self.current_bg_tile = *tile;
+                }
             }
         }
     }

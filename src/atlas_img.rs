@@ -11,7 +11,7 @@ use rgb::RGBA8;
 
 use crate::autotiler::TileReference;
 
-#[derive(Copy, Clone, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
 pub struct SpriteReference {
     atlas: u32,
     idx: u32,

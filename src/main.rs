@@ -11,6 +11,7 @@ mod entity_expression;
 mod app_state;
 mod tools;
 mod units;
+mod palette_widget;
 
 use std::fs;
 use std::cell::RefCell;
@@ -18,6 +19,7 @@ use std::error::Error;
 use vizia::*;
 use dialog::{DialogBox, FileSelectionMode};
 use crate::app_state::{AppEvent, AppState, Layer};
+use crate::palette_widget::PaletteWidget;
 use crate::tools::TOOLS;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -79,6 +81,17 @@ fn main() -> Result<(), Box<dyn Error>> {
                                     .class("btn_item")
                                     .layout_type(LayoutType::Row);
                             }
+                        });
+                        Binding::new(cx, AppState::current_layer, |cx, layer_field| {
+                            let layer = *layer_field.get(cx);
+                            PaletteWidget::new(cx, &assets::FG_TILES_PALETTE, AppState::current_fg_tile, |cx, tile| {
+                                cx.emit(AppEvent::SelectPaletteTile { fg: true, tile });
+                            })
+                                .display(if layer == Layer::Tiles(true) { Display::Flex } else { Display:: None });
+                            PaletteWidget::new(cx, &assets::BG_TILES_PALETTE, AppState::current_bg_tile, |cx, tile| {
+                                cx.emit(AppEvent::SelectPaletteTile { fg: false, tile })
+                            })
+                                .display(if layer == Layer::Tiles(false) { Display::Flex } else { Display:: None });
                         });
                     })  .width(Pixels(100.0));
                 });

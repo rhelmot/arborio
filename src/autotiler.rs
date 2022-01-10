@@ -2,6 +2,7 @@ use std::path::Path;
 use std::io;
 use std::fs;
 use std::collections::HashMap;
+use inflector::Inflector;
 
 use super::atlas_img;
 use crate::atlas_img::SpriteReference;
@@ -24,6 +25,7 @@ pub struct TileReference {
 #[derive(Clone)]
 pub struct Tileset {
     pub id: char,
+    pub name: String,
     pub texture: SpriteReference,
     pub edges: Vec<Vec<TextureTile>>,
     pub padding: Vec<TextureTile>,
@@ -91,6 +93,7 @@ impl Tileset {
             let mut tileset = if s_tileset.copy.is_empty() {
                 Tileset {
                     id: ch,
+                    name: s_tileset.path.to_title_case(),
                     texture: texture_sprite,
                     edges: vec![Vec::new(); 256],
                     padding: vec![],
@@ -109,6 +112,7 @@ impl Tileset {
                 };
                 r.texture = texture_sprite;
                 r.id = ch;
+                r.name = s_tileset.path.to_title_case();
                 r
             };
 

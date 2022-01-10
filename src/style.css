@@ -24,3 +24,13 @@ hstack {
 vstack {
     child-space: 0;
 }
+
+.palette_item {
+    child-space: 3px;
+    child-between: 0;
+}
+
+.palette_item:checked {
+    background-color: #101040;
+    color: white;
+}

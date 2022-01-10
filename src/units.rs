@@ -1,4 +1,5 @@
 use euclid::*;
+pub use euclid::{Rect, Point2D, Size2D, Vector2D, UnknownUnit};
 
 pub struct TileSpace;
 pub struct RoomSpace;
@@ -40,4 +41,3 @@ pub fn vector_tile_to_room(pt: &TileVector) -> RoomVector { (*pt * 8).cast_unit(
 pub fn vector_room_to_tile(pt: &RoomVector) -> TileVector { (*pt / 8).cast_unit() }
 pub fn rect_tile_to_room(pt: &TileRect) -> RoomRect { (*pt * 8).cast_unit() }
 pub fn rect_room_to_tile(pt: &RoomRect) -> TileRect { (*pt / 8).cast_unit() }
-
