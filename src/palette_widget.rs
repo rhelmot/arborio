@@ -58,6 +58,14 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
         canvas.save();
         canvas.translate(bounds.x, bounds.y);
         canvas.scissor(0.0, 0.0, bounds.w, 100.0);
+
+        let mut path = femtovg::Path::new();
+        path.rect(0.0, 0.0, bounds.w, 100.0);
+        canvas.fill_path(&mut path, femtovg::Paint::linear_gradient(
+            0.0, 0.0, 0.0, 100.0,
+            Color::black().into(), Color::blue().into())
+        );
+
         data.draw(canvas);
         canvas.restore();
     }
