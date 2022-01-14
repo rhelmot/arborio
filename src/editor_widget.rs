@@ -157,61 +157,65 @@ fn draw_tiles(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
 
 fn draw_entities(canvas: &mut Canvas, room: &CelesteMapLevel) {
     for entity in &room.entities {
-        let mut env: HashMap<&str, Const> = HashMap::new();
-        env.insert("x", Const::from_num(entity.x));
-        env.insert("y", Const::from_num(entity.y));
-        env.insert("width", Const::from_num(entity.width));
-        env.insert("height", Const::from_num(entity.height));
-        for (key, val) in &entity.attributes {
-            env.insert(key.as_str(), Const::from_attr(val));
-        }
-        if let Some((x, y)) = entity.nodes.first() {
-            env.insert("firstnodex", Const::from_num(*x));
-            env.insert("firstnodey", Const::from_num(*y));
-        }
-        if let Some((x, y)) = entity.nodes.last() {
-            env.insert("lastnodex", Const::from_num(*x));
-            env.insert("lastnodey", Const::from_num(*y));
-        }
+        draw_entity(canvas, entity);
+    }
+}
 
-        let cfg = assets::ENTITY_CONFIG.lock().unwrap();
-        let config = cfg.get(&entity.name).unwrap_or_else(|| cfg.get("default").unwrap());
+pub fn draw_entity(canvas: &mut Canvas, entity: &CelesteMapEntity) {
+    let mut env: HashMap<&str, Const> = HashMap::new();
+    env.insert("x", Const::from_num(entity.x));
+    env.insert("y", Const::from_num(entity.y));
+    env.insert("width", Const::from_num(entity.width));
+    env.insert("height", Const::from_num(entity.height));
+    for (key, val) in &entity.attributes {
+        env.insert(key.as_str(), Const::from_attr(val));
+    }
+    if let Some((x, y)) = entity.nodes.first() {
+        env.insert("firstnodex", Const::from_num(*x));
+        env.insert("firstnodey", Const::from_num(*y));
+    }
+    if let Some((x, y)) = entity.nodes.last() {
+        env.insert("lastnodex", Const::from_num(*x));
+        env.insert("lastnodey", Const::from_num(*y));
+    }
 
-        for draw in &config.standard_draw.node_draw {
-            for node_idx in 0..entity.nodes.len() {
-                let mut env = env.clone();
-                if let Some((x, y)) = entity.nodes.get(node_idx) {
-                    env.insert("nodex", Const::from_num(*x));
-                    env.insert("nodey", Const::from_num(*y));
-                }
-                if let Some((x, y)) = entity.nodes.get(node_idx + 1) {
-                    env.insert("nextnodex", Const::from_num(*x));
-                    env.insert("nextnodey", Const::from_num(*y));
-                    env.insert("nextnodexordefault", Const::from_num(*x));
-                    env.insert("nextnodeyordefault", Const::from_num(*y));
-                } else {
-                    env.insert("nextnodexordefault", Const::from_num(entity.x));
-                    env.insert("nextnodeyordefault", Const::from_num(entity.y));
-                }
-                if let Some((x, y)) = entity.nodes.get(node_idx.overflowing_sub(1).0) {
-                    env.insert("prevnodex", Const::from_num(*x));
-                    env.insert("prevnodey", Const::from_num(*y));
-                    env.insert("prevnodexordefault", Const::from_num(*x));
-                    env.insert("prevnodeyordefault", Const::from_num(*y));
-                } else {
-                    env.insert("prevnodexordefault", Const::from_num(entity.x));
-                    env.insert("prevnodeyordefault", Const::from_num(entity.y));
-                }
-                if let Err(s) = draw_entity_directive(canvas, draw, &env) {
-                    println!("{}", s);
-                }
+    let cfg = &assets::ENTITY_CONFIG;
+    let config = cfg.get(&entity.name).unwrap_or_else(|| cfg.get("default").unwrap());
+
+    for draw in &config.standard_draw.node_draw {
+        for node_idx in 0..entity.nodes.len() {
+            let mut env = env.clone();
+            if let Some((x, y)) = entity.nodes.get(node_idx) {
+                env.insert("nodex", Const::from_num(*x));
+                env.insert("nodey", Const::from_num(*y));
             }
-        }
-
-        for draw in &config.standard_draw.initial_draw {
+            if let Some((x, y)) = entity.nodes.get(node_idx + 1) {
+                env.insert("nextnodex", Const::from_num(*x));
+                env.insert("nextnodey", Const::from_num(*y));
+                env.insert("nextnodexordefault", Const::from_num(*x));
+                env.insert("nextnodeyordefault", Const::from_num(*y));
+            } else {
+                env.insert("nextnodexordefault", Const::from_num(entity.x));
+                env.insert("nextnodeyordefault", Const::from_num(entity.y));
+            }
+            if let Some((x, y)) = entity.nodes.get(node_idx.overflowing_sub(1).0) {
+                env.insert("prevnodex", Const::from_num(*x));
+                env.insert("prevnodey", Const::from_num(*y));
+                env.insert("prevnodexordefault", Const::from_num(*x));
+                env.insert("prevnodeyordefault", Const::from_num(*y));
+            } else {
+                env.insert("prevnodexordefault", Const::from_num(entity.x));
+                env.insert("prevnodeyordefault", Const::from_num(entity.y));
+            }
             if let Err(s) = draw_entity_directive(canvas, draw, &env) {
                 println!("{}", s);
             }
+        }
+    }
+
+    for draw in &config.standard_draw.initial_draw {
+        if let Err(s) = draw_entity_directive(canvas, draw, &env) {
+            println!("{}", s);
         }
     }
 }

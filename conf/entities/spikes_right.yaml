@@ -28,4 +28,24 @@ standard_draw:
 resizable_x: true
 resizable_y: false
 nodes: false
-attribute_info: {}
+attribute_info:
+  type:
+    ty: String
+    default:
+      String: default
+    options:
+      - name: Default
+        value:
+          String: default
+      - name: Outline
+        value:
+          String: outline
+      - name: Ridge
+        value:
+          String: cliffside
+      - name: Reflection
+        value:
+          String: reflection
+      - name: Tentacles
+        value:
+          String: tentacles

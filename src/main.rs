@@ -87,11 +87,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                             PaletteWidget::new(cx, &assets::FG_TILES_PALETTE, AppState::current_fg_tile, |cx, tile| {
                                 cx.emit(AppEvent::SelectPaletteTile { fg: true, tile });
                             })
-                                .display(if layer == Layer::Tiles(true) { Display::Flex } else { Display:: None });
+                                .display(if layer == Layer::Tiles(true) { Display::Flex } else { Display::None });
                             PaletteWidget::new(cx, &assets::BG_TILES_PALETTE, AppState::current_bg_tile, |cx, tile| {
                                 cx.emit(AppEvent::SelectPaletteTile { fg: false, tile })
                             })
-                                .display(if layer == Layer::Tiles(false) { Display::Flex } else { Display:: None });
+                                .display(if layer == Layer::Tiles(false) { Display::Flex } else { Display::None });
+                            PaletteWidget::new(cx, &assets::ENTITIES_PALETTE, AppState::current_entity, |cx, entity| {
+                                cx.emit(AppEvent::SelectPaletteEntity { entity })
+                            })
+                                .display(if layer == Layer::Entities { Display::Flex } else { Display::None });
                         });
                     })  .width(Pixels(100.0));
                 });

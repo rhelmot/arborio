@@ -50,7 +50,7 @@ pub enum AttributeType {
     Bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum AttributeValue {
     String(String),
     Float(f32),
@@ -201,6 +201,26 @@ impl Default for Color {
             g: Expression::mk_const(255),
             b: Expression::mk_const(255),
             a: Expression::mk_const(255),
+        }
+    }
+}
+
+impl EntityConfig {
+    pub fn default_template(&self) -> EntityTemplate {
+        EntityTemplate {
+            name: self.entity_name.clone(),
+            attributes: HashMap::new()
+        }
+    }
+}
+
+impl AttributeValue {
+    pub fn to_binel(&self) -> celeste::binel::BinElAttr {
+        match self {
+            AttributeValue::String(s) => celeste::binel::BinElAttr::Text(s.clone()),
+            AttributeValue::Float(f) => celeste::binel::BinElAttr::Float(*f),
+            AttributeValue::Int(i) => celeste::binel::BinElAttr::Int(*i),
+            AttributeValue::Bool(b) => celeste::binel::BinElAttr::Bool(*b),
         }
     }
 }

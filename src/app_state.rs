@@ -5,10 +5,11 @@ use vizia::*;
 use crate::editor_widget;
 use crate::map_struct;
 use crate::map_struct::CelesteMap;
-use crate::palette_widget::TileSelectable;
+use crate::palette_widget::{EntitySelectable, TileSelectable};
 use crate::tools::Tool;
 use crate::tools;
 use crate::units::*;
+use crate::assets;
 
 #[derive(Lens)]
 pub struct AppState {
@@ -17,6 +18,7 @@ pub struct AppState {
     pub current_layer: Layer,
     pub current_fg_tile: TileSelectable,
     pub current_bg_tile: TileSelectable,
+    pub current_entity: EntitySelectable,
     pub map: Option<map_struct::CelesteMap>,
     pub dirty: bool,
     pub transform: MapToScreen,
@@ -92,6 +94,7 @@ pub enum AppEvent {
     SelectRoom { idx: usize },
     SelectLayer { layer: Layer },
     SelectPaletteTile { fg: bool, tile: TileSelectable },
+    SelectPaletteEntity { entity: EntitySelectable },
     TileUpdate { fg: bool, offset: TilePoint, data: TileFloat },
 }
 
@@ -112,6 +115,7 @@ impl AppState {
             current_room: 0,
             current_fg_tile: TileSelectable::default(),
             current_bg_tile: TileSelectable::default(),
+            current_entity: assets::ENTITIES_PALETTE[0],
             dirty: false,
             transform: MapToScreen::identity(),
             last_draw: RefCell::new(time::Instant::now()),
@@ -159,6 +163,9 @@ impl AppState {
                 } else {
                     self.current_bg_tile = *tile;
                 }
+            }
+            AppEvent::SelectPaletteEntity { entity } => {
+                self.current_entity = *entity;
             }
         }
     }

@@ -85,5 +85,7 @@ selected_draw:
           a: 200
 resizable_x: true
 resizable_y: true
+minimum_size_x: 16
+minimum_size_y: 16
 nodes: true
 attribute_info: {}

@@ -12,7 +12,7 @@ use crate::autotiler;
 use crate::atlas_img::SpriteReference;
 use crate::entity_config::EntityConfig;
 use crate::auto_saver::AutoSaver;
-use crate::palette_widget::TileSelectable;
+use crate::palette_widget::{EntitySelectable, TileSelectable};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -59,13 +59,15 @@ lazy_static! {
         bg_tiles.unwrap_or_else(|e| panic!("Failed to load BackgroundTiles.xml: {}", e))
     };
 
-    pub static ref ENTITY_CONFIG: Mutex<HashMap<String, EntityConfig>> = {
-        Mutex::new(EMBEDDED_CONFIG.get_dir("entities").unwrap().files().iter()
+    pub static ref ENTITY_CONFIG: HashMap<String, EntityConfig> = {
+        EMBEDDED_CONFIG.get_dir("entities").unwrap().files().iter()
             .map(|f| {
-                let config: EntityConfig = serde_yaml::from_str(f.contents_utf8().unwrap()).unwrap();
+                let mut config: EntityConfig = serde_yaml::from_str(f.contents_utf8().unwrap()).unwrap();
+                if config.templates.len() == 0 {
+                    config.templates.push(config.default_template())
+                }
                 (config.entity_name.clone(), config)
             }).collect()
-        )
     };
 
     pub static ref FG_TILES_PALETTE: Vec<TileSelectable> = {
@@ -74,6 +76,10 @@ lazy_static! {
 
     pub static ref BG_TILES_PALETTE: Vec<TileSelectable> = {
         extract_tiles_palette(&BG_TILES)
+    };
+
+    pub static ref ENTITIES_PALETTE: Vec<EntitySelectable> = {
+        extract_entities_palette(&ENTITY_CONFIG)
     };
 }
 
@@ -90,8 +96,17 @@ fn extract_tiles_palette(map: &'static HashMap<char, autotiler::Tileset>) -> Vec
     vec
 }
 
+fn extract_entities_palette(config: &'static HashMap<String, EntityConfig>) -> Vec<EntitySelectable> {
+    config.iter()
+        .map(|c| c.1.templates.iter().map(move |t| EntitySelectable { config: c.1, template: t }))
+        .flatten()
+        .filter(|es| es.config.entity_name != "default")
+        .sorted_by_key(|es| &es.template.name)
+        .collect()
+}
+
 pub fn load() {
     assert_ne!(FG_TILES.len(), 0);
     assert_ne!(BG_TILES.len(), 0);
-    assert!(ENTITY_CONFIG.lock().unwrap().get("default").is_some());
+    assert!(ENTITY_CONFIG.get("default").is_some());
 }
