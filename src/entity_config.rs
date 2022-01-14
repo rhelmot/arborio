@@ -21,12 +21,27 @@ pub struct EntityConfig {
     #[serde(default)]
     pub nodes: bool,
     #[serde(default)]
+    pub pencil: PencilBehavior,
+    #[serde(default)]
     pub attribute_info: HashMap<String, AttributeInfo>,
     #[serde(default)]
     pub templates: Vec<EntityTemplate>,
 }
 
 fn eight() -> u32 { 8 }
+
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
+pub enum PencilBehavior {
+    Line,
+    Node,
+    Rect,
+}
+
+impl Default for PencilBehavior {
+    fn default() -> Self {
+        PencilBehavior::Line
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AttributeInfo {

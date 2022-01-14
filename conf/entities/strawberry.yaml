@@ -17,7 +17,19 @@ hitboxes:
 standard_draw:
   initial_draw:
     - DrawPointImage:
-        texture: 'match moon { 1 => "collectables/moonBerry/normal00", _ => match winged { 1 => "collectables/strawberry/wings00", _ => "collectables/strawberry/normal00" } }'
+        texture: 'match ?moon {
+                    1 => match moon {
+                      1 => "collectables/moonBerry/normal00",
+                      _ => match winged {
+                        1 => "collectables/strawberry/wings00",
+                        _ => "collectables/strawberry/normal00"
+                      }
+                    },
+                    _ => match winged {
+                      1 => "collectables/strawberry/wings00",
+                      _ => "collectables/strawberry/normal00"
+                    }
+                  }'
         point:
           x: x
           y: y

@@ -25,9 +25,10 @@ standard_draw:
           size:
             x: 7
             y: 8
-resizable_x: true
-resizable_y: false
+resizable_x: false
+resizable_y: true
 nodes: false
+pencil: Rect
 attribute_info:
   type:
     ty: String

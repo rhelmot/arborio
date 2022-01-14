@@ -35,3 +35,4 @@ standard_draw:
 resizable_x: false
 resizable_y: false
 nodes: true
+pencil: Node

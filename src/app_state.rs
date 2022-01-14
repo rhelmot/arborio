@@ -4,7 +4,7 @@ use vizia::*;
 
 use crate::editor_widget;
 use crate::map_struct;
-use crate::map_struct::CelesteMap;
+use crate::map_struct::{CelesteMap, CelesteMapEntity};
 use crate::palette_widget::{EntitySelectable, TileSelectable};
 use crate::tools::Tool;
 use crate::tools;
@@ -96,6 +96,9 @@ pub enum AppEvent {
     SelectPaletteTile { fg: bool, tile: TileSelectable },
     SelectPaletteEntity { entity: EntitySelectable },
     TileUpdate { fg: bool, offset: TilePoint, data: TileFloat },
+    EntityAdd { entity: CelesteMapEntity },
+    EntityUpdate { entity: CelesteMapEntity },
+    EntityRemove { id: i32 },
 }
 
 
@@ -167,6 +170,41 @@ impl AppState {
             AppEvent::SelectPaletteEntity { entity } => {
                 self.current_entity = *entity;
             }
+            AppEvent::EntityAdd { entity } => {
+                if let Some(room) = self.current_room_mut() {
+                    let mut entity = entity.clone();
+                    entity.id = room.next_id();
+                    room.entities.push(entity);
+                    room.cache.borrow_mut().render_cache_valid = false;
+                    self.dirty = true;
+                }
+            }
+            AppEvent::EntityUpdate { entity } => {
+                if let Some(room) = self.current_room_mut() {
+                    if let Some(mut e) = room.entity_mut(entity.id) {
+                        *e = entity.clone();
+                        room.cache.borrow_mut().render_cache_valid = false;
+                        self.dirty = true;
+                    }
+                }
+            }
+            AppEvent::EntityRemove { id } => {
+                if let Some(room) = self.current_room_mut() {
+                    // tfw drain_filter is unstable
+                    let mut i = 0;
+                    let mut any = false;
+                    while i < room.entities.len() {
+                        if room.entities[i].id == *id {
+                            room.entities.remove(i);
+                            any = true;
+                        }
+                    }
+                    if any {
+                        room.cache.borrow_mut().render_cache_valid = false;
+                        self.dirty = true;
+                    }
+                }
+            }
         }
     }
 
@@ -202,5 +240,12 @@ impl AppState {
 
     pub fn current_room_ref(&self) -> Option<&map_struct::CelesteMapLevel> {
         self.map.as_ref().and_then(|map| map.levels.get(self.current_room))
+    }
+
+    pub fn current_room_mut(&mut self) -> Option<&mut map_struct::CelesteMapLevel> {
+        if let Some(map) = &mut self.map {
+            return map.levels.get_mut(self.current_room);
+        }
+        None
     }
 }

@@ -28,6 +28,7 @@ standard_draw:
 resizable_x: true
 resizable_y: false
 nodes: false
+pencil: Rect
 attribute_info:
   type:
     ty: String

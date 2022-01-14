@@ -89,3 +89,4 @@ minimum_size_x: 16
 minimum_size_y: 16
 nodes: true
 attribute_info: {}
+pencil: Node

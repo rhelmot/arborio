@@ -65,7 +65,7 @@ impl Debug for CelesteMapLevelCache {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CelesteMapEntity {
     pub id: i32,
     pub name: String,
@@ -77,7 +77,7 @@ pub struct CelesteMapEntity {
     pub nodes: Vec<(i32, i32)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CelesteMapDecal {
     pub x: i32,
     pub y: i32,
@@ -173,6 +173,32 @@ impl CelesteMapLevel {
         };
 
         tiles.get_mut((pt.x + pt.y * w) as usize)
+    }
+
+    pub fn entity(&self, id: i32) -> Option<&CelesteMapEntity> {
+        for e in &self.entities {
+            if e.id == id {
+                return Some(e);
+            }
+        }
+        None
+    }
+
+    pub fn entity_mut(&mut self, id: i32) -> Option<&mut CelesteMapEntity> {
+        for e in &mut self.entities {
+            if e.id == id {
+                return Some(e);
+            }
+        }
+        None
+    }
+
+    pub fn next_id(&self) -> i32 {
+        let mut highest_entity = -1;
+        for e in &self.entities {
+            highest_entity = highest_entity.max(e.id);
+        }
+        highest_entity + 1
     }
 }
 

@@ -151,23 +151,45 @@ impl PaletteItem for EntitySelectable {
 
     fn draw(&self, canvas: &mut Canvas) {
         canvas.scale(2.0, 2.0);
-        let mut tmp_entity = CelesteMapEntity {
+
+        let tmp_entity = self.instantiate(
+            16, 16,
+            self.config.minimum_size_x as i32, self.config.minimum_size_y as i32,
+            vec![(48, 16)]
+        );
+        editor_widget::draw_entity(canvas, &tmp_entity);
+    }
+}
+
+impl EntitySelectable {
+    pub fn instantiate(&self, x: i32, y: i32, width: i32, height: i32, nodes: Vec<(i32, i32)>) -> CelesteMapEntity {
+        let (x, width) = if width < 0 {
+            (x + width, -width as u32)
+        } else {
+            (x, width as u32)
+        };
+        let (y, height) = if height < 0 {
+            (y + height, -height as u32)
+        } else {
+            (y, height as u32)
+        };
+        let width = width.max(self.config.minimum_size_x);
+        let height = height.max(self.config.minimum_size_y);
+        let width = if !self.config.resizable_x { self.config.minimum_size_x } else { width };
+        let height = if !self.config.resizable_y { self.config.minimum_size_y } else { height };
+
+        let mut entity = CelesteMapEntity {
             id: 0,
             name: self.config.entity_name.clone(),
-            x: 16,
-            y: 16,
-            width: self.config.minimum_size_x,
-            height: self.config.minimum_size_y,
             attributes: self.template.attributes.iter().map(|attr| (attr.0.clone(), attr.1.to_binel())).collect(),
-            nodes: vec![(32, 16)]
+            x, y, width, height, nodes,
         };
-        // TODO move this somewhere else
         for (attr, info) in &self.config.attribute_info {
-            if !tmp_entity.attributes.contains_key(attr) {
-                tmp_entity.attributes.insert(attr.clone(), info.default.to_binel());
+            if !entity.attributes.contains_key(attr) {
+                entity.attributes.insert(attr.clone(), info.default.to_binel());
             }
         }
 
-        editor_widget::draw_entity(canvas, &tmp_entity);
+        entity
     }
 }
