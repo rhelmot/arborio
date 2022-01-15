@@ -17,6 +17,8 @@ pub trait Tool: Send {
     fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent>;
 
     fn switch_on(&mut self) { }
+
+    fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &Context) { }
 }
 
 lazy_static! {

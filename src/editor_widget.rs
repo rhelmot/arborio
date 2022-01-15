@@ -130,6 +130,9 @@ impl View for EditorWidget {
                 }
                 canvas.restore();
             }
+
+            let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[state.current_tool];
+            tool.draw(canvas, state, cx);
         }
     }
 }
