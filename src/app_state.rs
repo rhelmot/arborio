@@ -19,19 +19,27 @@ pub struct AppState {
     pub current_fg_tile: TileSelectable,
     pub current_bg_tile: TileSelectable,
     pub current_entity: EntitySelectable,
+
     pub map: Option<map_struct::CelesteMap>,
     pub dirty: bool,
     pub transform: MapToScreen,
+
+    pub draw_interval: f32,
+    pub snap: bool,
+
     pub last_draw: RefCell<time::Instant>, // mutable to draw
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, enum_iterator::IntoEnumIterator)]
 pub enum Layer {
-    Tiles(bool),
-    Decals(bool),
+    FgTiles,
+    BgTiles,
+    FgDecals,
+    BgDecals,
     Entities,
     Triggers,
     ObjectTiles,
+    All,
 }
 
 impl Data for Layer {
@@ -41,40 +49,16 @@ impl Data for Layer {
 }
 
 impl Layer {
-    pub fn to_idx(&self) -> usize {
-        match self {
-            Layer::Tiles(fg) => if *fg { 0 }  else { 1 },
-            Layer::Entities => 2,
-            Layer::Triggers => 3,
-            Layer::Decals(fg) => if *fg { 4 } else { 5 },
-            Layer::ObjectTiles => 6,
-        }
-    }
-
-    pub fn from_idx(idx: usize) -> Layer {
-        match idx {
-            0 => Layer::Tiles(true),
-            1 => Layer::Tiles(false),
-            2 => Layer::Entities,
-            3 => Layer::Triggers,
-            4 => Layer::Decals(true),
-            5 => Layer::Decals(false),
-            6 => Layer::ObjectTiles,
-            _ => panic!("Bad layer index")
-        }
-    }
-
-    pub fn all_layers() -> impl Iterator<Item = Layer> {
-        (0..=6).map(Layer::from_idx)
-    }
-
     pub fn name(&self) -> &'static str {
         match self {
-            Layer::Tiles(fg) => if *fg { "Foreground Tiles" } else { "Background Tiles" },
+            Layer::FgTiles => "Foreground Tiles",
+            Layer::BgTiles => "Background Tiles",
             Layer::Entities => "Entities",
             Layer::Triggers => "Triggers",
-            Layer::Decals(fg) => if *fg { "Foreground Decals" } else { "Background Decals" },
+            Layer::FgDecals => "Foreground Decals",
+            Layer::BgDecals => "Background Decals",
             Layer::ObjectTiles => "Object Tiles",
+            Layer::All => "All Layers",
         }
     }
 }
@@ -83,6 +67,15 @@ impl Layer {
 pub struct TileFloat {
     pub tiles: Vec<char>,
     pub stride: usize,
+}
+
+impl TileFloat {
+    pub fn get_at(&self, pt: TilePoint) -> char {
+        if pt.x < 0 || pt.x >= self.stride as i32 || pt.y < 0 {
+            return '\0';
+        }
+        self.tiles.get((pt.x + pt.y * self.stride as i32) as usize).cloned().unwrap_or('\0')
+    }
 }
 
 #[derive(Debug)]
@@ -121,8 +114,10 @@ impl AppState {
             current_entity: assets::ENTITIES_PALETTE[0],
             dirty: false,
             transform: MapToScreen::identity(),
+            draw_interval: 4.0,
+            snap: true,
             last_draw: RefCell::new(time::Instant::now()),
-            current_layer: Layer::Tiles(true),
+            current_layer: Layer::FgTiles,
         };
         res
     }

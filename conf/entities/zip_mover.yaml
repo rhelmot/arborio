@@ -5,15 +5,15 @@ hitboxes:
         x: x
         y: y
       size:
-        x: 8
-        y: 8
+        x: width
+        y: height
   node_rects:
     - topleft:
         x: nodex
         y: nodey
       size:
-        x: 4
-        y: 4
+        x: width
+        y: height
 standard_draw:
   initial_draw:
     - DrawRect:
@@ -28,7 +28,7 @@ standard_draw:
           r: 0
           g: 0
           b: 0
-          a: 0
+          a: 255
         border_color:
           r: 0
           g: 0

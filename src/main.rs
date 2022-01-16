@@ -18,6 +18,8 @@ use std::cell::RefCell;
 use std::error::Error;
 use vizia::*;
 use dialog::{DialogBox, FileSelectionMode};
+use enum_iterator::IntoEnumIterator;
+
 use crate::app_state::{AppEvent, AppState, Layer};
 use crate::palette_widget::PaletteWidget;
 use crate::tools::TOOLS;
@@ -70,28 +72,33 @@ fn main() -> Result<(), Box<dyn Error>> {
                         // tool settings
                         Picker::new(cx, AppState::current_layer, |cx, layer_field| {
                             let selected = *layer_field.get(cx);
-                            for layer in Layer::all_layers() {
-                                Button::new(cx, move |cx| {
-                                    cx.emit(AppEvent::SelectLayer { layer });
-                                }, move |cx| {
-                                    RadioButton::new(cx, layer == selected);
-                                    Label::new(cx, layer.name())
-                                })
-                                    .checked(layer == selected)
-                                    .class("btn_item")
-                                    .layout_type(LayoutType::Row);
-                            }
+                            Binding::new(cx, AppState::current_tool, move |cx, tool_idx| {
+                                let tool_idx = *tool_idx.get(cx);
+                                for layer in Layer::into_enum_iter() {
+                                    Button::new(cx, move |cx| {
+                                        cx.emit(AppEvent::SelectLayer { layer });
+                                    }, move |cx| {
+                                        RadioButton::new(cx, layer == selected);
+                                        Label::new(cx, layer.name())
+                                    })
+                                        .checked(layer == selected)
+                                        .class("btn_item")
+                                        .layout_type(LayoutType::Row)
+                                        .display(if layer == Layer::All && tool_idx != 1 { // TODO un-hardcode selection tool
+                                            Display::None } else { Display::Flex });
+                                }
+                            })
                         });
                         Binding::new(cx, AppState::current_layer, |cx, layer_field| {
                             let layer = *layer_field.get(cx);
                             PaletteWidget::new(cx, &assets::FG_TILES_PALETTE, AppState::current_fg_tile, |cx, tile| {
                                 cx.emit(AppEvent::SelectPaletteTile { fg: true, tile });
                             })
-                                .display(if layer == Layer::Tiles(true) { Display::Flex } else { Display::None });
+                                .display(if layer == Layer::FgTiles { Display::Flex } else { Display::None });
                             PaletteWidget::new(cx, &assets::BG_TILES_PALETTE, AppState::current_bg_tile, |cx, tile| {
                                 cx.emit(AppEvent::SelectPaletteTile { fg: false, tile })
                             })
-                                .display(if layer == Layer::Tiles(false) { Display::Flex } else { Display::None });
+                                .display(if layer == Layer::BgTiles { Display::Flex } else { Display::None });
                             PaletteWidget::new(cx, &assets::ENTITIES_PALETTE, AppState::current_entity, |cx, entity| {
                                 cx.emit(AppEvent::SelectPaletteEntity { entity })
                             })

@@ -213,6 +213,57 @@ impl CelesteMap {
     }
 }
 
+use crate::entity_expression::Const;
+impl CelesteMapEntity {
+    pub fn make_env(&self) -> HashMap<&str, Const> {
+        let mut env: HashMap<&str, Const> = HashMap::new();
+        env.insert("x", Const::from_num(self.x));
+        env.insert("y", Const::from_num(self.y));
+        env.insert("width", Const::from_num(self.width));
+        env.insert("height", Const::from_num(self.height));
+        for (key, val) in &self.attributes {
+            env.insert(key.as_str(), Const::from_attr(val));
+        }
+        if let Some((x, y)) = self.nodes.first() {
+            env.insert("firstnodex", Const::from_num(*x));
+            env.insert("firstnodey", Const::from_num(*y));
+        }
+        if let Some((x, y)) = self.nodes.last() {
+            env.insert("lastnodex", Const::from_num(*x));
+            env.insert("lastnodey", Const::from_num(*y));
+        }
+
+        env
+    }
+
+    pub fn make_node_env<'a>(&self, mut env: HashMap<&'a str, Const>, node_idx: usize) -> HashMap<&'a str, Const> {
+        if let Some((x, y)) = self.nodes.get(node_idx) {
+            env.insert("nodex", Const::from_num(*x));
+            env.insert("nodey", Const::from_num(*y));
+        }
+        if let Some((x, y)) = self.nodes.get(node_idx + 1) {
+            env.insert("nextnodex", Const::from_num(*x));
+            env.insert("nextnodey", Const::from_num(*y));
+            env.insert("nextnodexordefault", Const::from_num(*x));
+            env.insert("nextnodeyordefault", Const::from_num(*y));
+        } else {
+            env.insert("nextnodexordefault", Const::from_num(self.x));
+            env.insert("nextnodeyordefault", Const::from_num(self.y));
+        }
+        if let Some((x, y)) = self.nodes.get(node_idx.wrapping_sub(1)) {
+            env.insert("prevnodex", Const::from_num(*x));
+            env.insert("prevnodey", Const::from_num(*y));
+            env.insert("prevnodexordefault", Const::from_num(*x));
+            env.insert("prevnodeyordefault", Const::from_num(*y));
+        } else {
+            env.insert("prevnodexordefault", Const::from_num(self.x));
+            env.insert("prevnodeyordefault", Const::from_num(self.y));
+        }
+
+        env
+    }
+}
+
 
 macro_rules! expect_elem {
     ($elem:expr, $name:expr) => {

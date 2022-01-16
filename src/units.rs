@@ -41,3 +41,47 @@ pub fn vector_tile_to_room(pt: &TileVector) -> RoomVector { (*pt * 8).cast_unit(
 pub fn vector_room_to_tile(pt: &RoomVector) -> TileVector { (*pt / 8).cast_unit() }
 pub fn rect_tile_to_room(pt: &TileRect) -> RoomRect { (*pt * 8).cast_unit() }
 pub fn rect_room_to_tile(pt: &RoomRect) -> TileRect { (*pt / 8).cast_unit() }
+
+pub struct RectPointIter<T, U> {
+    rect: Rect<T, U>,
+    step: T,
+    next_pt: Option<Point2D<T, U>>,
+}
+
+impl<T, U> Iterator for RectPointIter<T, U>
+where
+    T: core::ops::Add<Output = T> + Copy + Ord
+{
+    type Item = Point2D<T, U>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let cur = self.next_pt;
+        let mut next = cur;
+        if let Some(mut next) = cur {
+            next.x = next.x + self.step;
+            if next.x >= self.rect.max_x() {
+                next.x = self.rect.min_x();
+                next.y = next.y + self.step;
+                if next.y >= self.rect.max_y() {
+                    self.next_pt = None;
+                } else {
+                    self.next_pt = Some(next);
+                }
+            } else {
+                self.next_pt = Some(next);
+            }
+        }
+
+        cur
+    }
+}
+
+pub fn rect_point_iter<T, U>(rect: Rect<T, U>, step: T) -> RectPointIter<T, U>
+where
+    T: core::ops::Add<T> + Copy + Ord
+{
+    RectPointIter {
+        rect, step,
+        next_pt: Some(rect.origin),
+    }
+}

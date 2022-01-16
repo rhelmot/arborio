@@ -1,5 +1,6 @@
 pub mod hand;
 pub mod pencil;
+pub mod selection;
 
 use std::sync::Mutex;
 use lazy_static::lazy_static;
@@ -22,9 +23,10 @@ pub trait Tool: Send {
 }
 
 lazy_static! {
-    pub static ref TOOLS: Mutex<[Box<dyn Tool>; 2]> = {
+    pub static ref TOOLS: Mutex<[Box<dyn Tool>; 3]> = {
         Mutex::new([
             Box::new(hand::HandTool::new()),
+            Box::new(selection::SelectionTool::new()),
             Box::new(pencil::PencilTool::new()),
         ])
     };

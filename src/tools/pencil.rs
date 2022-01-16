@@ -10,9 +10,6 @@ use crate::editor_widget;
 
 #[derive(Default)]
 pub struct PencilTool {
-    pub interval: f32,
-    pub snap: bool,
-
     reference_point: Option<RoomPoint>,
 }
 
@@ -23,8 +20,6 @@ impl Tool for PencilTool {
 
     fn new() -> Self {
         Self {
-            interval: 4.0,
-            snap: true,
             reference_point: None,
         }
     }
@@ -54,7 +49,7 @@ impl Tool for PencilTool {
 
     fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &Context) {
         canvas.save();
-        let room = if let Some(room) = state.current_room_ref() { room} else { return };
+        let room = if let Some(room) = state.current_room_ref() { room } else { return };
         canvas.translate(room.bounds.origin.x as f32, room.bounds.origin.y as f32);
         canvas.intersect_scissor(0.0, 0.0, room.bounds.size.width as f32, room.bounds.size.height as f32);
 
@@ -63,22 +58,20 @@ impl Tool for PencilTool {
         let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
-        let room_pos = if self.snap { room_pos_snapped } else { room_pos };
+        let room_pos = if state.snap { room_pos_snapped } else { room_pos };
 
         match state.current_layer {
-            Layer::Tiles(_) => {
+            Layer::FgTiles | Layer::BgTiles => {
                 let mut path = femtovg::Path::new();
                 path.rect(room_pos_snapped.x as f32, room_pos_snapped.y as f32, 8.0, 8.0);
                 canvas.fill_path(&mut path, femtovg::Paint::color(femtovg::Color::rgba(255, 0, 255, 128)));
             }
-            Layer::Decals(_) => {}
             Layer::Entities => {
                 let tmp_entity = self.get_terminal_entity(state.current_entity, room_pos);
                 canvas.set_global_alpha(0.5);
                 editor_widget::draw_entity(canvas, &tmp_entity);
             }
-            Layer::Triggers => {}
-            Layer::ObjectTiles => {}
+            _ => {}
         }
 
         canvas.restore();
@@ -90,7 +83,7 @@ impl PencilTool {
         match state.current_entity.config.pencil {
             PencilBehavior::Line => {}
             PencilBehavior::Node | PencilBehavior::Rect => {
-                let room_pos = if self.snap {
+                let room_pos = if state.snap {
                     let tile_pos = point_room_to_tile(&room_pos);
                     point_tile_to_room(&tile_pos)
                 } else {
@@ -103,14 +96,15 @@ impl PencilTool {
 
     fn do_draw(&mut self, state: &AppState, room_pos: RoomPoint) -> Vec<AppEvent> {
         let tile_pos = point_room_to_tile(&room_pos);
-        let room_pos = if self.snap {
+        let room_pos = if state.snap {
             point_tile_to_room(&tile_pos)
         } else {
             room_pos
         };
 
         match state.current_layer {
-            Layer::Tiles(fg) => {
+            Layer::FgTiles | Layer::BgTiles => {
+                let fg = state.current_layer == Layer::FgTiles;
                 let ch = if fg { state.current_fg_tile } else {state.current_bg_tile };
                 vec![AppEvent::TileUpdate { fg, offset: tile_pos, data: TileFloat {
                     tiles: vec![ch.id],
@@ -121,7 +115,7 @@ impl PencilTool {
                 match self.reference_point {
                     Some(last_draw) => {
                         let diff = (room_pos - last_draw).cast::<f32>().length();
-                        if diff > self.interval {
+                        if diff > state.draw_interval {
                             self.reference_point = Some(room_pos);
                             vec![AppEvent::EntityAdd {
                                 entity: self.get_terminal_entity(state.current_entity, room_pos)
@@ -143,7 +137,7 @@ impl PencilTool {
     }
 
     fn do_draw_finish(&mut self, state: &AppState, room_pos: RoomPoint) -> Vec<AppEvent> {
-        let room_pos = if self.snap {
+        let room_pos = if state.snap {
             point_tile_to_room(&point_room_to_tile(&room_pos))
         } else {
             room_pos

@@ -2,7 +2,8 @@ use serde;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
-use crate::entity_expression::Expression;
+use crate::entity_expression::{Expression, Const};
+use crate::units::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EntityConfig {
@@ -191,7 +192,7 @@ pub struct Color {
 }
 
 impl Color {
-    pub fn evaluate(&self, env: &HashMap<&str, crate::entity_expression::Const>) -> Result<femtovg::Color, String> {
+    pub fn evaluate(&self, env: &HashMap<&str, Const>) -> Result<femtovg::Color, String> {
         let r = self.r.evaluate(env)?.as_number()?.to_int() as u8;
         let g = self.g.evaluate(env)?.as_number()?.to_int() as u8;
         let b = self.b.evaluate(env)?.as_number()?.to_int() as u8;
@@ -206,6 +207,20 @@ impl Vec2 {
             x: Expression::mk_const(con_x),
             y: Expression::mk_const(con_y),
         }
+    }
+
+    pub fn evaluate(&self, env: &HashMap<&str, Const>) -> Result<RoomVector, String> {
+        let x = self.x.evaluate(env)?.as_number()?.to_int();
+        let y = self.y.evaluate(env)?.as_number()?.to_int();
+        Ok(RoomVector::new(x, y))
+    }
+}
+
+impl Rect {
+    pub fn evaluate(&self, env: &HashMap<&str, Const>) -> Result<RoomRect, String> {
+        let topleft = self.topleft.evaluate(env)?.to_point();
+        let size = self.size.evaluate(env)?.to_size();
+        Ok(RoomRect::new(topleft, size))
     }
 }
 
