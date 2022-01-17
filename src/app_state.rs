@@ -76,6 +76,10 @@ impl TileFloat {
         }
         self.tiles.get((pt.x + pt.y * self.stride as i32) as usize).cloned().unwrap_or('\0')
     }
+
+    pub fn size(&self) -> TileSize {
+        TileSize::new(self.stride as i32, (self.tiles.len() / self.stride) as i32)
+    }
 }
 
 #[derive(Debug)]

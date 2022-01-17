@@ -162,7 +162,38 @@ impl Tool for SelectionTool {
         }
 
         if let Some((float_pos, float_dat)) = &self.bg_float {
-
+            let mut tiler = |x: i32, y: i32| -> Option<char> {
+                Some(float_dat.get_at(TilePoint::new(x, y)))
+            };
+            let rect = TileRect::new(*float_pos, float_dat.size());
+            for pt in rect_point_iter(rect, 1) {
+                let float_pt = pt - float_pos.to_vector();
+                let ch = float_dat.get_at(float_pt);
+                if ch != '\0' {
+                    if let Some(tile) = assets::BG_TILES.get(&ch).and_then(|tileset| tileset.tile_g(float_pt, &mut tiler)) {
+                        let room_pos = point_tile_to_room(&pt);
+                        assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, room_pos.x as f32, room_pos.y as f32);
+                        path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
+                    }
+                }
+            }
+        }
+        if let Some((float_pos, float_dat)) = &self.fg_float {
+            let mut tiler = |x: i32, y: i32| -> Option<char> {
+                Some(float_dat.get_at(TilePoint::new(x, y)))
+            };
+            let rect = TileRect::new(*float_pos, float_dat.size());
+            for pt in rect_point_iter(rect, 1) {
+                let float_pt = pt - float_pos.to_vector();
+                let ch = float_dat.get_at(float_pt);
+                if ch != '\0' {
+                    if let Some(tile) = assets::FG_TILES.get(&ch).and_then(|tileset| tileset.tile_g(float_pt, &mut tiler)) {
+                        let room_pos = point_tile_to_room(&pt);
+                        assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, room_pos.x as f32, room_pos.y as f32);
+                        path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
+                    }
+                }
+            }
         }
 
         canvas.fill_path(&mut path, femtovg::Paint::color(femtovg::Color::rgba(255, 255, 0, 128)));
@@ -192,13 +223,13 @@ impl SelectionTool {
         let tile_pos = point_room_to_tile(&room_pos);
         if let Some((offset, data)) = &self.fg_float {
             let relative_pos = tile_pos - offset.to_vector();
-            if data.get_at(relative_pos) != '0' {
+            if data.get_at(relative_pos) != '\0' {
                 return true;
             }
         }
         if let Some((offset, data)) = &self.bg_float {
             let relative_pos = tile_pos - offset.to_vector();
-            if data.get_at(relative_pos) != '0' {
+            if data.get_at(relative_pos) != '\0' {
                 return true;
             }
         }
@@ -370,7 +401,7 @@ impl SelectionTool {
             let new_size = (new_supnum - new_origin);
 
             let new_dat = if new_size != old_size {
-                let mut new_dat = TileFloat { tiles: vec!['0'; (new_size.x * new_size.y) as usize], stride: new_size.x as usize };
+                let mut new_dat = TileFloat { tiles: vec!['\0'; (new_size.x * new_size.y) as usize], stride: new_size.x as usize };
                 let movement = *old_origin - new_origin;
                 let dest_start_offset = movement.x + movement.y * new_size.x;
                 for line in 0..old_size.y {

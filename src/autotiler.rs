@@ -201,7 +201,7 @@ impl Tileset {
         self.tile_g(pt, &mut tile)
     }
 
-    fn tile_g<F>(&self, pt: TilePoint, tile: &mut F) -> Option<TileReference> where F: Fn(i32, i32) -> Option<char> {
+    pub fn tile_g<F>(&self, pt: TilePoint, tile: &mut F) -> Option<TileReference> where F: Fn(i32, i32) -> Option<char> {
         if tile(pt.x, pt.y) != Some(self.id) {
             return None;
         }
@@ -247,7 +247,7 @@ impl Tileset {
     pub fn is_filled(&self, tile: Option<char>) -> bool {
         match tile {
             Some(ch) if ch == self.id => true,
-            Some('0') => false,
+            Some('0') | Some('\0') => false,
             Some(ch) => !self.ignores(ch),
             None => true,
         }
