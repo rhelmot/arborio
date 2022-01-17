@@ -218,6 +218,7 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
             let y2 = end.y.evaluate(&env)?.as_number()?.to_int() as f32;
             let mut line = Paint::color(color.evaluate(&env)?);
             line.set_line_width(*thickness as f32);
+            line.set_anti_alias(false);
 
             let mut path = Path::new();
             path.move_to(x1 as f32, y1 as f32);
@@ -245,6 +246,7 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
             let yq = middle.y.evaluate(&env)?.as_number()?.to_int() as f32;
             let mut line = Paint::color(color.evaluate(&env)?);
             line.set_line_width(*thickness as f32);
+            line.set_anti_alias(false);
 
             // the control points for the cubic bezier
             let x2 = (x1 + xq * 2.0) / 3.0;

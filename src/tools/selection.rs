@@ -135,7 +135,11 @@ impl Tool for SelectionTool {
     }
 
     fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &Context) {
+        canvas.save();
         let room = if let Some(room) = state.current_room_ref() { room } else { return };
+        canvas.translate(room.bounds.origin.x as f32, room.bounds.origin.y as f32);
+        // no scissor!
+
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos = state.transform.inverse().unwrap().transform_point(screen_pos).cast();
         let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
@@ -157,6 +161,10 @@ impl Tool for SelectionTool {
             }
         }
 
+        if let Some((float_pos, float_dat)) = &self.bg_float {
+
+        }
+
         canvas.fill_path(&mut path, femtovg::Paint::color(femtovg::Color::rgba(255, 255, 0, 128)));
 
         if self.status == SelectionStatus::None {
@@ -166,10 +174,12 @@ impl Tool for SelectionTool {
                     for rect in self.rects_of(room, sel) {
                         path.rect(rect.min_x() as f32, rect.min_y() as f32, rect.width() as f32, rect.height() as f32);
                     }
-                    canvas.fill_path(&mut path, femtovg::Paint::color(femtovg::Color::rgba(255, 255, 100, 128)));
+                    canvas.fill_path(&mut path, femtovg::Paint::color(femtovg::Color::rgba(100, 100, 255, 128)));
                 }
             }
         }
+
+        canvas.restore();
     }
 }
 
@@ -182,13 +192,13 @@ impl SelectionTool {
         let tile_pos = point_room_to_tile(&room_pos);
         if let Some((offset, data)) = &self.fg_float {
             let relative_pos = tile_pos - offset.to_vector();
-            if data.get_at(relative_pos) != '\0' {
+            if data.get_at(relative_pos) != '0' {
                 return true;
             }
         }
         if let Some((offset, data)) = &self.bg_float {
             let relative_pos = tile_pos - offset.to_vector();
-            if data.get_at(relative_pos) != '\0' {
+            if data.get_at(relative_pos) != '0' {
                 return true;
             }
         }
@@ -301,7 +311,7 @@ impl SelectionTool {
     }
 
     /// This function interprets nudge as relative to the reference positions in Dragging mode and
-    /// relative to the current position in None mode. It does nothing in the other modes.
+    /// relative to the current position in other modes.
     fn nudge(&mut self, room: &CelesteMapLevel, nudge: RoomVector) -> Vec<AppEvent> {
         let events = self.float_tiles(room);
 

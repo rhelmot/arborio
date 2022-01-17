@@ -213,9 +213,9 @@ impl AppState {
                     if *tile != '\0' {
                         if let Some(tile_ref) = room.tile_mut(cur, fg) {
                             if *tile_ref != *tile {
+                                *tile_ref = *tile;
                                 dirty = true;
                             }
-                            *tile_ref = *tile;
                         }
                     }
                     if (idx + 1) % data.stride == 0 {
