@@ -1,5 +1,6 @@
 use euclid::*;
 pub use euclid::{Rect, Point2D, Size2D, Vector2D, UnknownUnit};
+use euclid::num::Zero;
 
 pub struct TileSpace;
 pub struct RoomSpace;
@@ -84,4 +85,15 @@ where
         rect, step,
         next_pt: Some(rect.origin),
     }
+}
+
+pub fn rect_normalize<T, U>(rect: &Rect<T, U>) -> Rect<T, U>
+where T: num_traits::Signed + Copy + Ord
+{
+    Rect::new(
+        Point2D::new(
+            rect.origin.x + rect.size.width.min(T::zero()),
+            rect.origin.y + rect.size.height.min(T::zero())
+        ),
+        Size2D::new(rect.size.width.abs(), rect.size.height.abs()))
 }

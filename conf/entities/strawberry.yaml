@@ -2,11 +2,11 @@ entity_name: strawberry
 hitboxes:
   initial_rects:
     - topleft:
-        x: x
-        y: y
+        x: x-8
+        y: y-8
       size:
-        x: 8
-        y: 8
+        x: 16
+        y: 16
   node_rects:
     - topleft:
         x: nodex

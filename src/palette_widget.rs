@@ -50,7 +50,7 @@ where
 }
 
 impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
-    fn draw(&self, cx: &Context, canvas: &mut Canvas) {
+    fn draw(&self, cx: &mut Context, canvas: &mut Canvas) {
         let entity = cx.current;
         let bounds = cx.cache.get_bounds(entity);
         let data = self.lens.view(cx.data::<<L as Lens>::Source>().unwrap());

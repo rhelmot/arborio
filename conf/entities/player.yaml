@@ -2,11 +2,11 @@ entity_name: player
 hitboxes:
   initial_rects:
     - topleft:
-        x: x-4
-        y: y-8
+        x: x-8
+        y: y-17
       size:
-        x: 8
-        y: 8
+        x: 16
+        y: 17
 standard_draw:
   initial_draw:
     - DrawPointImage:

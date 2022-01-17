@@ -55,12 +55,14 @@ pub struct CelesteMapLevel {
 pub struct CelesteMapLevelCache {
     pub render_cache_valid: bool,
     pub render_cache: Option<femtovg::ImageId>,
+    pub last_entity_idx: usize,
 }
 
 impl Debug for CelesteMapLevelCache {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("CelesteMapLevelCache")
             .field("render_cache_valid", &self.render_cache_valid)
+            .field("last_entity_idx", &self.last_entity_idx)
             .finish()
     }
 }
@@ -176,8 +178,14 @@ impl CelesteMapLevel {
     }
 
     pub fn entity(&self, id: i32) -> Option<&CelesteMapEntity> {
-        for e in &self.entities {
+        if let Some(e) = self.entities.get(self.cache.borrow().last_entity_idx) {
             if e.id == id {
+                return Some(e);
+            }
+        }
+        for (idx, e) in self.entities.iter().enumerate() {
+            if e.id == id {
+                self.cache.borrow_mut().last_entity_idx = idx;
                 return Some(e);
             }
         }
@@ -185,12 +193,23 @@ impl CelesteMapLevel {
     }
 
     pub fn entity_mut(&mut self, id: i32) -> Option<&mut CelesteMapEntity> {
-        for e in &mut self.entities {
+        if let Some(e) = self.entities.get_mut(self.cache.borrow().last_entity_idx) {
             if e.id == id {
+                // hack around borrow checker
+                return self.entities.get_mut(self.cache.borrow().last_entity_idx);
+            }
+        }
+        for (idx, e) in self.entities.iter_mut().enumerate() {
+            if e.id == id {
+                self.cache.borrow_mut().last_entity_idx = idx;
                 return Some(e);
             }
         }
         None
+    }
+
+    pub fn cache_entity_idx(&self, idx: usize) {
+        self.cache.borrow_mut().last_entity_idx = idx;
     }
 
     pub fn next_id(&self) -> i32 {

@@ -57,7 +57,7 @@ impl View for EditorWidget {
         }
     }
 
-    fn draw(&self, cx: &Context, canvas: &mut Canvas) {
+    fn draw(&self, cx: &mut Context, canvas: &mut Canvas) {
         let state = cx.data::<AppState>().expect("EditorWidget must have an AppState in its ancestry");
         let entity = cx.current;
         let bounds = cx.cache.get_bounds(entity);
