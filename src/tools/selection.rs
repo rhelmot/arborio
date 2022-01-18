@@ -172,7 +172,7 @@ impl Tool for SelectionTool {
                 if ch != '\0' {
                     if let Some(tile) = assets::BG_TILES.get(&ch).and_then(|tileset| tileset.tile(float_pt, &mut tiler)) {
                         let room_pos = point_tile_to_room(&pt);
-                        assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, room_pos.x as f32, room_pos.y as f32);
+                        assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, room_pos.x as f32, room_pos.y as f32, Color::white().into());
                         path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
                     }
                 }
@@ -189,7 +189,7 @@ impl Tool for SelectionTool {
                 if ch != '\0' {
                     if let Some(tile) = assets::FG_TILES.get(&ch).and_then(|tileset| tileset.tile(float_pt, &mut tiler)) {
                         let room_pos = point_tile_to_room(&pt);
-                        assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, room_pos.x as f32, room_pos.y as f32);
+                        assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, room_pos.x as f32, room_pos.y as f32, Color::white().into());
                         path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
                     }
                 }

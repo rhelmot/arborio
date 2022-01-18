@@ -548,7 +548,6 @@ dependencies = [
 [[package]]
 name = "femtovg"
 version = "0.2.8"
-source = "git+https://github.com/femtovg/femtovg?rev=138a45d7b92419cc9eb2566acef7fadf25b81c00#138a45d7b92419cc9eb2566acef7fadf25b81c00"
 dependencies = [
  "bitflags",
  "fnv",

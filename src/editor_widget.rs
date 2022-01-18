@@ -155,7 +155,7 @@ fn draw_tiles(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
             let ry = (ty * 8) as f32;
             let tile = tiles[(tx + ty * tstride) as usize];
             if let Some(tile) = tiles_asset.get(&tile).and_then(|tileset| tileset.tile(pt, &mut |pt| room.tile(pt, fg))) {
-                assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, rx, ry);
+                assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, rx, ry, Color::white().into());
             }
         }
     }
@@ -262,6 +262,9 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
         }
         DrawElement::DrawPointImage { texture, point, justify_x, justify_y, scale, rot, color, } => {
             let texture = texture.evaluate(&env)?.as_string()?;
+            if texture.is_empty() {
+                return Ok(());
+            }
             let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
             let x = point.x.evaluate(&env)?.as_number()?.to_int() as f32;
             let y = point.y.evaluate(&env)?.as_number()?.to_int() as f32;
@@ -270,9 +273,10 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
             let dy = dim.height as f32;
             let x = x - (dx * justify_x);
             let y = y - (dy * justify_y);
-            // TODO: scale, rot, color
+            let color = color.evaluate(&env)?;
+            // TODO: scale, rot
             let slice = Rect::new(Point2D::zero(), dim.cast());
-            assets::GAMEPLAY_ATLAS.draw_sprite(canvas, sprite, x, y, slice);
+            assets::GAMEPLAY_ATLAS.draw_sprite(canvas, sprite, x, y, slice, color);
         }
         DrawElement::DrawRectImage { texture, bounds, slice, scale, color, tiler } => {
             let texture = texture.evaluate(&env)?.as_string()?;
@@ -284,6 +288,7 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
             let bounds_y = bounds.topleft.y.evaluate(&env)?.as_number()?.to_int() as f32;
             let bounds_w = bounds.size.x.evaluate(&env)?.as_number()?.to_int() as f32;
             let bounds_h = bounds.size.y.evaluate(&env)?.as_number()?.to_int() as f32;
+            let color = color.evaluate(&env)?;
 
             let bounds = Rect {
                 origin: Point2D::new(bounds_x, bounds_y),
@@ -304,7 +309,7 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
                             size: Size2D::new(slice_w, slice_h),
                         }
                     };
-                    draw_tiled(canvas, sprite, &bounds, &slice);
+                    draw_tiled(canvas, sprite, &bounds, &slice, color);
                 }
                 "9slice" => {
                     let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
@@ -326,12 +331,13 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
                         for y in 0..3_usize {
                             draw_tiled(
                                 canvas, sprite,
-                            &Rect::new(
-                                Point2D::new(bounds_starts_x[x], bounds_starts_y[y]) + bounds.origin.to_vector(),
-                                Size2D::new(bounds_sizes_x[x], bounds_sizes_y[y])),
-                            &Rect::new(
-                                 Point2D::new(slice_starts_x[x], slice_starts_y[y]),
-                                Size2D::new(slice_sizes_x[x], slice_sizes_y[y]))
+                                &Rect::new(
+                                    Point2D::new(bounds_starts_x[x], bounds_starts_y[y]) + bounds.origin.to_vector(),
+                                    Size2D::new(bounds_sizes_x[x], bounds_sizes_y[y])),
+                                &Rect::new(
+                                     Point2D::new(slice_starts_x[x], slice_starts_y[y]),
+                                    Size2D::new(slice_sizes_x[x], slice_sizes_y[y])),
+                                color
                             );
                         }
                     }
@@ -369,7 +375,7 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
                     for pt in rect_point_iter(tile_bounds, 1) {
                         if let Some(tile) = tileset.tile(pt, &mut tiler) {
                             let fp_pt = point_tile_to_room(&pt).cast::<f32>();
-                            assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, fp_pt.x, fp_pt.y);
+                            assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, fp_pt.x, fp_pt.y, color);
                         }
                     }
                 }
@@ -383,7 +389,8 @@ fn draw_tiled(
     canvas: &mut Canvas,
     sprite: SpriteReference,
     bounds: &Rect<f32, UnknownUnit>,
-    slice: &Rect<f32, UnknownUnit>
+    slice: &Rect<f32, UnknownUnit>,
+    color: femtovg::Color,
 ) {
     tile(bounds, slice.width(), slice.height(), |piece| {
         //let draw_x = piece.x;
@@ -399,7 +406,8 @@ fn draw_tiled(
             sprite,
             piece.min_x(),
             piece.min_y(),
-            Rect::new(slice.origin, piece.size)
+            Rect::new(slice.origin, piece.size),
+            color
         );
     });
 }

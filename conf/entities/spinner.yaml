@@ -1,0 +1,133 @@
+entity_name: spinner
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-8
+        y: y-8
+      size:
+        x: 16
+        y: 16
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: 'match (match ?dust { 1 => dust, _ => 0 }) {
+                    1 => "danger/dustcreature/base00",
+                    _ => match (match ?color { 1 => color, _ => "blue" }) {
+                      "purple" => "danger/crystal/fg_purple00",
+                      "Purple" => "danger/crystal/fg_purple00",
+                      "red" => "danger/crystal/fg_red00",
+                      "Red" => "danger/crystal/fg_red00",
+                      "Core" => "danger/crystal/fg_white00",
+                      "core" => "danger/crystal/fg_white00",
+                      "rainbow" => "danger/crystal/fg_white00",
+                      "Rainbow" => "danger/crystal/fg_white00",
+                      _ => "danger/crystal/fg_blue00"
+                    }
+                  }'
+        point:
+          x: x
+          y: y
+        color:
+          r: 'match (match ?color { 1 => color, _ => "blue" }) { "core" => 0xff, "rainbow" => 0x80, _ => 0xff }'
+          g: 'match (match ?color { 1 => color, _ => "blue" }) { "core" => 0x40, "rainbow" => 0xc0, _ => 0xff }'
+          b: 'match (match ?color { 1 => color, _ => "blue" }) { "core" => 0x30, "rainbow" => 0xff, _ => 0xff }'
+          a: '0xff'
+    - DrawPointImage:
+        texture: 'match (match ?dust { 1 => dust, _ => 0 }) { 1 => "danger/dustcreature/center00", _ => "" }'
+        point:
+          x: x
+          y: y
+resizable_x: false
+resizable_y: false
+nodes: false
+pencil: Line
+attributes:
+  dust:
+    ty: Bool
+    default:
+      Bool: false
+  color:
+    ty: String
+    default:
+      String: blue
+    options:
+      - name: Blue
+        value:
+          String: blue
+      - name: Red
+        value:
+          String: red
+      - name: Purple
+        value:
+          String: purple
+      - name: Core
+        value:
+          String: core
+      - name: Rainbow
+        value:
+          String: rainbow
+  attachToSolid:
+    ty: Bool
+    default:
+      Bool: false
+templates:
+  - name: Crystal Spinner (Blue)
+    attributes:
+      color:
+        String: blue
+  - name: Crystal Spinner (Blue, Attached)
+    attributes:
+      color:
+        String: blue
+      attachToSolid:
+        Bool: true
+  - name: Crystal Spinner (Red)
+    attributes:
+      color:
+        String: red
+  - name: Crystal Spinner (Red, Attached)
+    attributes:
+      color:
+        String: red
+      attachToSolid:
+        Bool: true
+  - name: Crystal Spinner (Purple)
+    attributes:
+      color:
+        String: purple
+  - name: Crystal Spinner (Purple, Attached)
+    attributes:
+      color:
+        String: purple
+      attachToSolid:
+        Bool: true
+  - name: Crystal Spinner (Core)
+    attributes:
+      color:
+        String: core
+  - name: Crystal Spinner (Core, Attached)
+    attributes:
+      color:
+        String: core
+      attachToSolid:
+        Bool: true
+  - name: Crystal Spinner (Rainbow)
+    attributes:
+      color:
+        String: rainbow
+  - name: Crystal Spinner (Rainbow, Attached)
+    attributes:
+      color:
+        String: rainbow
+      attachToSolid:
+        Bool: true
+  - name: Dust Creature
+    attributes:
+      dust:
+        Bool: true
+  - name: Dust Creature (Attached)
+    attributes:
+      dust:
+        Bool: true
+      attachToSolid:
+        Bool: true

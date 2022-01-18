@@ -19,10 +19,53 @@ standard_draw:
           size:
             x: width
             y: height
+        color:
+          r: match index { 1 => 0xf0, 2 => 0xfc, 3 => 0x38, _ => 0x49 }
+          g: match index { 1 => 0x49, 2 => 0xdc, 3 => 0xe0, _ => 0xaa }
+          b: match index { 1 => 0xbe, 2 => 0x3a, 3 => 0x4e, _ => 0xf0 }
+          a: 0xff
 resizable_x: true
 resizable_y: true
 minimum_size_x: 16
 minimum_size_y: 16
 nodes: false
-attribute_info: {}
 pencil: Rect
+attribute_info:
+  index:
+    ty: Int
+    default:
+      Int: 0
+    options:
+      - name: Blue
+        value:
+          Int: 0
+      - name: Red
+        value:
+          Int: 1
+      - name: Yellow
+        value:
+          Int: 2
+      - name: Green
+        value:
+          Int: 3
+  tempo:
+    ty: Float
+    default:
+      Float: 1.0
+templates:
+  - name: Cassette Block (Blue)
+    attributes:
+      index:
+        Int: 0
+  - name: Cassette Block (Red)
+    attributes:
+      index:
+        Int: 1
+  - name: Cassette Block (Yellow)
+    attributes:
+      index:
+        Int: 2
+  - name: Cassette Block (Green)
+    attributes:
+      index:
+        Int: 3

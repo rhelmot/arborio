@@ -142,8 +142,16 @@ named!(string_lit_squote<&str, &str>,
     delimited!(tag!("'"),is_not!("'"),tag!("'"))
 );
 
+named!(string_lit_empty_dquote<&str, &str>,
+    map_res!(tag!("\"\""), |s: &str| -> Result<&str, Error<&str>> { Ok("") })
+);
+
+named!(string_lit_empty_squote<&str, &str>,
+    map_res!(tag!("''"), |s: &str| -> Result<&str, Error<&str>> { Ok("") })
+);
+
 named!(string_lit<&str, &str>,
-    alt!(string_lit_dquote | string_lit_squote)
+    alt!(string_lit_dquote | string_lit_squote | string_lit_empty_dquote | string_lit_empty_squote)
 );
 
 const IDENT_START_CHARS: &str = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -551,5 +559,13 @@ mod test {
         env.insert("x", Const::Number(Number(0.0)));
         let res = expr.evaluate(&env);
         assert_eq!(res, Ok(Const::Number(Number(1.0))));
+    }
+
+    #[test]
+    fn test_empty_string() {
+        let expr = expression("''");
+        assert!(expr.is_ok());
+        let res = expr.unwrap().1.evaluate(&HashMap::new());
+        assert_eq!(res, Ok(Const::String("".to_owned())));
     }
 }
