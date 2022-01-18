@@ -9,8 +9,8 @@ hitboxes:
         y: 16
   node_rects:
     - topleft:
-        x: nodex
-        y: nodey
+        x: nodex-4
+        y: nodey-4
       size:
         x: 8
         y: 8

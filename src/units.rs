@@ -97,3 +97,50 @@ where T: num_traits::Signed + Copy + Ord
         ),
         Size2D::new(rect.size.width.abs(), rect.size.height.abs()))
 }
+
+#[derive(Debug)]
+pub struct TileGrid<T> {
+    pub tiles: Vec<T>,
+    pub stride: usize,
+}
+
+impl<T> TileGrid<T> {
+    pub fn empty() -> Self {
+        TileGrid {
+            tiles: vec![],
+            stride: 1,
+        }
+    }
+
+    pub fn get(&self, pt: TilePoint) -> Option<&T> {
+        if pt.x < 0 || pt.x >= self.stride as i32 || pt.y < 0 {
+            None
+        } else {
+            self.tiles.get((pt.x + pt.y * self.stride as i32) as usize)
+        }
+    }
+
+    pub fn get_mut(&mut self, pt: TilePoint) -> Option<&mut T> {
+        if pt.x < 0 || pt.x >= self.stride as i32 || pt.y < 0 {
+            None
+        } else {
+            self.tiles.get_mut((pt.x + pt.y * self.stride as i32) as usize)
+        }
+    }
+
+    pub fn size(&self) -> TileSize {
+        TileSize::new(self.stride as i32, (self.tiles.len() / self.stride) as i32)
+    }
+}
+impl<T: Clone + Default> TileGrid<T> {
+    pub fn get_or_default(&self, pt: TilePoint) -> T {
+        self.get(pt).cloned().unwrap_or(T::default())
+    }
+
+    pub fn new_default(size: TileSize) -> Self {
+        Self {
+            tiles: vec![T::default(); (size.width * size.height) as usize],
+            stride: size.width as usize,
+        }
+    }
+}

@@ -1,0 +1,64 @@
+entity_name: hanginglamp
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: 8
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"objects/hanginglamp"'
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: 8
+            y: height - 8
+        slice:
+          topleft:
+            x: 0
+            y: 8
+          size:
+            x: 8
+            y: 8
+    - DrawRectImage:
+        texture: '"objects/hanginglamp"'
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: 8
+            y: 8
+        slice:
+          topleft:
+            x: 0
+            y: 0
+          size:
+            x: 8
+            y: 8
+    - DrawRectImage:
+        texture: '"objects/hanginglamp"'
+        bounds:
+          topleft:
+            x: x
+            y: y + height - 8
+          size:
+            x: 8
+            y: 8
+        slice:
+          topleft:
+            x: 0
+            y: 16
+          size:
+            x: 8
+            y: 8
+resizable_x: false
+resizable_y: true
+minimum_size_x: 16
+nodes: false
+pencil: Rect

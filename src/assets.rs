@@ -48,13 +48,13 @@ lazy_static! {
     };
     pub static ref FG_TILES: HashMap<char, autotiler::Tileset> = {
         let path = CONFIG.lock().unwrap().celeste_root.join("Content/Graphics/ForegroundTiles.xml");
-        let fg_tiles = autotiler::Tileset::load(&path, &GAMEPLAY_ATLAS);
+        let fg_tiles = autotiler::Tileset::load(&path, &GAMEPLAY_ATLAS, "tilesets/");
 
         fg_tiles.unwrap_or_else(|e| panic!("Failed to load ForegroundTiles.xml: {}", e))
     };
     pub static ref BG_TILES: HashMap<char, autotiler::Tileset> = {
         let path = CONFIG.lock().unwrap().celeste_root.join("Content/Graphics/BackgroundTiles.xml");
-        let bg_tiles = autotiler::Tileset::load(path.as_path(), &GAMEPLAY_ATLAS);
+        let bg_tiles = autotiler::Tileset::load(&path, &GAMEPLAY_ATLAS, "tilesets/");
 
         bg_tiles.unwrap_or_else(|e| panic!("Failed to load BackgroundTiles.xml: {}", e))
     };
@@ -68,6 +68,16 @@ lazy_static! {
                 }
                 (config.entity_name.clone(), config)
             }).collect()
+    };
+    pub static ref AUTOTILERS: HashMap<String, &'static HashMap<char, autotiler::Tileset>> = {
+        let fgbg: Vec<(String, &'static HashMap<char, autotiler::Tileset>)> = vec![("fg".to_owned(), &FG_TILES), ("bg".to_owned(), &BG_TILES)];
+        EMBEDDED_CONFIG.get_dir("tilers").unwrap().files().iter()
+            .map(|f| (f.path().file_stem().unwrap().to_str().unwrap().to_owned(),
+                Box::leak(Box::new(autotiler::Tileset::parse(f.contents_utf8().unwrap(), &GAMEPLAY_ATLAS, "")
+                    .unwrap_or_else(|e| panic!("Failed to load {:?}: {}", f.path(), e)))) as &'static HashMap<char, autotiler::Tileset>
+            ))
+            .chain(fgbg.into_iter())
+            .collect()
     };
 
     pub static ref FG_TILES_PALETTE: Vec<TileSelectable> = {
@@ -109,4 +119,5 @@ pub fn load() {
     assert_ne!(FG_TILES.len(), 0);
     assert_ne!(BG_TILES.len(), 0);
     assert!(ENTITY_CONFIG.get("default").is_some());
+    assert_ne!(AUTOTILERS.len(), 0);
 }

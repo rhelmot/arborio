@@ -1,0 +1,84 @@
+entity_name: jumpThru
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: 'match (match (match ?texture { 1 => texture, _ => "default" }) { "default" => "wood", _ => texture }) {
+                    "cliffside" => "a",
+                    "core" => "b",
+                    "dream" => "c",
+                    "moon" => "d",
+                    "reflection" => "e",
+                    "temple" => "f",
+                    "templeB" => "g",
+                    "wood" => "h",
+                    _ => "h"
+                  }'
+        tiler: jumpthru
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: 8
+selected_draw:
+  node_draw:
+    - DrawLine:
+        start:
+          x: prevnodexorbase
+          y: prevnodeyorbase
+        end:
+          x: nodex
+          y: nodey
+        arrowhead: true
+        color:
+          r: 255
+          g: 255
+          b: 0
+          a: 200
+resizable_x: true
+resizable_y: false
+minimum_size_x: 16
+nodes: false
+attribute_info:
+  texture:
+    ty: String
+    default:
+      String: "default"
+    options:
+      - name: Default
+        value:
+          String: "default"
+      - name: Cliffside
+        value:
+          String: "cliffside"
+      - name: Core
+        value:
+          String: "core"
+      - name: Dream
+        value:
+          String: "dream"
+      - name: Moon
+        value:
+          String: "moon"
+      - name: Reflection
+        value:
+          String: "reflection"
+      - name: Temple
+        value:
+          String: "temple"
+      - name: Temple B
+        value:
+          String: "templeB"
+      - name: Wood
+        value:
+          String: "wood"
+pencil: Rect

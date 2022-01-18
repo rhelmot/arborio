@@ -1,6 +1,6 @@
 use vizia::*;
 
-use crate::app_state::{AppEvent, AppState, Layer, TileFloat};
+use crate::app_state::{AppEvent, AppState, Layer};
 use crate::entity_config::PencilBehavior;
 use crate::map_struct::CelesteMapEntity;
 use crate::palette_widget::EntitySelectable;
@@ -69,7 +69,7 @@ impl Tool for PencilTool {
             Layer::Entities => {
                 let tmp_entity = self.get_terminal_entity(state.current_entity, room_pos);
                 canvas.set_global_alpha(0.5);
-                editor_widget::draw_entity(canvas, &tmp_entity);
+                editor_widget::draw_entity(canvas, &tmp_entity, &TileGrid::empty());
             }
             _ => {}
         }
@@ -106,7 +106,7 @@ impl PencilTool {
             Layer::FgTiles | Layer::BgTiles => {
                 let fg = state.current_layer == Layer::FgTiles;
                 let ch = if fg { state.current_fg_tile } else {state.current_bg_tile };
-                vec![AppEvent::TileUpdate { fg, offset: tile_pos, data: TileFloat {
+                vec![AppEvent::TileUpdate { fg, offset: tile_pos, data: TileGrid {
                     tiles: vec![ch.id],
                     stride: 1,
                 } }]

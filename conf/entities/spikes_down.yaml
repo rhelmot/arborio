@@ -10,7 +10,7 @@ hitboxes:
 standard_draw:
   initial_draw:
     - DrawRectImage:
-        texture: '"danger/spikes/" + type + "_down00"'
+        texture: '"danger/spikes/" + (match ?type { 1 => type, _ => "default" }) + "_down00"'
         bounds:
           topleft:
             x: x

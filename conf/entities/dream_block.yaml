@@ -1,0 +1,36 @@
+entity_name: dreamBlock
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+        color:
+          r: 0
+          g: 0
+          b: 0
+          a: 255
+        border_color:
+          r: 255
+          g: 255
+          b: 255
+          a: 255
+resizable_x: true
+resizable_y: true
+minimum_size_x: 8
+minimum_size_y: 8
+nodes: false
+attribute_info: {}
+pencil: Rect

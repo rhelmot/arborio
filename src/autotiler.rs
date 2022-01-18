@@ -72,10 +72,20 @@ macro_rules! assert_ascii {
     }
 }
 
+pub trait AutoTiler {
+
+    fn tile<F>(&self, pt: TilePoint, tile: &mut F) -> Option<TileReference> where F: Fn(TilePoint) -> Option<char>;
+}
+
 impl Tileset {
-    pub fn load(path: &Path, gameplay_atlas: &atlas_img::Atlas) -> Result<HashMap<char, Tileset>, io::Error> {
+    pub fn load(path: &Path, gameplay_atlas: &atlas_img::Atlas, texture_prefix: &str) -> Result<HashMap<char, Tileset>, io::Error> {
         let string = fs::read_to_string(path).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset {}: {}", path.to_str().unwrap(), e)))?;
-        let data: SerData = serde_xml_rs::from_str(string.trim_start_matches('\u{FEFF}')).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset {}: {:?}", path.to_str().unwrap(), e)))?;
+        Self::parse(&string, gameplay_atlas, texture_prefix)
+    }
+
+    pub fn parse(string: &str, gameplay_atlas: &atlas_img::Atlas, texture_prefix: &str) -> Result<HashMap<char, Tileset>, io::Error> {
+        let data: SerData = serde_xml_rs::from_str(string.trim_start_matches('\u{FEFF}'))
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset: {:?}", e)))?;
         let mut out: HashMap<char, Tileset> = HashMap::new();
 
         for s_tileset in data.tilesets {
@@ -86,9 +96,9 @@ impl Tileset {
             let ch = s_tileset.id.chars().next().unwrap();
 
             // HACK
-            let texture_sprite = match gameplay_atlas.lookup(&format!("tilesets/{}", if s_tileset.path == "template" { "dirt" } else { &s_tileset.path })) {
+            let texture_sprite = match gameplay_atlas.lookup(&format!("{}{}", texture_prefix, if s_tileset.path == "template" { "dirt" } else { &s_tileset.path })) {
                 Some(v) => v,
-                None => return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Texture {} for tileset {} not found in the gameplay atlas", s_tileset.path, s_tileset.id))),
+                None => return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Texture {}{} for tileset {} not found in the gameplay atlas", texture_prefix, s_tileset.path, s_tileset.id))),
             };
             let mut tileset = if s_tileset.copy.is_empty() {
                 Tileset {
@@ -196,32 +206,42 @@ impl Tileset {
         Ok(out)
     }
 
-    pub fn tile(&self, level: &CelesteMapLevel, foreground: bool, pt: TilePoint) -> Option<TileReference> {
-        let mut tile = |x, y| level.tile(TilePoint::new(x, y), foreground);
-        self.tile_g(pt, &mut tile)
+
+    fn ignores(&self, tile: char) -> bool {
+        self.ignores_all || self.ignores.contains(&tile)
     }
 
-    pub fn tile_g<F>(&self, pt: TilePoint, tile: &mut F) -> Option<TileReference> where F: Fn(i32, i32) -> Option<char> {
-        if tile(pt.x, pt.y) != Some(self.id) {
+    fn is_filled(&self, tile: Option<char>) -> bool {
+        match tile {
+            Some(ch) if ch == self.id => true,
+            Some('0') | Some('\0') => false,
+            Some(ch) => !self.ignores(ch),
+            None => true,
+        }
+    }
+}
+
+impl AutoTiler for Tileset {
+    fn tile<F>(&self, pt: TilePoint, tile: &mut F) -> Option<TileReference> where F: Fn(TilePoint) -> Option<char> {
+        if tile(pt) != Some(self.id) {
             return None;
         }
-        let (x, y) = pt.to_tuple();
 
-        let hash = ((x as u32).wrapping_mul(536870909) ^ (y as u32).wrapping_mul(1073741789)) as usize;
+        let hash = ((pt.x as u32).wrapping_mul(536870909) ^ (pt.y as u32).wrapping_mul(1073741789)) as usize;
 
         let mut lookup = 0_usize;
-        if self.is_filled(tile(x-1, y-1)) { lookup |= 1 << 0; }
-        if self.is_filled(tile(x,   y-1)) { lookup |= 1 << 1; }
-        if self.is_filled(tile(x+1, y-1)) { lookup |= 1 << 2; }
-        if self.is_filled(tile(x-1, y))   { lookup |= 1 << 3; }
-        if self.is_filled(tile(x+1, y))   { lookup |= 1 << 4; }
-        if self.is_filled(tile(x-1, y+1)) { lookup |= 1 << 5; }
-        if self.is_filled(tile(x,   y+1)) { lookup |= 1 << 6; }
-        if self.is_filled(tile(x+1, y+1)) { lookup |= 1 << 7; }
+        if self.is_filled(tile(pt + TileVector::new(-1, -1))) { lookup |= 1 << 0; }
+        if self.is_filled(tile(pt + TileVector::new(0, -1)))  { lookup |= 1 << 1; }
+        if self.is_filled(tile(pt + TileVector::new(1, -1)))  { lookup |= 1 << 2; }
+        if self.is_filled(tile(pt + TileVector::new(-1, 0)))  { lookup |= 1 << 3; }
+        if self.is_filled(tile(pt + TileVector::new(1,  0)))  { lookup |= 1 << 4; }
+        if self.is_filled(tile(pt + TileVector::new(-1, 1)))  { lookup |= 1 << 5; }
+        if self.is_filled(tile(pt + TileVector::new(0,  1)))  { lookup |= 1 << 6; }
+        if self.is_filled(tile(pt + TileVector::new(1,  1)))  { lookup |= 1 << 7; }
 
         let tiles = if lookup == 0xff {
-            if self.is_filled(tile(x-2, y)) && self.is_filled(tile(x+2, y)) &&
-                self.is_filled(tile(x, y-2)) && self.is_filled(tile(x, y+2)) {
+            if self.is_filled(tile(pt + TileVector::new(-2, 0))) && self.is_filled(tile(pt + TileVector::new(2, 0))) &&
+                self.is_filled(tile(pt + TileVector::new(0, -2))) && self.is_filled(tile(pt + TileVector::new(0, 2))) {
                 &self.center
             } else {
                 &self.padding
@@ -238,19 +258,6 @@ impl Tileset {
             tile: tiles[hash % tiles.len()],
             texture: self.texture,
         })
-    }
-
-    fn ignores(&self, tile: char) -> bool {
-        self.ignores_all || self.ignores.contains(&tile)
-    }
-
-    pub fn is_filled(&self, tile: Option<char>) -> bool {
-        match tile {
-            Some(ch) if ch == self.id => true,
-            Some('0') | Some('\0') => false,
-            Some(ch) => !self.ignores(ch),
-            None => true,
-        }
     }
 }
 

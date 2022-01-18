@@ -4,15 +4,15 @@ use vizia::*;
 use crate::app_state::{AppEvent, AppState, Layer};
 use crate::tools::{Tool, generic_nav};
 use crate::units::*;
-use crate::app_state::TileFloat;
 use crate::map_struct::CelesteMapLevel;
 use crate::assets;
+use crate::autotiler::AutoTiler;
 
 pub struct SelectionTool {
     current_selection: Vec<AppSelection>,
     pending_selection: Vec<AppSelection>,
-    fg_float: Option<(TilePoint, TileFloat)>,
-    bg_float: Option<(TilePoint, TileFloat)>,
+    fg_float: Option<(TilePoint, TileGrid<char>)>,
+    bg_float: Option<(TilePoint, TileGrid<char>)>,
 
     status: SelectionStatus,
 }
@@ -162,15 +162,15 @@ impl Tool for SelectionTool {
         }
 
         if let Some((float_pos, float_dat)) = &self.bg_float {
-            let mut tiler = |x: i32, y: i32| -> Option<char> {
-                Some(float_dat.get_at(TilePoint::new(x, y)))
+            let mut tiler = |pt| -> Option<char> {
+                Some(float_dat.get_or_default(pt))
             };
             let rect = TileRect::new(*float_pos, float_dat.size());
             for pt in rect_point_iter(rect, 1) {
                 let float_pt = pt - float_pos.to_vector();
-                let ch = float_dat.get_at(float_pt);
+                let ch = float_dat.get_or_default(float_pt);
                 if ch != '\0' {
-                    if let Some(tile) = assets::BG_TILES.get(&ch).and_then(|tileset| tileset.tile_g(float_pt, &mut tiler)) {
+                    if let Some(tile) = assets::BG_TILES.get(&ch).and_then(|tileset| tileset.tile(float_pt, &mut tiler)) {
                         let room_pos = point_tile_to_room(&pt);
                         assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, room_pos.x as f32, room_pos.y as f32);
                         path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
@@ -179,15 +179,15 @@ impl Tool for SelectionTool {
             }
         }
         if let Some((float_pos, float_dat)) = &self.fg_float {
-            let mut tiler = |x: i32, y: i32| -> Option<char> {
-                Some(float_dat.get_at(TilePoint::new(x, y)))
+            let mut tiler = |pt| -> Option<char> {
+                Some(float_dat.get_or_default(pt))
             };
             let rect = TileRect::new(*float_pos, float_dat.size());
             for pt in rect_point_iter(rect, 1) {
                 let float_pt = pt - float_pos.to_vector();
-                let ch = float_dat.get_at(float_pt);
+                let ch = float_dat.get_or_default(float_pt);
                 if ch != '\0' {
-                    if let Some(tile) = assets::FG_TILES.get(&ch).and_then(|tileset| tileset.tile_g(float_pt, &mut tiler)) {
+                    if let Some(tile) = assets::FG_TILES.get(&ch).and_then(|tileset| tileset.tile(float_pt, &mut tiler)) {
                         let room_pos = point_tile_to_room(&pt);
                         assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, room_pos.x as f32, room_pos.y as f32);
                         path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
@@ -223,13 +223,13 @@ impl SelectionTool {
         let tile_pos = point_room_to_tile(&room_pos);
         if let Some((offset, data)) = &self.fg_float {
             let relative_pos = tile_pos - offset.to_vector();
-            if data.get_at(relative_pos) != '\0' {
+            if data.get_or_default(relative_pos) != '\0' {
                 return true;
             }
         }
         if let Some((offset, data)) = &self.bg_float {
             let relative_pos = tile_pos - offset.to_vector();
-            if data.get_at(relative_pos) != '\0' {
+            if data.get_or_default(relative_pos) != '\0' {
                 return true;
             }
         }
@@ -391,7 +391,7 @@ impl SelectionTool {
     fn add_to_float(&mut self, room: &CelesteMapLevel, pt: TilePoint, fg: bool) {
         if let Some(ch) = room.tile(pt, fg) {
             let float = if fg { &mut self.fg_float } else { &mut self.bg_float };
-            let mut default = (pt, TileFloat { tiles: vec![], stride: 1 });
+            let mut default = (pt, TileGrid { tiles: vec![], stride: 1 });
             let (old_origin, old_dat) = float.as_mut().unwrap_or_else(|| &mut default);
             let old_size = TileVector::new(old_dat.stride as i32, (old_dat.tiles.len() / old_dat.stride) as i32);
             let old_supnum = *old_origin + old_size;
@@ -401,7 +401,7 @@ impl SelectionTool {
             let new_size = (new_supnum - new_origin);
 
             let new_dat = if new_size != old_size {
-                let mut new_dat = TileFloat { tiles: vec!['\0'; (new_size.x * new_size.y) as usize], stride: new_size.x as usize };
+                let mut new_dat = TileGrid { tiles: vec!['\0'; (new_size.x * new_size.y) as usize], stride: new_size.x as usize };
                 let movement = *old_origin - new_origin;
                 let dest_start_offset = movement.x + movement.y * new_size.x;
                 for line in 0..old_size.y {
@@ -438,7 +438,7 @@ impl SelectionTool {
                 events.push(AppEvent::TileUpdate {
                     fg: true,
                     offset: pt,
-                    data: TileFloat { tiles: vec!['0'], stride: 1 }
+                    data: TileGrid { tiles: vec!['0'], stride: 1 }
                 });
                 self.current_selection.remove(i);
                 continue;
@@ -447,7 +447,7 @@ impl SelectionTool {
                 events.push(AppEvent::TileUpdate {
                     fg: false,
                     offset: pt,
-                    data: TileFloat { tiles: vec!['0'], stride: 1 }
+                    data: TileGrid { tiles: vec!['0'], stride: 1 }
                 });
                 self.current_selection.remove(i);
                 continue;

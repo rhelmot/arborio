@@ -1,0 +1,25 @@
+entity_name: crumbleBlock
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"objects/crumbleBlock/default"'
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: 8
+resizable_x: true
+resizable_y: false
+nodes: false
+pencil: Rect
+attribute_info: {}

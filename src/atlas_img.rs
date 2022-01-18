@@ -151,6 +151,9 @@ impl Atlas {
 
     pub fn draw_tile(&self, canvas: &mut vizia::Canvas, tile_ref: TileReference, ox: f32, oy: f32) {
         let sprite = &self.sprites[tile_ref.texture.idx as usize];
+        let dim = self.sprite_dimensions(tile_ref.texture);
+        let path_x = (dim.width as f32 - (tile_ref.tile.x*8) as f32).min(8.0);
+        let path_y = (dim.height as f32 - (tile_ref.tile.y*8) as f32).min(8.0);
         let mut image_blob = self.blobs[sprite.blob_idx].lock().unwrap();
         let image_id = image_blob.image_id(canvas);
         let (sx, sy) = canvas.image_size(image_id).unwrap();
@@ -162,7 +165,7 @@ impl Atlas {
             0.0, 1.0,
         );
         let mut path = Path::new();
-        path.rect(ox as f32, oy as f32, 8.0, 8.0);
+        path.rect(ox as f32, oy as f32, path_x, path_y);
         canvas.fill_path(&mut path, paint);
     }
 }

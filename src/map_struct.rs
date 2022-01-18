@@ -219,6 +219,43 @@ impl CelesteMapLevel {
         }
         highest_entity + 1
     }
+
+    pub fn occupancy_field(&self) -> TileGrid<FieldEntry> {
+        let mut result = TileGrid::new_default(size_room_to_tile(&self.bounds.size.cast_unit()));
+        for entity in &self.entities {
+            if entity.width != 0 && entity.height != 0 {
+                let rect = TileRect::new(TilePoint::new(entity.x/8, entity.y/8), TileSize::new(entity.width as i32/8, entity.height as i32/8));
+                for pt in rect_point_iter(rect, 1) {
+                    if let Some(spot) = result.get_mut(pt) {
+                        *spot = FieldEntry::Entity(entity);
+                    }
+                }
+            }
+        }
+        for pt in rect_point_iter(rect_room_to_tile(&self.room_bounds()), 1) {
+            if self.tile(pt, true).unwrap_or('0') != '0' {
+                *result.get_mut(pt).unwrap() = FieldEntry::Fg;
+            }
+        }
+        result
+    }
+
+    pub fn room_bounds(&self) -> RoomRect {
+        RoomRect::new(RoomPoint::zero(), self.bounds.size.cast_unit())
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum FieldEntry<'a> {
+    None,
+    Fg,
+    Entity(&'a CelesteMapEntity),
+}
+
+impl Default for FieldEntry<'_> {
+    fn default() -> Self {
+        FieldEntry::None
+    }
 }
 
 impl CelesteMap {

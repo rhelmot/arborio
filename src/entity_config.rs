@@ -24,6 +24,8 @@ pub struct EntityConfig {
     #[serde(default)]
     pub pencil: PencilBehavior,
     #[serde(default)]
+    pub solid: bool,
+    #[serde(default)]
     pub attribute_info: HashMap<String, AttributeInfo>,
     #[serde(default)]
     pub templates: Vec<EntityTemplate>,
@@ -124,6 +126,8 @@ pub enum DrawElement {
     },
     DrawRectImage {
         texture: Expression,
+        #[serde(default = "repeat")]
+        tiler: String,
         bounds: Rect,
         #[serde(default = "empty_rect")]
         slice: Rect,
@@ -131,8 +135,6 @@ pub enum DrawElement {
         scale: Vec2,
         #[serde(default)]
         color: Color,
-        #[serde(default = "repeat")]
-        tiler: AutotilerType,
     },
     DrawPointImage {
         texture: Expression,
@@ -160,16 +162,7 @@ fn empty_rect() -> Rect {
 }
 fn half() -> f32 { 0.5 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum AutotilerType {
-    Repeat,
-    NineSlice,
-    Fg, Bg,
-    Cassette,
-    JumpThru,
-}
-
-fn repeat() -> AutotilerType { AutotilerType::Repeat }
+fn repeat() -> String { "repeat".to_owned() }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Rect {

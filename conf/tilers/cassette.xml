@@ -1,0 +1,17 @@
+<Data>
+    <Tileset id="a" path="objects/cassetteblock/solid" ignores="2">
+        <set mask="x0x-011-x1x" tiles="0,0" />
+        <set mask="x0x-111-x1x" tiles="1,0" />
+        <set mask="x0x-110-x1x" tiles="2,0" />
+        <set mask="x1x-011-x1x" tiles="0,1" />
+        <set mask="x1x-110-x1x" tiles="2,1" />
+        <set mask="x1x-011-x0x" tiles="0,2" />
+        <set mask="x1x-111-x0x" tiles="1,2" />
+        <set mask="x1x-110-x0x" tiles="2,2" />
+        <set mask="111-111-111" tiles="1,1" />
+        <set mask="110-111-111" tiles="3,0" />
+        <set mask="011-111-111" tiles="3,1" />
+        <set mask="111-111-110" tiles="3,2" />
+        <set mask="111-111-011" tiles="3,3" />
+    </Tileset>
+</Data>

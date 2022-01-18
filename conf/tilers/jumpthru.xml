@@ -1,0 +1,20 @@
+<Data>
+    <Tileset id="z" path="objects/jumpthru/wood">
+        <set mask="xxx-111-0x0" tiles="1,1" />
+        <set mask="xxx-111-1x1" tiles="1,1" />
+        <set mask="xxx-111-1x0" tiles="0,0" />
+        <set mask="xxx-111-0x1" tiles="2,0" />
+        <set mask="xxx-011-xxx" tiles="0,1" />
+        <set mask="xxx-110-xxx" tiles="2,1" />
+        <set mask="xxx-010-xxx" tiles="1,1" />
+    </Tileset>
+
+    <Tileset id="a" copy="z" path="objects/jumpthru/cliffside" />
+    <Tileset id="b" copy="z" path="objects/jumpthru/core" />
+    <Tileset id="c" copy="z" path="objects/jumpthru/dream" />
+    <Tileset id="d" copy="z" path="objects/jumpthru/moon" />
+    <Tileset id="e" copy="z" path="objects/jumpthru/reflection" />
+    <Tileset id="f" copy="z" path="objects/jumpthru/temple" />
+    <Tileset id="g" copy="z" path="objects/jumpthru/templeB" />
+    <Tileset id="h" copy="z" path="objects/jumpthru/wood" />
+</Data>

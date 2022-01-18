@@ -64,25 +64,6 @@ impl Layer {
 }
 
 #[derive(Debug)]
-pub struct TileFloat {
-    pub tiles: Vec<char>,
-    pub stride: usize,
-}
-
-impl TileFloat {
-    pub fn get_at(&self, pt: TilePoint) -> char {
-        if pt.x < 0 || pt.x >= self.stride as i32 || pt.y < 0 {
-            return '\0';
-        }
-        self.tiles.get((pt.x + pt.y * self.stride as i32) as usize).cloned().unwrap_or('\0')
-    }
-
-    pub fn size(&self) -> TileSize {
-        TileSize::new(self.stride as i32, (self.tiles.len() / self.stride) as i32)
-    }
-}
-
-#[derive(Debug)]
 pub enum AppEvent {
     Load { map: RefCell<Option<CelesteMap>> },
     Pan { delta: MapVectorPrecise },
@@ -92,7 +73,7 @@ pub enum AppEvent {
     SelectLayer { layer: Layer },
     SelectPaletteTile { fg: bool, tile: TileSelectable },
     SelectPaletteEntity { entity: EntitySelectable },
-    TileUpdate { fg: bool, offset: TilePoint, data: TileFloat },
+    TileUpdate { fg: bool, offset: TilePoint, data: TileGrid<char> },
     EntityAdd { entity: CelesteMapEntity },
     EntityUpdate { entity: CelesteMapEntity },
     EntityRemove { id: i32 },
@@ -207,7 +188,7 @@ impl AppState {
         }
     }
 
-    pub fn apply_tiles(&mut self, offset: &TilePoint, data: &TileFloat, fg: bool) {
+    pub fn apply_tiles(&mut self, offset: &TilePoint, data: &TileGrid<char>, fg: bool) {
         let mut dirty = false;
         if let Some(map) = &mut self.map {
             if let Some(mut room) = map.levels.get_mut(self.current_room) {

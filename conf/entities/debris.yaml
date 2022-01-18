@@ -1,0 +1,24 @@
+entity_name: floatingDebris
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-4
+        y: y-4
+      size:
+        x: 8
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"z"'
+        tiler: debris
+        bounds:
+          topleft:
+            x: x-4
+            y: y-4
+          size:
+            x: 8
+            y: 8
+resizable_x: false
+resizable_y: false
+nodes: false

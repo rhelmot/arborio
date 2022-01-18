@@ -8,15 +8,15 @@ use vizia::*;
 use femtovg::{Color, ImageFlags, Paint, Path, PixelFormat, RenderTarget};
 use euclid::{Rect, Point2D, Vector2D, Size2D, UnknownUnit, Transform2D, Angle};
 
-use crate::map_struct::{CelesteMapEntity, CelesteMapLevel};
-use crate::entity_config::{DrawElement, AutotilerType};
+use crate::map_struct::{CelesteMapEntity, CelesteMapLevel, FieldEntry};
+use crate::entity_config::{DrawElement};
 use crate::entity_expression::Const;
 use crate::map_struct;
 use crate::atlas_img::SpriteReference;
 use crate::assets;
 use crate::app_state::AppState;
 use crate::units::*;
-use crate::autotiler;
+use crate::autotiler::AutoTiler;
 use crate::tools::{TOOLS, Tool};
 
 lazy_static! {
@@ -154,7 +154,7 @@ fn draw_tiles(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
             let rx = (tx * 8) as f32;
             let ry = (ty * 8) as f32;
             let tile = tiles[(tx + ty * tstride) as usize];
-            if let Some(tile) = tiles_asset.get(&tile).and_then(|tileset| tileset.tile(room, fg, pt)) {
+            if let Some(tile) = tiles_asset.get(&tile).and_then(|tileset| tileset.tile(pt, &mut |pt| room.tile(pt, fg))) {
                 assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, rx, ry);
             }
         }
@@ -162,12 +162,13 @@ fn draw_tiles(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
 }
 
 fn draw_entities(canvas: &mut Canvas, room: &CelesteMapLevel) {
+    let field = room.occupancy_field();
     for entity in &room.entities {
-        draw_entity(canvas, entity);
+        draw_entity(canvas, entity, &field);
     }
 }
 
-pub fn draw_entity(canvas: &mut Canvas, entity: &CelesteMapEntity) {
+pub fn draw_entity(canvas: &mut Canvas, entity: &CelesteMapEntity, field: &TileGrid<FieldEntry>) {
 
     let cfg = &assets::ENTITY_CONFIG;
     let config = cfg.get(&entity.name).unwrap_or_else(|| cfg.get("default").unwrap());
@@ -176,20 +177,20 @@ pub fn draw_entity(canvas: &mut Canvas, entity: &CelesteMapEntity) {
     for node_idx in 0..entity.nodes.len() {
         for draw in &config.standard_draw.node_draw {
             let env = entity.make_node_env(env.clone(), node_idx);
-            if let Err(s) = draw_entity_directive(canvas, draw, &env) {
+            if let Err(s) = draw_entity_directive(canvas, draw, &env, field) {
                 println!("{}", s);
             }
         }
     }
 
     for draw in &config.standard_draw.initial_draw {
-        if let Err(s) = draw_entity_directive(canvas, draw, &env) {
+        if let Err(s) = draw_entity_directive(canvas, draw, &env, field) {
             println!("{}", s);
         }
     }
 }
 
-fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<&str, Const>) -> Result<(), String> {
+fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<&str, Const>, field: &TileGrid<FieldEntry>) -> Result<(), String> {
     match draw {
         DrawElement::DrawRect { rect, color, border_color, border_thickness } => {
             let x = rect.topleft.x.evaluate(&env)?.as_number()?.to_int() as f32;
@@ -284,28 +285,29 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
             let bounds_w = bounds.size.x.evaluate(&env)?.as_number()?.to_int() as f32;
             let bounds_h = bounds.size.y.evaluate(&env)?.as_number()?.to_int() as f32;
 
-            let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
-            let slice: Rect<f32, UnknownUnit> = if slice_w == 0.0 {
-                Rect {
-                    origin: Point2D::zero(),
-                    size: assets::GAMEPLAY_ATLAS.sprite_dimensions(sprite).cast(),
-                }
-            } else {
-                Rect {
-                    origin: Point2D::new(slice_x, slice_y),
-                    size: Size2D::new(slice_w, slice_h),
-                }
-            };
             let bounds = Rect {
                 origin: Point2D::new(bounds_x, bounds_y),
                 size: Size2D::new(bounds_w, bounds_h),
             };
 
-            match tiler {
-                AutotilerType::Repeat => {
+            match tiler.as_str() {
+                "repeat" => {
+                    let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
+                    let slice: Rect<f32, UnknownUnit> = if slice_w == 0.0 {
+                        Rect {
+                            origin: Point2D::zero(),
+                            size: assets::GAMEPLAY_ATLAS.sprite_dimensions(sprite).cast(),
+                        }
+                    } else {
+                        Rect {
+                            origin: Point2D::new(slice_x, slice_y),
+                            size: Size2D::new(slice_w, slice_h),
+                        }
+                    };
                     draw_tiled(canvas, sprite, &bounds, &slice);
                 }
-                AutotilerType::NineSlice => {
+                "9slice" => {
+                    let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
                     let dim: Size2D<f32, UnknownUnit> = assets::GAMEPLAY_ATLAS.sprite_dimensions(sprite).cast();
                     if dim.width < 17.0 || dim.height < 17.0 {
                         return Err(format!("Cannot draw {} as 9slice: must be at least 17x17", texture))
@@ -334,10 +336,43 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
                         }
                     }
                 }
-                AutotilerType::Fg => {}
-                AutotilerType::Bg => {}
-                AutotilerType::Cassette => {}
-                AutotilerType::JumpThru => {}
+                _ => {
+                    if texture.len() != 1 {
+                        return Err(format!("Texture for {} tiler ({}) must be one char (for now)", tiler, texture))
+                    }
+                    let texture = texture.chars().next().unwrap();
+                    let tilemap = if let Some(tilemap) = assets::AUTOTILERS.get(tiler) { tilemap } else { return Err(format!("No such tiler {}", tiler))};
+                    let tileset = if let Some(tileset) = tilemap.get(&texture) { tileset } else { return Err(format!("No such texture {} for tiler {}", texture, tiler)) };
+
+                    let tile_bounds = rect_room_to_tile(&bounds.cast::<i32>().cast_unit::<RoomSpace>());
+                    let self_entity = if let Some(FieldEntry::Entity(e)) = field.get(tile_bounds.origin) { Some(e) } else { None };
+                    let mut tiler = |pt| {
+                        if tile_bounds.contains(pt) {
+                            return Some(texture);
+                        }
+                        Some(match field.get_or_default(pt) {
+                            FieldEntry::None => '0',
+                            FieldEntry::Fg => '2',
+                            FieldEntry::Entity(e) => {
+                                if self_entity.is_some() && self_entity.unwrap().attributes == e.attributes {
+                                    '1'
+                                } else {
+                                    if let Some(conf) = assets::ENTITY_CONFIG.get(&e.name) {
+                                        if conf.solid { '2' } else { '0' }
+                                    } else {
+                                        '0'
+                                    }
+                                }
+                            }
+                        })
+                    };
+                    for pt in rect_point_iter(tile_bounds, 1) {
+                        if let Some(tile) = tileset.tile(pt, &mut tiler) {
+                            let fp_pt = point_tile_to_room(&pt).cast::<f32>();
+                            assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, fp_pt.x, fp_pt.y);
+                        }
+                    }
+                }
             }
         }
     }
