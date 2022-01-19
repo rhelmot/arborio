@@ -19,6 +19,7 @@ pub struct AppState {
     pub current_fg_tile: TileSelectable,
     pub current_bg_tile: TileSelectable,
     pub current_entity: EntitySelectable,
+    pub current_selected: Option<AppSelection>,
 
     pub map: Option<map_struct::CelesteMap>,
     pub dirty: bool,
@@ -63,6 +64,14 @@ impl Layer {
     }
 }
 
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Hash)]
+pub enum AppSelection {
+    FgTile(TilePoint),
+    BgTile(TilePoint),
+    EntityBody(i32),
+    EntityNode(i32, usize),
+}
+
 #[derive(Debug)]
 pub enum AppEvent {
     Load { map: RefCell<Option<CelesteMap>> },
@@ -73,6 +82,7 @@ pub enum AppEvent {
     SelectLayer { layer: Layer },
     SelectPaletteTile { fg: bool, tile: TileSelectable },
     SelectPaletteEntity { entity: EntitySelectable },
+    SelectObject { selection: Option<AppSelection> },
     TileUpdate { fg: bool, offset: TilePoint, data: TileGrid<char> },
     EntityAdd { entity: CelesteMapEntity },
     EntityUpdate { entity: CelesteMapEntity },
@@ -97,6 +107,7 @@ impl AppState {
             current_fg_tile: TileSelectable::default(),
             current_bg_tile: TileSelectable::default(),
             current_entity: assets::ENTITIES_PALETTE[0],
+            current_selected: None,
             dirty: false,
             transform: MapToScreen::identity(),
             draw_interval: 4.0,
@@ -184,6 +195,9 @@ impl AppState {
                         self.dirty = true;
                     }
                 }
+            }
+            AppEvent::SelectObject { selection } => {
+                self.current_selected = *selection;
             }
         }
     }

@@ -58,16 +58,7 @@ pub struct CelesteMapLevelCache {
     pub last_entity_idx: usize,
 }
 
-impl Debug for CelesteMapLevelCache {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CelesteMapLevelCache")
-            .field("render_cache_valid", &self.render_cache_valid)
-            .field("last_entity_idx", &self.last_entity_idx)
-            .finish()
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CelesteMapEntity {
     pub id: i32,
     pub name: String,
@@ -78,6 +69,7 @@ pub struct CelesteMapEntity {
     pub attributes: HashMap<String, BinElAttr>,
     pub nodes: Vec<(i32, i32)>,
 }
+
 
 #[derive(Debug, Clone)]
 pub struct CelesteMapDecal {
@@ -118,6 +110,21 @@ pub enum CelesteMapErrorType {
     MissingAttribute,
     BadAttrType,
     OutOfRange,
+}
+
+impl vizia::Data for CelesteMapEntity {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
+impl Debug for CelesteMapLevelCache {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CelesteMapLevelCache")
+            .field("render_cache_valid", &self.render_cache_valid)
+            .field("last_entity_idx", &self.last_entity_idx)
+            .finish()
+    }
 }
 
 impl fmt::Display for CelesteMapError {

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use vizia::*;
 
-use crate::app_state::{AppEvent, AppState, Layer};
+use crate::app_state::{AppEvent, AppState, Layer, AppSelection};
 use crate::tools::{Tool, generic_nav};
 use crate::units::*;
 use crate::map_struct::CelesteMapLevel;
@@ -33,14 +33,6 @@ struct DraggingStatus {
     bg_float_reference_point: Option<RoomPoint>,
 }
 
-#[derive(PartialEq, Eq, Copy, Clone, Debug, Hash)]
-pub enum AppSelection {
-    FgTile(TilePoint),
-    BgTile(TilePoint),
-    EntityBody(i32),
-    EntityNode(i32, usize),
-}
-
 impl Tool for SelectionTool {
     fn name(&self) -> &'static str {
         "Select"
@@ -70,11 +62,13 @@ impl Tool for SelectionTool {
 
         match event {
             WindowEvent::MouseUp(MouseButton::Left) => {
-                if let SelectionStatus::Selecting(_) = self.status {
-                    self.confirm_selection();
-                }
+                let events = if let SelectionStatus::Selecting(_) = self.status {
+                    self.confirm_selection()
+                } else {
+                    vec![]
+                };
                 self.status = SelectionStatus::None;
-                vec![]
+                events
             }
             WindowEvent::MouseDown(MouseButton::Left) => {
                 if self.status == SelectionStatus::None {
@@ -88,7 +82,7 @@ impl Tool for SelectionTool {
                             self.pending_selection = vec![g];
                         }
                         if !cx.modifiers.contains(Modifiers::SHIFT) {
-                            self.deselect_all(state)
+                            self.clear_selection(state)
                         } else {
                             vec![]
                         }
@@ -215,8 +209,20 @@ impl Tool for SelectionTool {
 }
 
 impl SelectionTool {
-    fn confirm_selection(&mut self) {
+    #[must_use]
+    fn notify_selection(&self) -> Vec<AppEvent> {
+        if self.current_selection.len() == 1 {
+            vec![AppEvent::SelectObject { selection: Some(*self.current_selection.first().unwrap()) }]
+        } else {
+            vec![AppEvent::SelectObject { selection: None }]
+        }
+    }
+
+    #[must_use]
+    fn confirm_selection(&mut self) -> Vec<AppEvent> {
         self.current_selection.extend(self.pending_selection.drain(..));
+
+        self.notify_selection()
     }
 
     fn touches_float(&self, room_pos: RoomPoint) -> bool {
@@ -313,7 +319,7 @@ impl SelectionTool {
                 }
             }
         }
-        if layer == Layer::BgTiles || layer == Layer::All && room_rect_cropped.is_some() {
+        if (layer == Layer::BgTiles || layer == Layer::All) && room_rect_cropped.is_some() {
             for tile_pos_unaligned in rect_point_iter(room_rect_cropped.unwrap(), 8) {
                 let tile_pos = point_room_to_tile(&tile_pos_unaligned);
                 if room.tile(tile_pos, false).unwrap_or('0') != '0' {
@@ -325,9 +331,10 @@ impl SelectionTool {
         result
     }
 
-    fn deselect_all(&mut self, state: &AppState) -> Vec<AppEvent> {
-        self.current_selection = vec![];
-        let mut result = vec![];
+    #[must_use]
+    fn clear_selection(&mut self, state: &AppState) -> Vec<AppEvent> {
+        self.current_selection.clear();
+        let mut result = self.notify_selection();
         if let Some((offset, data)) = self.fg_float.take() {
             result.push(AppEvent::TileUpdate {
                 fg: true, offset, data
@@ -343,6 +350,7 @@ impl SelectionTool {
 
     /// This function interprets nudge as relative to the reference positions in Dragging mode and
     /// relative to the current position in other modes.
+    #[must_use]
     fn nudge(&mut self, room: &CelesteMapLevel, nudge: RoomVector) -> Vec<AppEvent> {
         let events = self.float_tiles(room);
 
@@ -428,6 +436,7 @@ impl SelectionTool {
         }
     }
 
+    #[must_use]
     fn float_tiles(&mut self, room: &CelesteMapLevel) -> Vec<AppEvent> {
         // TODO: do this in an efficient order to avoid frequent reallocations of the float
         let mut i = 0_usize;
@@ -459,6 +468,7 @@ impl SelectionTool {
         events
     }
 
+    #[must_use]
     fn begin_dragging(&mut self, room: &CelesteMapLevel, pointer_reference_point: RoomPoint) -> Vec<AppEvent> {
         // Offload all fg/bg selections into the floats
         let events = self.float_tiles(room);

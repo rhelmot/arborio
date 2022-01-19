@@ -12,6 +12,7 @@ mod app_state;
 mod tools;
 mod units;
 mod palette_widget;
+mod tweaker_widget;
 
 use std::fs;
 use std::cell::RefCell;
@@ -22,6 +23,7 @@ use enum_iterator::IntoEnumIterator;
 
 use crate::app_state::{AppEvent, AppState, Layer};
 use crate::palette_widget::PaletteWidget;
+use crate::tweaker_widget::EntityTweakerWidget;
 use crate::tools::TOOLS;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -70,10 +72,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                         .height(Stretch(1.0));
                     VStack::new(cx, |cx| {
                         // tool settings
-                        Picker::new(cx, AppState::current_layer, |cx, layer_field| {
+                        Binding::new(cx, AppState::current_tool, move |cx, tool_idx| {
+                            let tool_idx = *tool_idx.get(cx);
+                            Picker::new(cx, AppState::current_layer, move |cx, layer_field| {
                             let selected = *layer_field.get(cx);
-                            Binding::new(cx, AppState::current_tool, move |cx, tool_idx| {
-                                let tool_idx = *tool_idx.get(cx);
                                 for layer in Layer::into_enum_iter() {
                                     Button::new(cx, move |cx| {
                                         cx.emit(AppEvent::SelectLayer { layer });
@@ -87,22 +89,24 @@ fn main() -> Result<(), Box<dyn Error>> {
                                         .display(if layer == Layer::All && tool_idx != 1 { // TODO un-hardcode selection tool
                                             Display::None } else { Display::Flex });
                                 }
-                            })
-                        });
-                        Binding::new(cx, AppState::current_layer, |cx, layer_field| {
-                            let layer = *layer_field.get(cx);
-                            PaletteWidget::new(cx, &assets::FG_TILES_PALETTE, AppState::current_fg_tile, |cx, tile| {
-                                cx.emit(AppEvent::SelectPaletteTile { fg: true, tile });
-                            })
-                                .display(if layer == Layer::FgTiles { Display::Flex } else { Display::None });
-                            PaletteWidget::new(cx, &assets::BG_TILES_PALETTE, AppState::current_bg_tile, |cx, tile| {
-                                cx.emit(AppEvent::SelectPaletteTile { fg: false, tile })
-                            })
-                                .display(if layer == Layer::BgTiles { Display::Flex } else { Display::None });
-                            PaletteWidget::new(cx, &assets::ENTITIES_PALETTE, AppState::current_entity, |cx, entity| {
-                                cx.emit(AppEvent::SelectPaletteEntity { entity })
-                            })
-                                .display(if layer == Layer::Entities { Display::Flex } else { Display::None });
+                            });
+                            Binding::new(cx, AppState::current_layer, move |cx, layer_field| {
+                                let layer = *layer_field.get(cx);
+                                PaletteWidget::new(cx, &assets::FG_TILES_PALETTE, AppState::current_fg_tile, |cx, tile| {
+                                    cx.emit(AppEvent::SelectPaletteTile { fg: true, tile });
+                                })
+                                    .display(if layer == Layer::FgTiles && tool_idx == 2 { Display::Flex } else { Display::None });
+                                PaletteWidget::new(cx, &assets::BG_TILES_PALETTE, AppState::current_bg_tile, |cx, tile| {
+                                    cx.emit(AppEvent::SelectPaletteTile { fg: false, tile })
+                                })
+                                    .display(if layer == Layer::BgTiles && tool_idx == 2 { Display::Flex } else { Display::None });
+                                PaletteWidget::new(cx, &assets::ENTITIES_PALETTE, AppState::current_entity, |cx, entity| {
+                                    cx.emit(AppEvent::SelectPaletteEntity { entity })
+                                })
+                                    .display(if layer == Layer::Entities && tool_idx == 2 { Display::Flex } else { Display::None });
+                            });
+                            EntityTweakerWidget::new(cx)
+                                .display(if tool_idx == 1 { Display::Flex} else { Display::None });
                         });
                     })  .width(Pixels(100.0));
                 });
