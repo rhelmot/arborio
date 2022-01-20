@@ -307,20 +307,20 @@ impl CelesteMapEntity {
         if let Some((x, y)) = self.nodes.get(node_idx + 1) {
             env.insert("nextnodex", Const::from_num(*x));
             env.insert("nextnodey", Const::from_num(*y));
-            env.insert("nextnodexordefault", Const::from_num(*x));
-            env.insert("nextnodeyordefault", Const::from_num(*y));
+            env.insert("nextnodexorbase", Const::from_num(*x));
+            env.insert("nextnodeyorbase", Const::from_num(*y));
         } else {
-            env.insert("nextnodexordefault", Const::from_num(self.x));
-            env.insert("nextnodeyordefault", Const::from_num(self.y));
+            env.insert("nextnodexorbase", Const::from_num(self.x));
+            env.insert("nextnodeyorbase", Const::from_num(self.y));
         }
         if let Some((x, y)) = self.nodes.get(node_idx.wrapping_sub(1)) {
             env.insert("prevnodex", Const::from_num(*x));
             env.insert("prevnodey", Const::from_num(*y));
-            env.insert("prevnodexordefault", Const::from_num(*x));
-            env.insert("prevnodeyordefault", Const::from_num(*y));
+            env.insert("prevnodexorbase", Const::from_num(*x));
+            env.insert("prevnodeyorbase", Const::from_num(*y));
         } else {
-            env.insert("prevnodexordefault", Const::from_num(self.x));
-            env.insert("prevnodeyordefault", Const::from_num(self.y));
+            env.insert("prevnodexorbase", Const::from_num(self.x));
+            env.insert("prevnodeyorbase", Const::from_num(self.y));
         }
 
         env

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use vizia::*;
 
 use crate::app_state::{AppEvent, AppState, Layer, AppSelection};
@@ -9,8 +9,8 @@ use crate::assets;
 use crate::autotiler::AutoTiler;
 
 pub struct SelectionTool {
-    current_selection: Vec<AppSelection>,
-    pending_selection: Vec<AppSelection>,
+    current_selection: HashSet<AppSelection>,
+    pending_selection: HashSet<AppSelection>,
     fg_float: Option<(TilePoint, TileGrid<char>)>,
     bg_float: Option<(TilePoint, TileGrid<char>)>,
 
@@ -40,8 +40,8 @@ impl Tool for SelectionTool {
 
     fn new() -> Self where Self: Sized {
         Self {
-            current_selection: vec![],
-            pending_selection: vec![],
+            current_selection: HashSet::new(),
+            pending_selection: HashSet::new(),
             fg_float: None,
             bg_float: None,
             status: SelectionStatus::None,
@@ -79,7 +79,7 @@ impl Tool for SelectionTool {
                     } else {
                         self.status = SelectionStatus::Selecting(room_pos);
                         if let Some(g) = got {
-                            self.pending_selection = vec![g];
+                            self.pending_selection = HashSet::from([g]);
                         }
                         if !cx.modifiers.contains(Modifiers::SHIFT) {
                             self.clear_selection(state)
@@ -120,6 +120,9 @@ impl Tool for SelectionTool {
                     Code::KeyA if cx.modifiers.contains(Modifiers::CTRL) => {
                         self.current_selection = self.selectables_in(room, state.current_layer, RoomRect::new(RoomPoint::new(-1000000, -1000000), RoomSize::new(2000000, 2000000)));
                         vec![]
+                    }
+                    Code::Backspace | Code::Delete => {
+                        self.delete_all(room)
                     }
                     _ => vec![]
                 }
@@ -212,7 +215,7 @@ impl SelectionTool {
     #[must_use]
     fn notify_selection(&self) -> Vec<AppEvent> {
         if self.current_selection.len() == 1 {
-            vec![AppEvent::SelectObject { selection: Some(*self.current_selection.first().unwrap()) }]
+            vec![AppEvent::SelectObject { selection: Some(*self.current_selection.iter().next().unwrap()) }]
         } else {
             vec![AppEvent::SelectObject { selection: None }]
         }
@@ -220,7 +223,7 @@ impl SelectionTool {
 
     #[must_use]
     fn confirm_selection(&mut self) -> Vec<AppEvent> {
-        self.current_selection.extend(self.pending_selection.drain(..));
+        self.current_selection.extend(self.pending_selection.drain());
 
         self.notify_selection()
     }
@@ -288,19 +291,19 @@ impl SelectionTool {
             room,
             layer,
             RoomRect::new(room_pos, RoomSize::new(1, 1))
-        ).first().cloned()
+        ).iter().next().cloned()
     }
 
-    fn selectables_in(&self, room: &CelesteMapLevel, layer: Layer, room_rect: RoomRect) -> Vec<AppSelection> {
+    fn selectables_in(&self, room: &CelesteMapLevel, layer: Layer, room_rect: RoomRect) -> HashSet<AppSelection> {
         let room_rect = rect_normalize(&room_rect);
-        let mut result = vec![];
+        let mut result = HashSet::new();
 
         let room_rect_cropped = room_rect.intersection(&RoomRect::new(RoomPoint::zero(), room.bounds.size.cast_unit()));
         if (layer == Layer::FgTiles || layer == Layer::All) && room_rect_cropped.is_some() {
             for tile_pos_unaligned in rect_point_iter(room_rect_cropped.unwrap(), 8) {
                 let tile_pos = point_room_to_tile(&tile_pos_unaligned);
                 if room.tile(tile_pos, true).unwrap_or('0') != '0' {
-                    result.push(AppSelection::FgTile(tile_pos));
+                    result.insert(AppSelection::FgTile(tile_pos));
                 }
             }
         }
@@ -310,12 +313,12 @@ impl SelectionTool {
                 for node_idx in 0..entity.nodes.len() {
                     let sel = AppSelection::EntityNode(entity.id, node_idx);
                     if intersects_any(&self.rects_of(room, sel), &room_rect) {
-                        result.push(sel);
+                        result.insert(sel);
                     }
                 }
                 let sel = AppSelection::EntityBody(entity.id);
                 if intersects_any(&self.rects_of(room, sel), &room_rect) {
-                    result.push(sel);
+                    result.insert(sel);
                 }
             }
         }
@@ -323,7 +326,7 @@ impl SelectionTool {
             for tile_pos_unaligned in rect_point_iter(room_rect_cropped.unwrap(), 8) {
                 let tile_pos = point_room_to_tile(&tile_pos_unaligned);
                 if room.tile(tile_pos, false).unwrap_or('0') != '0' {
-                    result.push(AppSelection::BgTile(tile_pos));
+                    result.insert(AppSelection::BgTile(tile_pos));
                 }
             }
         }
@@ -441,28 +444,30 @@ impl SelectionTool {
         // TODO: do this in an efficient order to avoid frequent reallocations of the float
         let mut i = 0_usize;
         let mut events = vec![];
-        while i < self.current_selection.len() {
-            if let AppSelection::FgTile(pt) = self.current_selection[i] {
-                self.add_to_float(room, pt, true);
-                events.push(AppEvent::TileUpdate {
-                    fg: true,
-                    offset: pt,
-                    data: TileGrid { tiles: vec!['0'], stride: 1 }
-                });
-                self.current_selection.remove(i);
-                continue;
-            } else if let AppSelection::BgTile(pt) = self.current_selection[i] {
-                self.add_to_float(room, pt, false);
-                events.push(AppEvent::TileUpdate {
-                    fg: false,
-                    offset: pt,
-                    data: TileGrid { tiles: vec!['0'], stride: 1 }
-                });
-                self.current_selection.remove(i);
-                continue;
+        for sel in self.current_selection.iter().cloned().collect::<Vec<_>>() {
+            match sel {
+                AppSelection::FgTile(pt) => {
+                    self.add_to_float(room, pt, true);
+                    events.push(AppEvent::TileUpdate {
+                        fg: true,
+                        offset: pt,
+                        data: TileGrid { tiles: vec!['0'], stride: 1 }
+                    });
+                    self.current_selection.remove(&sel);
+                    continue;
+                }
+                AppSelection::BgTile(pt) => {
+                    self.add_to_float(room, pt, false);
+                    events.push(AppEvent::TileUpdate {
+                        fg: false,
+                        offset: pt,
+                        data: TileGrid { tiles: vec!['0'], stride: 1 }
+                    });
+                    self.current_selection.remove(&sel);
+                    continue;
+                }
+                _ => {}
             }
-
-            i += 1;
         }
 
         events
@@ -499,6 +504,48 @@ impl SelectionTool {
         });
 
         events
+    }
+
+    #[must_use]
+    fn delete_all(&mut self, room: &CelesteMapLevel) -> Vec<AppEvent> {
+        let mut result = self.float_tiles(room);
+        self.fg_float = None;
+        self.bg_float = None;
+
+        let mut entity_nodes_removed = HashMap::new();
+        let mut entities_removed = HashSet::new();
+        for sel in &self.current_selection {
+            match sel {
+                AppSelection::FgTile(_) | AppSelection::BgTile(_) => unreachable!(),
+                AppSelection::EntityBody(id) => {
+                    result.push(AppEvent::EntityRemove { id: *id });
+                    entities_removed.insert(id);
+                }
+                AppSelection::EntityNode(id, node_idx) => {
+                    let e = entity_nodes_removed.entry(id).or_insert_with(|| HashSet::new());
+                    e.insert(node_idx);
+                }
+            }
+        }
+
+        for (id, indices) in entity_nodes_removed {
+            if !entities_removed.contains(&id) {
+                if let Some(entity) = room.entity(*id) {
+                    let mut entity = entity.clone();
+                    for idx in (0..entity.nodes.len()).rev() {
+                        if indices.contains(&idx) {
+                            entity.nodes.remove(idx);
+                        }
+                    }
+                    result.push(AppEvent::EntityUpdate { entity });
+                }
+            }
+        }
+
+        self.current_selection.clear();
+        result.extend(self.notify_selection());
+
+        result
     }
 }
 

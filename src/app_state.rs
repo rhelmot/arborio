@@ -188,6 +188,8 @@ impl AppState {
                         if room.entities[i].id == *id {
                             room.entities.remove(i);
                             any = true;
+                        } else {
+                            i += 1;
                         }
                     }
                     if any {
