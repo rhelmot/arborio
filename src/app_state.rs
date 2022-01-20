@@ -198,6 +198,9 @@ impl AppState {
             }
             AppEvent::SelectObject { selection } => {
                 self.current_selected = *selection;
+                if let Some(room) = self.current_room_ref() {
+                    room.cache.borrow_mut().render_cache_valid = false;
+                }
             }
         }
     }

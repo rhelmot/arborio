@@ -69,7 +69,7 @@ impl Tool for PencilTool {
             Layer::Entities => {
                 let tmp_entity = self.get_terminal_entity(state.current_entity, room_pos);
                 canvas.set_global_alpha(0.5);
-                editor_widget::draw_entity(canvas, &tmp_entity, &TileGrid::empty());
+                editor_widget::draw_entity(canvas, &tmp_entity, &TileGrid::empty(), false);
             }
             _ => {}
         }

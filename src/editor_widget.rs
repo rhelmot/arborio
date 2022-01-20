@@ -14,7 +14,7 @@ use crate::entity_expression::Const;
 use crate::map_struct;
 use crate::atlas_img::SpriteReference;
 use crate::assets;
-use crate::app_state::AppState;
+use crate::app_state::{AppSelection, AppState};
 use crate::units::*;
 use crate::autotiler::AutoTiler;
 use crate::tools::{TOOLS, Tool};
@@ -107,7 +107,7 @@ impl View for EditorWidget {
                         ROOM_EMPTY_COLOR,
                     );
                     draw_tiles(canvas, room, false);
-                    draw_entities(canvas, room);
+                    draw_entities(canvas, room, if idx == state.current_room { state.current_selected } else { None });
                     draw_tiles(canvas, room, true);
 
                     canvas.restore();
@@ -161,14 +161,18 @@ fn draw_tiles(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
     }
 }
 
-fn draw_entities(canvas: &mut Canvas, room: &CelesteMapLevel) {
+fn draw_entities(canvas: &mut Canvas, room: &CelesteMapLevel, selection: Option<AppSelection>) {
     let field = room.occupancy_field();
     for entity in &room.entities {
-        draw_entity(canvas, entity, &field);
+        let selected = match selection {
+            Some(AppSelection::EntityBody(id)) | Some(AppSelection::EntityNode(id, _)) if id == entity.id => true,
+            _ => false,
+        };
+        draw_entity(canvas, entity, &field, selected);
     }
 }
 
-pub fn draw_entity(canvas: &mut Canvas, entity: &CelesteMapEntity, field: &TileGrid<FieldEntry>) {
+pub fn draw_entity(canvas: &mut Canvas, entity: &CelesteMapEntity, field: &TileGrid<FieldEntry>, selected: bool) {
 
     let cfg = &assets::ENTITY_CONFIG;
     let config = cfg.get(&entity.name).unwrap_or_else(|| cfg.get("default").unwrap());
@@ -186,6 +190,23 @@ pub fn draw_entity(canvas: &mut Canvas, entity: &CelesteMapEntity, field: &TileG
     for draw in &config.standard_draw.initial_draw {
         if let Err(s) = draw_entity_directive(canvas, draw, &env, field) {
             println!("{}", s);
+        }
+    }
+
+    if selected {
+        for node_idx in 0..entity.nodes.len() {
+            for draw in &config.selected_draw.node_draw {
+                let env = entity.make_node_env(env.clone(), node_idx);
+                if let Err(s) = draw_entity_directive(canvas, draw, &env, field) {
+                    println!("{}", s);
+                }
+            }
+        }
+
+        for draw in &config.selected_draw.initial_draw {
+            if let Err(s) = draw_entity_directive(canvas, draw, &env, field) {
+                println!("{}", s);
+            }
         }
     }
 }
@@ -225,7 +246,7 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
             path.move_to(x1 as f32, y1 as f32);
             path.line_to(x2 as f32, y2 as f32);
             if *arrowhead {
-                let vec: Vector2D<f32, UnknownUnit> = Vector2D::new(x2 - x1, y2 - y1).normalize() * 4.0;
+                let vec: Vector2D<f32, UnknownUnit> = Vector2D::new(x2 - x1, y2 - y1).normalize() * 8.0;
                 let vec1: Vector2D<f32, UnknownUnit> = Transform2D::rotation(Angle::radians(1.0)).transform_vector(vec);
                 let vec2: Vector2D<f32, UnknownUnit> = Transform2D::rotation(Angle::radians(-1.0)).transform_vector(vec);
                 let endpoint: Point2D<f32, UnknownUnit> = Point2D::new(x2, y2);
