@@ -1,0 +1,40 @@
+entity_name: bonfire
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-12
+        y: y-12
+      size:
+        x: 24
+        y: 12
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: 'match mode {
+                    "unlit" => "objects/campfire/fire00",
+                    "Unlit" => "objects/campfire/fire00",
+                    "lit" => "objects/campfire/fire10",
+                    "Lit" => "objects/campfire/fire10",
+                    "smoking" => "objects/campfire/smoking05",
+                    "Smoking" => "objects/campfire/smoking05",
+                    _ => "objects/campfire/fire00"
+                  }'
+        point:
+          x: x
+          y: y
+        justify_y: 1
+resizable_x: false
+resizable_y: false
+nodes: false
+attributes:
+  mode:
+    ty: String
+    default:
+      String: Unlit
+    options:
+      - name: Unlit
+        value: Unlit
+      - name: Lit
+        value: Lit
+      - name: Smoking
+        value: Smoking

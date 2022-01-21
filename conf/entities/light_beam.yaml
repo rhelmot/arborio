@@ -1,0 +1,27 @@
+entity_name: lightbeam
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y-height/2
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: x
+            y: y-height/2
+          size:
+            x: width
+            y: height
+        color:
+          r: 0xff
+          g: 0xff
+          b: 0xff
+          a: 0x80
+resizable_x: true
+resizable_y: true
+nodes: false

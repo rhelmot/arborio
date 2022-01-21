@@ -102,7 +102,9 @@ pub struct EntityDraw {
 pub enum DrawElement {
     DrawRect {
         rect: Rect,
+        #[serde(default = "clear")]
         color: Color,
+        #[serde(default = "clear")]
         border_color: Color,
         #[serde(default = "one")]
         border_thickness: u32,
@@ -161,6 +163,14 @@ fn empty_rect() -> Rect {
     }
 }
 fn half() -> f32 { 0.5 }
+fn clear() -> Color {
+    Color {
+        r: Expression::mk_const(0),
+        g: Expression::mk_const(0),
+        b: Expression::mk_const(0),
+        a: Expression::mk_const(0),
+    }
+}
 
 fn repeat() -> String { "repeat".to_owned() }
 

@@ -1,0 +1,48 @@
+entity_name: cassette
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-12
+        y: y-8
+      size:
+        x: 24
+        y: 16
+  node_rects:
+    - topleft:
+        x: nodex-12
+        y: nodey-12
+      size:
+        x: 24
+        y: 24
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"collectables/cassette/idle00"'
+        point:
+          x: x
+          y: y
+selected_draw:
+  node_draw:
+    - DrawCurve:
+        start:
+          x: x
+          y: y
+        end:
+          x: nodex
+          y: nodey
+        middle:
+          x: prevnodex
+          y: prevnodey
+        color:
+          r: 255
+          g: 255
+          b: 0
+          a: 255
+    - DrawPointImage:
+        texture: '"characters/player/bubble"'
+        point:
+          x: nodex
+          y: nodey
+resizable_x: false
+resizable_y: false
+nodes: true

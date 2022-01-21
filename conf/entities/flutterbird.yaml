@@ -1,0 +1,25 @@
+entity_name: flutterbird
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-4
+        y: y-8
+      size:
+        x: 8
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"scenery/flutterbird/idle00"'
+        point:
+          x: x
+          y: y
+        justify_y: 1
+        color:
+          r: 'match (x/8) % 4 { 0 => 0x89, 1 => 0xf0, 2 => 0xf4, _ => 0x93 }'
+          g: 'match (x/8) % 4 { 0 => 0xfb, 1 => 0xfc, 2 => 0x93, _ => 0xba }'
+          b: 'match (x/8) % 4 { 0 => 0xff, 1 => 0x6c, 2 => 0xff, _ => 0xff }'
+          a: '0xff'
+resizable_x: false
+resizable_y: false
+nodes: false

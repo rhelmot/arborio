@@ -1,0 +1,19 @@
+entity_name: blackGem
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-8
+        y: y-8
+      size:
+        x: 16
+        y: 16
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"collectables/heartGem/0/00"'
+        point:
+          x: x
+          y: y
+resizable_x: false
+resizable_y: false
+nodes: false

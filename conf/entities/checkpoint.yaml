@@ -1,0 +1,20 @@
+entity_name: checkpoint
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-12
+        y: y-24
+      size:
+        x: 24
+        y: 24
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"objects/checkpoint/flash03"'
+        point:
+          x: x
+          y: y
+        justify_y: 1
+resizable_x: false
+resizable_y: false
+nodes: false
