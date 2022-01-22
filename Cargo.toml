@@ -18,8 +18,8 @@ lazy_static = "^1.4"
 serde_yaml = "^0.8"
 nom = "^6.2"
 include_dir = "^0.6"
-vizia = { path = "../../rust/VIZIA" }
-#vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "efb87356d835b83c05f9e59e1e07fecd410b61f7"}
+#vizia = { path = "../../rust/VIZIA" }
+vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "6a8a6f2eb383377aa288d569cccf943589eec2cc"}
 femtovg = {git = "https://github.com/rhelmot/femtovg", rev = "4caba90e08e8eacf66dce2125393334a9cee22d1", default-features = false} # not really a dependency, since vizia depends on it
 imgref = "^1.9"  # not really a dependency either
 rgb = "^0.8"  # not really a dependency either

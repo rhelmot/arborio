@@ -148,9 +148,6 @@ fn draw_decals(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
         let path = std::path::Path::new("decals").join(std::path::Path::new(&decal.texture).with_extension(""));
         if let Some(texture) = assets::GAMEPLAY_ATLAS.lookup(path.to_str().unwrap()) {
             let scale = Point2D::new(decal.scale_x, decal.scale_y);
-            if room.name == "lvl_1" {
-                dbg!(scale);
-            }
             assets::GAMEPLAY_ATLAS.draw_sprite(
                 canvas, texture, Point2D::new(decal.x, decal.y).cast(),
                 None, None, Some(scale), None,
