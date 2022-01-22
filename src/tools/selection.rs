@@ -7,6 +7,7 @@ use crate::units::*;
 use crate::map_struct::CelesteMapLevel;
 use crate::assets;
 use crate::autotiler::AutoTiler;
+use crate::editor_widget::decal_texture;
 
 pub struct SelectionTool {
     current_selection: HashSet<AppSelection>,
@@ -283,6 +284,18 @@ impl SelectionTool {
                     vec![]
                 }
             }
+            AppSelection::Decal(id, fg) => {
+                if let Some(decal) = room.decal(id, fg) {
+                    if let Some(texture) = decal_texture(decal) {
+                        let size = assets::GAMEPLAY_ATLAS.sprite_dimensions(texture).cast().cast_unit();
+                        vec![Rect::new(RoomPoint::new(decal.x as i32, decal.y as i32) - size / 2, size)]
+                    } else {
+                        vec![]
+                    }
+                } else {
+                    vec![]
+                }
+            }
         }
     }
 
@@ -297,8 +310,17 @@ impl SelectionTool {
     fn selectables_in(&self, room: &CelesteMapLevel, layer: Layer, room_rect: RoomRect) -> HashSet<AppSelection> {
         let room_rect = rect_normalize(&room_rect);
         let mut result = HashSet::new();
-
         let room_rect_cropped = room_rect.intersection(&RoomRect::new(RoomPoint::zero(), room.bounds.size.cast_unit()));
+
+        if layer == Layer::FgDecals || layer == Layer::All {
+            for (idx, decal) in room.fg_decals.iter().enumerate().rev() {
+                room.cache_decal_idx(idx);
+                let sel = AppSelection::Decal(decal.id, true);
+                if intersects_any(&self.rects_of(room, sel), &room_rect) {
+                    result.insert(sel);
+                }
+            }
+        }
         if (layer == Layer::FgTiles || layer == Layer::All) && room_rect_cropped.is_some() {
             for tile_pos_unaligned in rect_point_iter(room_rect_cropped.unwrap(), 8) {
                 let tile_pos = point_room_to_tile(&tile_pos_unaligned);
@@ -317,6 +339,15 @@ impl SelectionTool {
                     }
                 }
                 let sel = AppSelection::EntityBody(entity.id);
+                if intersects_any(&self.rects_of(room, sel), &room_rect) {
+                    result.insert(sel);
+                }
+            }
+        }
+        if layer == Layer::BgDecals || layer == Layer::All {
+            for (idx, decal) in room.bg_decals.iter().enumerate().rev() {
+                room.cache_decal_idx(idx);
+                let sel = AppSelection::Decal(decal.id, false);
                 if intersects_any(&self.rects_of(room, sel), &room_rect) {
                     result.insert(sel);
                 }
@@ -355,7 +386,7 @@ impl SelectionTool {
     /// relative to the current position in other modes.
     #[must_use]
     fn nudge(&mut self, room: &CelesteMapLevel, nudge: RoomVector) -> Vec<AppEvent> {
-        let events = self.float_tiles(room);
+        let mut events = self.float_tiles(room);
 
         let dragging = if let SelectionStatus::Dragging(dragging) = &self.status { Some(dragging) } else { None };
         if let Some((cur_pt, float)) = self.fg_float.take() {
@@ -388,6 +419,18 @@ impl SelectionTool {
                         .map(|d| d.selection_reference_points[selected])
                         .unwrap_or_else(|| RoomPoint::new(e.nodes[*node_idx].0, e.nodes[*node_idx].1));
                     e.nodes[*node_idx] = (base.x + nudge.x, base.y + nudge.y);
+                }
+                AppSelection::Decal(id, fg) => {
+                    if let Some(decal) = room.decal(*id, *fg) {
+                        let mut decal = decal.clone();
+                        let base = dragging
+                            .map(|d| d.selection_reference_points[selected])
+                            .unwrap_or_else(|| RoomPoint::new(decal.x, decal.y));
+                        let new = base + nudge;
+                        decal.x = new.x;
+                        decal.y = new.y;
+                        events.push(AppEvent::DecalUpdate { fg: *fg, decal });
+                    }
                 }
             }
         }
@@ -492,6 +535,10 @@ impl SelectionTool {
                     let e = room.entity(*id).unwrap();
                     RoomPoint::new(e.nodes[*node_idx].0, e.nodes[*node_idx].1)
                 }
+                AppSelection::Decal(id, fg) => {
+                    let d = room.decal(*id, *fg).unwrap();
+                    RoomPoint::new(d.x, d.y)
+                }
             })
         }).collect::<HashMap<AppSelection, RoomPoint>>();
 
@@ -524,6 +571,9 @@ impl SelectionTool {
                 AppSelection::EntityNode(id, node_idx) => {
                     let e = entity_nodes_removed.entry(id).or_insert_with(|| HashSet::new());
                     e.insert(node_idx);
+                }
+                AppSelection::Decal(id, fg) => {
+                    result.push(AppEvent::DecalRemove { id: *id, fg: *fg });
                 }
             }
         }

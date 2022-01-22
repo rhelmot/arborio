@@ -4,7 +4,7 @@ use vizia::*;
 
 use crate::editor_widget;
 use crate::map_struct;
-use crate::map_struct::{CelesteMap, CelesteMapEntity};
+use crate::map_struct::{CelesteMap, CelesteMapDecal, CelesteMapEntity};
 use crate::palette_widget::{EntitySelectable, TileSelectable};
 use crate::tools::Tool;
 use crate::tools;
@@ -70,6 +70,7 @@ pub enum AppSelection {
     BgTile(TilePoint),
     EntityBody(i32),
     EntityNode(i32, usize),
+    Decal(u32, bool),
 }
 
 #[derive(Debug)]
@@ -87,6 +88,9 @@ pub enum AppEvent {
     EntityAdd { entity: CelesteMapEntity },
     EntityUpdate { entity: CelesteMapEntity },
     EntityRemove { id: i32 },
+    DecalAdd { fg: bool, decal: CelesteMapDecal },
+    DecalUpdate { fg: bool, decal: CelesteMapDecal },
+    DecalRemove { fg: bool, id: u32 },
 }
 
 
@@ -202,6 +206,45 @@ impl AppState {
                 self.current_selected = *selection;
                 if let Some(room) = self.current_room_ref() {
                     room.cache.borrow_mut().render_cache_valid = false;
+                }
+            }
+            AppEvent::DecalAdd { fg, decal } => {
+                if let Some(room) = self.current_room_mut() {
+                    let mut decal = decal.clone();
+                    let decals = if *fg { &mut room.fg_decals } else { &mut room.bg_decals };
+                    decal.id = crate::map_struct::next_uuid();
+                    decals.push(decal);
+                    room.cache.borrow_mut().render_cache_valid = false;
+                    self.dirty = true;
+                }
+            }
+            AppEvent::DecalUpdate { fg, decal } => {
+                if let Some(room) = self.current_room_mut() {
+                    if let Some(decal_dest) = room.decal_mut(decal.id, *fg) {
+                        *decal_dest = decal.clone();
+                        room.cache.borrow_mut().render_cache_valid = false;
+                        self.dirty = true;
+                    }
+                }
+            }
+            AppEvent::DecalRemove { fg, id } => {
+                if let Some(room) = self.current_room_mut() {
+                    // tfw drain_filter is unstable
+                    let mut i = 0;
+                    let mut any = false;
+                    let decals = if *fg { &mut room.fg_decals } else { &mut room.bg_decals };
+                    while i < decals.len() {
+                        if decals[i].id == *id {
+                            decals.remove(i);
+                            any = true;
+                        } else {
+                            i += 1;
+                        }
+                    }
+                    if any {
+                        room.cache.borrow_mut().render_cache_valid = false;
+                        self.dirty = true;
+                    }
                 }
             }
         }

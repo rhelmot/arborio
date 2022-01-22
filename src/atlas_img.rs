@@ -118,7 +118,7 @@ impl Atlas {
 
     pub fn sprite_dimensions(&self, sprite_ref: SpriteReference) -> Size2D<u16, UnknownUnit> {
         let sprite = &self.sprites[sprite_ref.idx as usize];
-        sprite.bounding_box.size
+        sprite.untrimmed_size
     }
 
     pub fn draw_sprite(

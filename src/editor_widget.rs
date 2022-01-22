@@ -8,7 +8,7 @@ use vizia::*;
 use femtovg::{Color, ImageFlags, Paint, Path, PixelFormat, RenderTarget};
 use euclid::{Rect, Point2D, Vector2D, Size2D, UnknownUnit, Transform2D, Angle};
 
-use crate::map_struct::{CelesteMapEntity, CelesteMapLevel, FieldEntry};
+use crate::map_struct::{CelesteMapEntity, CelesteMapLevel, FieldEntry, CelesteMapDecal};
 use crate::entity_config::{DrawElement};
 use crate::entity_expression::Const;
 use crate::map_struct;
@@ -145,17 +145,21 @@ impl View for EditorWidget {
 fn draw_decals(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
     let decals = if fg { &room.fg_decals } else { &room.bg_decals };
     for decal in decals {
-        let path = std::path::Path::new("decals").join(std::path::Path::new(&decal.texture).with_extension(""));
-        if let Some(texture) = assets::GAMEPLAY_ATLAS.lookup(path.to_str().unwrap()) {
+        if let Some(texture) = decal_texture(decal) {
             let scale = Point2D::new(decal.scale_x, decal.scale_y);
             assets::GAMEPLAY_ATLAS.draw_sprite(
                 canvas, texture, Point2D::new(decal.x, decal.y).cast(),
                 None, None, Some(scale), None,
             );
         } else {
-            dbg!(path);
+            dbg!(decal);
         }
     }
+}
+
+pub fn decal_texture(decal: &CelesteMapDecal) -> Option<SpriteReference> {
+    let path = std::path::Path::new("decals").join(std::path::Path::new(&decal.texture).with_extension(""));
+    assets::GAMEPLAY_ATLAS.lookup(path.to_str().unwrap())
 }
 
 fn draw_tiles(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {

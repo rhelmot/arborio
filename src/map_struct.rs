@@ -6,9 +6,21 @@ use std::default;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
+use std::sync::Mutex;
 use euclid::{Point2D, Size2D};
 
 use crate::units::*;
+
+lazy_static::lazy_static! {
+    static ref UUID: Mutex<u32> = Mutex::new(0);
+}
+
+pub fn next_uuid() -> u32 {
+    let mut locked = UUID.lock().unwrap();
+    let result = *locked;
+    *locked += 1;
+    result
+}
 
 #[derive(Debug)]
 pub struct CelesteMap {
@@ -56,6 +68,7 @@ pub struct CelesteMapLevelCache {
     pub render_cache_valid: bool,
     pub render_cache: Option<femtovg::ImageId>,
     pub last_entity_idx: usize,
+    pub last_decal_idx: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -73,6 +86,7 @@ pub struct CelesteMapEntity {
 
 #[derive(Debug, Clone)]
 pub struct CelesteMapDecal {
+    pub id: u32,
     pub x: i32,
     pub y: i32,
     pub scale_x: f32,
@@ -215,8 +229,47 @@ impl CelesteMapLevel {
         None
     }
 
+    pub fn decal(&self, id: u32, fg: bool) -> Option<&CelesteMapDecal> {
+        let decals = if fg { &self.fg_decals } else { &self.bg_decals };
+        if let Some(e) = decals.get(self.cache.borrow().last_entity_idx) {
+            if e.id == id {
+                return Some(e);
+            }
+        }
+        for (idx, e) in decals.iter().enumerate() {
+            if e.id == id {
+                self.cache.borrow_mut().last_decal_idx = idx;
+                return Some(e);
+            }
+        }
+        None
+    }
+
+    pub fn decal_mut(&mut self, id: u32, fg: bool) -> Option<&mut CelesteMapDecal> {
+        let decals = if fg { &mut self.fg_decals } else { &mut self.bg_decals };
+        if let Some(e) = decals.get_mut(self.cache.borrow().last_decal_idx) {
+            if e.id == id {
+                // hack around borrow checker
+                let decals = if fg { &mut self.fg_decals } else { &mut self.bg_decals };
+                return decals.get_mut(self.cache.borrow().last_decal_idx);
+            }
+        }
+        let decals = if fg { &mut self.fg_decals } else { &mut self.bg_decals };
+        for (idx, e) in decals.iter_mut().enumerate() {
+            if e.id == id {
+                self.cache.borrow_mut().last_decal_idx = idx;
+                return Some(e);
+            }
+        }
+        None
+    }
+
     pub fn cache_entity_idx(&self, idx: usize) {
         self.cache.borrow_mut().last_entity_idx = idx;
+    }
+
+    pub fn cache_decal_idx(&self, idx: usize) {
+        self.cache.borrow_mut().last_decal_idx = idx;
     }
 
     pub fn next_id(&self) -> i32 {
@@ -517,6 +570,7 @@ fn parse_entity_trigger(elem: &BinEl) -> Result<CelesteMapEntity, CelesteMapErro
 
 fn parse_decal(elem: &BinEl) -> Result<CelesteMapDecal, CelesteMapError> {
     Ok(CelesteMapDecal {
+        id: next_uuid(),
         x: get_attr(elem, "x")?,
         y: get_attr(elem, "y")?,
         scale_x: get_attr(elem, "scaleX")?,
