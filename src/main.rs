@@ -104,6 +104,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                                     cx.emit(AppEvent::SelectPaletteEntity { entity })
                                 })
                                     .display(if layer == Layer::Entities && tool_idx == 2 { Display::Flex } else { Display::None });
+                                PaletteWidget::new(cx, &assets::DECALS_PALETTE, AppState::current_decal, |cx, decal| {
+                                    cx.emit(AppEvent::SelectPaletteDecal { decal })
+                                })
+                                    .display(if (layer == Layer::FgDecals || layer == Layer::BgDecals) && tool_idx == 2 { Display::Flex } else { Display::None });
                             });
                             EntityTweakerWidget::new(cx)
                                 .display(if tool_idx == 1 { Display::Flex} else { Display::None });

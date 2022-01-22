@@ -5,7 +5,7 @@ use vizia::*;
 use crate::editor_widget;
 use crate::map_struct;
 use crate::map_struct::{CelesteMap, CelesteMapDecal, CelesteMapEntity};
-use crate::palette_widget::{EntitySelectable, TileSelectable};
+use crate::palette_widget::{DecalSelectable, EntitySelectable, TileSelectable};
 use crate::tools::Tool;
 use crate::tools;
 use crate::units::*;
@@ -19,6 +19,7 @@ pub struct AppState {
     pub current_fg_tile: TileSelectable,
     pub current_bg_tile: TileSelectable,
     pub current_entity: EntitySelectable,
+    pub current_decal: DecalSelectable,
     pub current_selected: Option<AppSelection>,
 
     pub map: Option<map_struct::CelesteMap>,
@@ -83,6 +84,7 @@ pub enum AppEvent {
     SelectLayer { layer: Layer },
     SelectPaletteTile { fg: bool, tile: TileSelectable },
     SelectPaletteEntity { entity: EntitySelectable },
+    SelectPaletteDecal { decal: DecalSelectable },
     SelectObject { selection: Option<AppSelection> },
     TileUpdate { fg: bool, offset: TilePoint, data: TileGrid<char> },
     EntityAdd { entity: CelesteMapEntity },
@@ -111,6 +113,7 @@ impl AppState {
             current_fg_tile: TileSelectable::default(),
             current_bg_tile: TileSelectable::default(),
             current_entity: assets::ENTITIES_PALETTE[0],
+            current_decal: assets::DECALS_PALETTE[0],
             current_selected: None,
             dirty: false,
             transform: MapToScreen::identity(),
@@ -164,6 +167,9 @@ impl AppState {
             }
             AppEvent::SelectPaletteEntity { entity } => {
                 self.current_entity = *entity;
+            }
+            AppEvent::SelectPaletteDecal { decal } => {
+                self.current_decal = *decal;
             }
             AppEvent::EntityAdd { entity } => {
                 if let Some(room) = self.current_room_mut() {

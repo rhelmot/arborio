@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -189,5 +189,39 @@ impl EntitySelectable {
         }
 
         entity
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct DecalSelectable(pub &'static str);
+
+impl Data for DecalSelectable {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
+impl PaletteItem for DecalSelectable {
+    fn search_text(&self) -> String {
+        todo!()
+    }
+
+    fn display_name(&self) -> String {
+        self.0.to_owned()
+    }
+
+    fn draw(&self, canvas: &mut Canvas) {
+        assets::GAMEPLAY_ATLAS.draw_sprite(
+            canvas,
+            assets::GAMEPLAY_ATLAS.lookup(self.0).unwrap(),
+            Point2D::new(0.0, 0.0),
+            None, Some(Vector2D::zero()), None, None,
+        )
+    }
+}
+
+impl DecalSelectable {
+    pub fn new(path: &'static str) -> Self {
+        Self(path)
     }
 }

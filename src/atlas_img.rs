@@ -107,6 +107,10 @@ impl Atlas {
         Ok(result)
     }
 
+    pub fn iter_paths(&self) -> impl Iterator<Item = &str> {
+        self.sprites_map.iter().map(|x| x.0.as_str())
+    }
+
     pub fn lookup(&self, path: &str) -> Option<SpriteReference> {
         let path = path.replace("\\", "/");
         self.sprites_map.get(&path)

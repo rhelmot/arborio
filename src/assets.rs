@@ -12,7 +12,7 @@ use crate::autotiler;
 use crate::atlas_img::SpriteReference;
 use crate::entity_config::EntityConfig;
 use crate::auto_saver::AutoSaver;
-use crate::palette_widget::{EntitySelectable, TileSelectable};
+use crate::palette_widget::{EntitySelectable, TileSelectable, DecalSelectable};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -90,6 +90,10 @@ lazy_static! {
 
     pub static ref ENTITIES_PALETTE: Vec<EntitySelectable> = {
         extract_entities_palette(&ENTITY_CONFIG)
+    };
+
+    pub static ref DECALS_PALETTE: Vec<DecalSelectable> = {
+        GAMEPLAY_ATLAS.iter_paths().filter(|path| path.starts_with("decals/")).map(|path| DecalSelectable::new(path)).collect()
     };
 }
 
