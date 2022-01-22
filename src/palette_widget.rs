@@ -120,9 +120,7 @@ impl PaletteItem for TileSelectable {
     fn draw(&self, canvas: &mut Canvas) {
         canvas.scale(3.0, 3.0);
         if let Some(texture) = self.texture {
-            let dim = assets::GAMEPLAY_ATLAS.sprite_dimensions(texture);
-            let slice = Rect::new(Point2D::zero(), dim.cast());
-            assets::GAMEPLAY_ATLAS.draw_sprite(canvas, texture, 0.0, 0.0, slice, Color::white().into());
+            assets::GAMEPLAY_ATLAS.draw_sprite(canvas, texture, Point2D::zero(), None, None, None, None);
         }
     }
 }

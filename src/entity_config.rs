@@ -212,17 +212,23 @@ impl Vec2 {
         }
     }
 
-    pub fn evaluate(&self, env: &HashMap<&str, Const>) -> Result<RoomVector, String> {
+    pub fn evaluate_int(&self, env: &HashMap<&str, Const>) -> Result<RoomVector, String> {
         let x = self.x.evaluate(env)?.as_number()?.to_int();
         let y = self.y.evaluate(env)?.as_number()?.to_int();
         Ok(RoomVector::new(x, y))
+    }
+
+    pub fn evaluate_float(&self, env: &HashMap<&str, Const>) -> Result<Vector2D<f32, UnknownUnit>, String> {
+        let x = self.x.evaluate(env)?.as_number()?.to_float();
+        let y = self.y.evaluate(env)?.as_number()?.to_float();
+        Ok(Vector2D::new(x, y))
     }
 }
 
 impl Rect {
     pub fn evaluate(&self, env: &HashMap<&str, Const>) -> Result<RoomRect, String> {
-        let topleft = self.topleft.evaluate(env)?.to_point();
-        let size = self.size.evaluate(env)?.to_size();
+        let topleft = self.topleft.evaluate_int(env)?.to_point();
+        let size = self.size.evaluate_int(env)?.to_size();
         Ok(RoomRect::new(topleft, size))
     }
 }

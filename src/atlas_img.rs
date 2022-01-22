@@ -10,6 +10,7 @@ use imgref::Img;
 use rgb::RGBA8;
 
 use crate::autotiler::TileReference;
+use crate::units::*;
 
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
 pub struct SpriteReference {
@@ -45,13 +46,12 @@ pub struct Atlas {
     sprites: Vec<AtlasSprite>,
 }
 
+#[derive(Debug)]
 pub struct AtlasSprite {
     blob_idx: usize,
-    bounding_box: euclid::Rect<u16, euclid::UnknownUnit>,
-    offset_x: i16,
-    offset_y: i16,
-    real_width: u16,
-    real_height: u16,
+    bounding_box: Rect<u16, UnknownUnit>,
+    trim_offset: Vector2D<i16, UnknownUnit>,
+    untrimmed_size: Size2D<u16, UnknownUnit>,
 }
 
 impl Atlas {
@@ -98,8 +98,8 @@ impl Atlas {
                         origin: euclid::Point2D::new(x, y),
                         size: euclid::Size2D::new(width, height),
                     },
-                    offset_x, offset_y,
-                    real_width, real_height,
+                    trim_offset: Vector2D::new(offset_x, offset_y),
+                    untrimmed_size: Size2D::new(real_width, real_height),
                 });
             }
         }
@@ -116,7 +116,7 @@ impl Atlas {
         })
     }
 
-    pub fn sprite_dimensions(&self, sprite_ref: SpriteReference) -> euclid::Size2D<u16, euclid::UnknownUnit> {
+    pub fn sprite_dimensions(&self, sprite_ref: SpriteReference) -> Size2D<u16, UnknownUnit> {
         let sprite = &self.sprites[sprite_ref.idx as usize];
         sprite.bounding_box.size
     }
@@ -125,27 +125,49 @@ impl Atlas {
         &self,
         canvas: &mut vizia::Canvas,
         sprite_ref: SpriteReference,
-        ox: f32, oy: f32,
-        slice: euclid::Rect<f32, euclid::UnknownUnit>,
-        color: Color,
+        point: Point2D<f32, UnknownUnit>,
+        slice: Option<Rect<f32, UnknownUnit>>,
+        justify: Option<Vector2D<f32, UnknownUnit>>,
+        scale: Option<Point2D<f32, UnknownUnit>>,
+        color: Option<Color>,
     ) {
         let sprite = &self.sprites[sprite_ref.idx as usize];
+        let color = color.unwrap_or(Color::white().into());
+
+        let justify = justify.unwrap_or(Vector2D::new(0.5, 0.5));
+        let slice = slice.unwrap_or(Rect::new(Point2D::zero(), sprite.untrimmed_size.cast()));
+        let scale = scale.unwrap_or(Point2D::new(1.0, 1.0));
+
+        // what atlas-space point does the screen-space point specified correspond to in the atlas?
+        // if point is cropped then we give a point outside the crop. idgaf
+        let atlas_origin = sprite.bounding_box.origin.cast() + sprite.trim_offset;
+        let justify_offset = slice.origin.to_vector() + slice.size.cast().to_vector().component_mul(justify);
+        let atlas_center = atlas_origin.cast() + justify_offset;
+        // we draw so atlas_center corresponds to point
+
+        // what canvas-space bounds should we clip to?
+        let slice_visible = slice.intersection(&Rect::new(-sprite.trim_offset.cast::<f32>().to_point(), sprite.bounding_box.size.cast()));
+        let slice_visible = if let Some(slice_visible) = slice_visible { slice_visible } else { return };
+        let canvas_rect = slice_visible.translate(-justify_offset).scale(scale.x, scale.y).translate(point.to_vector());
+
+        // how do we transform the entire fucking atlas to get the rectangle we want to end up inside canvas_rect?
+        let atlas_offset = point - atlas_center.to_vector().component_mul(scale.to_vector());
+
         let mut image_blob = self.blobs[sprite.blob_idx].lock().unwrap();
         let image_id = image_blob.image_id(canvas);
         let (sx, sy) = canvas.image_size(image_id).unwrap();
         let paint = Paint::image_tint(
             image_id,
-            -(sprite.bounding_box.origin.x as f32) - slice.min_x() + ox,
-             -(sprite.bounding_box.origin.y as f32) - slice.min_y() + oy,
-            sx as f32, sy as f32,
+            atlas_offset.x, atlas_offset.y,
+            sx as f32 * scale.x, sy as f32 * scale.y,
             0.0, color
         );
         let mut path = Path::new();
         path.rect(
-            ox as f32,
-            oy as f32,
-            slice.width(),
-            slice.height(),
+            canvas_rect.min_x(),
+            canvas_rect.min_y(),
+            canvas_rect.width(),
+            canvas_rect.height(),
         );
         canvas.fill_path(&mut path, paint);
     }

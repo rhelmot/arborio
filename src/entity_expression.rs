@@ -81,6 +81,10 @@ impl Number {
     pub fn to_int(&self) -> i32 {
         self.0 as i32
     }
+
+    pub fn to_float(&self) -> f32 {
+        self.0 as f32
+    }
 }
 
 impl std::fmt::Display for Number {

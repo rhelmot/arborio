@@ -107,8 +107,10 @@ impl View for EditorWidget {
                         ROOM_EMPTY_COLOR,
                     );
                     draw_tiles(canvas, room, false);
+                    draw_decals(canvas, room, false);
                     draw_entities(canvas, room, if idx == state.current_room { state.current_selected } else { None });
                     draw_tiles(canvas, room, true);
+                    draw_decals(canvas, room, true);
 
                     canvas.restore();
                     canvas.set_render_target(RenderTarget::Screen);
@@ -136,6 +138,25 @@ impl View for EditorWidget {
 
             let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[state.current_tool];
             tool.draw(canvas, state, cx);
+        }
+    }
+}
+
+fn draw_decals(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
+    let decals = if fg { &room.fg_decals } else { &room.bg_decals };
+    for decal in decals {
+        let path = std::path::Path::new("decals").join(std::path::Path::new(&decal.texture).with_extension(""));
+        if let Some(texture) = assets::GAMEPLAY_ATLAS.lookup(path.to_str().unwrap()) {
+            let scale = Point2D::new(decal.scale_x, decal.scale_y);
+            if room.name == "lvl_1" {
+                dbg!(scale);
+            }
+            assets::GAMEPLAY_ATLAS.draw_sprite(
+                canvas, texture, Point2D::new(decal.x, decal.y).cast(),
+                None, None, Some(scale), None,
+            );
+        } else {
+            dbg!(path);
         }
     }
 }
@@ -287,17 +308,12 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
                 return Ok(());
             }
             let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
-            let x = point.x.evaluate(&env)?.as_number()?.to_int() as f32;
-            let y = point.y.evaluate(&env)?.as_number()?.to_int() as f32;
-            let dim = assets::GAMEPLAY_ATLAS.sprite_dimensions(sprite);
-            let dx = dim.width as f32;
-            let dy = dim.height as f32;
-            let x = x - (dx * justify_x);
-            let y = y - (dy * justify_y);
+            let point = point.evaluate_float(&env)?.to_point();
+            let justify = Vector2D::new(*justify_x, *justify_y);
             let color = color.evaluate(&env)?;
-            // TODO: scale, rot
-            let slice = Rect::new(Point2D::zero(), dim.cast());
-            assets::GAMEPLAY_ATLAS.draw_sprite(canvas, sprite, x, y, slice, color);
+            let scale = scale.evaluate_float(&env)?.to_point();
+            // TODO: rot
+            assets::GAMEPLAY_ATLAS.draw_sprite(canvas, sprite, point, None, Some(justify), Some(scale), Some(color));
         }
         DrawElement::DrawRectImage { texture, bounds, slice, scale, color, tiler } => {
             let texture = texture.evaluate(&env)?.as_string()?;
@@ -425,10 +441,11 @@ fn draw_tiled(
         assets::GAMEPLAY_ATLAS.draw_sprite(
             canvas,
             sprite,
-            piece.min_x(),
-            piece.min_y(),
-            Rect::new(slice.origin, piece.size),
-            color
+            piece.origin,
+            Some(Rect::new(slice.origin, piece.size)),
+            Some(Vector2D::zero()),
+            None,
+            Some(color),
         );
     });
 }
