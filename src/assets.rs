@@ -93,7 +93,11 @@ lazy_static! {
     };
 
     pub static ref DECALS_PALETTE: Vec<DecalSelectable> = {
-        GAMEPLAY_ATLAS.iter_paths().filter(|path| path.starts_with("decals/")).map(|path| DecalSelectable::new(path)).collect()
+        GAMEPLAY_ATLAS
+            .iter_paths()
+            .filter_map(|path| if path.starts_with("decals/") { Some(path.trim_start_matches("decals/")) } else { None })
+            .map(|path| DecalSelectable::new(path))
+            .collect()
     };
 }
 

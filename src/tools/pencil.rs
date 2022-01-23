@@ -2,11 +2,12 @@ use vizia::*;
 
 use crate::app_state::{AppEvent, AppState, Layer};
 use crate::entity_config::PencilBehavior;
-use crate::map_struct::CelesteMapEntity;
+use crate::map_struct::{CelesteMapDecal, CelesteMapEntity};
 use crate::palette_widget::EntitySelectable;
 use crate::tools::{Tool, generic_nav};
 use crate::units::*;
 use crate::editor_widget;
+use crate::assets;
 
 #[derive(Default)]
 pub struct PencilTool {
@@ -70,6 +71,13 @@ impl Tool for PencilTool {
                 let tmp_entity = self.get_terminal_entity(state.current_entity, room_pos);
                 canvas.set_global_alpha(0.5);
                 editor_widget::draw_entity(canvas, &tmp_entity, &TileGrid::empty(), false);
+            }
+            Layer::FgDecals | Layer::BgDecals => {
+                let texture = assets::GAMEPLAY_ATLAS.lookup(&("decals/".to_owned() + state.current_decal.0)).unwrap();
+                if cx.mouse.left.state == MouseButtonState::Released {
+                    canvas.set_global_alpha(0.5);
+                }
+                assets::GAMEPLAY_ATLAS.draw_sprite(canvas, texture, room_pos.cast().cast_unit(), None, None, None, None);
             }
             _ => {}
         }
@@ -156,6 +164,16 @@ impl PencilTool {
                         }
                     }
                 }
+            }
+            Layer::FgDecals | Layer::BgDecals => {
+                vec![AppEvent::DecalAdd { fg: state.current_layer == Layer::FgDecals, decal: CelesteMapDecal {
+                    id: 0,
+                    x: room_pos.x,
+                    y: room_pos.y,
+                    scale_x: 1.0,
+                    scale_y: 1.0,
+                    texture: state.current_decal.0.to_owned(),
+                } }]
             }
             _ => vec![]
         };

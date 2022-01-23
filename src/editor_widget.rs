@@ -54,6 +54,8 @@ impl View for EditorWidget {
             for event in events {
                 cx.emit(event);
             }
+            // TODO: nuance
+            cx.style.needs_redraw = true;
         }
     }
 

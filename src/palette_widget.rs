@@ -27,11 +27,11 @@ where
         assert_ne!(items.len(), 0, "Palette may not be constructed with zero items");
         Self { lens: selected, marker: PhantomData {} }
             .build2(cx, move |cx| {
-                Binding::new(cx, selected, move |cx, selected_field| {
-                    let selected = *selected_field.get(cx);
-                    VStack::new(cx, move |cx| {
-                        for elem in items.iter() {
-                            let elem = elem.clone();
+                VStack::new(cx, move |cx| {
+                    for elem in items.iter() {
+                        let elem = elem.clone();
+                        Binding::new(cx, selected, move |cx, selected_field| {
+                            let selected = *selected_field.get(cx);
                             let checked = elem.same(&selected);
                             HStack::new(cx, move |cx| {
                                 Label::new(cx, &elem.display_name());
@@ -41,8 +41,8 @@ where
                                 .on_press(move |cx| {
                                     (callback)(cx, elem);
                                 });
-                        }
-                    });
+                        });
+                    }
                 });
             })
             .child_top(Units::Pixels(100.0))
@@ -213,7 +213,7 @@ impl PaletteItem for DecalSelectable {
     fn draw(&self, canvas: &mut Canvas) {
         assets::GAMEPLAY_ATLAS.draw_sprite(
             canvas,
-            assets::GAMEPLAY_ATLAS.lookup(self.0).unwrap(),
+            assets::GAMEPLAY_ATLAS.lookup(&("decals/".to_owned() + self.0)).unwrap(),
             Point2D::new(0.0, 0.0),
             None, Some(Vector2D::zero()), None, None,
         )

@@ -28,9 +28,17 @@ vstack {
 .palette_item {
     child-space: 3px;
     child-between: 0;
+    child-right: 1s;
 }
 
 .palette_item:checked {
     background-color: #101040;
     color: white;
+}
+
+.palette_item label {
+    width: 100px;
+    height: 20px;
+    font-size: 14px;
+    child-left: 0px;
 }
