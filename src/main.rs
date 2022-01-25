@@ -34,7 +34,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             .with_title("Arborio"),
         |cx| {
             app_state::AppState::new().build(cx);
-            cx.add_theme(include_str!("style.css"));
+            //cx.add_theme(include_str!("style.css"));
+            cx.add_stylesheet("src/style.css");
 
             VStack::new(cx, |cx| {
                 HStack::new(cx, |cx| {
@@ -92,19 +93,19 @@ fn main() -> Result<(), Box<dyn Error>> {
                             });
                             Binding::new(cx, AppState::current_layer, move |cx, layer_field| {
                                 let layer = *layer_field.get(cx);
-                                PaletteWidget::new(cx, &assets::FG_TILES_PALETTE, AppState::current_fg_tile, |cx, tile| {
+                                PaletteWidget::new(cx, StaticLens::new(&*assets::FG_TILES_PALETTE), AppState::current_fg_tile, |cx, tile| {
                                     cx.emit(AppEvent::SelectPaletteTile { fg: true, tile });
                                 })
                                     .display(if layer == Layer::FgTiles && tool_idx == 2 { Display::Flex } else { Display::None });
-                                PaletteWidget::new(cx, &assets::BG_TILES_PALETTE, AppState::current_bg_tile, |cx, tile| {
+                                PaletteWidget::new(cx, StaticLens::new(&*assets::BG_TILES_PALETTE), AppState::current_bg_tile, |cx, tile| {
                                     cx.emit(AppEvent::SelectPaletteTile { fg: false, tile })
                                 })
                                     .display(if layer == Layer::BgTiles && tool_idx == 2 { Display::Flex } else { Display::None });
-                                PaletteWidget::new(cx, &assets::ENTITIES_PALETTE, AppState::current_entity, |cx, entity| {
+                                PaletteWidget::new(cx, StaticLens::new(&*assets::ENTITIES_PALETTE), AppState::current_entity, |cx, entity| {
                                     cx.emit(AppEvent::SelectPaletteEntity { entity })
                                 })
                                     .display(if layer == Layer::Entities && tool_idx == 2 { Display::Flex } else { Display::None });
-                                PaletteWidget::new(cx, &assets::DECALS_PALETTE, AppState::current_decal, |cx, decal| {
+                                PaletteWidget::new(cx, StaticLens::new(&*assets::DECALS_PALETTE), AppState::current_decal, |cx, decal| {
                                     cx.emit(AppEvent::SelectPaletteDecal { decal })
                                 })
                                     .display(if (layer == Layer::FgDecals || layer == Layer::BgDecals) && tool_idx == 2 { Display::Flex } else { Display::None });

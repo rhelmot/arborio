@@ -16,33 +16,30 @@ pub struct PaletteWidget<T, L> {
     marker: PhantomData<T>,
 }
 
-impl<T: PaletteItem, L> PaletteWidget<T, L>
+impl<T: PaletteItem, LI> PaletteWidget<T, LI>
 where
-    L: Lens<Target = T>
+    LI: Lens<Target = T>,
 {
-    pub fn new<'a, F>(cx: &'a mut Context, items: &'static Vec<T>, selected: L, callback: F) -> Handle<'a, Self>
+    pub fn new<F, LL>(cx: &mut Context, items: LL, selected: LI, callback: F) -> Handle<Self>
     where
-        F: 'static + Fn(&mut Context, T) + Copy
+        F: 'static + Fn(&mut Context, T) + Copy,
+        LL: Lens<Target = Vec<T>>,
     {
-        assert_ne!(items.len(), 0, "Palette may not be constructed with zero items");
         Self { lens: selected, marker: PhantomData {} }
             .build2(cx, move |cx| {
-                VStack::new(cx, move |cx| {
-                    for elem in items.iter() {
-                        let elem = elem.clone();
-                        Binding::new(cx, selected, move |cx, selected_field| {
-                            let selected = *selected_field.get(cx);
-                            let checked = elem.same(&selected);
-                            HStack::new(cx, move |cx| {
-                                Label::new(cx, &elem.display_name());
-                            })
-                                .class("palette_item")
-                                .checked(checked)
-                                .on_press(move |cx| {
-                                    (callback)(cx, elem);
-                                });
-                        });
-                    }
+                List::new(cx, items, move |cx, item| {
+                    Binding::new(cx, selected, move |cx, selected_field| {
+                        let selected = *selected_field.get(cx);
+                        let checked = item.get(cx).same(&selected);
+                        HStack::new(cx, move |cx| {
+                            Label::new(cx, &item.get(cx).display_name());
+                        })
+                            .class("palette_item")
+                            .checked(checked)
+                            .on_press(move |cx| {
+                                (callback)(cx, *item.get(cx));
+                            });
+                    });
                 });
             })
             .child_top(Units::Pixels(100.0))
@@ -50,6 +47,10 @@ where
 }
 
 impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
+    fn element(&self) -> Option<String> {
+        Some("palette".to_owned())
+    }
+
     fn draw(&self, cx: &mut Context, canvas: &mut Canvas) {
         let entity = cx.current;
         let bounds = cx.cache.get_bounds(entity);

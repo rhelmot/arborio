@@ -1883,7 +1883,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=31552120dc40c56c2668b528eb8e39983f35777a#31552120dc40c56c2668b528eb8e39983f35777a"
+source = "git+https://github.com/rhelmot/VIZIA?rev=8eb2076fd4a5687cd7b4e75c12dfe267ed00910b#8eb2076fd4a5687cd7b4e75c12dfe267ed00910b"
 dependencies = [
  "vizia_core",
  "vizia_glutin",
@@ -1892,7 +1892,7 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=31552120dc40c56c2668b528eb8e39983f35777a#31552120dc40c56c2668b528eb8e39983f35777a"
+source = "git+https://github.com/rhelmot/VIZIA?rev=8eb2076fd4a5687cd7b4e75c12dfe267ed00910b#8eb2076fd4a5687cd7b4e75c12dfe267ed00910b"
 dependencies = [
  "bitflags",
  "copypasta",
@@ -1907,7 +1907,7 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=31552120dc40c56c2668b528eb8e39983f35777a#31552120dc40c56c2668b528eb8e39983f35777a"
+source = "git+https://github.com/rhelmot/VIZIA?rev=8eb2076fd4a5687cd7b4e75c12dfe267ed00910b#8eb2076fd4a5687cd7b4e75c12dfe267ed00910b"
 dependencies = [
  "proc-macro2 1.0.36",
  "quote 1.0.14",
@@ -1917,7 +1917,7 @@ dependencies = [
 [[package]]
 name = "vizia_glutin"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=31552120dc40c56c2668b528eb8e39983f35777a#31552120dc40c56c2668b528eb8e39983f35777a"
+source = "git+https://github.com/rhelmot/VIZIA?rev=8eb2076fd4a5687cd7b4e75c12dfe267ed00910b#8eb2076fd4a5687cd7b4e75c12dfe267ed00910b"
 dependencies = [
  "femtovg",
  "fnv",

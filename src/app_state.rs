@@ -107,7 +107,7 @@ impl Model for AppState {
 impl AppState {
     pub fn new() -> AppState {
         let res = AppState {
-            current_tool: 1,
+            current_tool: 2,
             map: None,
             current_room: 0,
             current_fg_tile: TileSelectable::default(),
