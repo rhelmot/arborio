@@ -25,11 +25,7 @@ vstack {
     child-space: 0;
 }
 
-palette {
-    width: 1s;
-}
-
-palette>* {
+palette>list {
     width: 1s;
 }
 
