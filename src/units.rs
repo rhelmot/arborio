@@ -43,6 +43,10 @@ pub fn vector_room_to_tile(pt: &RoomVector) -> TileVector { (*pt / 8).cast_unit(
 pub fn rect_tile_to_room(pt: &TileRect) -> RoomRect { (*pt * 8).cast_unit() }
 pub fn rect_room_to_tile(pt: &RoomRect) -> TileRect { (*pt / 8).cast_unit() }
 
+pub fn point_lose_precision(pt: &MapPointPrecise) -> MapPointStrict {
+    MapPointStrict::new(pt.x.floor() as i32, pt.y.floor() as i32)
+}
+
 pub struct RectPointIter<T, U> {
     rect: Rect<T, U>,
     step: T,

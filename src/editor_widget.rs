@@ -45,17 +45,22 @@ impl EditorWidget {
 impl View for EditorWidget {
     fn event(&mut self, cx: &mut Context, event: &mut Event) {
         if let Some(window_event) = event.message.downcast() {
+            if let WindowEvent::SetCursor(_) = window_event { return }
+
+            // TODO: nuance
+            cx.style.needs_redraw = true;
+
             if let WindowEvent::MouseDown(..) = &window_event {
                 cx.focused = cx.current;
             }
             let state = cx.data::<AppState>().expect("EditorWidget must have an AppState in its ancestry");
             let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[state.current_tool];
             let events = tool.event(window_event, state, cx);
+            let cursor = tool.cursor(cx, state);
             for event in events {
                 cx.emit(event);
             }
-            // TODO: nuance
-            cx.style.needs_redraw = true;
+            cx.emit(WindowEvent::SetCursor(cursor));
         }
     }
 

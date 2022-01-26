@@ -20,6 +20,10 @@ pub trait Tool: Send {
     fn switch_on(&mut self) { }
 
     fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &Context) { }
+
+    fn cursor(&self, cx: &Context, state: &AppState) -> CursorIcon {
+        CursorIcon::Default
+    }
 }
 
 lazy_static! {

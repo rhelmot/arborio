@@ -29,3 +29,8 @@ Inflector = "^0.11"
 itertools = "^0.10"
 enum-iterator = "^0.7"
 num-traits = "^0.2" # not really a dependency either
+
+[profile.dev.package.vizia_core]
+opt-level = 2
+[profile.dev.package.femtovg]
+opt-level = 2

@@ -22,8 +22,9 @@ pub struct SelectionTool {
 enum SelectionStatus {
     None,
     Selecting(RoomPoint),
-    CouldStartDragging(RoomPoint),
+    CouldStartDragging(RoomPoint, RoomPoint),
     Dragging(DraggingStatus),
+    Resizing(ResizingStatus),
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -32,6 +33,93 @@ struct DraggingStatus {
     selection_reference_points: HashMap<AppSelection, RoomPoint>,
     fg_float_reference_point: Option<RoomPoint>,
     bg_float_reference_point: Option<RoomPoint>,
+}
+
+#[derive(Eq, PartialEq, Debug)]
+struct ResizingStatus {
+    pointer_reference_point: RoomPoint,
+    selection_reference_sizes: HashMap<AppSelection, RoomRect>,
+    side: ResizeSide,
+}
+
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+enum ResizeSide {
+    None,
+    Top, Left, Bottom, Right,
+    TopLeft, TopRight, BottomLeft, BottomRight,
+}
+
+impl ResizeSide {
+    fn is_top(&self) -> bool {
+        match self {
+            Self::Top | Self::TopLeft | Self::TopRight => true,
+            _ => false,
+        }
+    }
+
+    fn is_bottom(&self) -> bool {
+        match self {
+            Self::Bottom | Self::BottomLeft | Self::BottomRight => true,
+            _ => false,
+        }
+    }
+
+    fn is_left(&self) -> bool {
+        match self {
+            Self::Left | Self::TopLeft | Self::BottomLeft => true,
+            _ => false,
+        }
+    }
+
+    fn is_right(&self) -> bool {
+        match self {
+            Self::Right | Self::TopRight | Self::BottomRight => true,
+            _ => false,
+        }
+    }
+    fn is_top_bottom(&self) -> bool {
+        self.is_top() || self.is_bottom()
+    }
+
+    fn is_left_right(&self) -> bool {
+        self.is_left() | self.is_right()
+    }
+
+    fn from_sides(at_top: bool, at_bottom: bool, at_left: bool, at_right: bool) -> Self {
+        match (at_top, at_bottom, at_left, at_right) {
+            (true, false, false, false) => ResizeSide::Top,
+            (false, true, false, false) => ResizeSide::Bottom,
+            (false, false, true, false) => ResizeSide::Left,
+            (false, false, false, true) => ResizeSide::Right,
+            (true, false, true, false) => ResizeSide::TopLeft,
+            (true, false, false, true) => ResizeSide::TopRight,
+            (false, true, true, false) => ResizeSide::BottomLeft,
+            (false, true, false, true) => ResizeSide::BottomRight,
+            _ => ResizeSide::None,
+        }
+    }
+
+    fn filter_out_top_bottom(&self) -> Self {
+        Self::from_sides(false, false, self.is_left(), self.is_right())
+    }
+
+    fn filter_out_left_right(&self) -> Self {
+        Self::from_sides(self.is_top(), self.is_bottom(), false, false)
+    }
+
+    fn to_cursor_icon(&self) -> CursorIcon {
+        match self {
+            ResizeSide::None => CursorIcon::Default,
+            ResizeSide::Top => CursorIcon::NResize,
+            ResizeSide::Left => CursorIcon::WResize,
+            ResizeSide::Bottom => CursorIcon::SResize,
+            ResizeSide::Right => CursorIcon::EResize,
+            ResizeSide::TopLeft => CursorIcon::NwResize,
+            ResizeSide::TopRight => CursorIcon::NeResize,
+            ResizeSide::BottomLeft => CursorIcon::SwResize,
+            ResizeSide::BottomRight => CursorIcon::SeResize,
+        }
+    }
 }
 
 impl Tool for SelectionTool {
@@ -55,7 +143,8 @@ impl Tool for SelectionTool {
 
         let room = if let Some(room) = state.current_room_ref() { room } else { return vec![] };
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
-        let map_pos = state.transform.inverse().unwrap().transform_point(screen_pos).cast();
+        let map_pos_precise = state.transform.inverse().unwrap().transform_point(screen_pos);
+        let map_pos = point_lose_precision(&map_pos_precise);
         let room_pos_unsnapped = (map_pos - room.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos_unsnapped);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
@@ -75,7 +164,7 @@ impl Tool for SelectionTool {
                 if self.status == SelectionStatus::None {
                     let got = self.selectable_at(room, state.current_layer, room_pos_unsnapped);
                     if self.touches_float(room_pos) || (got.is_some() && self.current_selection.contains(&got.unwrap())) {
-                        self.status = SelectionStatus::CouldStartDragging(room_pos);
+                        self.status = SelectionStatus::CouldStartDragging(room_pos, room_pos_unsnapped);
                         vec![]
                     } else {
                         self.status = SelectionStatus::Selecting(room_pos);
@@ -93,21 +182,23 @@ impl Tool for SelectionTool {
                 }
             }
             WindowEvent::MouseMove(..) => {
-                let mut events = if let SelectionStatus::CouldStartDragging(pt) = self.status {
-                    self.begin_dragging(room, pt) // sets self.status = Dragging
+                let mut events = if let SelectionStatus::CouldStartDragging(pt, unsn) = self.status {
+                    self.begin_dragging(room, pt, unsn) // sets self.status = Dragging | Resizing
                 } else {
                     vec![]
                 };
 
                 events.extend(match self.status {
                     SelectionStatus::None => vec![],
-                    SelectionStatus::CouldStartDragging(_) => unreachable!(),
+                    SelectionStatus::CouldStartDragging(_, _) => unreachable!(),
                     SelectionStatus::Selecting(ref_pos) => {
                         self.pending_selection = self.selectables_in(room, state.current_layer, RoomRect::new(ref_pos, (room_pos - ref_pos).to_size()));
                         vec![]
                     }
                     SelectionStatus::Dragging(DraggingStatus { pointer_reference_point, .. }) =>
                         self.nudge(room, room_pos - pointer_reference_point),
+                    SelectionStatus::Resizing(ResizingStatus { pointer_reference_point, .. }) =>
+                        self.resize(room, room_pos - pointer_reference_point),
                 });
 
                 events
@@ -139,7 +230,8 @@ impl Tool for SelectionTool {
         // no scissor!
 
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
-        let map_pos = state.transform.inverse().unwrap().transform_point(screen_pos).cast();
+        let map_pos_precise = state.transform.inverse().unwrap().transform_point(screen_pos).cast();
+        let map_pos = point_lose_precision(&map_pos_precise);
         let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
@@ -209,6 +301,23 @@ impl Tool for SelectionTool {
         }
 
         canvas.restore();
+    }
+
+    fn cursor(&self, cx: &Context, state: &AppState) -> CursorIcon {
+        let room = if let Some(room) = state.current_room_ref() { room } else { return CursorIcon::Default };
+        let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
+        let map_pos_precise = state.transform.inverse().unwrap().transform_point(screen_pos).cast();
+        let map_pos = point_lose_precision(&map_pos_precise);
+        let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
+        let tile_pos = point_room_to_tile(&room_pos);
+        // let room_pos_snapped = point_tile_to_room(&tile_pos);
+        // let room_pos = if state.snap { room_pos_snapped } else { room_pos };
+
+        match &self.status {
+            SelectionStatus::CouldStartDragging(_, _) | SelectionStatus::None => self.can_resize(room, room_pos).to_cursor_icon(),
+            SelectionStatus::Dragging(_) | SelectionStatus::Selecting(_) => CursorIcon::Default,
+            SelectionStatus::Resizing(info) => info.side.to_cursor_icon(),
+        }
     }
 }
 
@@ -287,7 +396,11 @@ impl SelectionTool {
             AppSelection::Decal(id, fg) => {
                 if let Some(decal) = room.decal(id, fg) {
                     if let Some(texture) = decal_texture(decal) {
-                        let size = assets::GAMEPLAY_ATLAS.sprite_dimensions(texture).cast().cast_unit();
+                        let size = assets::GAMEPLAY_ATLAS
+                            .sprite_dimensions(texture)
+                            .cast().cast_unit().to_vector()
+                            .component_mul(Vector2D::new(decal.scale_x, decal.scale_y))
+                            .cast().to_size().abs();
                         vec![Rect::new(RoomPoint::new(decal.x as i32, decal.y as i32) - size / 2, size)]
                     } else {
                         vec![]
@@ -442,6 +555,69 @@ impl SelectionTool {
             .collect()
     }
 
+    #[must_use]
+    fn resize(&mut self, room: &CelesteMapLevel, resize: RoomVector) -> Vec<AppEvent> {
+        let mut events = vec![];
+
+        let dragging = if let SelectionStatus::Resizing(dragging) = &self.status { Some(dragging) } else { None };
+        let side = if let Some(dragging) = dragging { dragging.side } else { ResizeSide::TopLeft };
+        let pos_vec = RoomVector::new(
+            if side.is_left() { resize.x } else { 0 },
+            if side.is_top() { resize.y } else { 0 },
+        );
+        let size_vec = RoomVector::new(
+            if side.is_left() { -resize.x } else if side.is_right() { resize.x } else { 0 },
+            if side.is_top() { -resize.y } else if side.is_bottom() { resize.y } else { 0 },
+        );
+        for sel in &self.current_selection {
+            match sel {
+                AppSelection::FgTile(_) | AppSelection::BgTile(_) | AppSelection::EntityNode(_, _) => {
+                    println!("uh oh!");
+                }
+                AppSelection::EntityBody(id) => {
+                    let mut e = room.entity(*id).unwrap().clone();
+                    let config = assets::ENTITY_CONFIG.get(&e.name).unwrap_or_else(|| assets::ENTITY_CONFIG.get("default").unwrap());
+                    let start_rect = dragging.and_then(|d| {
+                        Some(*d.selection_reference_sizes.get(sel).unwrap())
+                    }).unwrap_or_else(|| {
+                        RoomRect::new(RoomPoint::new(e.x, e.y), RoomSize::new(e.width as i32, e.height as i32))
+                    });
+                    let new_rect = RoomRect::new(start_rect.origin + pos_vec, start_rect.size + size_vec.to_size());
+                    e.x = new_rect.origin.x;
+                    e.y = new_rect.origin.y;
+                    e.width = new_rect.size.width.max(config.minimum_size_x as i32) as u32;
+                    e.height = new_rect.size.height.max(config.minimum_size_y as i32) as u32;
+                    events.push(AppEvent::EntityUpdate{ entity: e });
+                }
+                AppSelection::Decal(id, fg) => {
+                    let mut d = room.decal(*id, *fg).unwrap().clone();
+                    if let Some(texture) = decal_texture(&d) {
+                        let texture_size = assets::GAMEPLAY_ATLAS.sprite_dimensions(texture).cast().cast_unit();
+                        let start_rect = dragging.and_then(|d| {
+                            Some(*d.selection_reference_sizes.get(sel).unwrap())
+                        }).unwrap_or_else(|| {
+                            let size = texture_size.to_vector()
+                                .component_mul(Vector2D::new(d.scale_x, d.scale_y))
+                                .cast().to_size();
+                            RoomRect::new(RoomPoint::new(d.x, d.y) - size / 2, size)
+                        });
+                        let new_rect = RoomRect::new(start_rect.origin + pos_vec, start_rect.size + size_vec.to_size());
+                        let new_stretch = new_rect.size.to_vector()
+                            .cast::<f32>().component_div(texture_size.to_vector().cast());
+                        d.x = new_rect.center().x;
+                        d.y = new_rect.center().y;
+                        d.scale_x = new_stretch.x;
+                        d.scale_y = new_stretch.y;
+                        events.push(AppEvent::DecalUpdate { fg: *fg, decal: d })
+                    }
+                    // TODO what happens if we try to resize an untextured decal?
+                }
+            }
+        }
+
+        events
+    }
+
     fn add_to_float(&mut self, room: &CelesteMapLevel, pt: TilePoint, fg: bool) {
         if let Some(ch) = room.tile(pt, fg) {
             let float = if fg { &mut self.fg_float } else { &mut self.bg_float };
@@ -516,39 +692,126 @@ impl SelectionTool {
         events
     }
 
+    fn can_resize(&self, room: &CelesteMapLevel, pointer: RoomPoint) -> ResizeSide {
+        // get which side of the rectangle we're on
+        let mut side = ResizeSide::None;
+        'outer: for sel in self.current_selection.iter() {
+            for rect in self.rects_of(room, *sel) {
+                if rect.contains(pointer) {
+                    let smaller_rect = rect.inflate(-2, -2);
+                    let at_top = pointer.y < smaller_rect.min_y();
+                    let at_bottom = pointer.y >= smaller_rect.max_y();
+                    let at_left = pointer.x < smaller_rect.min_x();
+                    let at_right = pointer.x >= smaller_rect.max_x();
+
+                    side = ResizeSide::from_sides(at_top, at_bottom, at_left, at_right);
+                    break 'outer;
+                }
+            }
+        }
+
+        // filter that rectangle by which sides are appropriate for the current selection
+        if side != ResizeSide::None {
+            if self.fg_float.is_some() || self.bg_float.is_some() {
+                side = ResizeSide::None;
+            } else {
+                for sel in &self.current_selection {
+                    side = match sel {
+                        AppSelection::FgTile(_) | AppSelection::BgTile(_) => ResizeSide::None,
+                        AppSelection::EntityBody(id) => {
+                            if let Some(entity) = room.entity(*id) {
+                                let config = assets::ENTITY_CONFIG.get(&entity.name).unwrap_or_else(|| assets::ENTITY_CONFIG.get("default").unwrap());
+                                if !config.resizable_x {
+                                    side = side.filter_out_left_right();
+                                }
+                                if !config.resizable_y {
+                                    side = side.filter_out_top_bottom();
+                                }
+                            }
+                            side
+                        }
+                        AppSelection::EntityNode(_, _) => ResizeSide::None,
+                        AppSelection::Decal(_, _) => side,
+                    };
+
+                    if side == ResizeSide::None {
+                        break;
+                    }
+                }
+            }
+        }
+
+        side
+    }
+
     #[must_use]
-    fn begin_dragging(&mut self, room: &CelesteMapLevel, pointer_reference_point: RoomPoint) -> Vec<AppEvent> {
+    fn begin_dragging(&mut self, room: &CelesteMapLevel, pointer_reference_point: RoomPoint, pointer_reference_point_unsnapped: RoomPoint) -> Vec<AppEvent> {
         // Offload all fg/bg selections into the floats
         let events = self.float_tiles(room);
 
-        // collect reference points
-        let fg_float_reference_point = self.fg_float.as_ref().map(|f| point_tile_to_room(&f.0));
-        let bg_float_reference_point = self.bg_float.as_ref().map(|f| point_tile_to_room(&f.0));
-        let selection_reference_points = self.current_selection.iter().map(|sel| {
-            (*sel, match sel {
-                AppSelection::FgTile(_) | AppSelection::BgTile(_) => unreachable!(),
-                AppSelection::EntityBody(id) => {
-                    let e = room.entity(*id).unwrap();
-                    RoomPoint::new(e.x, e.y)
+        let side = self.can_resize(room, pointer_reference_point_unsnapped);
+        if side != ResizeSide::None {
+            // collect reference sizes
+            let selection_reference_sizes = self.current_selection.iter().filter_map(|sel| {
+                match sel {
+                    AppSelection::FgTile(_) | AppSelection::BgTile(_) | AppSelection::EntityNode(_, _) => unreachable!(),
+                    AppSelection::EntityBody(id) => {
+                        if let Some(entity) = room.entity(*id) {
+                            Some((*sel, RoomRect::new(RoomPoint::new(entity.x, entity.y), RoomSize::new(entity.width as i32, entity.height as i32))))
+                        } else {
+                            None
+                        }
+                    }
+                    AppSelection::Decal(id, fg) => {
+                        if let Some(decal) = room.decal(*id, *fg) {
+                            if let Some(texture) = decal_texture(decal) {
+                                let size = assets::GAMEPLAY_ATLAS
+                                    .sprite_dimensions(texture)
+                                    .cast().cast_unit().to_vector()
+                                    .component_mul(Vector2D::new(decal.scale_x, decal.scale_y))
+                                    .cast().to_size();
+                                Some((*sel, RoomRect::new(RoomPoint::new(decal.x, decal.y) - size / 2, size)))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    }
                 }
-                AppSelection::EntityNode(id, node_idx) => {
-                    let e = room.entity(*id).unwrap();
-                    RoomPoint::new(e.nodes[*node_idx].0, e.nodes[*node_idx].1)
-                }
-                AppSelection::Decal(id, fg) => {
-                    let d = room.decal(*id, *fg).unwrap();
-                    RoomPoint::new(d.x, d.y)
-                }
-            })
-        }).collect::<HashMap<AppSelection, RoomPoint>>();
+            }).collect::<HashMap<_, _>>();
 
-        // here's your status!
-        self.status = SelectionStatus::Dragging(DraggingStatus {
-            pointer_reference_point,
-            selection_reference_points,
-            fg_float_reference_point,
-            bg_float_reference_point
-        });
+            self.status = SelectionStatus::Resizing(ResizingStatus { pointer_reference_point, selection_reference_sizes, side });
+        } else {
+            // collect reference points
+            let fg_float_reference_point = self.fg_float.as_ref().map(|f| point_tile_to_room(&f.0));
+            let bg_float_reference_point = self.bg_float.as_ref().map(|f| point_tile_to_room(&f.0));
+            let selection_reference_points = self.current_selection.iter().map(|sel| {
+                (*sel, match sel {
+                    AppSelection::FgTile(_) | AppSelection::BgTile(_) => unreachable!(),
+                    AppSelection::EntityBody(id) => {
+                        let e = room.entity(*id).unwrap();
+                        RoomPoint::new(e.x, e.y)
+                    }
+                    AppSelection::EntityNode(id, node_idx) => {
+                        let e = room.entity(*id).unwrap();
+                        RoomPoint::new(e.nodes[*node_idx].0, e.nodes[*node_idx].1)
+                    }
+                    AppSelection::Decal(id, fg) => {
+                        let d = room.decal(*id, *fg).unwrap();
+                        RoomPoint::new(d.x, d.y)
+                    }
+                })
+            }).collect::<HashMap<AppSelection, RoomPoint>>();
+
+            // here's your status!
+            self.status = SelectionStatus::Dragging(DraggingStatus {
+                pointer_reference_point,
+                selection_reference_points,
+                fg_float_reference_point,
+                bg_float_reference_point
+            });
+        }
 
         events
     }

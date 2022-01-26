@@ -13,17 +13,17 @@ standard_draw:
         texture: '"danger/spikes/" + (match ?type { 1 => type, _ => "default" }) + "_left00"'
         bounds:
           topleft:
-            x: x - 6
+            x: x - 9
             y: y
           size:
-            x: 6
+            x: 9
             y: height
         slice:
           topleft:
             x: 0
             y: 0
           size:
-            x: 6
+            x: 9
             y: 8
 resizable_x: false
 resizable_y: true
