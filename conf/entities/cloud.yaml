@@ -1,0 +1,28 @@
+entity_name: cloud
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-12
+        y: y
+      size:
+        x: 24
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"objects/clouds/" + match (match ?small { 1 => small, _ => 0 }) {
+                    0 => match fragile {
+                      1 => "fragile00",
+                      _ => "cloud00"
+                    },
+                    _ => match fragile {
+                      1 => "fragileRemix00",
+                      _ => "cloudRemix00"
+                    }
+                  }'
+        point:
+          x: x
+          y: y
+resizable_x: false
+resizable_y: false
+nodes: false

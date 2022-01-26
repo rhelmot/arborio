@@ -1,0 +1,82 @@
+entity_name: moveBlock
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+        color:
+          r: 0x47
+          g: 0x40
+          b: 0x70
+          a: 0xff
+    - DrawRectImage:
+        texture: '"objects/moveBlock/" + match canSteer {
+                    0 => "base",
+                    _ => match direction {
+                            "left" => "base_h",
+                            "Left" => "base_h",
+                            "right" => "base_h",
+                            "Right" => "base_h",
+                            "up" => "base_v",
+                            "Up" => "base_v",
+                            "down" => "base_v",
+                            "Down" => "base_v",
+                            _ => "base"
+                          }
+                  }'
+        tiler: 9slice
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+    - DrawRect:
+        rect:
+          topleft:
+            x: x + width / 2 - 5
+            y: y + height / 2 - 5
+          size:
+            x: 10
+            y: 10
+        color:
+          r: 0x47
+          g: 0x40
+          b: 0x70
+          a: 0xff
+    - DrawPointImage:
+        texture: '"objects/moveBlock/" + match direction {
+                      "left" => "arrow04",
+                      "Left" => "arrow04",
+                      "right" => "arrow00",
+                      "Right" => "arrow00",
+                      "up" => "arrow02",
+                      "Up" => "arrow02",
+                      "down" => "arrow06",
+                      "Down" => "arrow06",
+                      _ => "base"
+                  }'
+        point:
+          x: x + width / 2
+          y: y + height / 2
+resizable_x: true
+resizable_y: true
+minimum_size_x: 16
+minimum_size_y: 16
+nodes: false
+attribute_info: {}
+pencil: Rect

@@ -1,0 +1,60 @@
+entity_name: ridgeGate
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+  node_rects:
+    - topleft:
+        x: nodex
+        y: nodey
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"objects/ridgeGate"'
+        tiler: 9slice
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+selected_draw:
+  node_draw:
+    - DrawRectImage:
+        texture: '"objects/ridgeGate"'
+        tiler: 9slice
+        bounds:
+          topleft:
+            x: nodex
+            y: nodey
+          size:
+            x: width
+            y: height
+    - DrawLine:
+        start:
+          x: x + width / 2
+          y: y + height / 2
+        end:
+          x: nodex + width / 2
+          y: nodey + height / 2
+        arrowhead: true
+        color:
+          r: 255
+          g: 255
+          b: 0
+          a: 200
+resizable_x: true
+resizable_y: true
+minimum_size_x: 16
+minimum_size_y: 16
+nodes: true
+attribute_info: {}
+pencil: Node

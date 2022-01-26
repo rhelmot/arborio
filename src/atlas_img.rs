@@ -177,23 +177,18 @@ impl Atlas {
     }
 
     pub fn draw_tile(&self, canvas: &mut vizia::Canvas, tile_ref: TileReference, ox: f32, oy: f32, color: femtovg::Color) {
-        let sprite = &self.sprites[tile_ref.texture.idx as usize];
-        let dim = self.sprite_dimensions(tile_ref.texture);
-        let path_x = (dim.width as f32 - (tile_ref.tile.x*8) as f32).min(8.0);
-        let path_y = (dim.height as f32 - (tile_ref.tile.y*8) as f32).min(8.0);
-        let mut image_blob = self.blobs[sprite.blob_idx].lock().unwrap();
-        let image_id = image_blob.image_id(canvas);
-        let (sx, sy) = canvas.image_size(image_id).unwrap();
-        let paint = Paint::image_tint(
-            image_id,
-            -((sprite.bounding_box.origin.x as u32 + tile_ref.tile.x * 8) as f32) + ox,
-            -((sprite.bounding_box.origin.y as u32 + tile_ref.tile.y * 8) as f32) + oy,
-            sx as f32, sy as f32,
-            0.0, color,
+        self.draw_sprite(
+            canvas,
+            tile_ref.texture,
+            Point2D::new(ox, oy),
+            Some(Rect::new(
+                Point2D::new(tile_ref.tile.x as f32 * 8.0, tile_ref.tile.y as f32 * 8.0),
+                Size2D::new(8.0, 8.0)
+            )),
+            Some(Vector2D::new(0.0, 0.0)),
+            None,
+            Some(color)
         );
-        let mut path = Path::new();
-        path.rect(ox as f32, oy as f32, path_x, path_y);
-        canvas.fill_path(&mut path, paint);
     }
 }
 

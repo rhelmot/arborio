@@ -343,7 +343,7 @@ impl<'de> Deserialize<'de> for Expression {
         let parsed = expression(s.as_str());
         if let Err(e) = parsed {
             dbg!(e);
-            panic!(); // ummmm how do you construct this kind of error
+            panic!("Error parsing {}", s); // ummmm how do you construct this kind of error
         }
         Ok(parsed.unwrap().1)
     }

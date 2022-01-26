@@ -1,0 +1,22 @@
+entity_name: booster
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-8
+        y: y-8
+      size:
+        x: 16
+        y: 16
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"objects/booster/" + match red {
+                    0 => "booster00",
+                    _ => "boosterRed00"
+                  }'
+        point:
+          x: x
+          y: y
+resizable_x: false
+resizable_y: false
+nodes: false

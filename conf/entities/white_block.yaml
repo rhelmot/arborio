@@ -1,0 +1,21 @@
+entity_name: whiteblock
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: 48
+        y: 24
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"objects/whiteblock"'
+        point:
+          x: x
+          y: y
+        justify_x: 0
+        justify_y: 0
+resizable_x: false
+resizable_y: false
+nodes: false

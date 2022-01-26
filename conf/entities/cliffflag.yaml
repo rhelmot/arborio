@@ -1,0 +1,38 @@
+entity_name: cliffflag
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x - 4
+        y: y - 4
+      size:
+        x: 8
+        y: 8
+  node_rects:
+    - topleft:
+        x: nodex - 4
+        y: nodey - 4
+      size:
+        x: 8
+        y: 8
+standard_draw:
+  node_draw:
+    - DrawCurve:
+        color:
+          r: 0x59
+          g: 0x58
+          b: 0x66
+          a: 0xff
+        thickness: 1
+        start:
+          x: x
+          y: y
+        end:
+          x: nodex
+          y: nodey
+        middle:
+          x: (x + nodex) / 2
+          y: (y + nodey) / 2 + 24
+resizable_x: false
+resizable_y: false
+nodes: true
+pencil: Node

@@ -1,0 +1,33 @@
+entity_name: cliffside_flag
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-4
+        y: y-4
+      size:
+        x: 8
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"scenery/cliffside/flag" + match index {
+                    0 => "00",
+                    1 => "01",
+                    2 => "02",
+                    3 => "03",
+                    4 => "04",
+                    5 => "05",
+                    6 => "06",
+                    7 => "07",
+                    8 => "08",
+                    9 => "09",
+                    _ => "10"
+                  }'
+        point:
+          x: x
+          y: y
+        justify_x: 0
+        justify_y: 0
+resizable_x: false
+resizable_y: false
+nodes: false
