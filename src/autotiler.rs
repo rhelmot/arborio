@@ -129,11 +129,13 @@ impl Tileset {
             if s_tileset.ignores == "*" {
                 tileset.ignores_all = true;
             } else if !s_tileset.ignores.is_empty() {
-                assert_ascii!(s_tileset.ignores);
-                if s_tileset.ignores.len() > 1 {
-                    return Err(io::Error::new(io::ErrorKind::InvalidData, format!("I actually don't know how to load this tileset ({}). Can you send your mod to rhelmot?", s_tileset.id)));
-                }
-                tileset.ignores.push(s_tileset.ignores.chars().next().unwrap());
+                // TODO is comma the right separator?
+                tileset.ignores = s_tileset.ignores.split(',').map(|x| x.chars().next().unwrap()).collect();
+                // assert_ascii!(s_tileset.ignores);
+                // if s_tileset.ignores.len() > 1 {
+                //     return Err(io::Error::new(io::ErrorKind::InvalidData, format!("I actually don't know how to load this tileset ({}). Can you send your mod to rhelmot?", s_tileset.id)));
+                // }
+                // tileset.ignores.push(s_tileset.ignores.chars().next().unwrap());
             }
 
             for s_set in s_tileset.set.iter().rev() {

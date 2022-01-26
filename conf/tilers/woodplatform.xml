@@ -1,0 +1,10 @@
+<Data>
+    <Tileset id="z" path="objects/woodPlatform/default" ignores="1,2,3">
+        <set mask="xxx-111-0x0" tiles="1,0" />
+        <set mask="xxx-011-xxx" tiles="0,0" />
+        <set mask="xxx-110-xxx" tiles="3,0" />
+    </Tileset>
+
+    <Tileset id="a" copy="z" path="objects/woodPlatform/default" />
+    <Tileset id="b" copy="z" path="objects/woodPlatform/cliffside" />
+</Data>

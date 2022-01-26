@@ -1,0 +1,31 @@
+entity_name: yellowBlocks
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"objects/resortclutter/yellow_05"'
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+        slice:
+          topleft:
+            x: 0
+            y: 0
+          size:
+            x: 8
+            y: 8
+resizable_x: true
+resizable_y: true
+nodes: false
+attribute_info: {}

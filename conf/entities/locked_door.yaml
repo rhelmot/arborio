@@ -1,0 +1,24 @@
+entity_name: lockBlock
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: 32
+        y: 32
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: 'match sprite {
+                    "moon" => "objects/door/moonDoor11",
+                    "temple_a" => "objects/door/lockdoorTempleB00",
+                    "temple_b" => "objects/door/lockdoorTempleA00",
+                    _ => "objects/door/lockdoor00"
+                  }'
+        point:
+          x: x + 16
+          y: y + 16
+resizable_x: false
+resizable_y: false
+nodes: false

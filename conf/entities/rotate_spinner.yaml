@@ -1,0 +1,100 @@
+entity_name: rotateSpinner
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-8
+        y: y-8
+      size:
+        x: 16
+        y: 16
+  node_rects:
+    - topleft:
+        x: nodex-4
+        y: nodey-4
+      size:
+        x: 8
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: 'match (match ?star { 1 => star, _ => 0 }) {
+                    1 => "danger/starfish17",
+                    _ => match (match ?dust { 1 => dust, _ => 0}) {
+                        1 => "danger/dustcreature/base00",
+                        _ => "danger/blade00"
+                    }
+                  }'
+        point:
+          x: x
+          y: y
+    - DrawLine:
+        start:
+          x: x
+          y: y
+        end:
+          x: firstnodex
+          y: firstnodey
+        color:
+          r: 255
+          g: 255
+          b: 0
+          a: 200
+selected_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: 'match (match ?star { 1 => star, _ => 0 }) {
+                    1 => "danger/starfish17",
+                    _ => match (match ?dust { 1 => dust, _ => 0}) {
+                        1 => "danger/dustcreature/base00",
+                        _ => "danger/blade00"
+                    }
+                  }'
+        point:
+          x: firstnodex + (firstnodex - x)
+          y: firstnodey + (firstnodey - y)
+    - DrawPointImage:
+        texture: 'match (match ?star { 1 => star, _ => 0 }) {
+                    1 => "danger/starfish17",
+                    _ => match (match ?dust { 1 => dust, _ => 0}) {
+                        1 => "danger/dustcreature/base00",
+                        _ => "danger/blade00"
+                    }
+                  }'
+        point:
+          x: firstnodex + (firstnodey - y)
+          y: firstnodey - (firstnodex - x)
+    - DrawPointImage:
+        texture: 'match (match ?star { 1 => star, _ => 0 }) {
+                    1 => "danger/starfish17",
+                    _ => match (match ?dust { 1 => dust, _ => 0}) {
+                        1 => "danger/dustcreature/base00",
+                        _ => "danger/blade00"
+                    }
+                  }'
+        point:
+          x: firstnodex - (firstnodey - y)
+          y: firstnodey + (firstnodex - x)
+resizable_x: false
+resizable_y: false
+nodes: true
+pencil: Node
+attribute_info:
+  star:
+    ty: Bool
+    default:
+      Bool: false
+  dust:
+    ty: Bool
+    default:
+      Bool: false
+templates:
+  - name: "Track Spinner (Blade)"
+    attributes: {}
+  - name: "Track Spinner (Dust)"
+    attributes:
+      dust:
+        Bool: true
+  - name: "Track Spinner (Star)"
+    attributes:
+      star:
+        Bool: true

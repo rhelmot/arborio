@@ -1,0 +1,32 @@
+entity_name: resortLantern
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-8
+        y: y-12
+      size:
+        x: 16
+        y: 24
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"objects/resortLantern/holder"'
+        point:
+          x: x
+          y: y
+    - DrawPointImage:
+        texture: '"objects/resortLantern/holder"'
+        point:
+          x: x
+          y: y
+        scale:
+          x: -1
+          y: 1
+    - DrawPointImage:
+        texture: '"objects/resortLantern/lantern00"'
+        point:
+          x: x
+          y: y
+resizable_x: false
+resizable_y: false
+nodes: false
