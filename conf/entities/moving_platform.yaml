@@ -1,0 +1,115 @@
+entity_name: movingPlatform
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: 8
+  node_rects:
+    - topleft:
+        x: nodex
+        y: nodey
+      size:
+        x: width
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawLine:
+        start:
+          x: x + width / 2
+          y: y
+        end:
+          x: firstnodex + width / 2
+          y: firstnodey
+        color:
+          r: 0x2a
+          g: 0x19
+          b: 0x23
+          a: 0xff
+        thickness: 3
+    - DrawLine:
+        start:
+          x: x + width / 2
+          y: y
+        end:
+          x: firstnodex + width / 2
+          y: firstnodey
+        color:
+          r: 0x16
+          g: 0x0b
+          b: 0x12
+          a: 0xff
+        thickness: 1
+    - DrawRectImage:
+        texture: 'match (match ?texture { 1 => texture, _ => "default" }) {
+                    "cliffside" => "b",
+                    _ => "a"
+                  }'
+        tiler: woodplatform
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: 8
+    - DrawRectImage:
+        texture: 'match (match ?texture { 1 => texture, _ => "default" }) {
+                    "cliffside" => "objects/woodPlatform/cliffside",
+                    _ => "objects/woodPlatform/default"
+                  }'
+        slice:
+          topleft:
+            x: 16
+            y: 0
+          size:
+            x: 8
+            y: 8
+        bounds:
+          topleft:
+            x: x + width / 2 - 4
+            y: y
+          size:
+            x: 8
+            y: 8
+selected_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: 'match (match ?texture { 1 => texture, _ => "default" }) {
+                    "cliffside" => "b",
+                    _ => "a"
+                  }'
+        tiler: woodplatform
+        bounds:
+          topleft:
+            x: firstnodex
+            y: firstnodey
+          size:
+            x: width
+            y: 8
+    - DrawRectImage:
+        texture: 'match (match ?texture { 1 => texture, _ => "default" }) {
+                    "cliffside" => "objects/woodPlatform/cliffside",
+                    _ => "objects/woodPlatform/default"
+                  }'
+        slice:
+          topleft:
+            x: 16
+            y: 0
+          size:
+            x: 8
+            y: 8
+        bounds:
+          topleft:
+            x: firstnodex + width / 2 - 4
+            y: firstnodey
+          size:
+            x: 8
+            y: 8
+resizable_x: true
+resizable_y: false
+nodes: true
+pencil: Node
+attribute_info: {}

@@ -1,0 +1,47 @@
+entity_name: colorSwitch
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: 32
+        y: 16
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"objects/resortclutter/clutter_button00"'
+        point:
+          x: x + 16
+          y: y + 16
+        justify_y: 1
+    - DrawPointImage:
+        texture: '"objects/resortclutter/icon_" + match type {
+                    "Red" => "red",
+                    "Green" => "green",
+                    "Yellow" => "yellow",
+                    "Lightning" => "lightning",
+                    _ => type
+                  }'
+        point:
+          x: x + 16
+          y: y + 8
+resizable_x: false
+resizable_y: false
+nodes: false
+pencil: Line
+attribute_info:
+  type:
+    ty: String
+    default:
+      String: red
+    options:
+      - name: Towels
+        value:
+          String: red
+      - name: Books
+        value:
+          String: green
+      - name: Chest
+        value:
+          String: yellow

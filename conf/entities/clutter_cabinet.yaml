@@ -1,0 +1,21 @@
+entity_name: clutterCabinet
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: 16
+        y: 16
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"objects/resortclutter/cabinet00"'
+        point:
+          x: x + 8
+          y: y + 8
+resizable_x: false
+resizable_y: false
+nodes: false
+pencil: Line
+attribute_info: {}

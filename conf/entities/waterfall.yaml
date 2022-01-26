@@ -1,0 +1,31 @@
+entity_name: waterfall
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: 8
+        y: 500
+standard_draw:
+  initial_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: 8
+            y: 500
+        color:
+          r: 0
+          g: 0
+          b: 0xff
+          a: 0x40
+resizable_x: false
+resizable_y: false
+minimum_size_x: 8
+minimum_size_y: 8
+nodes: false
+pencil: Line
+attribute_info: {}

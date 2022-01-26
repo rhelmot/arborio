@@ -1,0 +1,30 @@
+entity_name: clutterDoor
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"objects/door/ghost_door00"'
+        point:
+          x: x + 16
+          y: y + 16
+    - DrawPointImage:
+        texture: '"objects/resortclutter/icon_" + match type {
+                    "Red" => "red",
+                    "Green" => "green",
+                    "Yellow" => "yellow",
+                    "Lightning" => "lightning",
+                    _ => type
+                  }'
+        point:
+          x: x + 16
+          y: y + 16
+resizable_x: false
+resizable_y: false
+nodes: false

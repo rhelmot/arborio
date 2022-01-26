@@ -1,0 +1,19 @@
+entity_name: friendlyGhost
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-16
+        y: y-16
+      size:
+        x: 32
+        y: 32
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"characters/oshiro/boss12"'
+        point:
+          x: x
+          y: y
+resizable_x: false
+resizable_y: false
+nodes: false

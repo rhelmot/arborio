@@ -1,0 +1,32 @@
+entity_name: triggerSpikesDown
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"danger/spikes/default_down00"'
+        bounds:
+          topleft:
+            x: x
+            y: y-4
+          size:
+            x: width
+            y: 7
+        slice:
+          topleft:
+            x: 0
+            y: 0
+          size:
+            x: 8
+            y: 7
+resizable_x: true
+resizable_y: false
+nodes: false
+pencil: Rect
+attribute_info: {}

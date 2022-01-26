@@ -1,0 +1,22 @@
+entity_name: trapdoor
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y-4
+      size:
+        x: 24
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"objects/door/trap01"'
+        point:
+          x: x
+          y: y
+        justify_x: 0
+        justify_y: 0
+resizable_x: false
+resizable_y: false
+nodes: false
+attribute_info: {}

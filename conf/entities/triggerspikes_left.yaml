@@ -1,0 +1,32 @@
+entity_name: triggerSpikesLeft
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x - 8
+        y: y
+      size:
+        x: 8
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"danger/spikes/default_left00"'
+        bounds:
+          topleft:
+            x: x - 5
+            y: y
+          size:
+            x: 9
+            y: height
+        slice:
+          topleft:
+            x: 0
+            y: 0
+          size:
+            x: 9
+            y: 8
+resizable_x: false
+resizable_y: true
+nodes: false
+pencil: Rect
+attribute_info: {}
