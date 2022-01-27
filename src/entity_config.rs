@@ -149,8 +149,13 @@ pub enum DrawElement {
         scale: Vec2,
         #[serde(default)]
         color: Color,
-        #[serde(default)]
-        rot: i32,
+        #[serde(default = "expr_zero")]
+        rot: Expression,
+    },
+    DrawRectCustom {
+        interval: f32,
+        rect: Rect,
+        draw: Vec<DrawElement>,
     }
 }
 
@@ -171,8 +176,8 @@ fn clear() -> Color {
         a: Expression::mk_const(0),
     }
 }
-
 fn repeat() -> String { "repeat".to_owned() }
+fn expr_zero() -> Expression { Expression::mk_const(0) }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Rect {
@@ -218,7 +223,7 @@ impl Vec2 {
         Ok(RoomVector::new(x, y))
     }
 
-    pub fn evaluate_float(&self, env: &HashMap<&str, Const>) -> Result<Vector2D<f32, UnknownUnit>, String> {
+    pub fn evaluate_float(&self, env: &HashMap<&str, Const>) -> Result<Vector2D<f32, RoomSpace>, String> {
         let x = self.x.evaluate(env)?.as_number()?.to_float();
         let y = self.y.evaluate(env)?.as_number()?.to_float();
         Ok(Vector2D::new(x, y))
@@ -226,10 +231,16 @@ impl Vec2 {
 }
 
 impl Rect {
-    pub fn evaluate(&self, env: &HashMap<&str, Const>) -> Result<RoomRect, String> {
+    pub fn evaluate_int(&self, env: &HashMap<&str, Const>) -> Result<RoomRect, String> {
         let topleft = self.topleft.evaluate_int(env)?.to_point();
         let size = self.size.evaluate_int(env)?.to_size();
         Ok(RoomRect::new(topleft, size))
+    }
+
+    pub fn evaluate_float(&self, env: &HashMap<&str, Const>) -> Result<euclid::Rect<f32, RoomSpace>, String> {
+        let topleft = self.topleft.evaluate_float(env)?.to_point();
+        let size = self.size.evaluate_float(env)?.to_size();
+        Ok(euclid::Rect::new(topleft, size))
     }
 }
 

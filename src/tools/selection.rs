@@ -364,7 +364,7 @@ impl SelectionTool {
                     let config = assets::ENTITY_CONFIG.get(&entity.name).unwrap_or_else(|| assets::ENTITY_CONFIG.get("default").unwrap());
                     let env = entity.make_env();
                     config.hitboxes.initial_rects.iter().filter_map(|r| {
-                        match r.evaluate(&env) {
+                        match r.evaluate_int(&env) {
                             Ok(r) => Some(r),
                             Err(s) => {
                                 println!("{}", s);
@@ -381,7 +381,7 @@ impl SelectionTool {
                     let config = assets::ENTITY_CONFIG.get(&entity.name).unwrap_or_else(|| assets::ENTITY_CONFIG.get("default").unwrap());
                     let env = entity.make_node_env(entity.make_env(), node_idx);
                     config.hitboxes.node_rects.iter().filter_map(|r| {
-                        match r.evaluate(&env) {
+                        match r.evaluate_int(&env) {
                             Ok(r) => Some(r),
                             Err(s) => {
                                 println!("{}", s);

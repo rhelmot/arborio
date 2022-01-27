@@ -12,8 +12,8 @@ standard_draw:
     - DrawPointImage:
         texture: 'match sprite {
                     "moon" => "objects/door/moonDoor11",
-                    "temple_a" => "objects/door/lockdoorTempleB00",
-                    "temple_b" => "objects/door/lockdoorTempleA00",
+                    "temple_a" => "objects/door/lockdoorTempleA00",
+                    "temple_b" => "objects/door/lockdoorTempleB00",
                     _ => "objects/door/lockdoor00"
                   }'
         point:

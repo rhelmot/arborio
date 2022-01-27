@@ -1,0 +1,22 @@
+entity_name: torch
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-4
+        y: y-4
+      size:
+        x: 8
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: 'match startLit {
+                    0 => "objects/temple/torch00",
+                    _ => "objects/temple/litTorch08"
+                  }'
+        point:
+          x: x
+          y: y
+resizable_x: false
+resizable_y: false
+nodes: false

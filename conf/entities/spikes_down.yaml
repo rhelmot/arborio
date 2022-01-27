@@ -10,7 +10,10 @@ hitboxes:
 standard_draw:
   initial_draw:
     - DrawRectImage:
-        texture: '"danger/spikes/" + (match ?type { 1 => type, _ => "default" }) + "_down00"'
+        texture: 'match (match ?type { 1 => type, _ => "default" }) {
+                    "tentacles" => "",
+                    _ => "danger/spikes/" + (match ?type { 1 => type, _ => "default" }) + "_down00"
+                  }'
         bounds:
           topleft:
             x: x
@@ -25,6 +28,39 @@ standard_draw:
           size:
             x: 8
             y: 7
+    - DrawRectCustom:
+        interval: 16
+        rect:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width - 8
+            y: 1
+        draw:
+          - DrawPointImage:
+              texture: 'match (match ?type { 1 => type, _ => "default" }) {
+                          "tentacles" => "danger/tentacles00",
+                          _ => ""
+                        }'
+              point:
+                x: customx + 16
+                y: customy
+              justify_x: 0
+              rot: 180
+    - DrawPointImage:
+        texture: 'match (match ?type { 1 => type, _ => "default" }) {
+                    "tentacles" => match width % 16 {
+                      8 => "danger/tentacles00",
+                      _ => ""
+                    },
+                    _ => ""
+                  }'
+        point:
+          x: x + width
+          y: y
+        justify_x: 0
+        rot: 180
 resizable_x: true
 resizable_y: false
 nodes: false

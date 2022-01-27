@@ -1,0 +1,23 @@
+entity_name: dashSwitchV
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: 'match ceiling { 0 => y, _ => y - 8 }'
+      size:
+        x: 16
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: 'match sprite {
+                    "default" => "objects/temple/dashButton00",
+                    _ => "objects/temple/dashButtonMirror00"
+                  }'
+        point:
+          x: x + 8
+          y: 'match ceiling { 0 => y + 8, _ => y }'
+        rot: 'match ceiling { 0 => 90, _ => -90 }'
+resizable_x: false
+resizable_y: false
+nodes: false

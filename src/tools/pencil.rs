@@ -77,7 +77,7 @@ impl Tool for PencilTool {
                 if cx.mouse.left.state == MouseButtonState::Released {
                     canvas.set_global_alpha(0.5);
                 }
-                assets::GAMEPLAY_ATLAS.draw_sprite(canvas, texture, room_pos.cast().cast_unit(), None, None, None, None);
+                assets::GAMEPLAY_ATLAS.draw_sprite(canvas, texture, room_pos.cast().cast_unit(), None, None, None, None, 0.0);
             }
             _ => {}
         }

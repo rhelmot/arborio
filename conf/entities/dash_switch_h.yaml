@@ -1,0 +1,23 @@
+entity_name: dashSwitchH
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: 'match leftSide { 0 => x, _ => x - 8 }'
+        y: y
+      size:
+        x: 8
+        y: 16
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: 'match sprite {
+                    "default" => "objects/temple/dashButton00",
+                    _ => "objects/temple/dashButtonMirror00"
+                  }'
+        point:
+          x: 'match leftSide { 0 => x + 8, _ => x }'
+          y: y + 8
+        rot: 'match leftSide { 0 => 0, _ => 180 }'
+resizable_x: false
+resizable_y: false
+nodes: false

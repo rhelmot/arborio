@@ -1,0 +1,48 @@
+entity_name: templeMirror
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+  node_rects:
+    - topleft:
+        x: nodex
+        y: nodey
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: x + 4
+            y: y + 4
+          size:
+            x: width - 8
+            y: height - 8
+        color:
+          r: 0x20
+          g: 0x10
+          b: 0x30
+          a: 0xff
+    - DrawRectImage:
+        texture: '"scenery/templemirror"'
+        tiler: 9slice
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+resizable_x: true
+resizable_y: true
+minimum_size_x: 16
+minimum_size_y: 16
+nodes: false
+attribute_info: {}
+pencil: Rect

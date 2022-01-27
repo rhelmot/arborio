@@ -10,7 +10,7 @@ use euclid::{Rect, Point2D, Vector2D, Size2D, UnknownUnit, Transform2D, Angle};
 
 use crate::map_struct::{CelesteMapEntity, CelesteMapLevel, FieldEntry, CelesteMapDecal};
 use crate::entity_config::{DrawElement};
-use crate::entity_expression::Const;
+use crate::entity_expression::{Const, Number};
 use crate::map_struct;
 use crate::atlas_img::SpriteReference;
 use crate::assets;
@@ -156,7 +156,7 @@ fn draw_decals(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
             let scale = Point2D::new(decal.scale_x, decal.scale_y);
             assets::GAMEPLAY_ATLAS.draw_sprite(
                 canvas, texture, Point2D::new(decal.x, decal.y).cast(),
-                None, None, Some(scale), None,
+                None, None, Some(scale), None, 0.0,
             );
         } else {
             dbg!(decal);
@@ -316,15 +316,18 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
                 return Ok(());
             }
             let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
-            let point = point.evaluate_float(&env)?.to_point();
+            let point = point.evaluate_float(&env)?.to_point().cast_unit();
             let justify = Vector2D::new(*justify_x, *justify_y);
             let color = color.evaluate(&env)?;
-            let scale = scale.evaluate_float(&env)?.to_point();
-            // TODO: rot
-            assets::GAMEPLAY_ATLAS.draw_sprite(canvas, sprite, point, None, Some(justify), Some(scale), Some(color));
+            let scale = scale.evaluate_float(&env)?.to_point().cast_unit();
+            let rot = rot.evaluate(&env)?.as_number()?.to_float();
+            assets::GAMEPLAY_ATLAS.draw_sprite(canvas, sprite, point, None, Some(justify), Some(scale), Some(color), rot);
         }
         DrawElement::DrawRectImage { texture, bounds, slice, scale, color, tiler } => {
             let texture = texture.evaluate(&env)?.as_string()?;
+            if texture.is_empty() {
+                return Ok(());
+            }
             let slice_x = slice.topleft.x.evaluate(&env)?.as_number()?.to_int() as f32;
             let slice_y = slice.topleft.y.evaluate(&env)?.as_number()?.to_int() as f32;
             let slice_w = slice.size.x.evaluate(&env)?.as_number()?.to_int() as f32;
@@ -426,6 +429,18 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
                 }
             }
         }
+        DrawElement::DrawRectCustom { interval, rect, draw } => {
+            let rect = rect.evaluate_float(&env)?;
+            let mut env2 = env.clone();
+            for point in rect_point_iter(rect, *interval) {
+                env2.insert("customx", Const::Number(Number(point.x as f64)));
+                env2.insert("customy", Const::Number(Number(point.y as f64)));
+
+                for draw_element in draw {
+                    draw_entity_directive(canvas, draw_element, &env2, field)?;
+                }
+            }
+        }
     }
     Ok(())
 }
@@ -454,6 +469,7 @@ fn draw_tiled(
             Some(Vector2D::zero()),
             None,
             Some(color),
+            0.0,
         );
     });
 }

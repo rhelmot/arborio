@@ -134,6 +134,7 @@ impl Atlas {
         justify: Option<Vector2D<f32, UnknownUnit>>,
         scale: Option<Point2D<f32, UnknownUnit>>,
         color: Option<Color>,
+        rot: f32,
     ) {
         let sprite = &self.sprites[sprite_ref.idx as usize];
         let color = color.unwrap_or(Color::white().into());
@@ -152,10 +153,10 @@ impl Atlas {
         // what canvas-space bounds should we clip to?
         let slice_visible = slice.intersection(&Rect::new(-sprite.trim_offset.cast::<f32>().to_point(), sprite.bounding_box.size.cast()));
         let slice_visible = if let Some(slice_visible) = slice_visible { slice_visible } else { return };
-        let canvas_rect = slice_visible.translate(-justify_offset).scale(scale.x, scale.y).translate(point.to_vector());
+        let canvas_rect = slice_visible.translate(-justify_offset).scale(scale.x, scale.y); //.translate(point.to_vector());
 
         // how do we transform the entire fucking atlas to get the rectangle we want to end up inside canvas_rect?
-        let atlas_offset = point - atlas_center.to_vector().component_mul(scale.to_vector());
+        let atlas_offset = -atlas_center.to_vector().component_mul(scale.to_vector());
 
         let mut image_blob = self.blobs[sprite.blob_idx].lock().unwrap();
         let image_id = image_blob.image_id(canvas);
@@ -173,7 +174,11 @@ impl Atlas {
             canvas_rect.width(),
             canvas_rect.height(),
         );
+        canvas.save();
+        canvas.translate(point.x, point.y);
+        canvas.rotate(rot.to_radians());
         canvas.fill_path(&mut path, paint);
+        canvas.restore();
     }
 
     pub fn draw_tile(&self, canvas: &mut vizia::Canvas, tile_ref: TileReference, ox: f32, oy: f32, color: femtovg::Color) {
@@ -187,7 +192,8 @@ impl Atlas {
             )),
             Some(Vector2D::new(0.0, 0.0)),
             None,
-            Some(color)
+            Some(color),
+            0.0,
         );
     }
 }

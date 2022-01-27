@@ -55,7 +55,7 @@ pub struct RectPointIter<T, U> {
 
 impl<T, U> Iterator for RectPointIter<T, U>
 where
-    T: core::ops::Add<Output = T> + Copy + Ord
+    T: core::ops::Add<Output = T> + Copy + PartialOrd
 {
     type Item = Point2D<T, U>;
 
@@ -83,7 +83,7 @@ where
 
 pub fn rect_point_iter<T, U>(rect: Rect<T, U>, step: T) -> RectPointIter<T, U>
 where
-    T: core::ops::Add<T> + Copy + Ord
+    T: core::ops::Add<T> + Copy + PartialOrd
 {
     RectPointIter {
         rect, step,
@@ -92,12 +92,12 @@ where
 }
 
 pub fn rect_normalize<T, U>(rect: &Rect<T, U>) -> Rect<T, U>
-where T: num_traits::Signed + Copy + Ord
+where T: num_traits::Signed + Copy + PartialOrd
 {
     Rect::new(
         Point2D::new(
-            rect.origin.x + rect.size.width.min(T::zero()),
-            rect.origin.y + rect.size.height.min(T::zero())
+            rect.origin.x + (if rect.size.width < T::zero() { rect.size.width } else { T::zero() }),
+            rect.origin.y + (if rect.size.height < T::zero() { rect.size.height } else { T::zero() }),
         ),
         Size2D::new(rect.size.width.abs(), rect.size.height.abs()))
 }

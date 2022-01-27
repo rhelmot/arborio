@@ -1,0 +1,61 @@
+entity_name: seeker
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x - 12
+        y: y - 12
+      size:
+        x: 24
+        y: 24
+  node_rects:
+    - topleft:
+        x: nodex - 2
+        y: nodey - 2
+      size:
+        x: 4
+        y: 4
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"characters/monsters/predator00"'
+        point:
+          x: x
+          y: y
+selected_draw:
+  node_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: nodex - 2
+            y: nodey - 2
+          size:
+            x: 4
+            y: 4
+        color:
+          r: 255
+          g: 50
+          b: 50
+          a: 255
+        border_color:
+          r: 255
+          g: 0
+          b: 0
+          a: 255
+    - DrawLine:
+        start:
+          x: prevnodexorbase
+          y: prevnodeyorbase
+        end:
+          x: nodex
+          y: nodey
+        arrowhead: true
+        color:
+          r: 255
+          g: 255
+          b: 0
+          a: 200
+resizable_x: false
+resizable_y: false
+nodes: true
+attribute_info: {}
+pencil: Node

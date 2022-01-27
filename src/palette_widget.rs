@@ -121,7 +121,7 @@ impl PaletteItem for TileSelectable {
     fn draw(&self, canvas: &mut Canvas) {
         canvas.scale(3.0, 3.0);
         if let Some(texture) = self.texture {
-            assets::GAMEPLAY_ATLAS.draw_sprite(canvas, texture, Point2D::zero(), None, None, None, None);
+            assets::GAMEPLAY_ATLAS.draw_sprite(canvas, texture, Point2D::zero(), None, None, None, None, 0.0);
         }
     }
 }
@@ -216,7 +216,7 @@ impl PaletteItem for DecalSelectable {
             canvas,
             assets::GAMEPLAY_ATLAS.lookup(&("decals/".to_owned() + self.0)).unwrap(),
             Point2D::new(0.0, 0.0),
-            None, Some(Vector2D::zero()), None, None,
+            None, Some(Vector2D::zero()), None, None, 0.0,
         )
     }
 }

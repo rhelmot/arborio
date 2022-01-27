@@ -1,0 +1,19 @@
+entity_name: theoCrystal
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-8
+        y: y-12
+      size:
+        x: 16
+        y: 24
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"characters/theoCrystal/idle00"'
+        point:
+          x: x
+          y: y - 10
+resizable_x: false
+resizable_y: false
+nodes: false

@@ -1,0 +1,104 @@
+entity_name: swapBlock
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+  node_rects:
+    - topleft:
+        x: nodex
+        y: nodey
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
+                    "moon" => "moon/",
+                    "Moon" => "moon/",
+                    _ => ""
+                  } + "target"'
+        tiler: 9slice
+        bounds:
+          topleft:
+            x: 'match x > firstnodex {
+                  0 => x,
+                  _ => firstnodex
+                }'
+            y: 'match y > firstnodey {
+                  0 => y,
+                  _ => firstnodey
+                }'
+          size:
+            x: 'match x > firstnodex {
+                  0 => firstnodex - x + width,
+                  _ => x - firstnodex + width
+                }'
+            y: 'match y > firstnodey {
+                  0 => firstnodey - y + height,
+                  _ => y - firstnodey + height
+                }'
+        color:
+          r: 0xff
+          g: 0xff
+          b: 0xff
+          a: 0x80
+    - DrawRectImage:
+        texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
+                    "moon" => "moon/",
+                    "Moon" => "moon/",
+                    _ => ""
+                  } + "blockRed"'
+        tiler: 9slice
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+    - DrawPointImage:
+        texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
+                    "moon" => "moon/",
+                    "Moon" => "moon/",
+                    _ => ""
+                  } + "midBlockRed00"'
+        point:
+          x: x + width / 2
+          y: y + height / 2
+selected_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
+                    "moon" => "moon/",
+                    "Moon" => "moon/",
+                    _ => ""
+                  } + "blockRed"'
+        tiler: 9slice
+        bounds:
+          topleft:
+            x: firstnodex
+            y: firstnodey
+          size:
+            x: width
+            y: height
+    - DrawPointImage:
+        texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
+                    "moon" => "moon/",
+                    "Moon" => "moon/",
+                    _ => ""
+                  } + "midBlockRed00"'
+        point:
+          x: firstnodex + width / 2
+          y: firstnodey
+resizable_x: true
+resizable_y: true
+minimum_size_x: 16
+minimum_size_y: 16
+nodes: true
+attribute_info: {}
+pencil: Node

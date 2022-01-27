@@ -24,6 +24,12 @@ pub enum BinOp {
     Mul,
     Div,
     Mod,
+    Lt,
+    Gt,
+    Le,
+    Ge,
+    Eq,
+    Ne,
 }
 
 impl std::fmt::Display for BinOp {
@@ -34,6 +40,12 @@ impl std::fmt::Display for BinOp {
             BinOp::Mul => "*",
             BinOp::Div => "/",
             BinOp::Mod => "%",
+            BinOp::Lt => "<",
+            BinOp::Gt => ">",
+            BinOp::Le => "<=",
+            BinOp::Ge => ">=",
+            BinOp::Eq => "==",
+            BinOp::Ne => "!=",
         })
     }
 }
@@ -75,7 +87,7 @@ impl std::fmt::Display for Const {
 }
 
 #[derive(Debug, Clone)]
-pub struct Number(f64);
+pub struct Number(pub f64);
 
 impl Number {
     pub fn to_int(&self) -> i32 {
@@ -191,7 +203,7 @@ named!(num_const<&str, Expression>,
 named!(parenthetical<&str, Expression>,
     delimited!(
         delimited!(ws, tag!("("), ws),
-        expression_3,
+        expression_4,
         delimited!(ws, tag!(")"), ws)
     )
 );
@@ -218,7 +230,7 @@ named!(match_case<&str, Option<Const>>,
 );
 
 named!(match_arm<&str, (Option<Const>, Expression)>,
-    separated_pair!(match_case, delimited!(ws, tag!("=>"), ws), expression_3)
+    separated_pair!(match_case, delimited!(ws, tag!("=>"), ws), expression_4)
 );
 
 fn construct_match_expr(test: Expression, arms_list: Vec<(Option<Const>, Expression)>) -> Result<Expression, ()> {
@@ -251,7 +263,7 @@ fn construct_match_expr(test: Expression, arms_list: Vec<(Option<Const>, Express
 named!(match_expr_with_errors<&str, Result<Expression, ()>>,
     do_parse!(
         delimited!(ws, tag!("match"), ws) >>
-        test: expression_3 >>
+        test: expression_4 >>
         delimited!(ws, tag!("{"), ws) >>
         arms_list: separated_list0!(delimited!(ws, tag!(","), ws), match_arm) >>
         delimited!(ws, tag!("}"), ws) >>
@@ -265,6 +277,29 @@ named!(match_expr<&str, Expression>,
         |s: Result<Expression, ()>| -> Result<Expression, Error<&str>> {
             s.map_err(|_| Error { input: "what", code: ErrorKind::MapRes })
         }
+    )
+);
+
+named!(expression_4<&str, Expression>,
+    do_parse!(
+        init: expression_3 >>
+        res: fold_many0!(
+            complete!(pair!(
+                delimited!(ws, alt!(tag!(">=") | tag!("<=") | tag!(">") | tag!("<") | tag!("==") | tag!("!=")), ws),
+                expression_2
+            )),
+            init,
+            |acc, next| Expression::BinOp(match next.0 {
+                "<" => BinOp::Lt,
+                ">" => BinOp::Gt,
+                "<=" => BinOp::Le,
+                ">=" => BinOp::Ge,
+                "==" => BinOp::Eq,
+                "!=" => BinOp::Ne,
+                _ => unreachable!(),
+            }, Box::new((acc, next.1)))
+        ) >>
+        (res)
     )
 );
 
@@ -331,7 +366,7 @@ named!(expression_0<&str, Expression>,
 );
 
 named!(expression<&str, Expression>,
-    terminated!(expression_3, eof!())
+    terminated!(expression_4, eof!())
 );
 
 impl<'de> Deserialize<'de> for Expression {
@@ -405,6 +440,12 @@ impl Expression {
                     // division by zero can produce nan and that's okay (?)
                     BinOp::Div => Ok(Const::Number(Number(child1val.as_number()?.0 / child2val.as_number()?.0))),
                     BinOp::Mod => Ok(Const::Number(Number(child1val.as_number()?.0 % child2val.as_number()?.0))),
+                    BinOp::Lt => Ok(Const::Number(Number(if child1val.as_number()?.0 < child2val.as_number()?.0 { 1.0 } else { 0.0 }))),
+                    BinOp::Gt => Ok(Const::Number(Number(if child1val.as_number()?.0 > child2val.as_number()?.0 { 1.0 } else { 0.0 }))),
+                    BinOp::Le => Ok(Const::Number(Number(if child1val.as_number()?.0 <= child2val.as_number()?.0 { 1.0 } else { 0.0 }))),
+                    BinOp::Ge => Ok(Const::Number(Number(if child1val.as_number()?.0 >= child2val.as_number()?.0 { 1.0 } else { 0.0 }))),
+                    BinOp::Eq => Ok(Const::Number(Number(if child1val == child2val { 1.0 } else { 0.0 }))),
+                    BinOp::Ne => Ok(Const::Number(Number(if child1val != child2val { 1.0 } else { 0.0 }))),
                 }
             },
             Expression::UnOp(op, child) => {

@@ -1,0 +1,24 @@
+entity_name: templeGate
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: 8
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: 'match sprite {
+                    "mirror" => "objects/door/TempleDoorB00",
+                    "theo" => "objects/door/TempleDoorC00",
+                    _ => "objects/door/TempleDoor00"
+                  }'
+        justify_y: 1
+        point:
+          x: x + 4
+          y: y + height
+resizable_x: false
+resizable_y: true
+nodes: false

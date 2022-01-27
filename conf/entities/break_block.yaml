@@ -1,0 +1,35 @@
+entity_name: templeCrackedBlock
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+  node_rects:
+    - topleft:
+        x: nodex
+        y: nodey
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"objects/temple/breakBlock00"'
+        tiler: 9slice
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+resizable_x: true
+resizable_y: true
+minimum_size_x: 16
+minimum_size_y: 16
+nodes: false
+attribute_info: {}
+pencil: Rect
