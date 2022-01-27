@@ -18,7 +18,7 @@ standard_draw:
   initial_draw:
     - DrawRectImage:
         texture: '"objects/switchgate/" + sprite'
-        tiler: 9slice
+        tiler: '"9slice"'
         bounds:
           topleft:
             x: x
@@ -35,7 +35,7 @@ selected_draw:
   node_draw:
     - DrawRectImage:
         texture: '"objects/switchgate/" + sprite'
-        tiler: 9slice
+        tiler: '"9slice"'
         bounds:
           topleft:
             x: nodex

@@ -40,7 +40,7 @@ standard_draw:
                     "cliffside" => "b",
                     _ => "a"
                   }'
-        tiler: woodplatform
+        tiler: '"woodplatform"'
         bounds:
           topleft:
             x: x

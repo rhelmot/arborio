@@ -1,0 +1,54 @@
+entity_name: crushBlock
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+        color:
+          r: 0x62
+          g: 0x22
+          b: 0x2b
+          a: 0xff
+    - DrawRectImage:
+        texture: 'match axes {
+                    "horizontal" => "objects/crushblock/block01",
+                    "Horizontal" => "objects/crushblock/block01",
+                    "vertical" => "objects/crushblock/block02",
+                    "Vertical" => "objects/crushblock/block02",
+                    _ => "objects/crushblock/block03"
+                  }'
+        tiler: '"9slice"'
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+    - DrawPointImage:
+        texture: 'match ((width >= 48) + (height >= 48) + chillout) {
+                    3 => "objects/crushblock/giant_block00",
+                    _ => "objects/crushblock/idle_face"
+                  }'
+        point:
+          x: x + width / 2
+          y: y + height / 2
+resizable_x: true
+resizable_y: true
+minimum_size_x: 16
+minimum_size_y: 16
+nodes: false
+pencil: Rect

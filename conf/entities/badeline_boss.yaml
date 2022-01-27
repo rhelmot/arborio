@@ -1,0 +1,72 @@
+entity_name: finalBoss
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-16
+        y: y-16
+      size:
+        x: 32
+        y: 32
+  node_rects:
+    - topleft:
+        x: nodex-16
+        y: nodey-16
+      size:
+        x: 32
+        y: 32
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"characters/badelineBoss/boss70"'
+        point:
+          x: x
+          y: y
+        scale:
+          x: -1
+          y: 1
+  node_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: nodex - 2
+            y: nodey - 2
+          size:
+            x: 4
+            y: 4
+        color:
+          r: 255
+          g: 50
+          b: 50
+          a: 255
+        border_color:
+          r: 255
+          g: 0
+          b: 0
+          a: 255
+selected_draw:
+  node_draw:
+    - DrawPointImage:
+        texture: '"characters/badelineBoss/boss70"'
+        point:
+          x: nodex
+          y: nodey
+        scale:
+          x: -1
+          y: 1
+    - DrawLine:
+        start:
+          x: prevnodexorbase
+          y: prevnodeyorbase
+        end:
+          x: nodex
+          y: nodey
+        arrowhead: true
+        color:
+          r: 255
+          g: 255
+          b: 0
+          a: 200
+resizable_x: false
+resizable_y: false
+nodes: true
+pencil: Node

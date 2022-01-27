@@ -31,7 +31,7 @@ standard_draw:
           a: 0xff
     - DrawRectImage:
         texture: '"scenery/templemirror"'
-        tiler: 9slice
+        tiler: '"9slice"'
         bounds:
           topleft:
             x: x

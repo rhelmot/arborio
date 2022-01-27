@@ -1,0 +1,32 @@
+entity_name: infiniteStar
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-8
+        y: y-8
+      size:
+        x: 16
+        y: 16
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"objects/flyFeather/idle00"'
+        point:
+          x: x
+          y: y
+    - DrawEllipse:
+        rect:
+          topleft:
+            x: x-10
+            y: y-10
+          size:
+            x: 20
+            y: 20
+        border_color:
+          r: 0xff
+          g: 0xff
+          b: 0xff
+          a: 'match shielded { 1 => 0xff, _ => 0 }'
+resizable_x: false
+resizable_y: false
+nodes: false

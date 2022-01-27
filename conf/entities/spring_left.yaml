@@ -1,0 +1,21 @@
+entity_name: wallSpringLeft
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y-8
+      size:
+        x: 8
+        y: 16
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"objects/spring/00"'
+        justify_y: 1
+        point:
+          x: x
+          y: y
+        rot: 90
+resizable_x: false
+resizable_y: false
+nodes: false

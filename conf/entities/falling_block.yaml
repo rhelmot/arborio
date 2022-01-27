@@ -11,7 +11,7 @@ standard_draw:
   initial_draw:
     - DrawRectImage:
         texture: 'match ?tiletype { 1 => tiletype, _ => "3" }'
-        tiler: fg
+        tiler: '"fg_ignore"'
         bounds:
           topleft:
             x: x

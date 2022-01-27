@@ -1,0 +1,20 @@
+entity_name: SummitBackgroundManager
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-8
+        y: y-8
+      size:
+        x: 16
+        y: 16
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"characters/player/launch02"'
+        point:
+          x: x
+          y: y + 8
+        justify_y: 1
+resizable_x: false
+resizable_y: false
+nodes: false

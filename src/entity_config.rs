@@ -109,6 +109,15 @@ pub enum DrawElement {
         #[serde(default = "one")]
         border_thickness: u32,
     },
+    DrawEllipse {
+        rect: Rect,
+        #[serde(default = "clear")]
+        color: Color,
+        #[serde(default = "clear")]
+        border_color: Color,
+        #[serde(default = "one")]
+        border_thickness: u32,
+    },
     DrawLine {
         start: Vec2,
         end: Vec2,
@@ -129,7 +138,7 @@ pub enum DrawElement {
     DrawRectImage {
         texture: Expression,
         #[serde(default = "repeat")]
-        tiler: String,
+        tiler: Expression,
         bounds: Rect,
         #[serde(default = "empty_rect")]
         slice: Rect,
@@ -176,7 +185,7 @@ fn clear() -> Color {
         a: Expression::mk_const(0),
     }
 }
-fn repeat() -> String { "repeat".to_owned() }
+fn repeat() -> Expression { Expression::Const(Const::String("repeat".to_owned())) }
 fn expr_zero() -> Expression { Expression::mk_const(0) }
 
 #[derive(Debug, Serialize, Deserialize)]

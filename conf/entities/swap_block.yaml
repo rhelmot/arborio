@@ -22,7 +22,7 @@ standard_draw:
                     "Moon" => "moon/",
                     _ => ""
                   } + "target"'
-        tiler: 9slice
+        tiler: '"9slice"'
         bounds:
           topleft:
             x: 'match x > firstnodex {
@@ -53,7 +53,7 @@ standard_draw:
                     "Moon" => "moon/",
                     _ => ""
                   } + "blockRed"'
-        tiler: 9slice
+        tiler: '"9slice"'
         bounds:
           topleft:
             x: x
@@ -78,7 +78,7 @@ selected_draw:
                     "Moon" => "moon/",
                     _ => ""
                   } + "blockRed"'
-        tiler: 9slice
+        tiler: '"9slice"'
         bounds:
           topleft:
             x: firstnodex

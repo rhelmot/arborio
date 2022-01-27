@@ -10,7 +10,7 @@ hitboxes:
 standard_draw:
   initial_draw:
     - DrawRectImage:
-        tiler: "cassette"
+        tiler: '"cassette"'
         texture: "'a'"
         bounds:
           topleft:

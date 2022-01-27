@@ -1,0 +1,33 @@
+entity_name: summitcheckpoint
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-8
+        y: y-16
+      size:
+        x: 16
+        y: 32
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"scenery/summitcheckpoints/base02"'
+        point:
+          x: x
+          y: y
+    - DrawPointImage:
+        texture: '"scenery/summitcheckpoints/number0" + ((number / 10) - (number / 10 % 1))'
+        point:
+          x: x - 1
+          y: y + 2
+        justify_x: 1
+        justify_y: 0
+    - DrawPointImage:
+        texture: '"scenery/summitcheckpoints/number0" + (number % 10)'
+        point:
+          x: x
+          y: y + 2
+        justify_x: 0
+        justify_y: 0
+resizable_x: false
+resizable_y: false
+nodes: false

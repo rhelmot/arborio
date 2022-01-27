@@ -353,6 +353,7 @@ impl CelesteMapEntity {
     }
 
     pub fn make_node_env<'a>(&self, mut env: HashMap<&'a str, Const>, node_idx: usize) -> HashMap<&'a str, Const> {
+        env.insert("nodeidx", Const::from_num(node_idx as f64));
         if let Some((x, y)) = self.nodes.get(node_idx) {
             env.insert("nodex", Const::from_num(*x));
             env.insert("nodey", Const::from_num(*y));

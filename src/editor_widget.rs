@@ -252,6 +252,7 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
             let border_thickness = if border_color_eval.a == 0.0 { 0.0 } else { *border_thickness as f32 };
             let mut border = Paint::color(border_color_eval);
             border.set_line_width(border_thickness);
+            border.set_anti_alias(false);
             let x = x + border_thickness;
             let y = y + border_thickness;
             let width = width - border_thickness * 2.0;
@@ -259,6 +260,27 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
 
             let mut path = Path::new();
             path.rect(x, y, width, height);
+            canvas.fill_path(&mut path, fill);
+            canvas.stroke_path(&mut path, border);
+        }
+        DrawElement::DrawEllipse { rect, color, border_color, border_thickness } => {
+            let x = rect.topleft.x.evaluate(&env)?.as_number()?.to_int() as f32;
+            let y = rect.topleft.y.evaluate(&env)?.as_number()?.to_int() as f32;
+            let width = rect.size.x.evaluate(&env)?.as_number()?.to_int() as f32;
+            let height = rect.size.y.evaluate(&env)?.as_number()?.to_int() as f32;
+            let fill = Paint::color(color.evaluate(&env)?);
+            let border_color_eval = border_color.evaluate(&env)?;
+            let border_thickness = if border_color_eval.a == 0.0 { 0.0 } else { *border_thickness as f32 };
+            let mut border = Paint::color(border_color_eval);
+            border.set_line_width(border_thickness);
+            border.set_anti_alias(false);
+            let x = x + border_thickness;
+            let y = y + border_thickness;
+            let width = width - border_thickness * 2.0;
+            let height = height - border_thickness * 2.0;
+
+            let mut path = Path::new();
+            path.ellipse(x + width / 2.0, y + width / 2.0, width / 2.0, height / 2.0);
             canvas.fill_path(&mut path, fill);
             canvas.stroke_path(&mut path, border);
         }
@@ -337,6 +359,7 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
             let bounds_w = bounds.size.x.evaluate(&env)?.as_number()?.to_int() as f32;
             let bounds_h = bounds.size.y.evaluate(&env)?.as_number()?.to_int() as f32;
             let color = color.evaluate(&env)?;
+            let tiler = tiler.evaluate(&env)?.as_string()?;
 
             let bounds = Rect {
                 origin: Point2D::new(bounds_x, bounds_y),
@@ -394,6 +417,7 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
                     if texture.len() != 1 {
                         return Err(format!("Texture for {} tiler ({}) must be one char (for now)", tiler, texture))
                     }
+                    let (tiler, ignore) = if tiler == "fg_ignore" { ("fg", true) } else { (tiler.as_str(), false) };
                     let texture = texture.chars().next().unwrap();
                     let tilemap = if let Some(tilemap) = assets::AUTOTILERS.get(tiler) { tilemap } else { return Err(format!("No such tiler {}", tiler))};
                     let tileset = if let Some(tileset) = tilemap.get(&texture) { tileset } else { return Err(format!("No such texture {} for tiler {}", texture, tiler)) };
@@ -403,6 +427,9 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
                     let mut tiler = |pt| {
                         if tile_bounds.contains(pt) {
                             return Some(texture);
+                        }
+                        if ignore {
+                            return Some('0');
                         }
                         Some(match field.get_or_default(pt) {
                             FieldEntry::None => '0',

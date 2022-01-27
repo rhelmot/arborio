@@ -21,7 +21,7 @@ standard_draw:
                     "wood" => "h",
                     _ => "h"
                   }'
-        tiler: jumpthru
+        tiler: '"jumpthru"'
         bounds:
           topleft:
             x: x

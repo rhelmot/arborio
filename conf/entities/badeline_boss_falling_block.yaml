@@ -1,4 +1,4 @@
-entity_name: conditionBlock
+entity_name: finalBossFallingBlock
 hitboxes:
   initial_rects:
     - topleft:
@@ -10,8 +10,8 @@ hitboxes:
 standard_draw:
   initial_draw:
     - DrawRectImage:
-        texture: 'match ?tileType { 1 => tileType, _ => "3" }'
-        tiler: '"fg"'
+        texture: '"G"'
+        tiler: '"fg_ignore"'
         bounds:
           topleft:
             x: x
@@ -25,9 +25,3 @@ minimum_size_x: 8
 minimum_size_y: 8
 nodes: false
 pencil: Rect
-attribute_info:
-  tiletype:
-    ty: String
-    default:
-      String: "3"
-      # TODO: fgtiles options

@@ -1,0 +1,46 @@
+entity_name: summitGemManager
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-4
+        y: y-4
+      size:
+        x: 8
+        y: 8
+  node_rects:
+    - topleft:
+        x: nodex - 8
+        y: nodey - 8
+      size:
+        x: 16
+        y: 16
+standard_draw:
+  initial_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: x-4
+            y: y-4
+          size:
+            x: 8
+            y: 8
+        color:
+          r: 0xff
+          g: 0
+          b: 0
+          a: 0xff
+        border_color:
+          r: 0x80
+          g: 0
+          b: 0
+          a: 0xff
+  node_draw:
+    - DrawPointImage:
+        texture: '"collectables/summitgems/" + nodeidx + "/gem00"'
+        point:
+          x: nodex
+          y: nodey
+resizable_x: false
+resizable_y: false
+nodes: true
+pencil: Node

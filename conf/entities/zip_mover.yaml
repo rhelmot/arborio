@@ -36,7 +36,7 @@ standard_draw:
           a: 255
     - DrawRectImage:
         texture: '"objects/zipmover/block"'
-        tiler: 9slice
+        tiler: '"9slice"'
         bounds:
           topleft:
             x: x

@@ -1,4 +1,4 @@
-entity_name: ridgeGate
+entity_name: finalBossMovingBlock
 hitboxes:
   initial_rects:
     - topleft:
@@ -7,18 +7,11 @@ hitboxes:
       size:
         x: width
         y: height
-  node_rects:
-    - topleft:
-        x: nodex
-        y: nodey
-      size:
-        x: width
-        y: height
 standard_draw:
   initial_draw:
     - DrawRectImage:
-        texture: '"objects/ridgeGate"'
-        tiler: '"9slice"'
+        texture: '"G"'
+        tiler: '"fg_ignore"'
         bounds:
           topleft:
             x: x
@@ -29,8 +22,8 @@ standard_draw:
 selected_draw:
   node_draw:
     - DrawRectImage:
-        texture: '"objects/ridgeGate"'
-        tiler: '"9slice"'
+        texture: '"G"'
+        tiler: '"fg_ignore"'
         bounds:
           topleft:
             x: nodex
@@ -40,11 +33,11 @@ selected_draw:
             y: height
     - DrawLine:
         start:
-          x: x + width / 2
-          y: y + height / 2
+          x: prevnodexorbase
+          y: prevnodeyorbase
         end:
-          x: nodex + width / 2
-          y: nodey + height / 2
+          x: nodex
+          y: nodey
         arrowhead: true
         color:
           r: 255
@@ -53,8 +46,7 @@ selected_draw:
           a: 200
 resizable_x: true
 resizable_y: true
-minimum_size_x: 16
-minimum_size_y: 16
-nodes: true
-attribute_info: {}
-pencil: Node
+minimum_size_x: 8
+minimum_size_y: 8
+nodes: false
+pencil: Rect

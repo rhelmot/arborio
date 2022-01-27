@@ -1,7 +1,6 @@
-entity_name: lightbeam
+entity_name: summitgem
 hitboxes:
   initial_rects:
-    # TODO
     - topleft:
         x: x-8
         y: y-8
@@ -11,15 +10,10 @@ hitboxes:
 standard_draw:
   initial_draw:
     - DrawPointImage:
-        texture: '"util/gradient"'
+        texture: '"collectables/summitgems/" + gem + "/gem00"'
         point:
           x: x
           y: y
-        justify_x: 0
-        rot: rotation + 90
-        scale:
-          x: height / 80
-          y: width
-resizable_x: true
-resizable_y: true
+resizable_x: false
+resizable_y: false
 nodes: false
