@@ -1,0 +1,36 @@
+entity_name: lightning
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+        color:
+          r: 0xff
+          g: 0xff
+          b: 0
+          a: 0x40
+        border_color:
+          r: 0x40
+          g: 0x40
+          b: 0xff
+          a: 0xff
+resizable_x: true
+resizable_y: true
+minimum_size_x: 8
+minimum_size_y: 8
+nodes: true
+pencil: Rect
+attribute_info: {}

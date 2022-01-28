@@ -1,0 +1,36 @@
+entity_name: playbackBillboard
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+        color:
+          r: 0
+          g: 0
+          b: 0x10
+          a: 0xff
+        border_color:
+          r: 0
+          g: 0
+          b: 0x40
+          a: 0xff
+resizable_x: true
+resizable_y: true
+minimum_size_x: 8
+minimum_size_y: 8
+nodes: false
+attribute_info: {}
+pencil: Rect

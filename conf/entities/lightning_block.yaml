@@ -1,0 +1,19 @@
+entity_name: lightningBlock
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: 32
+        y: 32
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"objects/breakerBox/Idle00"'
+        point:
+          x: x + 16
+          y: y + 16
+resizable_x: false
+resizable_y: false
+nodes: false

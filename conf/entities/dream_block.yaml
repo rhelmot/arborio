@@ -65,6 +65,6 @@ resizable_x: true
 resizable_y: true
 minimum_size_x: 8
 minimum_size_y: 8
-nodes: false
+nodes: true
 attribute_info: {}
 pencil: Rect

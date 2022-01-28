@@ -1,0 +1,49 @@
+entity_name: moonCreature
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-4
+        y: y-4
+      size:
+        x: 8
+        y: 8
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"scenery/moon_creatures/tiny05"'
+        point:
+          x: x
+          y: y
+    - DrawCurve:
+        start:
+          x: x
+          y: y
+        end:
+          x: x + 12
+          y: y - 24
+        middle:
+          x: x + 12
+          y: y - 8
+        color:
+          r: 0xff
+          g: 0xff
+          b: 0xff
+          a: 0xff
+    - DrawCurve:
+        start:
+          x: x
+          y: y
+        end:
+          x: x + 9
+          y: y - 23
+        middle:
+          x: x + 12
+          y: y - 8
+        color:
+          r: 0xff
+          g: 0xff
+          b: 0xff
+          a: 0xff
+resizable_x: false
+resizable_y: false
+nodes: false
