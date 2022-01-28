@@ -213,9 +213,7 @@ fn draw_triggers(canvas: &mut Canvas, room: &CelesteMapLevel, selection: Option<
 }
 
 pub fn draw_entity(canvas: &mut Canvas, entity: &CelesteMapEntity, field: &TileGrid<FieldEntry>, selected: bool, trigger: bool) {
-
-    let cfg = &assets::ENTITY_CONFIG;
-    let config = if trigger { cfg.get("trigger").unwrap() } else { cfg.get(&entity.name).unwrap_or_else(|| cfg.get("default").unwrap()) };
+    let config = assets::get_entity_config(&entity.name, trigger);
     let env = entity.make_env();
 
     for node_idx in 0..entity.nodes.len() {
