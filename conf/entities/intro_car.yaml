@@ -1,0 +1,26 @@
+entity_name: introCar
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-24
+        y: y-16
+      size:
+        x: 48
+        y: 16
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"scenery/car/body"'
+        point:
+          x: x
+          y: y
+        justify_y: 1
+    - DrawPointImage:
+        texture: '"scenery/car/wheels"'
+        point:
+          x: x
+          y: y
+        justify_y: 1
+resizable_x: false
+resizable_y: false
+nodes: false

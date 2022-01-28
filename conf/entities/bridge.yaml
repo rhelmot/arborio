@@ -1,0 +1,59 @@
+entity_name: bridge
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: 8
+        y: width
+  node_rects:
+    - topleft:
+        x: nodex - 2
+        y: nodey - 2
+      size:
+        x: 4
+        y: 4
+standard_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"scenery/bridge"'
+        bounds:
+          topleft:
+            x: x
+            y: y-8
+          size:
+            x: firstnodex - x
+            y: 60
+    - DrawRectImage:
+        texture: '"scenery/bridge"'
+        bounds:
+          topleft:
+            x: lastnodex
+            y: y-8
+          size:
+            x: x + width - lastnodex
+            y: 60
+  node_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: nodex - 2
+            y: nodey - 2
+          size:
+            x: 4
+            y: 4
+        color:
+          r: 255
+          g: 50
+          b: 50
+          a: 255
+        border_color:
+          r: 255
+          g: 0
+          b: 0
+          a: 255
+resizable_x: true
+resizable_y: false
+nodes: false
+pencil: Rect

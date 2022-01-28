@@ -1,0 +1,59 @@
+entity_name: introCrusher
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+  node_rects:
+    - topleft:
+        x: nodex
+        y: nodey
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"3"'
+        tiler: '"fg_ignore"'
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+    - DrawLine:
+        start:
+          x: x
+          y: y
+        end:
+          x: firstnodex
+          y: firstnodey
+        color:
+          r: 0xff
+          g: 0xff
+          b: 0
+          a: 0xff
+        arrowhead: true
+selected_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"3"'
+        tiler: '"fg_ignore"'
+        bounds:
+          topleft:
+            x: firstnodex
+            y: firstnodey
+          size:
+            x: width
+            y: height
+resizable_x: true
+resizable_y: true
+minimum_size_x: 8
+minimum_size_y: 8
+nodes: false
+pencil: Node

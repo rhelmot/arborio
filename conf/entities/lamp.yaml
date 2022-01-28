@@ -1,0 +1,30 @@
+entity_name: lamp
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-8
+        y: y-80
+      size:
+        x: 16
+        y: 80
+standard_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"scenery/lamp"'
+        bounds:
+          topleft:
+            x: x-8
+            y: y-80
+          size:
+            x: 16
+            y: 80
+        slice:
+          topleft:
+            x: 'match broken { 0 => 0, _ => 16 }'
+            y: 0
+          size:
+            x: 16
+            y: 80
+resizable_x: false
+resizable_y: false
+nodes: false

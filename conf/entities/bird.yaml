@@ -1,0 +1,23 @@
+entity_name: bird
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-8
+        y: y-16
+      size:
+        x: 16
+        y: 16
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"characters/bird/crow00"'
+        point:
+          x: x
+          y: y
+        justify_y: 1
+        scale:
+          x: -1
+          y: 1
+resizable_x: false
+resizable_y: false
+nodes: false
