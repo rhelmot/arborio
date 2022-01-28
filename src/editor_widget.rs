@@ -115,6 +115,7 @@ impl View for EditorWidget {
                     );
                     draw_tiles(canvas, room, false);
                     draw_decals(canvas, room, false);
+                    draw_triggers(canvas, room, if idx == state.current_room { state.current_selected } else { None });
                     draw_entities(canvas, room, if idx == state.current_room { state.current_selected } else { None });
                     draw_tiles(canvas, room, true);
                     draw_decals(canvas, room, true);
@@ -194,17 +195,27 @@ fn draw_entities(canvas: &mut Canvas, room: &CelesteMapLevel, selection: Option<
     let field = room.occupancy_field();
     for entity in &room.entities {
         let selected = match selection {
-            Some(AppSelection::EntityBody(id)) | Some(AppSelection::EntityNode(id, _)) if id == entity.id => true,
+            Some(AppSelection::EntityBody(id, false)) | Some(AppSelection::EntityNode(id, _, false)) if id == entity.id => true,
             _ => false,
         };
-        draw_entity(canvas, entity, &field, selected);
+        draw_entity(canvas, entity, &field, selected, false);
     }
 }
 
-pub fn draw_entity(canvas: &mut Canvas, entity: &CelesteMapEntity, field: &TileGrid<FieldEntry>, selected: bool) {
+fn draw_triggers(canvas: &mut Canvas, room: &CelesteMapLevel, selection: Option<AppSelection>) {
+    for trigger in &room.triggers {
+        let selected = match selection {
+            Some(AppSelection::EntityBody(id, true)) | Some(AppSelection::EntityNode(id, _, true)) if id == trigger.id => true,
+            _ => false,
+        };
+        draw_entity(canvas, trigger, &TileGrid::empty(), selected, true);
+    }
+}
+
+pub fn draw_entity(canvas: &mut Canvas, entity: &CelesteMapEntity, field: &TileGrid<FieldEntry>, selected: bool, trigger: bool) {
 
     let cfg = &assets::ENTITY_CONFIG;
-    let config = cfg.get(&entity.name).unwrap_or_else(|| cfg.get("default").unwrap());
+    let config = if trigger { cfg.get("trigger").unwrap() } else { cfg.get(&entity.name).unwrap_or_else(|| cfg.get("default").unwrap()) };
     let env = entity.make_env();
 
     for node_idx in 0..entity.nodes.len() {

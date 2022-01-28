@@ -359,9 +359,9 @@ impl SelectionTool {
         match selectable {
             AppSelection::FgTile(pt) => vec![RoomRect::new(point_tile_to_room(&pt), RoomSize::new(8, 8))],
             AppSelection::BgTile(pt) => vec![RoomRect::new(point_tile_to_room(&pt), RoomSize::new(8, 8))],
-            AppSelection::EntityBody(id) => {
-                if let Some(entity) = room.entity(id) {
-                    let config = assets::ENTITY_CONFIG.get(&entity.name).unwrap_or_else(|| assets::ENTITY_CONFIG.get("default").unwrap());
+            AppSelection::EntityBody(id, trigger) => {
+                if let Some(entity) = room.entity(id, trigger) {
+                    let config = assets::get_entity_config(&entity.name, trigger);
                     let env = entity.make_env();
                     config.hitboxes.initial_rects.iter().filter_map(|r| {
                         match r.evaluate_int(&env) {
@@ -376,9 +376,9 @@ impl SelectionTool {
                     vec![]
                 }
             }
-            AppSelection::EntityNode(id, node_idx) => {
-                if let Some(entity) = room.entity(id) {
-                    let config = assets::ENTITY_CONFIG.get(&entity.name).unwrap_or_else(|| assets::ENTITY_CONFIG.get("default").unwrap());
+            AppSelection::EntityNode(id, node_idx, trigger) => {
+                if let Some(entity) = room.entity(id, trigger) {
+                    let config = assets::get_entity_config(&entity.name, trigger);
                     let env = entity.make_node_env(entity.make_env(), node_idx);
                     config.hitboxes.node_rects.iter().filter_map(|r| {
                         match r.evaluate_int(&env) {
@@ -446,12 +446,27 @@ impl SelectionTool {
             for (idx, entity) in room.entities.iter().enumerate().rev() {
                 room.cache_entity_idx(idx);
                 for node_idx in 0..entity.nodes.len() {
-                    let sel = AppSelection::EntityNode(entity.id, node_idx);
+                    let sel = AppSelection::EntityNode(entity.id, node_idx, false);
                     if intersects_any(&self.rects_of(room, sel), &room_rect) {
                         result.insert(sel);
                     }
                 }
-                let sel = AppSelection::EntityBody(entity.id);
+                let sel = AppSelection::EntityBody(entity.id, false);
+                if intersects_any(&self.rects_of(room, sel), &room_rect) {
+                    result.insert(sel);
+                }
+            }
+        }
+        if layer == Layer::Triggers || layer == Layer::All {
+            for (idx, entity) in room.triggers.iter().enumerate().rev() {
+                room.cache_entity_idx(idx);
+                for node_idx in 0..entity.nodes.len() {
+                    let sel = AppSelection::EntityNode(entity.id, node_idx, true);
+                    if intersects_any(&self.rects_of(room, sel), &room_rect) {
+                        result.insert(sel);
+                    }
+                }
+                let sel = AppSelection::EntityBody(entity.id, true);
                 if intersects_any(&self.rects_of(room, sel), &room_rect) {
                     result.insert(sel);
                 }
@@ -515,19 +530,22 @@ impl SelectionTool {
             self.bg_float = Some((point_room_to_tile(&(base + nudge)), float));
         }
         let mut entity_updates = HashMap::new();
+        let mut trigger_updates = HashMap::new();
         for selected in &self.current_selection {
             match selected {
                 AppSelection::FgTile(_) | AppSelection::BgTile(_) => unreachable!(),
-                AppSelection::EntityBody(id) => {
-                    let e = entity_updates.entry(*id).or_insert_with(|| room.entity(*id).unwrap().clone()); // one of the riskier unwraps I've written
+                AppSelection::EntityBody(id, trigger) => {
+                    let updates = if *trigger { &mut trigger_updates } else { &mut entity_updates };
+                    let e = updates.entry(*id).or_insert_with(|| room.entity(*id, *trigger).unwrap().clone()); // one of the riskier unwraps I've written
                     let base = dragging
                         .map(|d| d.selection_reference_points[selected])
                         .unwrap_or_else(|| RoomPoint::new(e.x, e.y));
                     e.x = base.x + nudge.x;
                     e.y = base.y + nudge.y;
                 }
-                AppSelection::EntityNode(id, node_idx) => {
-                    let e = entity_updates.entry(*id).or_insert_with(|| room.entity(*id).unwrap().clone());
+                AppSelection::EntityNode(id, node_idx, trigger) => {
+                    let updates = if *trigger { &mut trigger_updates } else { &mut entity_updates };
+                    let e = updates.entry(*id).or_insert_with(|| room.entity(*id, *trigger).unwrap().clone());
                     let base = dragging
                         .map(|d| d.selection_reference_points[selected])
                         .unwrap_or_else(|| RoomPoint::new(e.nodes[*node_idx].0, e.nodes[*node_idx].1));
@@ -550,7 +568,12 @@ impl SelectionTool {
 
         entity_updates
             .into_iter()
-            .map(|(_, entity)| AppEvent::EntityUpdate { entity })
+            .map(|(_, entity)| AppEvent::EntityUpdate { entity, trigger: false })
+            .chain(
+                trigger_updates
+                    .into_iter()
+                   .map(|(_, entity)| AppEvent::EntityUpdate { entity, trigger: true })
+            )
             .chain(events.into_iter())
             .collect()
     }
@@ -571,11 +594,11 @@ impl SelectionTool {
         );
         for sel in &self.current_selection {
             match sel {
-                AppSelection::FgTile(_) | AppSelection::BgTile(_) | AppSelection::EntityNode(_, _) => {
+                AppSelection::FgTile(_) | AppSelection::BgTile(_) | AppSelection::EntityNode(_, _, _) => {
                     println!("uh oh!");
                 }
-                AppSelection::EntityBody(id) => {
-                    let mut e = room.entity(*id).unwrap().clone();
+                AppSelection::EntityBody(id, trigger) => {
+                    let mut e = room.entity(*id, *trigger).unwrap().clone();
                     let config = assets::ENTITY_CONFIG.get(&e.name).unwrap_or_else(|| assets::ENTITY_CONFIG.get("default").unwrap());
                     let start_rect = dragging.and_then(|d| {
                         Some(*d.selection_reference_sizes.get(sel).unwrap())
@@ -587,7 +610,7 @@ impl SelectionTool {
                     e.y = new_rect.origin.y;
                     e.width = new_rect.size.width.max(config.minimum_size_x as i32) as u32;
                     e.height = new_rect.size.height.max(config.minimum_size_y as i32) as u32;
-                    events.push(AppEvent::EntityUpdate{ entity: e });
+                    events.push(AppEvent::EntityUpdate{ entity: e, trigger: *trigger });
                 }
                 AppSelection::Decal(id, fg) => {
                     let mut d = room.decal(*id, *fg).unwrap().clone();
@@ -718,9 +741,9 @@ impl SelectionTool {
                 for sel in &self.current_selection {
                     side = match sel {
                         AppSelection::FgTile(_) | AppSelection::BgTile(_) => ResizeSide::None,
-                        AppSelection::EntityBody(id) => {
-                            if let Some(entity) = room.entity(*id) {
-                                let config = assets::ENTITY_CONFIG.get(&entity.name).unwrap_or_else(|| assets::ENTITY_CONFIG.get("default").unwrap());
+                        AppSelection::EntityBody(id, trigger) => {
+                            if let Some(entity) = room.entity(*id, *trigger) {
+                                let config = assets::get_entity_config(&entity.name, *trigger);
                                 if !config.resizable_x {
                                     side = side.filter_out_left_right();
                                 }
@@ -730,7 +753,7 @@ impl SelectionTool {
                             }
                             side
                         }
-                        AppSelection::EntityNode(_, _) => ResizeSide::None,
+                        AppSelection::EntityNode(_, _, _) => ResizeSide::None,
                         AppSelection::Decal(_, _) => side,
                     };
 
@@ -754,9 +777,9 @@ impl SelectionTool {
             // collect reference sizes
             let selection_reference_sizes = self.current_selection.iter().filter_map(|sel| {
                 match sel {
-                    AppSelection::FgTile(_) | AppSelection::BgTile(_) | AppSelection::EntityNode(_, _) => unreachable!(),
-                    AppSelection::EntityBody(id) => {
-                        if let Some(entity) = room.entity(*id) {
+                    AppSelection::FgTile(_) | AppSelection::BgTile(_) | AppSelection::EntityNode(_, _, _) => unreachable!(),
+                    AppSelection::EntityBody(id, trigger) => {
+                        if let Some(entity) = room.entity(*id, *trigger) {
                             Some((*sel, RoomRect::new(RoomPoint::new(entity.x, entity.y), RoomSize::new(entity.width as i32, entity.height as i32))))
                         } else {
                             None
@@ -789,12 +812,12 @@ impl SelectionTool {
             let selection_reference_points = self.current_selection.iter().map(|sel| {
                 (*sel, match sel {
                     AppSelection::FgTile(_) | AppSelection::BgTile(_) => unreachable!(),
-                    AppSelection::EntityBody(id) => {
-                        let e = room.entity(*id).unwrap();
+                    AppSelection::EntityBody(id, trigger) => {
+                        let e = room.entity(*id, *trigger).unwrap();
                         RoomPoint::new(e.x, e.y)
                     }
-                    AppSelection::EntityNode(id, node_idx) => {
-                        let e = room.entity(*id).unwrap();
+                    AppSelection::EntityNode(id, node_idx, trigger) => {
+                        let e = room.entity(*id, *trigger).unwrap();
                         RoomPoint::new(e.nodes[*node_idx].0, e.nodes[*node_idx].1)
                     }
                     AppSelection::Decal(id, fg) => {
@@ -823,16 +846,18 @@ impl SelectionTool {
         self.bg_float = None;
 
         let mut entity_nodes_removed = HashMap::new();
+        let mut trigger_nodes_removed = HashMap::new();
         let mut entities_removed = HashSet::new();
+        let mut triggers_removed = HashSet::new();
         for sel in &self.current_selection {
             match sel {
                 AppSelection::FgTile(_) | AppSelection::BgTile(_) => unreachable!(),
-                AppSelection::EntityBody(id) => {
-                    result.push(AppEvent::EntityRemove { id: *id });
-                    entities_removed.insert(id);
+                AppSelection::EntityBody(id, trigger) => {
+                    result.push(AppEvent::EntityRemove { id: *id, trigger: *trigger });
+                    if *trigger { &mut triggers_removed } else { &mut entities_removed }.insert(id);
                 }
-                AppSelection::EntityNode(id, node_idx) => {
-                    let e = entity_nodes_removed.entry(id).or_insert_with(|| HashSet::new());
+                AppSelection::EntityNode(id, node_idx, trigger) => {
+                    let e = if *trigger { &mut trigger_nodes_removed } else { &mut entity_nodes_removed }.entry(id).or_insert_with(|| HashSet::new());
                     e.insert(node_idx);
                 }
                 AppSelection::Decal(id, fg) => {
@@ -843,14 +868,28 @@ impl SelectionTool {
 
         for (id, indices) in entity_nodes_removed {
             if !entities_removed.contains(&id) {
-                if let Some(entity) = room.entity(*id) {
+                if let Some(entity) = room.entity(*id, false) {
                     let mut entity = entity.clone();
                     for idx in (0..entity.nodes.len()).rev() {
                         if indices.contains(&idx) {
                             entity.nodes.remove(idx);
                         }
                     }
-                    result.push(AppEvent::EntityUpdate { entity });
+                    result.push(AppEvent::EntityUpdate { entity, trigger: false });
+                }
+            }
+        }
+
+        for (id, indices) in trigger_nodes_removed {
+            if !triggers_removed.contains(&id) {
+                if let Some(entity) = room.entity(*id, true) {
+                    let mut entity = entity.clone();
+                    for idx in (0..entity.nodes.len()).rev() {
+                        if indices.contains(&idx) {
+                            entity.nodes.remove(idx);
+                        }
+                    }
+                    result.push(AppEvent::EntityUpdate { entity, trigger: true });
                 }
             }
         }

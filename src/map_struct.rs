@@ -198,13 +198,14 @@ impl CelesteMapLevel {
         tiles.get_mut((pt.x + pt.y * w) as usize)
     }
 
-    pub fn entity(&self, id: i32) -> Option<&CelesteMapEntity> {
-        if let Some(e) = self.entities.get(self.cache.borrow().last_entity_idx) {
+    pub fn entity(&self, id: i32, trigger: bool) -> Option<&CelesteMapEntity> {
+        let entities = if trigger { &self.triggers } else { &self.entities };
+        if let Some(e) = entities.get(self.cache.borrow().last_entity_idx) {
             if e.id == id {
                 return Some(e);
             }
         }
-        for (idx, e) in self.entities.iter().enumerate() {
+        for (idx, e) in entities.iter().enumerate() {
             if e.id == id {
                 self.cache.borrow_mut().last_entity_idx = idx;
                 return Some(e);
@@ -213,14 +214,17 @@ impl CelesteMapLevel {
         None
     }
 
-    pub fn entity_mut(&mut self, id: i32) -> Option<&mut CelesteMapEntity> {
-        if let Some(e) = self.entities.get_mut(self.cache.borrow().last_entity_idx) {
+    pub fn entity_mut(&mut self, id: i32, trigger: bool) -> Option<&mut CelesteMapEntity> {
+        let entities = if trigger { &mut self.triggers } else { &mut self.entities };
+        if let Some(e) = entities.get_mut(self.cache.borrow().last_entity_idx) {
             if e.id == id {
                 // hack around borrow checker
-                return self.entities.get_mut(self.cache.borrow().last_entity_idx);
+                let entities = if trigger { &mut self.triggers } else { &mut self.entities };
+                return entities.get_mut(self.cache.borrow().last_entity_idx);
             }
         }
-        for (idx, e) in self.entities.iter_mut().enumerate() {
+        let entities = if trigger { &mut self.triggers } else { &mut self.entities };
+        for (idx, e) in entities.iter_mut().enumerate() {
             if e.id == id {
                 self.cache.borrow_mut().last_entity_idx = idx;
                 return Some(e);
@@ -275,6 +279,9 @@ impl CelesteMapLevel {
     pub fn next_id(&self) -> i32 {
         let mut highest_entity = -1;
         for e in &self.entities {
+            highest_entity = highest_entity.max(e.id);
+        }
+        for e in &self.triggers {
             highest_entity = highest_entity.max(e.id);
         }
         highest_entity + 1

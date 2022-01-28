@@ -105,6 +105,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                                     cx.emit(AppEvent::SelectPaletteEntity { entity })
                                 })
                                     .display(if layer == Layer::Entities && tool_idx == 2 { Display::Flex } else { Display::None });
+                                PaletteWidget::new(cx, StaticLens::new(&*assets::TRIGGERS_PALETTE), AppState::current_trigger, |cx, trigger| {
+                                    cx.emit(AppEvent::SelectPaletteTrigger { trigger })
+                                })
+                                    .display(if layer == Layer::Triggers && tool_idx == 2 { Display::Flex } else { Display::None });
                                 PaletteWidget::new(cx, StaticLens::new(&*assets::DECALS_PALETTE), AppState::current_decal, |cx, decal| {
                                     cx.emit(AppEvent::SelectPaletteDecal { decal })
                                 })

@@ -31,10 +31,22 @@ pub struct EntityConfig {
     pub templates: Vec<EntityTemplate>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TriggerConfig {
+    pub trigger_name: String,
+    #[serde(default)]
+    pub nodes: bool,
+    #[serde(default)]
+    pub attribute_info: HashMap<String, AttributeInfo>,
+    #[serde(default)]
+    pub templates: Vec<EntityTemplate>,
+}
+
 fn eight() -> u32 { 8 }
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
 pub enum PencilBehavior {
+    // TODO: Place
     Line,
     Node,
     Rect,
@@ -268,6 +280,15 @@ impl EntityConfig {
     pub fn default_template(&self) -> EntityTemplate {
         EntityTemplate {
             name: self.entity_name.clone(),
+            attributes: HashMap::new()
+        }
+    }
+}
+
+impl TriggerConfig {
+    pub fn default_template(&self) -> EntityTemplate {
+        EntityTemplate {
+            name: self.trigger_name.clone(),
             attributes: HashMap::new()
         }
     }

@@ -3,7 +3,7 @@ use vizia::*;
 use crate::app_state::{AppEvent, AppState, Layer};
 use crate::entity_config::PencilBehavior;
 use crate::map_struct::{CelesteMapDecal, CelesteMapEntity};
-use crate::palette_widget::EntitySelectable;
+use crate::palette_widget::{EntitySelectable, TriggerSelectable};
 use crate::tools::{Tool, generic_nav};
 use crate::units::*;
 use crate::editor_widget;
@@ -70,7 +70,12 @@ impl Tool for PencilTool {
             Layer::Entities => {
                 let tmp_entity = self.get_terminal_entity(state.current_entity, room_pos);
                 canvas.set_global_alpha(0.5);
-                editor_widget::draw_entity(canvas, &tmp_entity, &TileGrid::empty(), false);
+                editor_widget::draw_entity(canvas, &tmp_entity, &TileGrid::empty(), false, false);
+            }
+            Layer::Triggers => {
+                let tmp_trigger = self.get_terminal_trigger(state.current_trigger, room_pos);
+                canvas.set_global_alpha(0.5);
+                editor_widget::draw_entity(canvas, &tmp_trigger, &TileGrid::empty(), false, true);
             }
             Layer::FgDecals | Layer::BgDecals => {
                 let texture = assets::GAMEPLAY_ATLAS.lookup(&("decals/".to_owned() + state.current_decal.0)).unwrap();
@@ -88,17 +93,27 @@ impl Tool for PencilTool {
 
 impl PencilTool {
     fn do_draw_start(&mut self, state: &AppState, room_pos: RoomPoint) {
-        match state.current_entity.config.pencil {
-            PencilBehavior::Line => {}
-            PencilBehavior::Node | PencilBehavior::Rect => {
-                let room_pos = if state.snap {
-                    let tile_pos = point_room_to_tile(&room_pos);
-                    point_tile_to_room(&tile_pos)
+        match state.current_layer {
+            Layer::Entities | Layer::Triggers => {
+                let pencil = if state.current_layer == Layer::Triggers {
+                    PencilBehavior::Rect
                 } else {
-                    room_pos
+                    state.current_entity.config.pencil
                 };
-                self.reference_point = Some(room_pos);
-            }
+                match pencil {
+                    PencilBehavior::Line => {}
+                    PencilBehavior::Node | PencilBehavior::Rect => {
+                        let room_pos = if state.snap {
+                            let tile_pos = point_room_to_tile(&room_pos);
+                            point_tile_to_room(&tile_pos)
+                        } else {
+                            room_pos
+                        };
+                        self.reference_point = Some(room_pos);
+                    }
+                }
+            },
+            _ => {}
         }
     }
 
@@ -126,7 +141,8 @@ impl PencilTool {
                         if diff > state.draw_interval {
                             self.reference_point = Some(room_pos);
                             vec![AppEvent::EntityAdd {
-                                entity: self.get_terminal_entity(state.current_entity, room_pos)
+                                entity: self.get_terminal_entity(state.current_entity, room_pos),
+                                trigger: false,
                             }]
                         } else {
                             vec![]
@@ -135,7 +151,8 @@ impl PencilTool {
                     None => {
                         self.reference_point = Some(room_pos);
                         vec![AppEvent::EntityAdd {
-                            entity: self.get_terminal_entity(state.current_entity, room_pos)
+                            entity: self.get_terminal_entity(state.current_entity, room_pos),
+                            trigger: false,
                         }]
                     }
                 }
@@ -151,14 +168,25 @@ impl PencilTool {
             room_pos
         };
         let result = match state.current_layer {
-            Layer::Entities => {
-                match state.current_entity.config.pencil {
+            Layer::Entities | Layer::Triggers => {
+                let pencil = if state.current_layer == Layer::Triggers {
+                    PencilBehavior::Rect
+                } else {
+                    state.current_entity.config.pencil
+                };
+                match pencil {
                     PencilBehavior::Line => vec![],
                     PencilBehavior::Node | PencilBehavior::Rect => {
                         if self.reference_point.is_some() {
+                            let entity = if state.current_layer == Layer::Triggers {
+                                self.get_terminal_trigger(state.current_trigger, room_pos)
+                            } else {
+                                self.get_terminal_entity(state.current_entity, room_pos)
+                            };
                             vec![AppEvent::EntityAdd {
-                                entity: self.get_terminal_entity(state.current_entity, room_pos)
-                            }]
+                                    entity,
+                                    trigger: state.current_layer == Layer::Triggers,
+                                }]
                         } else {
                             vec![]
                         }
@@ -208,5 +236,15 @@ impl PencilTool {
                 )
             },
         }
+    }
+
+    fn get_terminal_trigger(&self, selectable: TriggerSelectable, room_pos: RoomPoint) -> CelesteMapEntity {
+        let ref_pos = self.reference_point.unwrap_or(room_pos);
+        let diff = room_pos - ref_pos;
+        selectable.instantiate(
+            ref_pos.x, ref_pos.y,
+            diff.x, diff.y,
+            vec![]
+        )
     }
 }

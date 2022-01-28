@@ -16,12 +16,12 @@ impl Lens for CurrentSelectedEntityLens {
 
     fn view<'a>(&self, source: &'a Self::Source) -> Option<&'a Self::Target> {
         match source.current_selected {
-            Some(AppSelection::EntityBody(id)) => Some(id),
-            Some(AppSelection::EntityNode(id, _)) => Some(id),
+            Some(AppSelection::EntityBody(id, trigger)) => Some((id, trigger)),
+            Some(AppSelection::EntityNode(id, _, trigger)) => Some((id, trigger)),
             _ => None,
-        }.and_then(|id| source.map.as_ref().and_then(
+        }.and_then(|(id, trigger)| source.map.as_ref().and_then(
             |map| map.levels.get(source.current_room).and_then(
-                |room| room.entity(id)
+                |room| room.entity(id, trigger)
             )))
     }
 }
@@ -60,7 +60,12 @@ impl EntityTweakerWidget {
                                         .on_toggle(move |cx| {
                                             let mut entity = selection.get(cx).clone();
                                             entity.attributes.insert(attr.clone(), BinElAttr::Bool(!b));
-                                            cx.emit(AppEvent::EntityUpdate { entity });
+                                            let trigger = match cx.data::<AppState>().unwrap().current_selected {
+                                                Some(AppSelection::EntityBody(_, true)) => true,
+                                                Some(AppSelection::EntityNode(_, _, true)) => true,
+                                                _ => false,
+                                            };
+                                            cx.emit(AppEvent::EntityUpdate { entity, trigger });
                                         });
                                 }
                                 BinElAttr::Int(_) => {}

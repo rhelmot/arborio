@@ -5,7 +5,7 @@ use vizia::*;
 use crate::editor_widget;
 use crate::map_struct;
 use crate::map_struct::{CelesteMap, CelesteMapDecal, CelesteMapEntity};
-use crate::palette_widget::{DecalSelectable, EntitySelectable, TileSelectable};
+use crate::palette_widget::{DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable};
 use crate::tools::Tool;
 use crate::tools;
 use crate::units::*;
@@ -19,6 +19,7 @@ pub struct AppState {
     pub current_fg_tile: TileSelectable,
     pub current_bg_tile: TileSelectable,
     pub current_entity: EntitySelectable,
+    pub current_trigger: TriggerSelectable,
     pub current_decal: DecalSelectable,
     pub current_selected: Option<AppSelection>,
 
@@ -69,8 +70,8 @@ impl Layer {
 pub enum AppSelection {
     FgTile(TilePoint),
     BgTile(TilePoint),
-    EntityBody(i32),
-    EntityNode(i32, usize),
+    EntityBody(i32, bool),
+    EntityNode(i32, usize, bool),
     Decal(u32, bool),
 }
 
@@ -84,12 +85,13 @@ pub enum AppEvent {
     SelectLayer { layer: Layer },
     SelectPaletteTile { fg: bool, tile: TileSelectable },
     SelectPaletteEntity { entity: EntitySelectable },
+    SelectPaletteTrigger { trigger: TriggerSelectable },
     SelectPaletteDecal { decal: DecalSelectable },
     SelectObject { selection: Option<AppSelection> },
     TileUpdate { fg: bool, offset: TilePoint, data: TileGrid<char> },
-    EntityAdd { entity: CelesteMapEntity },
-    EntityUpdate { entity: CelesteMapEntity },
-    EntityRemove { id: i32 },
+    EntityAdd { entity: CelesteMapEntity, trigger: bool },
+    EntityUpdate { entity: CelesteMapEntity, trigger: bool },
+    EntityRemove { id: i32, trigger: bool },
     DecalAdd { fg: bool, decal: CelesteMapDecal },
     DecalUpdate { fg: bool, decal: CelesteMapDecal },
     DecalRemove { fg: bool, id: u32 },
@@ -113,6 +115,7 @@ impl AppState {
             current_fg_tile: TileSelectable::default(),
             current_bg_tile: TileSelectable::default(),
             current_entity: assets::ENTITIES_PALETTE[0],
+            current_trigger: assets::TRIGGERS_PALETTE[0],
             current_decal: assets::DECALS_PALETTE[0],
             current_selected: None,
             dirty: false,
@@ -168,35 +171,44 @@ impl AppState {
             AppEvent::SelectPaletteEntity { entity } => {
                 self.current_entity = *entity;
             }
+            AppEvent::SelectPaletteTrigger { trigger } => {
+                self.current_trigger = *trigger;
+            }
             AppEvent::SelectPaletteDecal { decal } => {
                 self.current_decal = *decal;
             }
-            AppEvent::EntityAdd { entity } => {
+            AppEvent::EntityAdd { entity, trigger } => {
+                dbg!(&event);
                 if let Some(room) = self.current_room_mut() {
                     let mut entity = entity.clone();
                     entity.id = room.next_id();
-                    room.entities.push(entity);
+                    if *trigger {
+                        room.triggers.push(entity);
+                    } else {
+                        room.entities.push(entity)
+                    }
                     room.cache.borrow_mut().render_cache_valid = false;
                     self.dirty = true;
                 }
             }
-            AppEvent::EntityUpdate { entity } => {
+            AppEvent::EntityUpdate { entity, trigger } => {
                 if let Some(room) = self.current_room_mut() {
-                    if let Some(mut e) = room.entity_mut(entity.id) {
+                    if let Some(mut e) = room.entity_mut(entity.id, *trigger) {
                         *e = entity.clone();
                         room.cache.borrow_mut().render_cache_valid = false;
                         self.dirty = true;
                     }
                 }
             }
-            AppEvent::EntityRemove { id } => {
+            AppEvent::EntityRemove { id, trigger } => {
                 if let Some(room) = self.current_room_mut() {
                     // tfw drain_filter is unstable
                     let mut i = 0;
                     let mut any = false;
-                    while i < room.entities.len() {
-                        if room.entities[i].id == *id {
-                            room.entities.remove(i);
+                    let mut entities = if *trigger { &mut room.triggers } else { &mut room.entities };
+                    while i < entities.len() {
+                        if entities[i].id == *id {
+                            entities.remove(i);
                             any = true;
                         } else {
                             i += 1;

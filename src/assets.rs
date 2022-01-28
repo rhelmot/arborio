@@ -10,9 +10,9 @@ use itertools::Itertools;
 use crate::atlas_img;
 use crate::autotiler;
 use crate::atlas_img::SpriteReference;
-use crate::entity_config::EntityConfig;
+use crate::entity_config::{EntityConfig, TriggerConfig};
 use crate::auto_saver::AutoSaver;
-use crate::palette_widget::{EntitySelectable, TileSelectable, DecalSelectable};
+use crate::palette_widget::{EntitySelectable, TileSelectable, DecalSelectable, TriggerSelectable};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -69,6 +69,18 @@ lazy_static! {
                 (config.entity_name.clone(), config)
             }).collect()
     };
+
+    pub static ref TRIGGER_CONFIG: HashMap<String, TriggerConfig> = {
+        EMBEDDED_CONFIG.get_dir("triggers").unwrap().files().iter()
+            .map(|f| {
+                let mut config: TriggerConfig = serde_yaml::from_str(f.contents_utf8().unwrap()).unwrap();
+                if config.templates.len() == 0 {
+                    config.templates.push(config.default_template())
+                }
+                (config.trigger_name.clone(), config)
+            }).collect()
+    };
+
     pub static ref AUTOTILERS: HashMap<String, &'static HashMap<char, autotiler::Tileset>> = {
         let fgbg: Vec<(String, &'static HashMap<char, autotiler::Tileset>)> = vec![("fg".to_owned(), &FG_TILES), ("bg".to_owned(), &BG_TILES)];
         EMBEDDED_CONFIG.get_dir("tilers").unwrap().files().iter()
@@ -90,6 +102,10 @@ lazy_static! {
 
     pub static ref ENTITIES_PALETTE: Vec<EntitySelectable> = {
         extract_entities_palette(&ENTITY_CONFIG)
+    };
+
+    pub static ref TRIGGERS_PALETTE: Vec<TriggerSelectable> = {
+        extract_triggers_palette(&TRIGGER_CONFIG)
     };
 
     pub static ref DECALS_PALETTE: Vec<DecalSelectable> = {
@@ -123,9 +139,26 @@ fn extract_entities_palette(config: &'static HashMap<String, EntityConfig>) -> V
         .collect()
 }
 
+fn extract_triggers_palette(config: &'static HashMap<String, TriggerConfig>) -> Vec<TriggerSelectable> {
+    config.iter()
+        .map(|c| c.1.templates.iter().map(move |t| TriggerSelectable { config: c.1, template: t }))
+        .flatten()
+        .filter(|es| es.config.trigger_name != "default")
+        .sorted_by_key(|es| &es.template.name)
+        .collect()
+}
+
 pub fn load() {
     assert_ne!(FG_TILES.len(), 0);
     assert_ne!(BG_TILES.len(), 0);
     assert!(ENTITY_CONFIG.get("default").is_some());
     assert_ne!(AUTOTILERS.len(), 0);
+}
+
+pub fn get_entity_config(entity_name: &str, trigger: bool) -> &'static EntityConfig {
+    if trigger {
+        ENTITY_CONFIG.get("trigger").unwrap()
+    } else {
+        ENTITY_CONFIG.get(entity_name).unwrap_or_else(|| ENTITY_CONFIG.get("default").unwrap())
+    }
 }

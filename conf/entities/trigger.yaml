@@ -1,0 +1,74 @@
+entity_name: trigger
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: match width + height { 0 => x - 4, _ => x }
+        y: match width + height { 0 => y - 4, _ => y }
+      size:
+        x: match width { 0 => 8, _ => width }
+        y: match height { 0 => 8, _ => height }
+  node_rects:
+    - topleft:
+        x: nodex - 2
+        y: nodey - 2
+      size:
+        x: 4
+        y: 4
+standard_draw:
+  initial_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: match width + height { 0 => x - 4, _ => x }
+            y: match width + height { 0 => y - 4, _ => y }
+          size:
+            x: match width { 0 => 8, _ => width }
+            y: match height { 0 => 8, _ => height }
+        color:
+          r: 0xff
+          g: 0x30
+          b: 0x80
+          a: 0x80
+        border_color:
+          r: 0xff
+          g: 0x18
+          b: 0x40
+          a: 0x80
+  node_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: nodex - 2
+            y: nodey - 2
+          size:
+            x: 4
+            y: 4
+        color:
+          r: 0xff
+          g: 0x30
+          b: 0x80
+          a: 0xff
+        border_color:
+          r: 0x80
+          g: 0x18
+          b: 0x40
+          a: 0xff
+selected_draw:
+  node_draw:
+    - DrawLine:
+        start:
+          x: prevnodexorbase
+          y: prevnodeyorbase
+        end:
+          x: nodex
+          y: nodey
+        arrowhead: true
+        color:
+          r: 255
+          g: 255
+          b: 0
+          a: 200
+resizable_x: true
+resizable_y: true
+nodes: true
+attribute_info: {}
