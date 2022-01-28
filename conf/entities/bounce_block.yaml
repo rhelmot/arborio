@@ -1,0 +1,33 @@
+entity_name: bounceBlock
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawRectImage:
+        texture: '"objects/BumpBlockNew/fire00"'
+        tiler: '"9slice"'
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+    - DrawPointImage:
+        texture: '"objects/BumpBlockNew/fire_center00"'
+        point:
+          x: x + width / 2
+          y: y + height / 2
+resizable_x: true
+resizable_y: true
+minimum_size_x: 16
+minimum_size_y: 16
+nodes: true
+attribute_info: {}
+pencil: Rect

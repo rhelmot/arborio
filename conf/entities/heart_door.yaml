@@ -1,0 +1,79 @@
+entity_name: heartGemDoor
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+  node_rects:
+    - topleft:
+        x: nodex
+        y: nodey
+      size:
+        x: 4
+        y: 4
+standard_draw:
+  initial_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: x
+            y: y - 500
+          size:
+            x: width
+            y: 1000
+        color:
+          r: 0xc0
+          g: 0xf0
+          b: 0xff
+          a: 0xff
+        border_color:
+          r: 0xff
+          g: 0xff
+          b: 0xff
+          a: 0xff
+    - DrawLine:
+        start:
+          x: x
+          y: y
+        end:
+          x: x + width
+          y: y
+        color:
+          r: 0xff
+          g: 0xff
+          b: 0xff
+          a: 0xff
+    - DrawLine:
+        start:
+          x: x
+          y: 'match ?firstnodey { 1 => firstnodey, _ => y + 32 }'
+        end:
+          x: x + width
+          y: 'match ?firstnodey { 1 => firstnodey, _ => y + 32 }'
+        color:
+          r: 0xff
+          g: 0xff
+          b: 0
+          a: 0xff
+    - DrawLine:
+        start:
+          x: x
+          y: 'match ?firstnodey { 1 => y - (firstnodey - y), _ => y - 32 }'
+        end:
+          x: x + width
+          y: 'match ?firstnodey { 1 => y - (firstnodey - y), _ => y + 32 }'
+        color:
+          r: 0xff
+          g: 0xff
+          b: 0
+          a: 0xff
+resizable_x: true
+resizable_y: false
+minimum_size_x: 8
+minimum_size_y: 8
+nodes: false
+pencil: Rect
+attribute_info: {}

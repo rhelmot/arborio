@@ -1,0 +1,46 @@
+entity_name: fireBall
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-8
+        y: y-8
+      size:
+        x: 16
+        y: 16
+  node_rects:
+    - topleft:
+        x: nodex-8
+        y: nodey-8
+      size:
+        x: 16
+        y: 16
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"objects/fireball/fireball00"'
+        point:
+          x: x
+          y: y
+  node_draw:
+    - DrawPointImage:
+        texture: '"objects/fireball/fireball00"'
+        point:
+          x: x
+          y: y
+    - DrawLine:
+        start:
+          x: prevnodexorbase
+          y: prevnodeyorbase
+        end:
+          x: nodex
+          y: nodey
+        arrowhead: true
+        color:
+          r: 255
+          g: 255
+          b: 0
+          a: 200
+resizable_x: false
+resizable_y: false
+nodes: true
+pencil: Node

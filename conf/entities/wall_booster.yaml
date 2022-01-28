@@ -1,0 +1,49 @@
+entity_name: wallBooster
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-8
+        y: y
+      size:
+        x: 8
+        y: height
+standard_draw:
+  initial_draw:
+    - DrawPointImage:
+        texture: '"objects/wallBooster/fireTop00"'
+        point:
+          x: x + 4
+          y: y + 4
+        scale:
+          x: 'match left { 0 => -1, _ => 1 }'
+          y: 1
+    - DrawPointImage:
+        texture: '"objects/wallBooster/fireBottom00"'
+        point:
+          x: x + 4
+          y: y + height - 4
+        scale:
+          x: 'match left { 0 => -1, _ => 1 }'
+          y: 1
+    - DrawRectCustom:
+        interval: 8
+        rect:
+          topleft:
+            x: x
+            y: y + 8
+          size:
+            x: 1
+            y: height - 16
+        draw:
+          - DrawPointImage:
+              texture: '"objects/wallBooster/fireMid00"'
+              point:
+                x: customx + 4
+                y: customy + 4
+              scale:
+                x: 'match left { 0 => -1, _ => 1 }'
+                y: 1
+resizable_x: false
+resizable_y: true
+nodes: false
+pencil: Rect
