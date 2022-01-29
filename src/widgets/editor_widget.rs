@@ -9,8 +9,8 @@ use femtovg::{Color, ImageFlags, Paint, Path, PixelFormat, RenderTarget};
 use euclid::{Rect, Point2D, Vector2D, Size2D, UnknownUnit, Transform2D, Angle};
 
 use crate::map_struct::{CelesteMapEntity, CelesteMapLevel, FieldEntry, CelesteMapDecal};
-use crate::entity_config::{DrawElement};
-use crate::entity_expression::{Const, Number};
+use crate::config::entity_config::{DrawElement};
+use crate::config::entity_expression::{Const, Number};
 use crate::map_struct;
 use crate::atlas_img::SpriteReference;
 use crate::assets;

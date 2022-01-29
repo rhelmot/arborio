@@ -2,7 +2,7 @@ use serde;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
-use crate::entity_expression::{Expression, Const};
+use crate::config::entity_expression::{Expression, Const};
 use crate::units::*;
 
 #[derive(Debug, Serialize, Deserialize)]

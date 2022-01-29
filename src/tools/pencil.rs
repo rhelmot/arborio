@@ -1,12 +1,12 @@
 use vizia::*;
 
 use crate::app_state::{AppEvent, AppState, Layer};
-use crate::entity_config::PencilBehavior;
+use crate::config::entity_config::PencilBehavior;
 use crate::map_struct::{CelesteMapDecal, CelesteMapEntity};
-use crate::palette_widget::{EntitySelectable, TriggerSelectable};
+use crate::widgets::palette_widget::{EntitySelectable, TriggerSelectable};
 use crate::tools::{Tool, generic_nav};
 use crate::units::*;
-use crate::editor_widget;
+use crate::widgets::editor_widget;
 use crate::assets;
 
 #[derive(Default)]

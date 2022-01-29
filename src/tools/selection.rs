@@ -7,7 +7,7 @@ use crate::units::*;
 use crate::map_struct::CelesteMapLevel;
 use crate::assets;
 use crate::autotiler::AutoTiler;
-use crate::editor_widget::decal_texture;
+use crate::widgets::editor_widget::decal_texture;
 
 pub struct SelectionTool {
     current_selection: HashSet<AppSelection>,

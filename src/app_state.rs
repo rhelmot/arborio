@@ -2,10 +2,10 @@ use std::time;
 use std::cell::RefCell;
 use vizia::*;
 
-use crate::editor_widget;
+use crate::widgets::editor_widget;
 use crate::map_struct;
 use crate::map_struct::{CelesteMap, CelesteMapDecal, CelesteMapEntity};
-use crate::palette_widget::{DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable};
+use crate::widgets::palette_widget::{DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable};
 use crate::tools::Tool;
 use crate::tools;
 use crate::units::*;

@@ -10,9 +10,9 @@ use itertools::Itertools;
 use crate::atlas_img;
 use crate::autotiler;
 use crate::atlas_img::SpriteReference;
-use crate::entity_config::{EntityConfig, TriggerConfig};
+use crate::config::entity_config::{EntityConfig, TriggerConfig};
 use crate::auto_saver::AutoSaver;
-use crate::palette_widget::{EntitySelectable, TileSelectable, DecalSelectable, TriggerSelectable};
+use crate::widgets::palette_widget::{EntitySelectable, TileSelectable, DecalSelectable, TriggerSelectable};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {

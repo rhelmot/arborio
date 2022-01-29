@@ -6,10 +6,10 @@ use vizia::*;
 
 use crate::atlas_img::SpriteReference;
 use crate::assets;
-use crate::entity_config::{EntityConfig, EntityTemplate, TriggerConfig};
+use crate::config::entity_config::{EntityConfig, EntityTemplate, TriggerConfig};
 use crate::map_struct::CelesteMapEntity;
 use crate::units::*;
-use crate::editor_widget;
+use crate::widgets::editor_widget;
 
 pub struct PaletteWidget<T, L> {
     lens: L,

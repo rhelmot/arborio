@@ -1,18 +1,15 @@
 #![allow(unused)]
 
-mod editor_widget;
 mod map_struct;
 mod atlas_img;
 mod autotiler;
 mod assets;
 mod auto_saver;
-mod entity_config;
-mod entity_expression;
 mod app_state;
 mod tools;
 mod units;
-mod palette_widget;
-mod tweaker_widget;
+mod widgets;
+mod config;
 
 use std::fs;
 use std::cell::RefCell;
@@ -20,10 +17,11 @@ use std::error::Error;
 use vizia::*;
 use dialog::{DialogBox, FileSelectionMode};
 use enum_iterator::IntoEnumIterator;
+use widgets::editor_widget;
 
 use crate::app_state::{AppEvent, AppState, Layer};
-use crate::palette_widget::PaletteWidget;
-use crate::tweaker_widget::EntityTweakerWidget;
+use widgets::palette_widget::PaletteWidget;
+use widgets::tweaker_widget::EntityTweakerWidget;
 use crate::tools::TOOLS;
 
 fn main() -> Result<(), Box<dyn Error>> {
