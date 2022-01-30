@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![feature(type_alias_impl_trait)]
 
 mod map_struct;
 mod atlas_img;
