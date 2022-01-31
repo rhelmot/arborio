@@ -1,3 +1,4 @@
+use std::cell::{Ref, RefCell};
 use std::sync::Mutex;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::collections::HashMap;
@@ -42,7 +43,6 @@ impl BlobData {
 }
 
 pub struct Atlas {
-    identifier: u32,
     blobs: Vec<Mutex<BlobData>>,
     sprites_map: HashMap<String, usize>,
     sprites: Vec<AtlasSprite>,
@@ -59,7 +59,6 @@ pub struct AtlasSprite {
 impl Atlas {
     pub fn load<T: ConfigSource>(config: &mut T, atlas: &str) -> Atlas {
         let mut result = Atlas {
-            identifier: rand::random(),
             blobs: Vec::new(),
             sprites_map: HashMap::new(),
             sprites: Vec::new(),
@@ -123,7 +122,7 @@ impl Atlas {
         let path = path.replace("\\", "/");
         self.sprites_map.get(&path)
             .map(|v| SpriteReference{
-            atlas: self.identifier,
+            atlas: 0,
             idx: *v as u32,
         })
     }
@@ -189,7 +188,14 @@ impl Atlas {
         canvas.restore();
     }
 
-    pub fn draw_tile(&self, canvas: &mut vizia::Canvas, tile_ref: TileReference, ox: f32, oy: f32, color: femtovg::Color) {
+    pub fn draw_tile(
+        &self,
+        canvas: &mut vizia::Canvas,
+        tile_ref: TileReference,
+        ox: f32,
+        oy: f32,
+        color: femtovg::Color
+    ) {
         self.draw_sprite(
             canvas,
             tile_ref.texture,
@@ -256,4 +262,75 @@ pub fn load_data_file<T: ConfigSource>(config: &mut T, data_file: path::PathBuf)
         current_px += repeat + 1;
     }
     Ok(Img::new(buf, width as usize, height as usize))
+}
+
+pub struct MultiAtlas<'a> {
+    atlases: Vec<&'a Atlas>,
+    path_cache: Mutex<HashMap<String, Option<SpriteReference>>>,
+}
+
+impl<'a> MultiAtlas<'a> {
+    pub fn new() -> Self {
+        Self {
+            atlases: vec![],
+            path_cache: Mutex::new(HashMap::new()),
+        }
+    }
+
+    pub fn add(&mut self, atlas: &'a Atlas) {
+        self.atlases.push(atlas);
+    }
+
+    pub fn iter_paths(&self) -> impl Iterator<Item = &str> {
+        self.atlases.iter()
+            .map(|a| a.iter_paths())
+            .flatten()
+    }
+
+    pub fn lookup(&self, path: &str) -> Option<SpriteReference> {
+        *self.path_cache.lock().unwrap().entry(path.to_owned())
+            .or_insert_with(|| {
+                for (i, atlas) in self.atlases.iter().enumerate() {
+                    if let Some(mut sprite) = atlas.lookup(path) {
+                        sprite.atlas = i as u32;
+                        return Some(sprite);
+                    }
+                }
+                None
+            })
+    }
+
+    pub fn sprite_dimensions(&self, sprite: SpriteReference) -> Size2D<u16, UnknownUnit> {
+        self.atlases.get(sprite.atlas as usize).unwrap().sprite_dimensions(sprite)
+    }
+
+    pub fn draw_sprite(
+        &self,
+        canvas: &mut vizia::Canvas,
+        sprite_ref: SpriteReference,
+        point: Point2D<f32, UnknownUnit>,
+        slice: Option<Rect<f32, UnknownUnit>>,
+        justify: Option<Vector2D<f32, UnknownUnit>>,
+        scale: Option<Point2D<f32, UnknownUnit>>,
+        color: Option<Color>,
+        rot: f32,
+    ) {
+        self.atlases.get(sprite_ref.atlas as usize).unwrap().draw_sprite(
+            canvas, sprite_ref, point,
+            slice, justify, scale, color, rot
+        );
+    }
+
+    pub fn draw_tile(
+        &self,
+        canvas: &mut vizia::Canvas,
+        tile_ref: TileReference,
+        ox: f32,
+        oy: f32,
+        color: femtovg::Color
+    ) {
+        self.atlases.get(tile_ref.texture.atlas as usize).unwrap().draw_tile(
+            canvas, tile_ref, ox, oy, color
+        );
+    }
 }

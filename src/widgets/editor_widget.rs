@@ -447,7 +447,7 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
                                 if self_entity.is_some() && self_entity.unwrap().attributes == e.attributes {
                                     '1'
                                 } else {
-                                    if let Some(conf) = assets::ENTITY_CONFIG.get(&e.name) {
+                                    if let Some(conf) = assets::ENTITY_CONFIG.get(e.name.as_str()) {
                                         if conf.solid { '2' } else { '0' }
                                     } else {
                                         '0'

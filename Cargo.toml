@@ -9,7 +9,6 @@ edition = "2018"
 [dependencies]
 array-init = "^2.0"
 celeste = "^2"
-rand = "^0.8"
 byteorder = "^1.4"
 serde = { version = "^1.0", features = ["derive" ] }
 serde-xml-rs = "^0.4"

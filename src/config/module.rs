@@ -8,7 +8,7 @@ use crate::config::entity_config::{EntityConfig, TriggerConfig};
 use crate::config::walker::ConfigSource;
 
 pub struct CelesteModule {
-    pub gameplay_graphics: Atlas,
+    pub gameplay_atlas: Atlas,
     pub tilers: HashMap<String, autotiler::Autotiler>,
     pub entity_config: HashMap<String, EntityConfig>,
     pub trigger_config: HashMap<String, TriggerConfig>,
@@ -54,7 +54,7 @@ impl CelesteModule {
             .collect();
 
         Self {
-            gameplay_graphics,
+            gameplay_atlas: gameplay_graphics,
             tilers,
             entity_config,
             trigger_config,

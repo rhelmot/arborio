@@ -599,7 +599,7 @@ impl SelectionTool {
                 }
                 AppSelection::EntityBody(id, trigger) => {
                     let mut e = room.entity(*id, *trigger).unwrap().clone();
-                    let config = assets::ENTITY_CONFIG.get(&e.name).unwrap_or_else(|| assets::ENTITY_CONFIG.get("default").unwrap());
+                    let config = assets::ENTITY_CONFIG.get(e.name.as_str()).unwrap_or_else(|| assets::ENTITY_CONFIG.get("default").unwrap());
                     let start_rect = dragging.and_then(|d| {
                         Some(*d.selection_reference_sizes.get(sel).unwrap())
                     }).unwrap_or_else(|| {

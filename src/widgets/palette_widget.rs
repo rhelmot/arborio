@@ -139,32 +139,32 @@ impl PaletteItem for TileSelectable {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct EntitySelectable {
-    pub config: &'static EntityConfig,
-    pub template: &'static EntityTemplate,
+pub struct EntitySelectable<'a> {
+    pub config: &'a EntityConfig,
+    pub template: &'a EntityTemplate,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct TriggerSelectable {
-    pub config: &'static TriggerConfig,
-    pub template: &'static EntityTemplate,
+pub struct TriggerSelectable<'a> {
+    pub config: &'a TriggerConfig,
+    pub template: &'a EntityTemplate,
 }
 
-impl Data for EntitySelectable {
+impl Data for EntitySelectable<'static> {
     fn same(&self, other: &Self) -> bool {
         // ummmmmm is this a good idea
         self.template as *const EntityTemplate == other.template as *const EntityTemplate
     }
 }
 
-impl Data for TriggerSelectable {
+impl Data for TriggerSelectable<'static> {
     fn same(&self, other: &Self) -> bool {
         // ummmmmm is this a good idea
         self.template as *const EntityTemplate == other.template as *const EntityTemplate
     }
 }
 
-impl PaletteItem for EntitySelectable {
+impl PaletteItem for EntitySelectable<'static> {
     fn search_text(&self) -> String {
         todo!()
     }
@@ -185,7 +185,7 @@ impl PaletteItem for EntitySelectable {
     }
 }
 
-impl PaletteItem for TriggerSelectable {
+impl PaletteItem for TriggerSelectable<'static> {
     fn search_text(&self) -> String {
         todo!()
     }
@@ -200,7 +200,7 @@ impl PaletteItem for TriggerSelectable {
     }
 }
 
-impl EntitySelectable {
+impl EntitySelectable<'_> {
     pub fn instantiate(&self, x: i32, y: i32, width: i32, height: i32, nodes: Vec<(i32, i32)>) -> CelesteMapEntity {
         let (x, width) = if width < 0 {
             (x + width, -width as u32)
@@ -233,7 +233,7 @@ impl EntitySelectable {
     }
 }
 
-impl TriggerSelectable {
+impl TriggerSelectable<'_> {
     pub fn instantiate(&self, x: i32, y: i32, width: i32, height: i32, nodes: Vec<(i32, i32)>) -> CelesteMapEntity {
         let (x, width) = if width < 0 {
             (x + width, -width as u32)

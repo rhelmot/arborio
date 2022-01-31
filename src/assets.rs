@@ -9,7 +9,7 @@ use itertools::Itertools;
 
 use crate::atlas_img;
 use crate::autotiler;
-use crate::atlas_img::SpriteReference;
+use crate::atlas_img::{MultiAtlas, SpriteReference};
 use crate::config::entity_config::{EntityConfig, TriggerConfig};
 use crate::auto_saver::AutoSaver;
 use crate::autotiler::Autotiler;
@@ -52,8 +52,12 @@ lazy_static! {
         result
     };
 
-    pub static ref GAMEPLAY_ATLAS: &'static atlas_img::Atlas = {
-        &MODULES.get("Celeste").unwrap().gameplay_graphics
+    pub static ref GAMEPLAY_ATLAS: MultiAtlas<'static> = {
+        let mut multi_atlas = MultiAtlas::new();
+        for (_, module) in &*MODULES {
+            multi_atlas.add(&module.gameplay_atlas);
+        }
+        multi_atlas
     };
     pub static ref AUTOTILERS: HashMap<String, &'static Autotiler> = {
         MODULES
@@ -69,11 +73,21 @@ lazy_static! {
     pub static ref BG_TILES: &'static Autotiler = {
         AUTOTILERS.get("bg").unwrap()
     };
-    pub static ref ENTITY_CONFIG: &'static HashMap<String, EntityConfig> = {
-        &MODULES.get("Arborio").unwrap().entity_config
+    pub static ref ENTITY_CONFIG: HashMap<&'static str, &'static EntityConfig> = {
+        MODULES
+            .iter()
+            .map(|(name, module)| module.entity_config.iter())
+            .flatten()
+            .map(|(name, config)| (name.as_str(), config))
+            .collect()
     };
-    pub static ref TRIGGER_CONFIG: &'static HashMap<String, TriggerConfig> = {
-        &MODULES.get("Arborio").unwrap().trigger_config
+    pub static ref TRIGGER_CONFIG: HashMap<&'static str, &'static TriggerConfig> = {
+        MODULES
+            .iter()
+            .map(|(name, module)| module.trigger_config.iter())
+            .flatten()
+            .map(|(name, config)| (name.as_str(), config))
+            .collect()
     };
 
     pub static ref FG_TILES_PALETTE: Vec<TileSelectable> = {
@@ -84,11 +98,11 @@ lazy_static! {
         extract_tiles_palette(&BG_TILES)
     };
 
-    pub static ref ENTITIES_PALETTE: Vec<EntitySelectable> = {
+    pub static ref ENTITIES_PALETTE: Vec<EntitySelectable<'static>> = {
         extract_entities_palette(&ENTITY_CONFIG)
     };
 
-    pub static ref TRIGGERS_PALETTE: Vec<TriggerSelectable> = {
+    pub static ref TRIGGERS_PALETTE: Vec<TriggerSelectable<'static>> = {
         extract_triggers_palette(&TRIGGER_CONFIG)
     };
 
@@ -114,7 +128,7 @@ fn extract_tiles_palette(map: &'static HashMap<char, autotiler::Tileset>) -> Vec
     vec
 }
 
-fn extract_entities_palette(config: &'static HashMap<String, EntityConfig>) -> Vec<EntitySelectable> {
+fn extract_entities_palette<'a>(config: &HashMap<&'a str, &'a EntityConfig>) -> Vec<EntitySelectable<'a>> {
     config.iter()
         .map(|c| c.1.templates.iter().map(move |t| EntitySelectable { config: c.1, template: t }))
         .flatten()
@@ -123,7 +137,7 @@ fn extract_entities_palette(config: &'static HashMap<String, EntityConfig>) -> V
         .collect()
 }
 
-fn extract_triggers_palette(config: &'static HashMap<String, TriggerConfig>) -> Vec<TriggerSelectable> {
+fn extract_triggers_palette<'a>(config: &HashMap<&'a str, &'a TriggerConfig>) -> Vec<TriggerSelectable<'a>> {
     config.iter()
         .map(|c| c.1.templates.iter().map(move |t| TriggerSelectable { config: c.1, template: t }))
         .flatten()
