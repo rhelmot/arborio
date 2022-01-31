@@ -1,9 +1,11 @@
-use std::io::{Read, Seek};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 mod embedded;
 mod folder;
 mod zip;
+pub use folder::FolderSource;
+pub use embedded::EmbeddedSource;
 
 pub trait ConfigSource {
     type DirIter: Iterator<Item = PathBuf>;

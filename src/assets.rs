@@ -12,14 +12,15 @@ use crate::autotiler;
 use crate::atlas_img::SpriteReference;
 use crate::config::entity_config::{EntityConfig, TriggerConfig};
 use crate::auto_saver::AutoSaver;
+use crate::autotiler::Autotiler;
+use crate::config::walker::{ConfigSource, EmbeddedSource, FolderSource};
+use crate::config::module::CelesteModule;
 use crate::widgets::palette_widget::{EntitySelectable, TileSelectable, DecalSelectable, TriggerSelectable};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
     pub celeste_root: PathBuf,
 }
-
-const EMBEDDED_CONFIG: include_dir::Dir = include_dir!("conf");
 
 lazy_static! {
     pub static ref CONFIG: Mutex<AutoSaver<Config>> = {
@@ -40,56 +41,39 @@ lazy_static! {
         };
         Mutex::new(cfg)
     };
-    pub static ref GAMEPLAY_ATLAS: atlas_img::Atlas = {
-        let path = CONFIG.lock().unwrap().celeste_root.join("Content/Graphics/Atlases/Gameplay.meta");
-        let atlas = atlas_img::Atlas::load(path.as_path());
 
-        atlas.unwrap_or_else(|e| panic!("Failed to load gameplay atlas: {}", e))
-    };
-    pub static ref FG_TILES: HashMap<char, autotiler::Tileset> = {
-        let path = CONFIG.lock().unwrap().celeste_root.join("Content/Graphics/ForegroundTiles.xml");
-        let fg_tiles = autotiler::Tileset::load(&path, &GAMEPLAY_ATLAS, "tilesets/");
+    pub static ref MODULES: HashMap<String, CelesteModule> = {
+        let mut result = HashMap::new();
+        let mut celeste_module = FolderSource::new(CONFIG.lock().unwrap().celeste_root.join("Content")).unwrap();
 
-        fg_tiles.unwrap_or_else(|e| panic!("Failed to load ForegroundTiles.xml: {}", e))
-    };
-    pub static ref BG_TILES: HashMap<char, autotiler::Tileset> = {
-        let path = CONFIG.lock().unwrap().celeste_root.join("Content/Graphics/BackgroundTiles.xml");
-        let bg_tiles = autotiler::Tileset::load(&path, &GAMEPLAY_ATLAS, "tilesets/");
+        result.insert("Celeste".to_owned(), CelesteModule::new(&mut celeste_module));
+        result.insert("Arborio".to_owned(), CelesteModule::new(&mut EmbeddedSource()));
 
-        bg_tiles.unwrap_or_else(|e| panic!("Failed to load BackgroundTiles.xml: {}", e))
+        result
     };
 
-    pub static ref ENTITY_CONFIG: HashMap<String, EntityConfig> = {
-        EMBEDDED_CONFIG.get_dir("entities").unwrap().files().iter()
-            .map(|f| {
-                let mut config: EntityConfig = serde_yaml::from_str(f.contents_utf8().unwrap()).unwrap();
-                if config.templates.len() == 0 {
-                    config.templates.push(config.default_template())
-                }
-                (config.entity_name.clone(), config)
-            }).collect()
+    pub static ref GAMEPLAY_ATLAS: &'static atlas_img::Atlas = {
+        &MODULES.get("Celeste").unwrap().gameplay_graphics
     };
-
-    pub static ref TRIGGER_CONFIG: HashMap<String, TriggerConfig> = {
-        EMBEDDED_CONFIG.get_dir("triggers").unwrap().files().iter()
-            .map(|f| {
-                let mut config: TriggerConfig = serde_yaml::from_str(f.contents_utf8().unwrap()).unwrap();
-                if config.templates.len() == 0 {
-                    config.templates.push(config.default_template())
-                }
-                (config.trigger_name.clone(), config)
-            }).collect()
-    };
-
-    pub static ref AUTOTILERS: HashMap<String, &'static HashMap<char, autotiler::Tileset>> = {
-        let fgbg: Vec<(String, &'static HashMap<char, autotiler::Tileset>)> = vec![("fg".to_owned(), &FG_TILES), ("bg".to_owned(), &BG_TILES)];
-        EMBEDDED_CONFIG.get_dir("tilers").unwrap().files().iter()
-            .map(|f| (f.path().file_stem().unwrap().to_str().unwrap().to_owned(),
-                Box::leak(Box::new(autotiler::Tileset::parse(f.contents_utf8().unwrap(), &GAMEPLAY_ATLAS, "")
-                    .unwrap_or_else(|e| panic!("Failed to load {:?}: {}", f.path(), e)))) as &'static HashMap<char, autotiler::Tileset>
-            ))
-            .chain(fgbg.into_iter())
+    pub static ref AUTOTILERS: HashMap<String, &'static Autotiler> = {
+        MODULES
+            .iter()
+            .map(|(name, module)| module.tilers.iter())
+            .flatten()
+            .map(|(name, tiler)| (name.clone(), tiler))
             .collect()
+    };
+    pub static ref FG_TILES: &'static Autotiler = {
+        AUTOTILERS.get("fg").unwrap()
+    };
+    pub static ref BG_TILES: &'static Autotiler = {
+        AUTOTILERS.get("bg").unwrap()
+    };
+    pub static ref ENTITY_CONFIG: &'static HashMap<String, EntityConfig> = {
+        &MODULES.get("Arborio").unwrap().entity_config
+    };
+    pub static ref TRIGGER_CONFIG: &'static HashMap<String, TriggerConfig> = {
+        &MODULES.get("Arborio").unwrap().trigger_config
     };
 
     pub static ref FG_TILES_PALETTE: Vec<TileSelectable> = {
@@ -121,7 +105,7 @@ fn extract_tiles_palette(map: &'static HashMap<char, autotiler::Tileset>) -> Vec
     let mut vec: Vec<TileSelectable> = map.iter().map(|item| TileSelectable {
         id: *item.0,
         name: &item.1.name,
-        texture: Some(item.1.texture),
+        texture: Some(&item.1.texture),
     })
         .filter(|ts| ts.id != 'z')
         .sorted_by_key(|ts| ts.id)

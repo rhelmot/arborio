@@ -93,7 +93,7 @@ pub trait PaletteItem: Copy + Clone + Data + Debug + Send {
 pub struct TileSelectable {
     pub id: char,
     pub name: &'static str,
-    pub texture: Option<SpriteReference>,
+    pub texture: Option<&'static str>,
 }
 
 impl Default for TileSelectable {
@@ -132,6 +132,7 @@ impl PaletteItem for TileSelectable {
     fn draw(&self, canvas: &mut Canvas) {
         canvas.scale(3.0, 3.0);
         if let Some(texture) = self.texture {
+            let texture = assets::GAMEPLAY_ATLAS.lookup(texture).unwrap();
             assets::GAMEPLAY_ATLAS.draw_sprite(canvas, texture, Point2D::zero(), None, Some(Vector2D::zero()), None, None, 0.0);
         }
     }

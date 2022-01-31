@@ -3,6 +3,7 @@ use std::io;
 use std::fs;
 use std::collections::HashMap;
 use inflector::Inflector;
+use crate::assets;
 
 use super::atlas_img;
 use crate::atlas_img::SpriteReference;
@@ -26,13 +27,15 @@ pub struct TileReference {
 pub struct Tileset {
     pub id: char,
     pub name: String,
-    pub texture: SpriteReference,
+    pub texture: String,
     pub edges: Vec<Vec<TextureTile>>,
     pub padding: Vec<TextureTile>,
     pub center: Vec<TextureTile>,
     pub ignores: Vec<char>,
     pub ignores_all: bool,
 }
+
+pub type Autotiler = HashMap<char, Tileset>;
 
 #[derive(serde::Deserialize)]
 struct SerData {
@@ -78,12 +81,9 @@ pub trait AutoTiler {
 }
 
 impl Tileset {
-    pub fn load(path: &Path, gameplay_atlas: &atlas_img::Atlas, texture_prefix: &str) -> Result<HashMap<char, Tileset>, io::Error> {
-        let string = fs::read_to_string(path).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset {}: {}", path.to_str().unwrap(), e)))?;
-        Self::parse(&string, gameplay_atlas, texture_prefix)
-    }
-
-    pub fn parse(string: &str, gameplay_atlas: &atlas_img::Atlas, texture_prefix: &str) -> Result<HashMap<char, Tileset>, io::Error> {
+    pub fn load<T: io::Read>(mut fp: T, gameplay_atlas: &atlas_img::Atlas, texture_prefix: &str) -> Result<Autotiler, io::Error> {
+        let mut string = String::new();
+        fp.read_to_string(&mut string)?;
         let data: SerData = serde_xml_rs::from_str(string.trim_start_matches('\u{FEFF}'))
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Cannot open tileset: {:?}", e)))?;
         let mut out: HashMap<char, Tileset> = HashMap::new();
@@ -96,15 +96,12 @@ impl Tileset {
             let ch = s_tileset.id.chars().next().unwrap();
 
             // HACK
-            let texture_sprite = match gameplay_atlas.lookup(&format!("{}{}", texture_prefix, if s_tileset.path == "template" { "dirt" } else { &s_tileset.path })) {
-                Some(v) => v,
-                None => return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Texture {}{} for tileset {} not found in the gameplay atlas", texture_prefix, s_tileset.path, s_tileset.id))),
-            };
+            let texture = format!("{}{}", texture_prefix, if s_tileset.path == "template" { "dirt" } else { &s_tileset.path });
             let mut tileset = if s_tileset.copy.is_empty() {
                 Tileset {
                     id: ch,
                     name: s_tileset.path.to_title_case(),
-                    texture: texture_sprite,
+                    texture,
                     edges: vec![Vec::new(); 256],
                     padding: vec![],
                     center: vec![],
@@ -120,7 +117,7 @@ impl Tileset {
                     Some(t) => t.clone(),
                     None => return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Can't find tileset to copy ({} copying {})", s_tileset.id, s_tileset.copy))),
                 };
-                r.texture = texture_sprite;
+                r.texture = texture;
                 r.id = ch;
                 r.name = s_tileset.path.to_title_case();
                 r
@@ -258,7 +255,7 @@ impl AutoTiler for Tileset {
 
         Some(TileReference {
             tile: tiles[hash % tiles.len()],
-            texture: self.texture,
+            texture: assets::GAMEPLAY_ATLAS.lookup(&self.texture).unwrap(),
         })
     }
 }

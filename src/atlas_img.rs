@@ -3,14 +3,16 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use std::collections::HashMap;
 use std::fs;
 use std::io;
-use std::io::Read;
+use std::io::{ErrorKind, Read};
 use std::path;
+use std::path::PathBuf;
 use femtovg::{ImageId, ImageSource, Paint, Path, Color};
 use imgref::Img;
 use rgb::RGBA8;
 
 use crate::autotiler::TileReference;
 use crate::units::*;
+use crate::config::walker::ConfigSource;
 
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
 pub struct SpriteReference {
@@ -55,15 +57,7 @@ pub struct AtlasSprite {
 }
 
 impl Atlas {
-    pub fn load(meta_file: &path::Path) -> Result<Atlas, io::Error> {
-        let fp = fs::File::open(meta_file.to_path_buf())?;
-        let mut reader = io::BufReader::new(fp);
-
-        // this code ripped shamelessly from ahorn
-        let _version = reader.read_u32::<LittleEndian>()?;
-        let _cmd = read_string(&mut reader)?;
-        let _checksum = reader.read_u32::<LittleEndian>()?;
-
+    pub fn load<T: ConfigSource>(config: &mut T, atlas: &str) -> Atlas {
         let mut result = Atlas {
             identifier: rand::random(),
             blobs: Vec::new(),
@@ -71,12 +65,26 @@ impl Atlas {
             sprites: Vec::new(),
         };
 
+        result.load_crunched(config, atlas).expect("Fatal error parsing packed atlas");
+
+        result
+    }
+
+    fn load_crunched<T: ConfigSource>(&mut self, config: &mut T, atlas: &str) -> Result<(), io::Error> {
+        let meta_file = PathBuf::from("Graphics/Atlases").join(atlas.to_owned() + ".meta");
+        let mut reader = if let Some(fp) = config.get_file(&meta_file) { fp } else { return Ok(()) };
+
+        // this code ripped shamelessly from ahorn
+        let _version = reader.read_u32::<LittleEndian>()?;
+        let _cmd = read_string(&mut reader)?;
+        let _checksum = reader.read_u32::<LittleEndian>()?;
+
         let count = reader.read_u16::<LittleEndian>()?;
         for _ in 0..count {
             let data_file = read_string(&mut reader)? + ".data";
             let data_path = meta_file.with_file_name(&data_file);
-            let blob_idx = result.blobs.len();
-            result.blobs.push(Mutex::new(BlobData::Waiting(load_data_file(data_path)?)));
+            let blob_idx = self.blobs.len();
+            self.blobs.push(Mutex::new(BlobData::Waiting(load_data_file(config, data_path)?)));
 
             let sprites = reader.read_u16::<LittleEndian>()?;
             for _ in 0..sprites {
@@ -90,9 +98,9 @@ impl Atlas {
                 let real_width = reader.read_u16::<LittleEndian>()?;
                 let real_height = reader.read_u16::<LittleEndian>()?;
 
-                let sprite_idx = result.sprites.len();
-                result.sprites_map.insert(sprite_path, sprite_idx);
-                result.sprites.push(AtlasSprite {
+                let sprite_idx = self.sprites.len();
+                self.sprites_map.insert(sprite_path, sprite_idx);
+                self.sprites.push(AtlasSprite {
                     blob_idx,
                     bounding_box: euclid::Rect {
                         origin: euclid::Point2D::new(x, y),
@@ -104,7 +112,7 @@ impl Atlas {
             }
         }
 
-        Ok(result)
+        Ok(())
     }
 
     pub fn iter_paths(&self) -> impl Iterator<Item = &str> {
@@ -198,7 +206,7 @@ impl Atlas {
     }
 }
 
-fn read_string(reader: &mut io::BufReader<fs::File>) -> Result<String, io::Error> {
+fn read_string<R: Read>(reader: &mut R) -> Result<String, io::Error> {
     let strlen = reader.read_u8()? as usize;
     let mut buf = vec![0u8; strlen];
     reader.read_exact(buf.as_mut_slice())?;
@@ -208,10 +216,12 @@ fn read_string(reader: &mut io::BufReader<fs::File>) -> Result<String, io::Error
     })
 }
 
-pub fn load_data_file(data_file: path::PathBuf) -> Result<Img<Vec<RGBA8>>, io::Error> {
-    let fp = fs::File::open(data_file)?;
-
-    let mut reader = io::BufReader::new(fp);
+pub fn load_data_file<T: ConfigSource>(config: &mut T, data_file: path::PathBuf) -> Result<Img<Vec<RGBA8>>, io::Error> {
+    let mut reader = if let Some(reader) = config.get_file(&data_file) {
+        reader
+    } else {
+        return Err(io::Error::new(ErrorKind::NotFound, format!("{:?} not found", data_file)))
+    };
 
     let width = reader.read_u32::<LittleEndian>()?;
     let height = reader.read_u32::<LittleEndian>()?;

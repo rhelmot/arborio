@@ -22,6 +22,8 @@ impl ConfigSource for FolderSource {
     type FileIter = impl Iterator<Item = PathBuf>;
     type FileRead = File;
 
+    // TODO: does walkdir return absolute or relative paths?
+
     fn list_dirs(&mut self, path: &Path) -> Self::DirIter {
         WalkDir::new(path)
             .min_depth(1)
@@ -42,6 +44,6 @@ impl ConfigSource for FolderSource {
     }
 
     fn get_file(&mut self, path: &Path) -> Option<Self::FileRead> {
-        File::open(path).ok()
+        File::open(self.0.join(path)).ok()
     }
 }
