@@ -1,14 +1,14 @@
-use std::fmt::{Debug, Formatter};
 use celeste::binel::BinElAttr;
+use std::fmt::{Debug, Formatter};
 use vizia::*;
 
-use crate::units::*;
-use crate::app_state::{AppState, AppSelection, AppEvent};
-use crate::map_struct::{CelesteMap, CelesteMapEntity};
+use crate::app_state::{AppEvent, AppSelection, AppState};
 use crate::assets;
+use crate::map_struct::{CelesteMap, CelesteMapEntity};
+use crate::units::*;
 
 #[derive(Copy, Clone, Debug)]
-pub struct CurrentSelectedEntityLens { }
+pub struct CurrentSelectedEntityLens {}
 
 impl Lens for CurrentSelectedEntityLens {
     type Source = AppState;
@@ -19,10 +19,14 @@ impl Lens for CurrentSelectedEntityLens {
             Some(AppSelection::EntityBody(id, trigger)) => Some((id, trigger)),
             Some(AppSelection::EntityNode(id, _, trigger)) => Some((id, trigger)),
             _ => None,
-        }.and_then(|(id, trigger)| source.map.as_ref().and_then(
-            |map| map.levels.get(source.current_room).and_then(
-                |room| room.entity(id, trigger)
-            )))
+        }
+        .and_then(|(id, trigger)| {
+            source.map.as_ref().and_then(|map| {
+                map.levels
+                    .get(source.current_room)
+                    .and_then(|room| room.entity(id, trigger))
+            })
+        })
     }
 }
 
@@ -32,55 +36,64 @@ impl CurrentSelectedEntityLens {
     }
 }
 
-pub struct EntityTweakerWidget { }
+pub struct EntityTweakerWidget {}
 
 impl EntityTweakerWidget {
     pub fn new(cx: &mut Context) -> Handle<'_, Self> {
-        Self {
-
-        }.build2(cx, move |cx| {
+        Self {}.build2(cx, move |cx| {
             let lens = CurrentSelectedEntityLens::new();
-            Binding::new_fallible(cx, lens.clone(), move |cx, selection| {
-                VStack::new(cx, move |cx| {
-                    let entity = selection.get(cx);
-                    let msg = format!("{} - {}", entity.name, entity.id);
-                    let mut attrs = entity.attributes.iter().map(|(a, b)| Some(a.clone())).collect::<Vec<_>>();
-                    Label::new(cx, &msg);
+            Binding::new_fallible(
+                cx,
+                lens,
+                move |cx, selection| {
+                    VStack::new(cx, move |cx| {
+                        let entity = selection.get(cx);
+                        let msg = format!("{} - {}", entity.name, entity.id);
+                        let mut attrs = entity
+                            .attributes
+                            .iter()
+                            .map(|(a, b)| Some(a.clone()))
+                            .collect::<Vec<_>>();
+                        Label::new(cx, &msg);
 
-                    ForEach::new(cx, 0..attrs.len(), move |cx, idx| {
-                        let attr = attrs[idx].take().unwrap();
-                        HStack::new(cx, move |cx| {
-                            Label::new(cx, &attr);
-                            let entity = selection.get(cx);
-                            let val = &entity.attributes[&attr];
-                            match val {
-                                BinElAttr::Bool(b) => {
-                                    let b = *b;
-                                    Checkbox::new(cx, b)
-                                        .on_toggle(move |cx| {
+                        ForEach::new(cx, 0..attrs.len(), move |cx, idx| {
+                            let attr = attrs[idx].take().unwrap();
+                            HStack::new(cx, move |cx| {
+                                Label::new(cx, &attr);
+                                let entity = selection.get(cx);
+                                let val = &entity.attributes[&attr];
+                                match val {
+                                    BinElAttr::Bool(b) => {
+                                        let b = *b;
+                                        Checkbox::new(cx, b).on_toggle(move |cx| {
                                             let mut entity = selection.get(cx).clone();
-                                            entity.attributes.insert(attr.clone(), BinElAttr::Bool(!b));
-                                            let trigger = match cx.data::<AppState>().unwrap().current_selected {
-                                                Some(AppSelection::EntityBody(_, true)) => true,
-                                                Some(AppSelection::EntityNode(_, _, true)) => true,
-                                                _ => false,
-                                            };
+                                            entity
+                                                .attributes
+                                                .insert(attr.clone(), BinElAttr::Bool(!b));
+                                            let trigger = matches!(
+                                                cx.data::<AppState>().unwrap().current_selected,
+                                                Some(
+                                                    AppSelection::EntityBody(_, true)
+                                                        | AppSelection::EntityNode(_, _, true)
+                                                )
+                                            );
                                             cx.emit(AppEvent::EntityUpdate { entity, trigger });
                                         });
+                                    }
+                                    BinElAttr::Int(_) => {}
+                                    BinElAttr::Float(_) => {}
+                                    BinElAttr::Text(_) => {}
                                 }
-                                BinElAttr::Int(_) => {}
-                                BinElAttr::Float(_) => {}
-                                BinElAttr::Text(_) => {}
-                            }
+                            });
                         });
                     });
-                });
-            }, move |cx| {
-                Element::new(cx);
-            });
+                },
+                move |cx| {
+                    Element::new(cx);
+                },
+            );
         })
     }
 }
 
-impl View for EntityTweakerWidget {
-}
+impl View for EntityTweakerWidget {}

@@ -4,8 +4,8 @@ use std::ops::Deref;
 use std::rc::Rc;
 use vizia::*;
 
-use crate::atlas_img::SpriteReference;
 use crate::assets;
+use crate::atlas_img::SpriteReference;
 use crate::config::entity_config::{EntityConfig, EntityTemplate, TriggerConfig};
 use crate::map_struct::CelesteMapEntity;
 use crate::units::*;
@@ -25,24 +25,26 @@ where
         F: 'static + Fn(&mut Context, T) + Copy,
         LL: Lens<Target = Vec<T>>,
     {
-        let result = Self { lens: selected, marker: PhantomData {} }
-            .build2(cx, move |cx| {
-                List::new(cx, items, move |cx, item| {
-                    Binding::new(cx, selected, move |cx, selected_field| {
-                        let selected = *selected_field.get(cx);
-                        let checked = item.get(cx).same(&selected);
-                        HStack::new(cx, move |cx| {
-                            Label::new(cx, &item.get(cx).display_name());
-                        })
-                            .class("palette_item")
-                            .checked(checked)
-                            .on_press(move |cx| {
-                                (callback)(cx, *item.get(cx));
-                            });
+        let result = Self {
+            lens: selected,
+            marker: PhantomData {},
+        }
+        .build2(cx, move |cx| {
+            List::new(cx, items, move |cx, item| {
+                Binding::new(cx, selected, move |cx, selected_field| {
+                    let selected = *selected_field.get(cx);
+                    let checked = item.get(cx).same(&selected);
+                    HStack::new(cx, move |cx| {
+                        Label::new(cx, &item.get(cx).display_name());
+                    })
+                    .class("palette_item")
+                    .checked(checked)
+                    .on_press(move |cx| {
+                        (callback)(cx, *item.get(cx));
                     });
                 });
             });
-
+        });
 
         if T::CAN_DRAW {
             result.child_top(Units::Pixels(100.0))
@@ -64,7 +66,10 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
 
         let entity = cx.current;
         let bounds = cx.cache.get_bounds(entity);
-        let data = self.lens.view(cx.data::<<L as Lens>::Source>().unwrap()).unwrap();
+        let data = self
+            .lens
+            .view(cx.data::<<L as Lens>::Source>().unwrap())
+            .unwrap();
 
         canvas.save();
         canvas.translate(bounds.x, bounds.y);
@@ -72,9 +77,16 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
 
         let mut path = femtovg::Path::new();
         path.rect(0.0, 0.0, bounds.w, 100.0);
-        canvas.fill_path(&mut path, femtovg::Paint::linear_gradient(
-            0.0, 0.0, 0.0, 100.0,
-            Color::black().into(), Color::blue().into())
+        canvas.fill_path(
+            &mut path,
+            femtovg::Paint::linear_gradient(
+                0.0,
+                0.0,
+                0.0,
+                100.0,
+                Color::black().into(),
+                Color::blue().into(),
+            ),
         );
 
         data.draw(canvas);
@@ -101,7 +113,7 @@ impl Default for TileSelectable {
         TileSelectable {
             id: '0',
             name: "Empty",
-            texture: None
+            texture: None,
         }
     }
 }
@@ -133,7 +145,16 @@ impl PaletteItem for TileSelectable {
         canvas.scale(3.0, 3.0);
         if let Some(texture) = self.texture {
             let texture = assets::GAMEPLAY_ATLAS.lookup(texture).unwrap();
-            assets::GAMEPLAY_ATLAS.draw_sprite(canvas, texture, Point2D::zero(), None, Some(Vector2D::zero()), None, None, 0.0);
+            assets::GAMEPLAY_ATLAS.draw_sprite(
+                canvas,
+                texture,
+                Point2D::zero(),
+                None,
+                Some(Vector2D::zero()),
+                None,
+                None,
+                0.0,
+            );
         }
     }
 }
@@ -153,14 +174,14 @@ pub struct TriggerSelectable<'a> {
 impl Data for EntitySelectable<'static> {
     fn same(&self, other: &Self) -> bool {
         // ummmmmm is this a good idea
-        self.template as *const EntityTemplate == other.template as *const EntityTemplate
+        std::ptr::eq(self.template, other.template)
     }
 }
 
 impl Data for TriggerSelectable<'static> {
     fn same(&self, other: &Self) -> bool {
         // ummmmmm is this a good idea
-        self.template as *const EntityTemplate == other.template as *const EntityTemplate
+        std::ptr::eq(self.template, other.template)
     }
 }
 
@@ -177,9 +198,11 @@ impl PaletteItem for EntitySelectable<'static> {
         canvas.scale(2.0, 2.0);
 
         let tmp_entity = self.instantiate(
-            16, 16,
-            self.config.minimum_size_x as i32, self.config.minimum_size_y as i32,
-            vec![(48, 16)]
+            16,
+            16,
+            self.config.minimum_size_x as i32,
+            self.config.minimum_size_y as i32,
+            vec![(48, 16)],
         );
         editor_widget::draw_entity(canvas, &tmp_entity, &TileGrid::empty(), false, false);
     }
@@ -201,7 +224,14 @@ impl PaletteItem for TriggerSelectable<'static> {
 }
 
 impl EntitySelectable<'_> {
-    pub fn instantiate(&self, x: i32, y: i32, width: i32, height: i32, nodes: Vec<(i32, i32)>) -> CelesteMapEntity {
+    pub fn instantiate(
+        &self,
+        x: i32,
+        y: i32,
+        width: i32,
+        height: i32,
+        nodes: Vec<(i32, i32)>,
+    ) -> CelesteMapEntity {
         let (x, width) = if width < 0 {
             (x + width, -width as u32)
         } else {
@@ -214,18 +244,37 @@ impl EntitySelectable<'_> {
         };
         let width = width.max(self.config.minimum_size_x);
         let height = height.max(self.config.minimum_size_y);
-        let width = if !self.config.resizable_x { self.config.minimum_size_x } else { width };
-        let height = if !self.config.resizable_y { self.config.minimum_size_y } else { height };
+        let width = if !self.config.resizable_x {
+            self.config.minimum_size_x
+        } else {
+            width
+        };
+        let height = if !self.config.resizable_y {
+            self.config.minimum_size_y
+        } else {
+            height
+        };
 
         let mut entity = CelesteMapEntity {
             id: 0,
             name: self.config.entity_name.clone(),
-            attributes: self.template.attributes.iter().map(|attr| (attr.0.clone(), attr.1.to_binel())).collect(),
-            x, y, width, height, nodes,
+            attributes: self
+                .template
+                .attributes
+                .iter()
+                .map(|attr| (attr.0.clone(), attr.1.to_binel()))
+                .collect(),
+            x,
+            y,
+            width,
+            height,
+            nodes,
         };
         for (attr, info) in &self.config.attribute_info {
             if !entity.attributes.contains_key(attr) {
-                entity.attributes.insert(attr.clone(), info.default.to_binel());
+                entity
+                    .attributes
+                    .insert(attr.clone(), info.default.to_binel());
             }
         }
 
@@ -234,7 +283,14 @@ impl EntitySelectable<'_> {
 }
 
 impl TriggerSelectable<'_> {
-    pub fn instantiate(&self, x: i32, y: i32, width: i32, height: i32, nodes: Vec<(i32, i32)>) -> CelesteMapEntity {
+    pub fn instantiate(
+        &self,
+        x: i32,
+        y: i32,
+        width: i32,
+        height: i32,
+        nodes: Vec<(i32, i32)>,
+    ) -> CelesteMapEntity {
         let (x, width) = if width < 0 {
             (x + width, -width as u32)
         } else {
@@ -251,12 +307,23 @@ impl TriggerSelectable<'_> {
         let mut entity = CelesteMapEntity {
             id: 0,
             name: self.config.trigger_name.clone(),
-            attributes: self.template.attributes.iter().map(|attr| (attr.0.clone(), attr.1.to_binel())).collect(),
-            x, y, width, height, nodes,
+            attributes: self
+                .template
+                .attributes
+                .iter()
+                .map(|attr| (attr.0.clone(), attr.1.to_binel()))
+                .collect(),
+            x,
+            y,
+            width,
+            height,
+            nodes,
         };
         for (attr, info) in &self.config.attribute_info {
             if !entity.attributes.contains_key(attr) {
-                entity.attributes.insert(attr.clone(), info.default.to_binel());
+                entity
+                    .attributes
+                    .insert(attr.clone(), info.default.to_binel());
             }
         }
 
@@ -285,9 +352,15 @@ impl PaletteItem for DecalSelectable {
     fn draw(&self, canvas: &mut Canvas) {
         assets::GAMEPLAY_ATLAS.draw_sprite(
             canvas,
-            assets::GAMEPLAY_ATLAS.lookup(&("decals/".to_owned() + self.0)).unwrap(),
+            assets::GAMEPLAY_ATLAS
+                .lookup(&("decals/".to_owned() + self.0))
+                .unwrap(),
             Point2D::new(0.0, 0.0),
-            None, Some(Vector2D::zero()), None, None, 0.0,
+            None,
+            Some(Vector2D::zero()),
+            None,
+            None,
+            0.0,
         )
     }
 }

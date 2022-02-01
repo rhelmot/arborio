@@ -1,12 +1,11 @@
-use euclid::*;
-pub use euclid::{Rect, Point2D, Size2D, Vector2D, UnknownUnit};
 use euclid::num::Zero;
+use euclid::*;
+pub use euclid::{Point2D, Rect, Size2D, UnknownUnit, Vector2D};
 
 pub struct TileSpace;
 pub struct RoomSpace;
 pub struct MapSpace;
 pub struct ScreenSpace;
-
 
 pub type TileRect = Rect<i32, TileSpace>;
 pub type TilePoint = Point2D<i32, TileSpace>;
@@ -18,13 +17,13 @@ pub type RoomPoint = Point2D<i32, RoomSpace>;
 pub type RoomSize = Size2D<i32, RoomSpace>;
 pub type RoomVector = Vector2D<i32, RoomSpace>;
 
-pub type MapRectStrict =  Rect<i32, MapSpace>;
+pub type MapRectStrict = Rect<i32, MapSpace>;
 pub type MapRectPrecise = Rect<f32, MapSpace>;
-pub type MapPointStrict =  Point2D<i32, MapSpace>;
+pub type MapPointStrict = Point2D<i32, MapSpace>;
 pub type MapPointPrecise = Point2D<f32, MapSpace>;
-pub type MapSizeStrict =  Size2D<i32, MapSpace>;
+pub type MapSizeStrict = Size2D<i32, MapSpace>;
 pub type MapSizePrecise = Size2D<f32, MapSpace>;
-pub type MapVectorStrict =  Vector2D<i32, MapSpace>;
+pub type MapVectorStrict = Vector2D<i32, MapSpace>;
 pub type MapVectorPrecise = Vector2D<f32, MapSpace>;
 
 pub type ScreenRect = Rect<f32, ScreenSpace>;
@@ -34,14 +33,30 @@ pub type ScreenVector = Vector2D<f32, ScreenSpace>;
 
 pub type MapToScreen = Transform2D<f32, MapSpace, ScreenSpace>;
 
-pub fn point_tile_to_room(pt: &TilePoint) -> RoomPoint { (*pt * 8).cast_unit() }
-pub fn point_room_to_tile(pt: &RoomPoint) -> TilePoint { (*pt / 8).cast_unit() }
-pub fn size_tile_to_room(pt: &TileSize) -> RoomSize { (*pt * 8).cast_unit() }
-pub fn size_room_to_tile(pt: &RoomSize) -> TileSize { (*pt / 8).cast_unit() }
-pub fn vector_tile_to_room(pt: &TileVector) -> RoomVector { (*pt * 8).cast_unit() }
-pub fn vector_room_to_tile(pt: &RoomVector) -> TileVector { (*pt / 8).cast_unit() }
-pub fn rect_tile_to_room(pt: &TileRect) -> RoomRect { (*pt * 8).cast_unit() }
-pub fn rect_room_to_tile(pt: &RoomRect) -> TileRect { (*pt / 8).cast_unit() }
+pub fn point_tile_to_room(pt: &TilePoint) -> RoomPoint {
+    (*pt * 8).cast_unit()
+}
+pub fn point_room_to_tile(pt: &RoomPoint) -> TilePoint {
+    (*pt / 8).cast_unit()
+}
+pub fn size_tile_to_room(pt: &TileSize) -> RoomSize {
+    (*pt * 8).cast_unit()
+}
+pub fn size_room_to_tile(pt: &RoomSize) -> TileSize {
+    (*pt / 8).cast_unit()
+}
+pub fn vector_tile_to_room(pt: &TileVector) -> RoomVector {
+    (*pt * 8).cast_unit()
+}
+pub fn vector_room_to_tile(pt: &RoomVector) -> TileVector {
+    (*pt / 8).cast_unit()
+}
+pub fn rect_tile_to_room(pt: &TileRect) -> RoomRect {
+    (*pt * 8).cast_unit()
+}
+pub fn rect_room_to_tile(pt: &RoomRect) -> TileRect {
+    (*pt / 8).cast_unit()
+}
 
 pub fn point_lose_precision(pt: &MapPointPrecise) -> MapPointStrict {
     MapPointStrict::new(pt.x.floor() as i32, pt.y.floor() as i32)
@@ -55,7 +70,7 @@ pub struct RectPointIter<T, U> {
 
 impl<T, U> Iterator for RectPointIter<T, U>
 where
-    T: core::ops::Add<Output = T> + Copy + PartialOrd
+    T: core::ops::Add<Output = T> + Copy + PartialOrd,
 {
     type Item = Point2D<T, U>;
 
@@ -83,23 +98,36 @@ where
 
 pub fn rect_point_iter<T, U>(rect: Rect<T, U>, step: T) -> RectPointIter<T, U>
 where
-    T: core::ops::Add<T> + Copy + PartialOrd
+    T: core::ops::Add<T> + Copy + PartialOrd,
 {
     RectPointIter {
-        rect, step,
+        rect,
+        step,
         next_pt: Some(rect.origin),
     }
 }
 
 pub fn rect_normalize<T, U>(rect: &Rect<T, U>) -> Rect<T, U>
-where T: num_traits::Signed + Copy + PartialOrd
+where
+    T: num_traits::Signed + Copy + PartialOrd,
 {
     Rect::new(
         Point2D::new(
-            rect.origin.x + (if rect.size.width < T::zero() { rect.size.width } else { T::zero() }),
-            rect.origin.y + (if rect.size.height < T::zero() { rect.size.height } else { T::zero() }),
+            rect.origin.x
+                + (if rect.size.width < T::zero() {
+                    rect.size.width
+                } else {
+                    T::zero()
+                }),
+            rect.origin.y
+                + (if rect.size.height < T::zero() {
+                    rect.size.height
+                } else {
+                    T::zero()
+                }),
         ),
-        Size2D::new(rect.size.width.abs(), rect.size.height.abs()))
+        Size2D::new(rect.size.width.abs(), rect.size.height.abs()),
+    )
 }
 
 #[derive(Debug)]
@@ -128,7 +156,8 @@ impl<T> TileGrid<T> {
         if pt.x < 0 || pt.x >= self.stride as i32 || pt.y < 0 {
             None
         } else {
-            self.tiles.get_mut((pt.x + pt.y * self.stride as i32) as usize)
+            self.tiles
+                .get_mut((pt.x + pt.y * self.stride as i32) as usize)
         }
     }
 
@@ -138,7 +167,7 @@ impl<T> TileGrid<T> {
 }
 impl<T: Clone + Default> TileGrid<T> {
     pub fn get_or_default(&self, pt: TilePoint) -> T {
-        self.get(pt).cloned().unwrap_or(T::default())
+        self.get(pt).cloned().unwrap_or_default()
     }
 
     pub fn new_default(size: TileSize) -> Self {

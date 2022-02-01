@@ -1,10 +1,10 @@
+use include_dir::{include_dir, Dir, File};
 use std::io;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::slice::Iter;
-use include_dir::{Dir, File, include_dir};
 
-use crate::config::walker::{ConfigSource};
+use crate::config::walker::ConfigSource;
 
 const EMBEDDED: Dir = include_dir!("conf");
 #[derive(Copy, Clone)]
@@ -22,7 +22,8 @@ impl ConfigSource for EmbeddedSource {
             (EMBEDDED, false)
         };
 
-        dir.dirs().iter()
+        dir.dirs()
+            .iter()
             .filter(move |_| go)
             .map(|d| d.path().to_owned())
     }
@@ -51,7 +52,7 @@ impl EmbeddedFileIter {
     fn new(bunk: bool, start: Dir<'static>) -> Self {
         Self {
             bunk,
-            stack: vec![(start, false, 0)]
+            stack: vec![(start, false, 0)],
         }
     }
 }
@@ -70,13 +71,11 @@ impl Iterator for EmbeddedFileIter {
                     self.stack.push((cur_dir, true, cur_idx + 1));
                     self.stack.push((*next_dir, false, 0));
                 }
+            } else if let Some(file) = cur_dir.files.get(cur_idx) {
+                self.stack.push((cur_dir, false, cur_idx + 1));
+                return Some(file.path().to_owned());
             } else {
-                if let Some(file) = cur_dir.files.get(cur_idx) {
-                    self.stack.push((cur_dir, false, cur_idx + 1));
-                    return Some(file.path().to_owned())
-                } else {
-                    self.stack.push((cur_dir, true, 0));
-                }
+                self.stack.push((cur_dir, true, 0));
             }
         }
 

@@ -1,12 +1,14 @@
-use nom::{IResult, named, map_res, tuple, opt, tag, alt, delimited, recognize, one_of, many0, pair,
-          character::complete::multispace0 as ws, is_not, number::complete::double, error::Error,
-          preceded, separated_list0, separated_pair, is_a, complete, terminated, eof, do_parse,
-          fold_many0, error::ErrorKind};
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
-use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
-use std::fmt::Formatter;
 use celeste::binel::BinElAttr;
+use nom::{
+    alt, character::complete::multispace0 as ws, complete, delimited, do_parse, eof, error::Error,
+    error::ErrorKind, fold_many0, is_a, is_not, many0, map_res, named, number::complete::double,
+    one_of, opt, pair, preceded, recognize, separated_list0, separated_pair, tag, terminated,
+    tuple, IResult,
+};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::collections::HashMap;
+use std::fmt::Formatter;
+use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone, PartialEq)] // WHY DO WE NEED CLONE OMG
 pub enum Expression {
@@ -14,7 +16,11 @@ pub enum Expression {
     Atom(String),
     BinOp(BinOp, Box<(Expression, Expression)>),
     UnOp(UnOp, Box<Expression>),
-    Match { test: Box<Expression>, arms: HashMap<Const, Expression>, default: Box<Expression> }
+    Match {
+        test: Box<Expression>,
+        arms: HashMap<Const, Expression>,
+        default: Box<Expression>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,19 +40,23 @@ pub enum BinOp {
 
 impl std::fmt::Display for BinOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            BinOp::Add => "+",
-            BinOp::Sub => "-",
-            BinOp::Mul => "*",
-            BinOp::Div => "/",
-            BinOp::Mod => "%",
-            BinOp::Lt => "<",
-            BinOp::Gt => ">",
-            BinOp::Le => "<=",
-            BinOp::Ge => ">=",
-            BinOp::Eq => "==",
-            BinOp::Ne => "!=",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                BinOp::Add => "+",
+                BinOp::Sub => "-",
+                BinOp::Mul => "*",
+                BinOp::Div => "/",
+                BinOp::Mod => "%",
+                BinOp::Lt => "<",
+                BinOp::Gt => ">",
+                BinOp::Le => "<=",
+                BinOp::Ge => ">=",
+                BinOp::Eq => "==",
+                BinOp::Ne => "!=",
+            }
+        )
     }
 }
 
@@ -58,10 +68,14 @@ pub enum UnOp {
 
 impl std::fmt::Display for UnOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            UnOp::Neg => "-",
-            UnOp::Exists => "?",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                UnOp::Neg => "-",
+                UnOp::Exists => "?",
+            }
+        )
     }
 }
 
@@ -76,12 +90,12 @@ impl std::fmt::Display for Const {
         match self {
             Const::Number(n) => write!(f, "{}", n),
             Const::String(s) => {
-                if !s.contains("\"") {
+                if !s.contains('\"') {
                     write!(f, "\"{}\"", s)
                 } else {
                     write!(f, "\'{}\'", s)
                 }
-            },
+            }
         }
     }
 }
@@ -233,30 +247,37 @@ named!(match_arm<&str, (Option<Const>, Expression)>,
     separated_pair!(match_case, delimited!(ws, tag!("=>"), ws), expression_4)
 );
 
-fn construct_match_expr(test: Expression, arms_list: Vec<(Option<Const>, Expression)>) -> Result<Expression, ()> {
+fn construct_match_expr(
+    test: Expression,
+    arms_list: Vec<(Option<Const>, Expression)>,
+) -> Result<Expression, ()> {
     let mut arms: HashMap<Const, Expression> = HashMap::new();
     let mut default: Option<Expression> = None;
     for (case, expr) in arms_list {
         match case {
             Some(real_case) => {
                 if arms.contains_key(&real_case) {
-                    return Err(())
+                    return Err(());
                 }
                 arms.insert(real_case, expr);
-            },
+            }
             None => {
                 if default.is_some() {
-                    return Err(())
+                    return Err(());
                 }
                 default = Some(expr);
             }
         }
     }
 
-    if default.is_none() {
-        Err(())
+    if let Some(default) = default {
+        Ok(Expression::Match {
+            test: Box::new(test),
+            arms,
+            default: Box::new(default),
+        })
     } else {
-        Ok(Expression::Match {test: Box::new(test), arms, default: Box::new(default.unwrap())})
+        Err(())
     }
 }
 
@@ -371,8 +392,8 @@ named!(expression<&str, Expression>,
 
 impl<'de> Deserialize<'de> for Expression {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         let s: String = Deserialize::deserialize(deserializer)?;
         let parsed = expression(s.as_str());
@@ -386,8 +407,8 @@ impl<'de> Deserialize<'de> for Expression {
 
 impl Serialize for Expression {
     fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         format!("{}", self).serialize(s)
     }
@@ -399,9 +420,19 @@ impl std::fmt::Display for Expression {
             Expression::Const(c) => write!(f, "{}", c),
             Expression::Atom(s) => write!(f, "{}", s),
             // TODO analyze operator precedence to tell if parens are necessary
-            Expression::BinOp(op, children) => write!(f, "({} {} {})", children.as_ref().0, op, children.as_ref().1),
+            Expression::BinOp(op, children) => write!(
+                f,
+                "({} {} {})",
+                children.as_ref().0,
+                op,
+                children.as_ref().1
+            ),
             Expression::UnOp(op, child) => write!(f, "{}{}", op, child.as_ref()),
-            Expression::Match { test, arms, default } => {
+            Expression::Match {
+                test,
+                arms,
+                default,
+            } => {
                 write!(f, "match {} {{ ", test.as_ref())?;
                 for (matching, expression) in arms {
                     write!(f, "{} => {}, ", matching, expression)?;
@@ -420,42 +451,94 @@ impl Expression {
     pub fn evaluate(&self, env: &HashMap<&str, Const>) -> Result<Const, String> {
         match self {
             Expression::Const(c) => Ok(c.clone()),
-            Expression::Atom(name) =>
-                env.get(name.as_str())
-                .map(|x| x.clone())
+            Expression::Atom(name) => env
+                .get(name.as_str())
+                .cloned()
                 .ok_or_else(|| format!("Name \"{}\" undefined", name)),
             Expression::BinOp(op, children) => {
                 let child1val = children.as_ref().0.evaluate(env)?;
                 let child2val = children.as_ref().1.evaluate(env)?;
                 match op {
                     BinOp::Add => {
-                        if let (&Const::Number(Number(n1)), &Const::Number(Number(n2))) = (&child1val, &child2val) {
+                        if let (&Const::Number(Number(n1)), &Const::Number(Number(n2))) =
+                            (&child1val, &child2val)
+                        {
                             Ok(Const::Number(Number(n1 + n2)))
                         } else {
-                            Ok(Const::String(child1val.as_string()?.to_owned() + &child2val.as_string()?))
+                            Ok(Const::String(
+                                child1val.as_string()? + &child2val.as_string()?,
+                            ))
                         }
                     }
-                    BinOp::Sub => Ok(Const::Number(Number(child1val.as_number()?.0 - child2val.as_number()?.0))),
-                    BinOp::Mul => Ok(Const::Number(Number(child1val.as_number()?.0 * child2val.as_number()?.0))),
+                    BinOp::Sub => Ok(Const::Number(Number(
+                        child1val.as_number()?.0 - child2val.as_number()?.0,
+                    ))),
+                    BinOp::Mul => Ok(Const::Number(Number(
+                        child1val.as_number()?.0 * child2val.as_number()?.0,
+                    ))),
                     // division by zero can produce nan and that's okay (?)
-                    BinOp::Div => Ok(Const::Number(Number(child1val.as_number()?.0 / child2val.as_number()?.0))),
-                    BinOp::Mod => Ok(Const::Number(Number(child1val.as_number()?.0 % child2val.as_number()?.0))),
-                    BinOp::Lt => Ok(Const::Number(Number(if child1val.as_number()?.0 < child2val.as_number()?.0 { 1.0 } else { 0.0 }))),
-                    BinOp::Gt => Ok(Const::Number(Number(if child1val.as_number()?.0 > child2val.as_number()?.0 { 1.0 } else { 0.0 }))),
-                    BinOp::Le => Ok(Const::Number(Number(if child1val.as_number()?.0 <= child2val.as_number()?.0 { 1.0 } else { 0.0 }))),
-                    BinOp::Ge => Ok(Const::Number(Number(if child1val.as_number()?.0 >= child2val.as_number()?.0 { 1.0 } else { 0.0 }))),
-                    BinOp::Eq => Ok(Const::Number(Number(if child1val == child2val { 1.0 } else { 0.0 }))),
-                    BinOp::Ne => Ok(Const::Number(Number(if child1val != child2val { 1.0 } else { 0.0 }))),
+                    BinOp::Div => Ok(Const::Number(Number(
+                        child1val.as_number()?.0 / child2val.as_number()?.0,
+                    ))),
+                    BinOp::Mod => Ok(Const::Number(Number(
+                        child1val.as_number()?.0 % child2val.as_number()?.0,
+                    ))),
+                    BinOp::Lt => Ok(Const::Number(Number(
+                        if child1val.as_number()?.0 < child2val.as_number()?.0 {
+                            1.0
+                        } else {
+                            0.0
+                        },
+                    ))),
+                    BinOp::Gt => Ok(Const::Number(Number(
+                        if child1val.as_number()?.0 > child2val.as_number()?.0 {
+                            1.0
+                        } else {
+                            0.0
+                        },
+                    ))),
+                    BinOp::Le => Ok(Const::Number(Number(
+                        if child1val.as_number()?.0 <= child2val.as_number()?.0 {
+                            1.0
+                        } else {
+                            0.0
+                        },
+                    ))),
+                    BinOp::Ge => Ok(Const::Number(Number(
+                        if child1val.as_number()?.0 >= child2val.as_number()?.0 {
+                            1.0
+                        } else {
+                            0.0
+                        },
+                    ))),
+                    BinOp::Eq => Ok(Const::Number(Number(if child1val == child2val {
+                        1.0
+                    } else {
+                        0.0
+                    }))),
+                    BinOp::Ne => Ok(Const::Number(Number(if child1val != child2val {
+                        1.0
+                    } else {
+                        0.0
+                    }))),
                 }
-            },
+            }
             Expression::UnOp(op, child) => {
                 let child_val = child.evaluate(env);
                 match op {
                     UnOp::Neg => Ok(Const::Number(Number(-child_val?.as_number()?.0))),
-                    UnOp::Exists => Ok(Const::Number(Number(if child_val.is_ok() { 1.0 } else { 0.0 }))),
+                    UnOp::Exists => Ok(Const::Number(Number(if child_val.is_ok() {
+                        1.0
+                    } else {
+                        0.0
+                    }))),
                 }
-            },
-            Expression::Match { test, arms, default } => {
+            }
+            Expression::Match {
+                test,
+                arms,
+                default,
+            } => {
                 let expr_val = test.evaluate(env)?;
                 let resulting_expr = arms.get(&expr_val).unwrap_or(default);
                 resulting_expr.evaluate(env)
@@ -468,7 +551,7 @@ impl Const {
     pub fn as_number(&self) -> Result<Number, String> {
         match self {
             Const::Number(n) => Ok(n.clone()),
-            Const::String(s) => Err(format!("Expected number, found string \"{}\"", s))
+            Const::String(s) => Err(format!("Expected number, found string \"{}\"", s)),
         }
     }
 
@@ -481,14 +564,15 @@ impl Const {
     }
 
     pub fn from_num<N>(i: N) -> Const
-        where N: Into<f64>
+    where
+        N: Into<f64>,
     {
         Const::Number(Number(i.into()))
     }
 
     pub fn from_attr(a: &celeste::binel::BinElAttr) -> Const {
         match a {
-            BinElAttr::Bool(b) => Const::from_num(if *b {1} else {0}),
+            BinElAttr::Bool(b) => Const::from_num(if *b { 1 } else { 0 }),
             BinElAttr::Int(i) => Const::from_num(*i),
             BinElAttr::Float(f) => Const::from_num(*f),
             BinElAttr::Text(s) => Const::String(s.clone()),
@@ -504,14 +588,12 @@ mod test {
     fn test_expr2() {
         assert_eq!(
             expression("-x * y"),
-            Ok(("",
+            Ok((
+                "",
                 Expression::BinOp(
                     BinOp::Mul,
                     Box::new((
-                        Expression::UnOp(
-                            UnOp::Neg,
-                            Box::new(Expression::Atom("x".to_owned()))
-                        ),
+                        Expression::UnOp(UnOp::Neg, Box::new(Expression::Atom("x".to_owned()))),
                         Expression::Atom("y".to_owned())
                     ))
                 )
@@ -523,14 +605,12 @@ mod test {
     fn test_expr3() {
         assert_eq!(
             expression("-x + y"),
-            Ok(("",
+            Ok((
+                "",
                 Expression::BinOp(
                     BinOp::Add,
                     Box::new((
-                        Expression::UnOp(
-                            UnOp::Neg,
-                            Box::new(Expression::Atom("x".to_owned()))
-                        ),
+                        Expression::UnOp(UnOp::Neg, Box::new(Expression::Atom("x".to_owned()))),
                         Expression::Atom("y".to_owned())
                     ))
                 )
@@ -546,7 +626,8 @@ mod test {
 
     #[test]
     fn test_eval() {
-        let expr = expression("\
+        let expr = expression(
+            "\
         match x + 1 {\
           1 => x / 0,\
           2 => -x,\
@@ -554,7 +635,8 @@ mod test {
           4 => 1 + '2',\
           5 => 1 - '2',\
           _ => 'foo'\
-        }");
+        }",
+        );
         assert!(expr.is_ok());
         let expr = expr.unwrap().1;
 
@@ -581,7 +663,8 @@ mod test {
 
     #[test]
     fn test_display() {
-        let expr = expression("\
+        let expr = expression(
+            "\
         match x + 1 {\
           1 => x / 0,\
           2 => -x,\
@@ -589,7 +672,10 @@ mod test {
           4 => 1 + '2',\
           5 => 1 - '2',\
           _ => 'foo'\
-        }").unwrap().1;
+        }",
+        )
+        .unwrap()
+        .1;
         let expr_str = format!("{}", expr);
         let expr2 = expression(expr_str.as_str()).unwrap().1;
         assert_eq!(expr, expr2);

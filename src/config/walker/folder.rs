@@ -1,9 +1,9 @@
-use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io;
-use walkdir::{WalkDir, DirEntry};
+use std::path::{Path, PathBuf};
+use walkdir::{DirEntry, WalkDir};
 
-use crate::config::walker::{ConfigSource};
+use crate::config::walker::ConfigSource;
 
 pub struct FolderSource(PathBuf);
 

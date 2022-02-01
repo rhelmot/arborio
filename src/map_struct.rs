@@ -1,4 +1,5 @@
 use celeste::binel::*;
+use euclid::{Point2D, Size2D};
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -7,7 +8,6 @@ use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::sync::Mutex;
-use euclid::{Point2D, Size2D};
 
 use crate::units::*;
 
@@ -83,7 +83,6 @@ pub struct CelesteMapEntity {
     pub nodes: Vec<(i32, i32)>,
 }
 
-
 #[derive(Debug, Clone)]
 pub struct CelesteMapDecal {
     pub id: u32,
@@ -109,7 +108,6 @@ pub struct CelesteMapStyleground {
     pub color: Option<String>,
     pub blend_mode: Option<String>,
 }
-
 
 #[derive(Debug)]
 pub struct CelesteMapError {
@@ -199,7 +197,11 @@ impl CelesteMapLevel {
     }
 
     pub fn entity(&self, id: i32, trigger: bool) -> Option<&CelesteMapEntity> {
-        let entities = if trigger { &self.triggers } else { &self.entities };
+        let entities = if trigger {
+            &self.triggers
+        } else {
+            &self.entities
+        };
         if let Some(e) = entities.get(self.cache.borrow().last_entity_idx) {
             if e.id == id {
                 return Some(e);
@@ -215,15 +217,27 @@ impl CelesteMapLevel {
     }
 
     pub fn entity_mut(&mut self, id: i32, trigger: bool) -> Option<&mut CelesteMapEntity> {
-        let entities = if trigger { &mut self.triggers } else { &mut self.entities };
+        let entities = if trigger {
+            &mut self.triggers
+        } else {
+            &mut self.entities
+        };
         if let Some(e) = entities.get_mut(self.cache.borrow().last_entity_idx) {
             if e.id == id {
                 // hack around borrow checker
-                let entities = if trigger { &mut self.triggers } else { &mut self.entities };
+                let entities = if trigger {
+                    &mut self.triggers
+                } else {
+                    &mut self.entities
+                };
                 return entities.get_mut(self.cache.borrow().last_entity_idx);
             }
         }
-        let entities = if trigger { &mut self.triggers } else { &mut self.entities };
+        let entities = if trigger {
+            &mut self.triggers
+        } else {
+            &mut self.entities
+        };
         for (idx, e) in entities.iter_mut().enumerate() {
             if e.id == id {
                 self.cache.borrow_mut().last_entity_idx = idx;
@@ -250,15 +264,27 @@ impl CelesteMapLevel {
     }
 
     pub fn decal_mut(&mut self, id: u32, fg: bool) -> Option<&mut CelesteMapDecal> {
-        let decals = if fg { &mut self.fg_decals } else { &mut self.bg_decals };
+        let decals = if fg {
+            &mut self.fg_decals
+        } else {
+            &mut self.bg_decals
+        };
         if let Some(e) = decals.get_mut(self.cache.borrow().last_decal_idx) {
             if e.id == id {
                 // hack around borrow checker
-                let decals = if fg { &mut self.fg_decals } else { &mut self.bg_decals };
+                let decals = if fg {
+                    &mut self.fg_decals
+                } else {
+                    &mut self.bg_decals
+                };
                 return decals.get_mut(self.cache.borrow().last_decal_idx);
             }
         }
-        let decals = if fg { &mut self.fg_decals } else { &mut self.bg_decals };
+        let decals = if fg {
+            &mut self.fg_decals
+        } else {
+            &mut self.bg_decals
+        };
         for (idx, e) in decals.iter_mut().enumerate() {
             if e.id == id {
                 self.cache.borrow_mut().last_decal_idx = idx;
@@ -291,7 +317,10 @@ impl CelesteMapLevel {
         let mut result = TileGrid::new_default(size_room_to_tile(&self.bounds.size.cast_unit()));
         for entity in &self.entities {
             if entity.width != 0 && entity.height != 0 {
-                let rect = TileRect::new(TilePoint::new(entity.x/8, entity.y/8), TileSize::new(entity.width as i32/8, entity.height as i32/8));
+                let rect = TileRect::new(
+                    TilePoint::new(entity.x / 8, entity.y / 8),
+                    TileSize::new(entity.width as i32 / 8, entity.height as i32 / 8),
+                );
                 for pt in rect_point_iter(rect, 1) {
                     if let Some(spot) = result.get_mut(pt) {
                         *spot = FieldEntry::Entity(entity);
@@ -359,7 +388,11 @@ impl CelesteMapEntity {
         env
     }
 
-    pub fn make_node_env<'a>(&self, mut env: HashMap<&'a str, Const>, node_idx: usize) -> HashMap<&'a str, Const> {
+    pub fn make_node_env<'a>(
+        &self,
+        mut env: HashMap<&'a str, Const>,
+        node_idx: usize,
+    ) -> HashMap<&'a str, Const> {
         env.insert("nodeidx", Const::from_num(node_idx as f64));
         if let Some((x, y)) = self.nodes.get(node_idx) {
             env.insert("nodex", Const::from_num(*x));
@@ -388,16 +421,15 @@ impl CelesteMapEntity {
     }
 }
 
-
 macro_rules! expect_elem {
     ($elem:expr, $name:expr) => {
         if ($elem.name != $name) {
             return Err(CelesteMapError {
                 kind: CelesteMapErrorType::ParseError,
-                description: format!("Expected {} element, found {}", $name, $elem.name)
-            })
+                description: format!("Expected {} element, found {}", $name, $elem.name),
+            });
         }
-    }
+    };
 }
 
 pub fn from_binfile(binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
@@ -406,13 +438,25 @@ pub fn from_binfile(binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
     let filler = get_child(&binfile.root, "Filler")?;
     let levels = get_child(&binfile.root, "levels")?;
     let style = get_child(&binfile.root, "Style")?;
-    let style_fg = get_child(&style, "Foregrounds")?;
-    let style_bg = get_child(&style, "Backgrounds")?;
+    let style_fg = get_child(style, "Foregrounds")?;
+    let style_bg = get_child(style, "Backgrounds")?;
 
-    let filler_parsed = filler.children().map(|child| parse_filler_rect(child)).collect::<Result<_, CelesteMapError>>()?;
-    let style_fg_parsed = style_fg.children().map(|child| parse_styleground(child)).collect::<Result<_, CelesteMapError>>()?;
-    let style_bg_parsed = style_bg.children().map(|child| parse_styleground(child)).collect::<Result<_, CelesteMapError>>()?;
-    let levels_parsed = levels.children().map(|child| parse_level(child)).collect::<Result<_, CelesteMapError>>()?;
+    let filler_parsed = filler
+        .children()
+        .map(parse_filler_rect)
+        .collect::<Result<_, CelesteMapError>>()?;
+    let style_fg_parsed = style_fg
+        .children()
+        .map(parse_styleground)
+        .collect::<Result<_, CelesteMapError>>()?;
+    let style_bg_parsed = style_bg
+        .children()
+        .map(parse_styleground)
+        .collect::<Result<_, CelesteMapError>>()?;
+    let levels_parsed = levels
+        .children()
+        .map(parse_level)
+        .collect::<Result<_, CelesteMapError>>()?;
 
     Ok(CelesteMap {
         name: binfile.package,
@@ -465,20 +509,32 @@ fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
         music_progress: get_optional_attr(elem, "musicProgress")?.unwrap_or_default(),
         ambience_progress: get_optional_attr(elem, "ambienceProgress")?.unwrap_or_default(),
 
-        fg_tiles: parse_fgbg_tiles(get_child(elem, "solids")?, width/8, height/8)?,
-        bg_tiles: parse_fgbg_tiles(get_child(elem, "bg")?, width/8, height/8)?,
+        fg_tiles: parse_fgbg_tiles(get_child(elem, "solids")?, width / 8, height / 8)?,
+        bg_tiles: parse_fgbg_tiles(get_child(elem, "bg")?, width / 8, height / 8)?,
         object_tiles: match object_tiles {
             Some(v) => parse_object_tiles(v, width, height),
-            None => Ok(vec![-1; (width/8 * height/8) as usize])
+            None => Ok(vec![-1; (width / 8 * height / 8) as usize]),
         }?,
-        entities: get_child(elem, "entities")?.children().map(|child| parse_entity_trigger(child)).collect::<Result<_, CelesteMapError>>()?,
-        triggers: get_child(elem, "triggers")?.children().map(|child| parse_entity_trigger(child)).collect::<Result<_, CelesteMapError>>()?,
+        entities: get_child(elem, "entities")?
+            .children()
+            .map(parse_entity_trigger)
+            .collect::<Result<_, CelesteMapError>>()?,
+        triggers: get_child(elem, "triggers")?
+            .children()
+            .map(parse_entity_trigger)
+            .collect::<Result<_, CelesteMapError>>()?,
         fg_decals: match fg_decals {
-            Some(v) => v.children().map(|child| parse_decal(child)).collect::<Result<_, CelesteMapError>>()?,
+            Some(v) => v
+                .children()
+                .map(parse_decal)
+                .collect::<Result<_, CelesteMapError>>()?,
             None => vec![],
         },
         bg_decals: match bg_decals {
-            Some(v) => v.children().map(|child| parse_decal(child)).collect::<Result<_, CelesteMapError>>()?,
+            Some(v) => v
+                .children()
+                .map(parse_decal)
+                .collect::<Result<_, CelesteMapError>>()?,
             None => vec![],
         },
 
@@ -489,7 +545,10 @@ fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
 fn parse_fgbg_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<char>, CelesteMapError> {
     let offset_x: i32 = get_optional_attr(elem, "offsetX")?.unwrap_or_default();
     let offset_y: i32 = get_optional_attr(elem, "offsetY")?.unwrap_or_default();
-    let exc = Err(CelesteMapError { kind: CelesteMapErrorType::OutOfRange, description: format!("{} contains out-of-range data", elem.name)});
+    let exc = Err(CelesteMapError {
+        kind: CelesteMapErrorType::OutOfRange,
+        description: format!("{} contains out-of-range data", elem.name),
+    });
     if offset_x < 0 || offset_y < 0 {
         return exc;
     }
@@ -520,7 +579,10 @@ fn parse_fgbg_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<char>, 
 fn parse_object_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<i32>, CelesteMapError> {
     let offset_x: i32 = get_optional_attr(elem, "offsetX")?.unwrap_or_default();
     let offset_y: i32 = get_optional_attr(elem, "offsetY")?.unwrap_or_default();
-    let exc = Err(CelesteMapError { kind: CelesteMapErrorType::OutOfRange, description: format!("{} contains out-of-range data", elem.name)});
+    let exc = Err(CelesteMapError {
+        kind: CelesteMapErrorType::OutOfRange,
+        description: format!("{} contains out-of-range data", elem.name),
+    });
     if offset_x < 0 || offset_y < 0 {
         return exc;
     }
@@ -538,7 +600,12 @@ fn parse_object_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<i32>,
                 continue;
             }
             let ch: i32 = match num.parse() {
-                Err(_) => return Err(CelesteMapError { kind: CelesteMapErrorType::ParseError, description: format!("Could not parse {} as int", num)}),
+                Err(_) => {
+                    return Err(CelesteMapError {
+                        kind: CelesteMapErrorType::ParseError,
+                        description: format!("Could not parse {} as int", num),
+                    })
+                }
                 Ok(v) => v,
             };
 
@@ -556,7 +623,13 @@ fn parse_object_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<i32>,
 }
 
 fn parse_entity_trigger(elem: &BinEl) -> Result<CelesteMapEntity, CelesteMapError> {
-    let basic_attrs: Vec<String> = vec!["id".to_string(), "x".to_string(), "y".to_string(), "width".to_string(), "height".to_string()];
+    let basic_attrs: Vec<String> = vec![
+        "id".to_string(),
+        "x".to_string(),
+        "y".to_string(),
+        "width".to_string(),
+        "height".to_string(),
+    ];
     Ok(CelesteMapEntity {
         id: get_attr(elem, "id")?,
         name: elem.name.clone(),
@@ -570,9 +643,12 @@ fn parse_entity_trigger(elem: &BinEl) -> Result<CelesteMapEntity, CelesteMapErro
             .map(|kv| (kv.0.clone(), kv.1.clone()))
             .filter(|kv| !basic_attrs.contains(kv.0.borrow()))
             .collect(),
-        nodes: elem.children().map(|child| -> Result<(i32, i32), CelesteMapError> {
+        nodes: elem
+            .children()
+            .map(|child| -> Result<(i32, i32), CelesteMapError> {
                 Ok((get_attr(child, "x")?, get_attr(child, "y")?))
-            }).collect::<Result<_, CelesteMapError>>()?,
+            })
+            .collect::<Result<_, CelesteMapError>>()?,
     })
 }
 
@@ -587,7 +663,7 @@ fn parse_decal(elem: &BinEl) -> Result<CelesteMapDecal, CelesteMapError> {
     })
 }
 
-fn parse_filler_rect(elem: & BinEl) -> Result<MapRectStrict, CelesteMapError> {
+fn parse_filler_rect(elem: &BinEl) -> Result<MapRectStrict, CelesteMapError> {
     expect_elem!(elem, "rect");
 
     let x: i32 = get_attr(elem, "x")?;
@@ -595,10 +671,13 @@ fn parse_filler_rect(elem: & BinEl) -> Result<MapRectStrict, CelesteMapError> {
     let w: i32 = get_attr(elem, "w")?;
     let h: i32 = get_attr(elem, "h")?;
 
-    Ok(MapRectStrict { origin: Point2D::new(x * 8, y * 8), size: Size2D::new(w * 8, h * 8) })
+    Ok(MapRectStrict {
+        origin: Point2D::new(x * 8, y * 8),
+        size: Size2D::new(w * 8, h * 8),
+    })
 }
 
-fn parse_styleground(elem :&BinEl) -> Result<CelesteMapStyleground, CelesteMapError> {
+fn parse_styleground(elem: &BinEl) -> Result<CelesteMapStyleground, CelesteMapError> {
     Ok(CelesteMapStyleground {
         name: elem.name.clone(),
         texture: get_optional_attr(elem, "texture")?,

@@ -7,7 +7,7 @@ use std::rc::Rc;
 use zip::read::ZipFile;
 use zip::ZipArchive;
 
-use crate::config::walker::{ConfigSource};
+use crate::config::walker::ConfigSource;
 
 impl<R: Read + Seek> ConfigSource for ZipArchive<R> {
     type DirIter = impl Iterator<Item = PathBuf>;
@@ -22,7 +22,7 @@ impl<R: Read + Seek> ConfigSource for ZipArchive<R> {
                 if f.is_dir() {
                     let name = f.mangled_name();
                     if let Ok(rest) = name.strip_prefix(path) {
-                        if rest.iter().collect::<Vec<_>>().len() == 1 {
+                        if rest.components().count() == 1 {
                             seen.insert(name);
                         }
                     }
@@ -49,13 +49,17 @@ impl<R: Read + Seek> ConfigSource for ZipArchive<R> {
     }
 
     fn get_file(&mut self, path: &Path) -> Option<Self::FileRead> {
-        self.by_name(path.to_str().expect("Fatal error: non-utf8 config filepath"))
-            .ok()
-            .map(|mut f| {
-                let mut buf = Vec::new();
-                buf.reserve_exact(f.size() as usize);
-                f.read_exact(buf.as_mut_slice()).expect("Fatal error: corrupt zip file");
-                Cursor::new(buf)
-            })
+        self.by_name(
+            path.to_str()
+                .expect("Fatal error: non-utf8 config filepath"),
+        )
+        .ok()
+        .map(|mut f| {
+            let mut buf = Vec::new();
+            buf.reserve_exact(f.size() as usize);
+            f.read_exact(buf.as_mut_slice())
+                .expect("Fatal error: corrupt zip file");
+            Cursor::new(buf)
+        })
     }
 }

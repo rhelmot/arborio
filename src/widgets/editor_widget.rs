@@ -1,40 +1,72 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::collections::HashMap;
-use std::time;
-use std::env;
-use lazy_static::lazy_static;
-use vizia::*;
+use euclid::{Angle, Point2D, Rect, Size2D, Transform2D, UnknownUnit, Vector2D};
 use femtovg::{Color, ImageFlags, Paint, Path, PixelFormat, RenderTarget};
-use euclid::{Rect, Point2D, Vector2D, Size2D, UnknownUnit, Transform2D, Angle};
+use lazy_static::lazy_static;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::env;
+use std::rc::Rc;
+use std::time;
+use vizia::*;
 
-use crate::map_struct::{CelesteMapEntity, CelesteMapLevel, FieldEntry, CelesteMapDecal};
-use crate::config::entity_config::{DrawElement};
+use crate::app_state::{AppSelection, AppState};
+use crate::assets;
+use crate::atlas_img::SpriteReference;
+use crate::autotiler::AutoTiler;
+use crate::config::entity_config::DrawElement;
 use crate::config::entity_expression::{Const, Number};
 use crate::map_struct;
-use crate::atlas_img::SpriteReference;
-use crate::assets;
-use crate::app_state::{AppSelection, AppState};
+use crate::map_struct::{CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, FieldEntry};
+use crate::tools::{Tool, TOOLS};
 use crate::units::*;
-use crate::autotiler::AutoTiler;
-use crate::tools::{TOOLS, Tool};
 
 lazy_static! {
-    static ref PERF_MONITOR: bool = {
-        env::var("ARBORIO_PERF_MONITOR").is_ok()
-    };
+    static ref PERF_MONITOR: bool = { env::var("ARBORIO_PERF_MONITOR").is_ok() };
 }
 
-const BACKDROP_COLOR: Color          = Color { r: 0.08, g: 0.21, b: 0.08, a: 1.00 };
-const FILLER_COLOR: Color            = Color { r: 0.50, g: 0.25, b: 0.00, a: 1.00 };
-const ROOM_EMPTY_COLOR: Color        = Color { r: 0.13, g: 0.25, b: 0.13, a: 1.00 };
-const ROOM_DESELECTED_COLOR: Color   = Color { r: 0.00, g: 0.00, b: 0.00, a: 0.30 };
-const ROOM_FG_COLOR: Color           = Color { r: 0.21, g: 0.38, b: 0.88, a: 1.00 };
-const ROOM_BG_COLOR: Color           = Color { r: 0.08, g: 0.08, b: 0.25, a: 1.00 };
-const ROOM_ENTITY_COLOR: Color       = Color { r: 1.00, g: 0.00, b: 0.00, a: 1.00 };
+const BACKDROP_COLOR: Color = Color {
+    r: 0.08,
+    g: 0.21,
+    b: 0.08,
+    a: 1.00,
+};
+const FILLER_COLOR: Color = Color {
+    r: 0.50,
+    g: 0.25,
+    b: 0.00,
+    a: 1.00,
+};
+const ROOM_EMPTY_COLOR: Color = Color {
+    r: 0.13,
+    g: 0.25,
+    b: 0.13,
+    a: 1.00,
+};
+const ROOM_DESELECTED_COLOR: Color = Color {
+    r: 0.00,
+    g: 0.00,
+    b: 0.00,
+    a: 0.30,
+};
+const ROOM_FG_COLOR: Color = Color {
+    r: 0.21,
+    g: 0.38,
+    b: 0.88,
+    a: 1.00,
+};
+const ROOM_BG_COLOR: Color = Color {
+    r: 0.08,
+    g: 0.08,
+    b: 0.25,
+    a: 1.00,
+};
+const ROOM_ENTITY_COLOR: Color = Color {
+    r: 1.00,
+    g: 0.00,
+    b: 0.00,
+    a: 1.00,
+};
 
-pub struct EditorWidget {
-}
+pub struct EditorWidget {}
 
 impl EditorWidget {
     pub fn new(cx: &mut Context) -> Handle<Self> {
@@ -45,7 +77,9 @@ impl EditorWidget {
 impl View for EditorWidget {
     fn event(&mut self, cx: &mut Context, event: &mut Event) {
         if let Some(window_event) = event.message.downcast() {
-            if let WindowEvent::SetCursor(_) = window_event { return }
+            if let WindowEvent::SetCursor(_) = window_event {
+                return;
+            }
 
             // TODO: nuance
             cx.style.needs_redraw = true;
@@ -53,7 +87,9 @@ impl View for EditorWidget {
             if let WindowEvent::MouseDown(..) = &window_event {
                 cx.focused = cx.current;
             }
-            let state = cx.data::<AppState>().expect("EditorWidget must have an AppState in its ancestry");
+            let state = cx
+                .data::<AppState>()
+                .expect("EditorWidget must have an AppState in its ancestry");
             let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[state.current_tool];
             let events = tool.event(window_event, state, cx);
             let cursor = tool.cursor(cx, state);
@@ -65,17 +101,28 @@ impl View for EditorWidget {
     }
 
     fn draw(&self, cx: &mut Context, canvas: &mut Canvas) {
-        let state = cx.data::<AppState>().expect("EditorWidget must have an AppState in its ancestry");
+        let state = cx
+            .data::<AppState>()
+            .expect("EditorWidget must have an AppState in its ancestry");
         let entity = cx.current;
         let bounds = cx.cache.get_bounds(entity);
-        canvas.clear_rect(bounds.x as u32, bounds.y as u32, bounds.w as u32, bounds.h as u32, BACKDROP_COLOR);
+        canvas.clear_rect(
+            bounds.x as u32,
+            bounds.y as u32,
+            bounds.w as u32,
+            bounds.h as u32,
+            BACKDROP_COLOR,
+        );
         let t = &state.transform;
         canvas.set_transform(t.m11, t.m12, t.m21, t.m22, t.m31.round(), t.m32.round());
 
         if let Some(map) = &state.map {
             if *PERF_MONITOR {
                 let now = time::Instant::now();
-                println!("Drew {}ms ago", (now - *state.last_draw.borrow()).as_millis());
+                println!(
+                    "Drew {}ms ago",
+                    (now - *state.last_draw.borrow()).as_millis()
+                );
                 *state.last_draw.borrow_mut() = now;
             }
 
@@ -97,7 +144,13 @@ impl View for EditorWidget {
                 let target = if let Some(target) = cache.render_cache {
                     target
                 } else {
-                    canvas.create_image_empty(room.bounds.width() as usize, room.bounds.height() as usize, PixelFormat::Rgba8, ImageFlags::NEAREST | ImageFlags::FLIP_Y)
+                    canvas
+                        .create_image_empty(
+                            room.bounds.width() as usize,
+                            room.bounds.height() as usize,
+                            PixelFormat::Rgba8,
+                            ImageFlags::NEAREST | ImageFlags::FLIP_Y,
+                        )
                         .expect("Failed to allocate ")
                 };
                 cache.render_cache = Some(target);
@@ -108,15 +161,32 @@ impl View for EditorWidget {
                     canvas.set_render_target(RenderTarget::Image(target));
 
                     canvas.clear_rect(
-                        0, 0,
+                        0,
+                        0,
                         room.bounds.width() as u32,
                         room.bounds.height() as u32,
                         ROOM_EMPTY_COLOR,
                     );
                     draw_tiles(canvas, room, false);
                     draw_decals(canvas, room, false);
-                    draw_triggers(canvas, room, if idx == state.current_room { state.current_selected } else { None });
-                    draw_entities(canvas, room, if idx == state.current_room { state.current_selected } else { None });
+                    draw_triggers(
+                        canvas,
+                        room,
+                        if idx == state.current_room {
+                            state.current_selected
+                        } else {
+                            None
+                        },
+                    );
+                    draw_entities(
+                        canvas,
+                        room,
+                        if idx == state.current_room {
+                            state.current_selected
+                        } else {
+                            None
+                        },
+                    );
                     draw_tiles(canvas, room, true);
                     draw_decals(canvas, room, true);
 
@@ -127,15 +197,19 @@ impl View for EditorWidget {
 
                 let mut path = Path::new();
                 path.rect(
-                    0.0, 0.0,
+                    0.0,
+                    0.0,
                     room.bounds.width() as f32,
                     room.bounds.height() as f32,
                 );
                 let paint = Paint::image(
-                    target, 0.0, 0.0,
+                    target,
+                    0.0,
+                    0.0,
                     room.bounds.width() as f32,
                     room.bounds.height() as f32,
-                    0.0, 1.0,
+                    0.0,
+                    1.0,
                 );
                 canvas.fill_path(&mut path, paint);
                 if idx != state.current_room {
@@ -156,8 +230,14 @@ fn draw_decals(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
         if let Some(texture) = decal_texture(decal) {
             let scale = Point2D::new(decal.scale_x, decal.scale_y);
             assets::GAMEPLAY_ATLAS.draw_sprite(
-                canvas, texture, Point2D::new(decal.x, decal.y).cast(),
-                None, None, Some(scale), None, 0.0,
+                canvas,
+                texture,
+                Point2D::new(decal.x, decal.y).cast(),
+                None,
+                None,
+                Some(scale),
+                None,
+                0.0,
             );
         } else {
             dbg!(decal);
@@ -166,7 +246,8 @@ fn draw_decals(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
 }
 
 pub fn decal_texture(decal: &CelesteMapDecal) -> Option<SpriteReference> {
-    let path = std::path::Path::new("decals").join(std::path::Path::new(&decal.texture).with_extension(""));
+    let path = std::path::Path::new("decals")
+        .join(std::path::Path::new(&decal.texture).with_extension(""));
     assets::GAMEPLAY_ATLAS.lookup(path.to_str().unwrap())
 }
 
@@ -184,8 +265,11 @@ fn draw_tiles(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
             let rx = (tx * 8) as f32;
             let ry = (ty * 8) as f32;
             let tile = tiles[(tx + ty * tstride) as usize];
-            if let Some(tile) = tiles_asset.get(&tile).and_then(|tileset| tileset.tile(pt, &mut |pt| room.tile(pt, fg))) {
-                assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, rx, ry, Color::white().into());
+            if let Some(tile) = tiles_asset
+                .get(&tile)
+                .and_then(|tileset| tileset.tile(pt, &mut |pt| room.tile(pt, fg)))
+            {
+                assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, rx, ry, Color::white());
             }
         }
     }
@@ -194,25 +278,25 @@ fn draw_tiles(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
 fn draw_entities(canvas: &mut Canvas, room: &CelesteMapLevel, selection: Option<AppSelection>) {
     let field = room.occupancy_field();
     for entity in &room.entities {
-        let selected = match selection {
-            Some(AppSelection::EntityBody(id, false)) | Some(AppSelection::EntityNode(id, _, false)) if id == entity.id => true,
-            _ => false,
-        };
+        let selected = matches!(selection, Some(AppSelection::EntityBody(id, false)) | Some(AppSelection::EntityNode(id, _, false)) if id == entity.id);
         draw_entity(canvas, entity, &field, selected, false);
     }
 }
 
 fn draw_triggers(canvas: &mut Canvas, room: &CelesteMapLevel, selection: Option<AppSelection>) {
     for trigger in &room.triggers {
-        let selected = match selection {
-            Some(AppSelection::EntityBody(id, true)) | Some(AppSelection::EntityNode(id, _, true)) if id == trigger.id => true,
-            _ => false,
-        };
+        let selected = matches!(selection, Some(AppSelection::EntityBody(id, true)) | Some(AppSelection::EntityNode(id, _, true)) if id == trigger.id);
         draw_entity(canvas, trigger, &TileGrid::empty(), selected, true);
     }
 }
 
-pub fn draw_entity(canvas: &mut Canvas, entity: &CelesteMapEntity, field: &TileGrid<FieldEntry>, selected: bool, trigger: bool) {
+pub fn draw_entity(
+    canvas: &mut Canvas,
+    entity: &CelesteMapEntity,
+    field: &TileGrid<FieldEntry>,
+    selected: bool,
+    trigger: bool,
+) {
     let config = assets::get_entity_config(&entity.name, trigger);
     let env = entity.make_env();
 
@@ -249,16 +333,30 @@ pub fn draw_entity(canvas: &mut Canvas, entity: &CelesteMapEntity, field: &TileG
     }
 }
 
-fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<&str, Const>, field: &TileGrid<FieldEntry>) -> Result<(), String> {
+fn draw_entity_directive(
+    canvas: &mut Canvas,
+    draw: &DrawElement,
+    env: &HashMap<&str, Const>,
+    field: &TileGrid<FieldEntry>,
+) -> Result<(), String> {
     match draw {
-        DrawElement::DrawRect { rect, color, border_color, border_thickness } => {
-            let x = rect.topleft.x.evaluate(&env)?.as_number()?.to_int() as f32;
-            let y = rect.topleft.y.evaluate(&env)?.as_number()?.to_int() as f32;
-            let width = rect.size.x.evaluate(&env)?.as_number()?.to_int() as f32;
-            let height = rect.size.y.evaluate(&env)?.as_number()?.to_int() as f32;
-            let fill = Paint::color(color.evaluate(&env)?);
-            let border_color_eval = border_color.evaluate(&env)?;
-            let border_thickness = if border_color_eval.a == 0.0 { 0.0 } else { *border_thickness as f32 };
+        DrawElement::DrawRect {
+            rect,
+            color,
+            border_color,
+            border_thickness,
+        } => {
+            let x = rect.topleft.x.evaluate(env)?.as_number()?.to_int() as f32;
+            let y = rect.topleft.y.evaluate(env)?.as_number()?.to_int() as f32;
+            let width = rect.size.x.evaluate(env)?.as_number()?.to_int() as f32;
+            let height = rect.size.y.evaluate(env)?.as_number()?.to_int() as f32;
+            let fill = Paint::color(color.evaluate(env)?);
+            let border_color_eval = border_color.evaluate(env)?;
+            let border_thickness = if border_color_eval.a == 0.0 {
+                0.0
+            } else {
+                *border_thickness as f32
+            };
             let mut border = Paint::color(border_color_eval);
             border.set_line_width(border_thickness);
             border.set_anti_alias(false);
@@ -272,14 +370,23 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
             canvas.fill_path(&mut path, fill);
             canvas.stroke_path(&mut path, border);
         }
-        DrawElement::DrawEllipse { rect, color, border_color, border_thickness } => {
-            let x = rect.topleft.x.evaluate(&env)?.as_number()?.to_int() as f32;
-            let y = rect.topleft.y.evaluate(&env)?.as_number()?.to_int() as f32;
-            let width = rect.size.x.evaluate(&env)?.as_number()?.to_int() as f32;
-            let height = rect.size.y.evaluate(&env)?.as_number()?.to_int() as f32;
-            let fill = Paint::color(color.evaluate(&env)?);
-            let border_color_eval = border_color.evaluate(&env)?;
-            let border_thickness = if border_color_eval.a == 0.0 { 0.0 } else { *border_thickness as f32 };
+        DrawElement::DrawEllipse {
+            rect,
+            color,
+            border_color,
+            border_thickness,
+        } => {
+            let x = rect.topleft.x.evaluate(env)?.as_number()?.to_int() as f32;
+            let y = rect.topleft.y.evaluate(env)?.as_number()?.to_int() as f32;
+            let width = rect.size.x.evaluate(env)?.as_number()?.to_int() as f32;
+            let height = rect.size.y.evaluate(env)?.as_number()?.to_int() as f32;
+            let fill = Paint::color(color.evaluate(env)?);
+            let border_color_eval = border_color.evaluate(env)?;
+            let border_thickness = if border_color_eval.a == 0.0 {
+                0.0
+            } else {
+                *border_thickness as f32
+            };
             let mut border = Paint::color(border_color_eval);
             border.set_line_width(border_thickness);
             border.set_anti_alias(false);
@@ -293,12 +400,18 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
             canvas.fill_path(&mut path, fill);
             canvas.stroke_path(&mut path, border);
         }
-        DrawElement::DrawLine { start, end, color, arrowhead, thickness } => {
-            let x1 = start.x.evaluate(&env)?.as_number()?.to_int() as f32;
-            let y1 = start.y.evaluate(&env)?.as_number()?.to_int() as f32;
-            let x2 = end.x.evaluate(&env)?.as_number()?.to_int() as f32;
-            let y2 = end.y.evaluate(&env)?.as_number()?.to_int() as f32;
-            let mut line = Paint::color(color.evaluate(&env)?);
+        DrawElement::DrawLine {
+            start,
+            end,
+            color,
+            arrowhead,
+            thickness,
+        } => {
+            let x1 = start.x.evaluate(env)?.as_number()?.to_int() as f32;
+            let y1 = start.y.evaluate(env)?.as_number()?.to_int() as f32;
+            let x2 = end.x.evaluate(env)?.as_number()?.to_int() as f32;
+            let y2 = end.y.evaluate(env)?.as_number()?.to_int() as f32;
+            let mut line = Paint::color(color.evaluate(env)?);
             line.set_line_width(*thickness as f32);
             line.set_anti_alias(false);
 
@@ -306,9 +419,12 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
             path.move_to(x1 as f32, y1 as f32);
             path.line_to(x2 as f32, y2 as f32);
             if *arrowhead {
-                let vec: Vector2D<f32, UnknownUnit> = Vector2D::new(x2 - x1, y2 - y1).normalize() * 8.0;
-                let vec1: Vector2D<f32, UnknownUnit> = Transform2D::rotation(Angle::radians(1.0)).transform_vector(vec);
-                let vec2: Vector2D<f32, UnknownUnit> = Transform2D::rotation(Angle::radians(-1.0)).transform_vector(vec);
+                let vec: Vector2D<f32, UnknownUnit> =
+                    Vector2D::new(x2 - x1, y2 - y1).normalize() * 8.0;
+                let vec1: Vector2D<f32, UnknownUnit> =
+                    Transform2D::rotation(Angle::radians(1.0)).transform_vector(vec);
+                let vec2: Vector2D<f32, UnknownUnit> =
+                    Transform2D::rotation(Angle::radians(-1.0)).transform_vector(vec);
                 let endpoint: Point2D<f32, UnknownUnit> = Point2D::new(x2, y2);
                 let tail1 = endpoint - vec1;
                 let tail2 = endpoint - vec2;
@@ -318,15 +434,21 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
             }
             canvas.stroke_path(&mut path, line);
         }
-        DrawElement::DrawCurve { start, end, middle, color, thickness } => {
-            let x1 = start.x.evaluate(&env)?.as_number()?.to_int() as f32;
-            let y1 = start.y.evaluate(&env)?.as_number()?.to_int() as f32;
-            let x4 = end.x.evaluate(&env)?.as_number()?.to_int() as f32;
-            let y4 = end.y.evaluate(&env)?.as_number()?.to_int() as f32;
+        DrawElement::DrawCurve {
+            start,
+            end,
+            middle,
+            color,
+            thickness,
+        } => {
+            let x1 = start.x.evaluate(env)?.as_number()?.to_int() as f32;
+            let y1 = start.y.evaluate(env)?.as_number()?.to_int() as f32;
+            let x4 = end.x.evaluate(env)?.as_number()?.to_int() as f32;
+            let y4 = end.y.evaluate(env)?.as_number()?.to_int() as f32;
             // the control point for the quadratic bezier
-            let xq = middle.x.evaluate(&env)?.as_number()?.to_int() as f32;
-            let yq = middle.y.evaluate(&env)?.as_number()?.to_int() as f32;
-            let mut line = Paint::color(color.evaluate(&env)?);
+            let xq = middle.x.evaluate(env)?.as_number()?.to_int() as f32;
+            let yq = middle.y.evaluate(env)?.as_number()?.to_int() as f32;
+            let mut line = Paint::color(color.evaluate(env)?);
             line.set_line_width(*thickness as f32);
             line.set_anti_alias(false);
 
@@ -341,34 +463,60 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
             path.bezier_to(x2, y2, x3, y3, x4, y4);
             canvas.stroke_path(&mut path, line);
         }
-        DrawElement::DrawPointImage { texture, point, justify_x, justify_y, scale, rot, color, } => {
-            let texture = texture.evaluate(&env)?.as_string()?;
+        DrawElement::DrawPointImage {
+            texture,
+            point,
+            justify_x,
+            justify_y,
+            scale,
+            rot,
+            color,
+        } => {
+            let texture = texture.evaluate(env)?.as_string()?;
             if texture.is_empty() {
                 return Ok(());
             }
-            let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
-            let point = point.evaluate_float(&env)?.to_point().cast_unit();
+            let sprite = assets::GAMEPLAY_ATLAS
+                .lookup(texture.as_str())
+                .ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
+            let point = point.evaluate_float(env)?.to_point().cast_unit();
             let justify = Vector2D::new(*justify_x, *justify_y);
-            let color = color.evaluate(&env)?;
-            let scale = scale.evaluate_float(&env)?.to_point().cast_unit();
-            let rot = rot.evaluate(&env)?.as_number()?.to_float();
-            assets::GAMEPLAY_ATLAS.draw_sprite(canvas, sprite, point, None, Some(justify), Some(scale), Some(color), rot);
+            let color = color.evaluate(env)?;
+            let scale = scale.evaluate_float(env)?.to_point().cast_unit();
+            let rot = rot.evaluate(env)?.as_number()?.to_float();
+            assets::GAMEPLAY_ATLAS.draw_sprite(
+                canvas,
+                sprite,
+                point,
+                None,
+                Some(justify),
+                Some(scale),
+                Some(color),
+                rot,
+            );
         }
-        DrawElement::DrawRectImage { texture, bounds, slice, scale, color, tiler } => {
-            let texture = texture.evaluate(&env)?.as_string()?;
+        DrawElement::DrawRectImage {
+            texture,
+            bounds,
+            slice,
+            scale,
+            color,
+            tiler,
+        } => {
+            let texture = texture.evaluate(env)?.as_string()?;
             if texture.is_empty() {
                 return Ok(());
             }
-            let slice_x = slice.topleft.x.evaluate(&env)?.as_number()?.to_int() as f32;
-            let slice_y = slice.topleft.y.evaluate(&env)?.as_number()?.to_int() as f32;
-            let slice_w = slice.size.x.evaluate(&env)?.as_number()?.to_int() as f32;
-            let slice_h = slice.size.y.evaluate(&env)?.as_number()?.to_int() as f32;
-            let bounds_x = bounds.topleft.x.evaluate(&env)?.as_number()?.to_int() as f32;
-            let bounds_y = bounds.topleft.y.evaluate(&env)?.as_number()?.to_int() as f32;
-            let bounds_w = bounds.size.x.evaluate(&env)?.as_number()?.to_int() as f32;
-            let bounds_h = bounds.size.y.evaluate(&env)?.as_number()?.to_int() as f32;
-            let color = color.evaluate(&env)?;
-            let tiler = tiler.evaluate(&env)?.as_string()?;
+            let slice_x = slice.topleft.x.evaluate(env)?.as_number()?.to_int() as f32;
+            let slice_y = slice.topleft.y.evaluate(env)?.as_number()?.to_int() as f32;
+            let slice_w = slice.size.x.evaluate(env)?.as_number()?.to_int() as f32;
+            let slice_h = slice.size.y.evaluate(env)?.as_number()?.to_int() as f32;
+            let bounds_x = bounds.topleft.x.evaluate(env)?.as_number()?.to_int() as f32;
+            let bounds_y = bounds.topleft.y.evaluate(env)?.as_number()?.to_int() as f32;
+            let bounds_w = bounds.size.x.evaluate(env)?.as_number()?.to_int() as f32;
+            let bounds_h = bounds.size.y.evaluate(env)?.as_number()?.to_int() as f32;
+            let color = color.evaluate(env)?;
+            let tiler = tiler.evaluate(env)?.as_string()?;
 
             let bounds = Rect {
                 origin: Point2D::new(bounds_x, bounds_y),
@@ -377,7 +525,9 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
 
             match tiler.as_str() {
                 "repeat" => {
-                    let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
+                    let sprite = assets::GAMEPLAY_ATLAS
+                        .lookup(texture.as_str())
+                        .ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
                     let slice: Rect<f32, UnknownUnit> = if slice_w == 0.0 {
                         Rect {
                             origin: Point2D::zero(),
@@ -392,10 +542,16 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
                     draw_tiled(canvas, sprite, &bounds, &slice, color);
                 }
                 "9slice" => {
-                    let sprite = assets::GAMEPLAY_ATLAS.lookup(texture.as_str()).ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
-                    let dim: Size2D<f32, UnknownUnit> = assets::GAMEPLAY_ATLAS.sprite_dimensions(sprite).cast();
+                    let sprite = assets::GAMEPLAY_ATLAS
+                        .lookup(texture.as_str())
+                        .ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
+                    let dim: Size2D<f32, UnknownUnit> =
+                        assets::GAMEPLAY_ATLAS.sprite_dimensions(sprite).cast();
                     if dim.width < 17.0 || dim.height < 17.0 {
-                        return Err(format!("Cannot draw {} as 9slice: must be at least 17x17", texture))
+                        return Err(format!(
+                            "Cannot draw {} as 9slice: must be at least 17x17",
+                            texture
+                        ));
                     }
 
                     let slice_starts_x = [0.0, 8.0, dim.width - 8.0];
@@ -410,29 +566,54 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
                     for x in 0..3_usize {
                         for y in 0..3_usize {
                             draw_tiled(
-                                canvas, sprite,
+                                canvas,
+                                sprite,
                                 &Rect::new(
-                                    Point2D::new(bounds_starts_x[x], bounds_starts_y[y]) + bounds.origin.to_vector(),
-                                    Size2D::new(bounds_sizes_x[x], bounds_sizes_y[y])),
+                                    Point2D::new(bounds_starts_x[x], bounds_starts_y[y])
+                                        + bounds.origin.to_vector(),
+                                    Size2D::new(bounds_sizes_x[x], bounds_sizes_y[y]),
+                                ),
                                 &Rect::new(
-                                     Point2D::new(slice_starts_x[x], slice_starts_y[y]),
-                                    Size2D::new(slice_sizes_x[x], slice_sizes_y[y])),
-                                color
+                                    Point2D::new(slice_starts_x[x], slice_starts_y[y]),
+                                    Size2D::new(slice_sizes_x[x], slice_sizes_y[y]),
+                                ),
+                                color,
                             );
                         }
                     }
                 }
                 _ => {
                     if texture.len() != 1 {
-                        return Err(format!("Texture for {} tiler ({}) must be one char (for now)", tiler, texture))
+                        return Err(format!(
+                            "Texture for {} tiler ({}) must be one char (for now)",
+                            tiler, texture
+                        ));
                     }
-                    let (tiler, ignore) = if tiler == "fg_ignore" { ("fg", true) } else { (tiler.as_str(), false) };
+                    let (tiler, ignore) = if tiler == "fg_ignore" {
+                        ("fg", true)
+                    } else {
+                        (tiler.as_str(), false)
+                    };
                     let texture = texture.chars().next().unwrap();
-                    let tilemap = if let Some(tilemap) = assets::AUTOTILERS.get(tiler) { tilemap } else { return Err(format!("No such tiler {}", tiler))};
-                    let tileset = if let Some(tileset) = tilemap.get(&texture) { tileset } else { return Err(format!("No such texture {} for tiler {}", texture, tiler)) };
+                    let tilemap = if let Some(tilemap) = assets::AUTOTILERS.get(tiler) {
+                        tilemap
+                    } else {
+                        return Err(format!("No such tiler {}", tiler));
+                    };
+                    let tileset = if let Some(tileset) = tilemap.get(&texture) {
+                        tileset
+                    } else {
+                        return Err(format!("No such texture {} for tiler {}", texture, tiler));
+                    };
 
-                    let tile_bounds = rect_room_to_tile(&bounds.cast::<i32>().cast_unit::<RoomSpace>());
-                    let self_entity = if let Some(FieldEntry::Entity(e)) = field.get(tile_bounds.origin) { Some(e) } else { None };
+                    let tile_bounds =
+                        rect_room_to_tile(&bounds.cast::<i32>().cast_unit::<RoomSpace>());
+                    let self_entity =
+                        if let Some(FieldEntry::Entity(e)) = field.get(tile_bounds.origin) {
+                            Some(e)
+                        } else {
+                            None
+                        };
                     let mut tiler = |pt| {
                         if tile_bounds.contains(pt) {
                             return Some(texture);
@@ -444,14 +625,20 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
                             FieldEntry::None => '0',
                             FieldEntry::Fg => '2',
                             FieldEntry::Entity(e) => {
-                                if self_entity.is_some() && self_entity.unwrap().attributes == e.attributes {
+                                if self_entity.is_some()
+                                    && self_entity.unwrap().attributes == e.attributes
+                                {
                                     '1'
-                                } else {
-                                    if let Some(conf) = assets::ENTITY_CONFIG.get(e.name.as_str()) {
-                                        if conf.solid { '2' } else { '0' }
+                                } else if let Some(conf) =
+                                    assets::ENTITY_CONFIG.get(e.name.as_str())
+                                {
+                                    if conf.solid {
+                                        '2'
                                     } else {
                                         '0'
                                     }
+                                } else {
+                                    '0'
                                 }
                             }
                         })
@@ -465,8 +652,12 @@ fn draw_entity_directive(canvas: &mut Canvas, draw: &DrawElement, env: &HashMap<
                 }
             }
         }
-        DrawElement::DrawRectCustom { interval, rect, draw } => {
-            let rect = rect.evaluate_float(&env)?;
+        DrawElement::DrawRectCustom {
+            interval,
+            rect,
+            draw,
+        } => {
+            let rect = rect.evaluate_float(env)?;
             let mut env2 = env.clone();
             for point in rect_point_iter(rect, *interval) {
                 env2.insert("customx", Const::Number(Number(point.x as f64)));
@@ -511,7 +702,8 @@ fn draw_tiled(
 }
 
 pub fn tile<F>(bounds: &Rect<f32, UnknownUnit>, width: f32, height: f32, mut func: F)
-where F: FnMut(Rect<f32, UnknownUnit>) -> ()
+where
+    F: FnMut(Rect<f32, UnknownUnit>),
 {
     if width == 0.0 || height == 0.0 || bounds.width() == 0.0 || bounds.height() == 0.0 {
         return;
@@ -521,10 +713,17 @@ where F: FnMut(Rect<f32, UnknownUnit>) -> ()
     let whole_count_y = (bounds.height() / height).ceil() as i32;
     for x in 0..whole_count_x {
         for y in 0..whole_count_y {
-            func(Rect {
-                origin: Point2D::new(bounds.min_x() + (x as f32 * width), bounds.min_y() + (y as f32 * height)),
-                size: Size2D::new(width, height)
-            }.intersection(bounds).unwrap());
+            func(
+                Rect {
+                    origin: Point2D::new(
+                        bounds.min_x() + (x as f32 * width),
+                        bounds.min_y() + (y as f32 * height),
+                    ),
+                    size: Size2D::new(width, height),
+                }
+                .intersection(bounds)
+                .unwrap(),
+            );
         }
     }
 }

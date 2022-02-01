@@ -1,8 +1,8 @@
 use serde;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::config::entity_expression::{Expression, Const};
+use crate::config::entity_expression::{Const, Expression};
 use crate::units::*;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -42,7 +42,9 @@ pub struct TriggerConfig {
     pub templates: Vec<EntityTemplate>,
 }
 
-fn eight() -> u32 { 8 }
+fn eight() -> u32 {
+    8
+}
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
 pub enum PencilBehavior {
@@ -91,7 +93,7 @@ pub enum AttributeValue {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EntityTemplate {
     pub name: String,
-    pub attributes: HashMap<String, AttributeValue>
+    pub attributes: HashMap<String, AttributeValue>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -177,18 +179,33 @@ pub enum DrawElement {
         interval: f32,
         rect: Rect,
         draw: Vec<DrawElement>,
-    }
+    },
 }
 
-fn one() -> u32 { 1 }
-fn one_one() -> Vec2 { Vec2 { x: Expression::mk_const(1), y: Expression::mk_const(1) } }
-fn empty_rect() -> Rect {
-    Rect {
-        topleft: Vec2 { x: Expression::mk_const(0), y: Expression::mk_const(0) },
-        size: Vec2 { x: Expression::mk_const(0), y: Expression::mk_const(0) },
+fn one() -> u32 {
+    1
+}
+fn one_one() -> Vec2 {
+    Vec2 {
+        x: Expression::mk_const(1),
+        y: Expression::mk_const(1),
     }
 }
-fn half() -> f32 { 0.5 }
+fn empty_rect() -> Rect {
+    Rect {
+        topleft: Vec2 {
+            x: Expression::mk_const(0),
+            y: Expression::mk_const(0),
+        },
+        size: Vec2 {
+            x: Expression::mk_const(0),
+            y: Expression::mk_const(0),
+        },
+    }
+}
+fn half() -> f32 {
+    0.5
+}
 fn clear() -> Color {
     Color {
         r: Expression::mk_const(0),
@@ -197,8 +214,12 @@ fn clear() -> Color {
         a: Expression::mk_const(0),
     }
 }
-fn repeat() -> Expression { Expression::Const(Const::String("repeat".to_owned())) }
-fn expr_zero() -> Expression { Expression::mk_const(0) }
+fn repeat() -> Expression {
+    Expression::Const(Const::String("repeat".to_owned()))
+}
+fn expr_zero() -> Expression {
+    Expression::mk_const(0)
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Rect {
@@ -244,7 +265,10 @@ impl Vec2 {
         Ok(RoomVector::new(x, y))
     }
 
-    pub fn evaluate_float(&self, env: &HashMap<&str, Const>) -> Result<Vector2D<f32, RoomSpace>, String> {
+    pub fn evaluate_float(
+        &self,
+        env: &HashMap<&str, Const>,
+    ) -> Result<Vector2D<f32, RoomSpace>, String> {
         let x = self.x.evaluate(env)?.as_number()?.to_float();
         let y = self.y.evaluate(env)?.as_number()?.to_float();
         Ok(Vector2D::new(x, y))
@@ -258,7 +282,10 @@ impl Rect {
         Ok(RoomRect::new(topleft, size))
     }
 
-    pub fn evaluate_float(&self, env: &HashMap<&str, Const>) -> Result<euclid::Rect<f32, RoomSpace>, String> {
+    pub fn evaluate_float(
+        &self,
+        env: &HashMap<&str, Const>,
+    ) -> Result<euclid::Rect<f32, RoomSpace>, String> {
         let topleft = self.topleft.evaluate_float(env)?.to_point();
         let size = self.size.evaluate_float(env)?.to_size();
         Ok(euclid::Rect::new(topleft, size))
@@ -280,7 +307,7 @@ impl EntityConfig {
     pub fn default_template(&self) -> EntityTemplate {
         EntityTemplate {
             name: self.entity_name.clone(),
-            attributes: HashMap::new()
+            attributes: HashMap::new(),
         }
     }
 }
@@ -289,7 +316,7 @@ impl TriggerConfig {
     pub fn default_template(&self) -> EntityTemplate {
         EntityTemplate {
             name: self.trigger_name.clone(),
-            attributes: HashMap::new()
+            attributes: HashMap::new(),
         }
     }
 }

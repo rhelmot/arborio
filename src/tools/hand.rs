@@ -1,7 +1,7 @@
-use std::cell::RefCell;
 use crate::app_state::{AppEvent, AppState};
-use crate::tools::{Tool, generic_nav};
+use crate::tools::{generic_nav, Tool};
 use crate::units::*;
+use std::cell::RefCell;
 
 use vizia::*;
 
@@ -21,7 +21,7 @@ impl Tool for HandTool {
 
     fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent> {
         let scroll_events = generic_nav(event, state, cx);
-        if scroll_events.len() != 0 {
+        if !scroll_events.is_empty() {
             return scroll_events;
         }
 
@@ -38,7 +38,11 @@ impl Tool for HandTool {
                 let screen_pt = ScreenPoint::new(*x, *y);
                 if self.last_pos.is_some() {
                     let screen_delta = screen_pt - self.last_pos.unwrap();
-                    let map_pan = state.transform.inverse().unwrap().transform_vector(screen_delta);
+                    let map_pan = state
+                        .transform
+                        .inverse()
+                        .unwrap()
+                        .transform_vector(screen_delta);
                     self.last_pos = Some(screen_pt);
                     vec![AppEvent::Pan { delta: map_pan }]
                 } else {
@@ -46,7 +50,7 @@ impl Tool for HandTool {
                     vec![]
                 }
             }
-            _ => vec![]
+            _ => vec![],
         }
     }
 }

@@ -1,15 +1,17 @@
-use std::time;
 use std::cell::RefCell;
+use std::time;
 use vizia::*;
 
-use crate::widgets::editor_widget;
+use crate::assets;
 use crate::map_struct;
 use crate::map_struct::{CelesteMap, CelesteMapDecal, CelesteMapEntity};
-use crate::widgets::palette_widget::{DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable};
-use crate::tools::Tool;
 use crate::tools;
+use crate::tools::Tool;
 use crate::units::*;
-use crate::assets;
+use crate::widgets::editor_widget;
+use crate::widgets::palette_widget::{
+    DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
+};
 
 #[derive(Lens)]
 pub struct AppState {
@@ -77,26 +79,71 @@ pub enum AppSelection {
 
 #[derive(Debug)]
 pub enum AppEvent {
-    Load { map: RefCell<Option<CelesteMap>> },
-    Pan { delta: MapVectorPrecise },
-    Zoom { delta: f32, focus: MapPointPrecise },
-    SelectTool { idx: usize },
-    SelectRoom { idx: usize },
-    SelectLayer { layer: Layer },
-    SelectPaletteTile { fg: bool, tile: TileSelectable },
-    SelectPaletteEntity { entity: EntitySelectable<'static> },
-    SelectPaletteTrigger { trigger: TriggerSelectable<'static> },
-    SelectPaletteDecal { decal: DecalSelectable },
-    SelectObject { selection: Option<AppSelection> },
-    TileUpdate { fg: bool, offset: TilePoint, data: TileGrid<char> },
-    EntityAdd { entity: CelesteMapEntity, trigger: bool },
-    EntityUpdate { entity: CelesteMapEntity, trigger: bool },
-    EntityRemove { id: i32, trigger: bool },
-    DecalAdd { fg: bool, decal: CelesteMapDecal },
-    DecalUpdate { fg: bool, decal: CelesteMapDecal },
-    DecalRemove { fg: bool, id: u32 },
+    Load {
+        map: RefCell<Option<CelesteMap>>,
+    },
+    Pan {
+        delta: MapVectorPrecise,
+    },
+    Zoom {
+        delta: f32,
+        focus: MapPointPrecise,
+    },
+    SelectTool {
+        idx: usize,
+    },
+    SelectRoom {
+        idx: usize,
+    },
+    SelectLayer {
+        layer: Layer,
+    },
+    SelectPaletteTile {
+        fg: bool,
+        tile: TileSelectable,
+    },
+    SelectPaletteEntity {
+        entity: EntitySelectable<'static>,
+    },
+    SelectPaletteTrigger {
+        trigger: TriggerSelectable<'static>,
+    },
+    SelectPaletteDecal {
+        decal: DecalSelectable,
+    },
+    SelectObject {
+        selection: Option<AppSelection>,
+    },
+    TileUpdate {
+        fg: bool,
+        offset: TilePoint,
+        data: TileGrid<char>,
+    },
+    EntityAdd {
+        entity: CelesteMapEntity,
+        trigger: bool,
+    },
+    EntityUpdate {
+        entity: CelesteMapEntity,
+        trigger: bool,
+    },
+    EntityRemove {
+        id: i32,
+        trigger: bool,
+    },
+    DecalAdd {
+        fg: bool,
+        decal: CelesteMapDecal,
+    },
+    DecalUpdate {
+        fg: bool,
+        decal: CelesteMapDecal,
+    },
+    DecalRemove {
+        fg: bool,
+        id: u32,
+    },
 }
-
 
 impl Model for AppState {
     fn event(&mut self, cx: &mut Context, event: &mut Event) {
@@ -108,7 +155,7 @@ impl Model for AppState {
 
 impl AppState {
     pub fn new() -> AppState {
-        let res = AppState {
+        AppState {
             current_tool: 2,
             map: None,
             current_room: 0,
@@ -124,8 +171,7 @@ impl AppState {
             snap: true,
             last_draw: RefCell::new(time::Instant::now()),
             current_layer: Layer::FgTiles,
-        };
-        res
+        }
     }
 
     pub fn apply(&mut self, event: &AppEvent) {
@@ -135,7 +181,8 @@ impl AppState {
             }
             AppEvent::Zoom { delta, focus } => {
                 // TODO scale stepping, high and low limits
-                self.transform = self.transform
+                self.transform = self
+                    .transform
                     .pre_translate(focus.to_vector())
                     .pre_scale(*delta, *delta)
                     .pre_translate(-focus.to_vector());
@@ -205,7 +252,11 @@ impl AppState {
                     // tfw drain_filter is unstable
                     let mut i = 0;
                     let mut any = false;
-                    let mut entities = if *trigger { &mut room.triggers } else { &mut room.entities };
+                    let mut entities = if *trigger {
+                        &mut room.triggers
+                    } else {
+                        &mut room.entities
+                    };
                     while i < entities.len() {
                         if entities[i].id == *id {
                             entities.remove(i);
@@ -229,7 +280,11 @@ impl AppState {
             AppEvent::DecalAdd { fg, decal } => {
                 if let Some(room) = self.current_room_mut() {
                     let mut decal = decal.clone();
-                    let decals = if *fg { &mut room.fg_decals } else { &mut room.bg_decals };
+                    let decals = if *fg {
+                        &mut room.fg_decals
+                    } else {
+                        &mut room.bg_decals
+                    };
                     decal.id = crate::map_struct::next_uuid();
                     decals.push(decal);
                     room.cache.borrow_mut().render_cache_valid = false;
@@ -250,7 +305,11 @@ impl AppState {
                     // tfw drain_filter is unstable
                     let mut i = 0;
                     let mut any = false;
-                    let decals = if *fg { &mut room.fg_decals } else { &mut room.bg_decals };
+                    let decals = if *fg {
+                        &mut room.fg_decals
+                    } else {
+                        &mut room.bg_decals
+                    };
                     while i < decals.len() {
                         if decals[i].id == *id {
                             decals.remove(i);
@@ -299,7 +358,9 @@ impl AppState {
     }
 
     pub fn current_room_ref(&self) -> Option<&map_struct::CelesteMapLevel> {
-        self.map.as_ref().and_then(|map| map.levels.get(self.current_room))
+        self.map
+            .as_ref()
+            .and_then(|map| map.levels.get(self.current_room))
     }
 
     pub fn current_room_mut(&mut self) -> Option<&mut map_struct::CelesteMapLevel> {

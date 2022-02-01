@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 mod embedded;
 mod folder;
 mod zip;
-pub use folder::FolderSource;
 pub use embedded::EmbeddedSource;
+pub use folder::FolderSource;
 
 pub trait ConfigSource {
     type DirIter: Iterator<Item = PathBuf>;
