@@ -659,7 +659,7 @@ fn parse_decal(elem: &BinEl) -> Result<CelesteMapDecal, CelesteMapError> {
         y: get_attr(elem, "y")?,
         scale_x: get_attr(elem, "scaleX")?,
         scale_y: get_attr(elem, "scaleY")?,
-        texture: get_attr(elem, "texture")?,
+        texture: get_attr::<String>(elem, "texture")?.replace('\\', "/"),
     })
 }
 

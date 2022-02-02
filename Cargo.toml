@@ -30,6 +30,8 @@ enum-iterator = "^0.7"
 num-traits = "^0.2" # not really a dependency either
 walkdir = "^2"
 zip = "^0.5"
+elsa = "^1.6"
+lru = "^0.7"
 
 [profile.dev.package.vizia_core]
 opt-level = 2

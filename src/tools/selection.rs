@@ -501,9 +501,8 @@ impl SelectionTool {
             }
             AppSelection::Decal(id, fg) => {
                 if let Some(decal) = room.decal(id, fg) {
-                    if let Some(texture) = decal_texture(decal) {
-                        let size = assets::GAMEPLAY_ATLAS
-                            .sprite_dimensions(texture)
+                    if let Some(dim) = assets::GAMEPLAY_ATLAS.sprite_dimensions(&decal_texture(decal)) {
+                        let size = dim
                             .cast()
                             .cast_unit()
                             .to_vector()
@@ -804,11 +803,8 @@ impl SelectionTool {
                 }
                 AppSelection::Decal(id, fg) => {
                     let mut d = room.decal(*id, *fg).unwrap().clone();
-                    if let Some(texture) = decal_texture(&d) {
-                        let texture_size = assets::GAMEPLAY_ATLAS
-                            .sprite_dimensions(texture)
-                            .cast()
-                            .cast_unit();
+                    if let Some(dim) = assets::GAMEPLAY_ATLAS.sprite_dimensions(&decal_texture(&d)) {
+                        let texture_size = dim.cast().cast_unit();
                         let start_rect = dragging
                             .map(|d| *d.selection_reference_sizes.get(sel).unwrap())
                             .unwrap_or_else(|| {
@@ -1023,9 +1019,8 @@ impl SelectionTool {
                     }
                     AppSelection::Decal(id, fg) => {
                         if let Some(decal) = room.decal(*id, *fg) {
-                            if let Some(texture) = decal_texture(decal) {
-                                let size = assets::GAMEPLAY_ATLAS
-                                    .sprite_dimensions(texture)
+                            if let Some(dim) = assets::GAMEPLAY_ATLAS.sprite_dimensions(&decal_texture(decal)) {
+                                let size = dim
                                     .cast()
                                     .cast_unit()
                                     .to_vector()

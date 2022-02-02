@@ -1,4 +1,3 @@
-use crate::assets;
 use inflector::Inflector;
 use std::collections::HashMap;
 use std::fs;
@@ -6,28 +5,28 @@ use std::io;
 use std::path::Path;
 
 use super::atlas_img;
-use crate::atlas_img::SpriteReference;
 use crate::map_struct::CelesteMapLevel;
 use crate::units::*;
+use crate::assets;
 
 #[derive(Copy, Clone)]
 pub struct TextureTile {
     pub x: u32,
     pub y: u32,
-    pub sprite: Option<atlas_img::SpriteReference>,
+    pub sprite: &'static str,
 }
 
 #[derive(Copy, Clone)]
 pub struct TileReference {
     pub tile: TextureTile,
-    pub texture: SpriteReference,
+    pub texture: &'static str,
 }
 
 #[derive(Clone)]
 pub struct Tileset {
     pub id: char,
     pub name: String,
-    pub texture: String,
+    pub texture: &'static str,
     pub edges: Vec<Vec<TextureTile>>,
     pub padding: Vec<TextureTile>,
     pub center: Vec<TextureTile>,
@@ -128,7 +127,7 @@ impl Tileset {
                 Tileset {
                     id: ch,
                     name: s_tileset.path.to_title_case(),
-                    texture,
+                    texture: assets::intern(&texture),
                     edges: vec![Vec::new(); 256],
                     padding: vec![],
                     center: vec![],
@@ -158,7 +157,7 @@ impl Tileset {
                         ))
                     }
                 };
-                r.texture = texture;
+                r.texture = assets::intern(&texture);
                 r.id = ch;
                 r.name = s_tileset.path.to_title_case();
                 r
@@ -194,9 +193,7 @@ impl Tileset {
                 //    }
                 //    r
                 //};
-                let sprite: Option<SpriteReference> = None;
-
-                let tiles = TextureTile::parse_list(&s_set.tiles, sprite)?;
+                let tiles = TextureTile::parse_list(&s_set.tiles, assets::intern(&texture))?;
                 if s_set.mask == "padding" {
                     tileset.padding = tiles;
                 } else if s_set.mask == "center" {
@@ -321,7 +318,7 @@ impl AutoTiler for Tileset {
 
         Some(TileReference {
             tile: tiles[hash % tiles.len()],
-            texture: assets::GAMEPLAY_ATLAS.lookup(&self.texture).unwrap(),
+            texture: &self.texture,
         })
     }
 }
@@ -329,7 +326,7 @@ impl AutoTiler for Tileset {
 impl TextureTile {
     fn parse_list(
         text: &str,
-        sprite: Option<SpriteReference>,
+        sprite: &'static str,
     ) -> Result<Vec<TextureTile>, io::Error> {
         let mut result = vec![];
         if text.is_empty() {

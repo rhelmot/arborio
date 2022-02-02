@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use crate::atlas_img;
-use crate::atlas_img::{MultiAtlas, SpriteReference};
+use crate::atlas_img::MultiAtlas;
 use crate::auto_saver::AutoSaver;
 use crate::autotiler;
 use crate::autotiler::Autotiler;
@@ -93,9 +93,9 @@ lazy_static! {
     };
     pub static ref FG_TILES_PALETTE: Vec<TileSelectable> = { extract_tiles_palette(&FG_TILES) };
     pub static ref BG_TILES_PALETTE: Vec<TileSelectable> = { extract_tiles_palette(&BG_TILES) };
-    pub static ref ENTITIES_PALETTE: Vec<EntitySelectable<'static>> =
+    pub static ref ENTITIES_PALETTE: Vec<EntitySelectable> =
         { extract_entities_palette(&ENTITY_CONFIG) };
-    pub static ref TRIGGERS_PALETTE: Vec<TriggerSelectable<'static>> =
+    pub static ref TRIGGERS_PALETTE: Vec<TriggerSelectable> =
         { extract_triggers_palette(&TRIGGER_CONFIG) };
     pub static ref DECALS_PALETTE: Vec<DecalSelectable> = {
         GAMEPLAY_ATLAS
@@ -110,6 +110,20 @@ lazy_static! {
             .map(DecalSelectable::new)
             .collect()
     };
+
+    static ref INTERNSHIP: elsa::sync::FrozenMap<&'static str, &'static str> = {
+        elsa::sync::FrozenMap::new()
+    };
+}
+
+pub fn intern(s: &str) -> &'static str {
+    // not sure why this API is missing so much
+    if let Some(res) = INTERNSHIP.get(s) {
+        res
+    } else {
+        let mine = Box::leak(Box::new(s.to_owned()));
+        INTERNSHIP.insert(mine, mine)
+    }
 }
 
 fn extract_tiles_palette(map: &'static HashMap<char, autotiler::Tileset>) -> Vec<TileSelectable> {
@@ -127,35 +141,35 @@ fn extract_tiles_palette(map: &'static HashMap<char, autotiler::Tileset>) -> Vec
     vec
 }
 
-fn extract_entities_palette<'a>(
-    config: &HashMap<&'a str, &'a EntityConfig>,
-) -> Vec<EntitySelectable<'a>> {
+fn extract_entities_palette(
+    config: &HashMap<&str, &EntityConfig>,
+) -> Vec<EntitySelectable> {
     config
         .iter()
-        .flat_map(|c| {
-            c.1.templates.iter().map(move |t| EntitySelectable {
-                config: c.1,
-                template: t,
+        .flat_map(|(_, c)| {
+            c.templates.iter().enumerate().map(move |(idx, _)| EntitySelectable {
+                entity: intern(&c.entity_name),
+                template: idx,
             })
         })
-        .filter(|es| es.config.entity_name != "default")
-        .sorted_by_key(|es| &es.template.name)
+        .filter(|es| es.entity != "default")
+        .sorted_by_key(|es| es.template)
         .collect()
 }
 
-fn extract_triggers_palette<'a>(
-    config: &HashMap<&'a str, &'a TriggerConfig>,
-) -> Vec<TriggerSelectable<'a>> {
+fn extract_triggers_palette(
+    config: &HashMap<&str, &TriggerConfig>,
+) -> Vec<TriggerSelectable> {
     config
         .iter()
-        .flat_map(|c| {
-            c.1.templates.iter().map(move |t| TriggerSelectable {
-                config: c.1,
-                template: t,
+        .flat_map(|(_, c)| {
+            c.templates.iter().enumerate().map(move |(idx, _)| TriggerSelectable {
+                trigger: intern(&c.trigger_name),
+                template: idx,
             })
         })
-        .filter(|es| es.config.trigger_name != "default")
-        .sorted_by_key(|es| &es.template.name)
+        .filter(|es| es.trigger != "default")
+        .sorted_by_key(|es| es.template)
         .collect()
 }
 

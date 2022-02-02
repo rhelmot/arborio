@@ -10,7 +10,6 @@ use vizia::*;
 
 use crate::app_state::{AppSelection, AppState};
 use crate::assets;
-use crate::atlas_img::SpriteReference;
 use crate::autotiler::AutoTiler;
 use crate::config::entity_config::DrawElement;
 use crate::config::entity_expression::{Const, Number};
@@ -227,28 +226,25 @@ impl View for EditorWidget {
 fn draw_decals(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
     let decals = if fg { &room.fg_decals } else { &room.bg_decals };
     for decal in decals {
-        if let Some(texture) = decal_texture(decal) {
-            let scale = Point2D::new(decal.scale_x, decal.scale_y);
-            assets::GAMEPLAY_ATLAS.draw_sprite(
-                canvas,
-                texture,
-                Point2D::new(decal.x, decal.y).cast(),
-                None,
-                None,
-                Some(scale),
-                None,
-                0.0,
-            );
-        } else {
-            dbg!(decal);
-        }
+        let texture = decal_texture(decal);
+        let scale = Point2D::new(decal.scale_x, decal.scale_y);
+        assets::GAMEPLAY_ATLAS.draw_sprite(
+            canvas,
+            &texture,
+            Point2D::new(decal.x, decal.y).cast(),
+            None,
+            None,
+            Some(scale),
+            None,
+            0.0,
+        ).unwrap_or_else(|| { dbg!(&decal); });
     }
 }
 
-pub fn decal_texture(decal: &CelesteMapDecal) -> Option<SpriteReference> {
+pub fn decal_texture(decal: &CelesteMapDecal) -> String {
     let path = std::path::Path::new("decals")
         .join(std::path::Path::new(&decal.texture).with_extension(""));
-    assets::GAMEPLAY_ATLAS.lookup(path.to_str().unwrap())
+    path.to_str().unwrap().to_owned()
 }
 
 fn draw_tiles(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
@@ -476,24 +472,23 @@ fn draw_entity_directive(
             if texture.is_empty() {
                 return Ok(());
             }
-            let sprite = assets::GAMEPLAY_ATLAS
-                .lookup(texture.as_str())
-                .ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
             let point = point.evaluate_float(env)?.to_point().cast_unit();
             let justify = Vector2D::new(*justify_x, *justify_y);
             let color = color.evaluate(env)?;
             let scale = scale.evaluate_float(env)?.to_point().cast_unit();
             let rot = rot.evaluate(env)?.as_number()?.to_float();
-            assets::GAMEPLAY_ATLAS.draw_sprite(
+            if assets::GAMEPLAY_ATLAS.draw_sprite(
                 canvas,
-                sprite,
+                &texture,
                 point,
                 None,
                 Some(justify),
                 Some(scale),
                 Some(color),
                 rot,
-            );
+            ).is_none() {
+                return Err(format!("No such gameplay texture: {}", texture));
+            }
         }
         DrawElement::DrawRectImage {
             texture,
@@ -525,13 +520,16 @@ fn draw_entity_directive(
 
             match tiler.as_str() {
                 "repeat" => {
-                    let sprite = assets::GAMEPLAY_ATLAS
-                        .lookup(texture.as_str())
-                        .ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
+                    let dim: Size2D<f32, UnknownUnit> =
+                        if let Some(dim) = assets::GAMEPLAY_ATLAS.sprite_dimensions(&texture) {
+                            dim
+                        } else {
+                            return Err(format!("No such gameplay texture: {}", texture));
+                        }.cast();
                     let slice: Rect<f32, UnknownUnit> = if slice_w == 0.0 {
                         Rect {
                             origin: Point2D::zero(),
-                            size: assets::GAMEPLAY_ATLAS.sprite_dimensions(sprite).cast(),
+                            size: dim,
                         }
                     } else {
                         Rect {
@@ -539,14 +537,15 @@ fn draw_entity_directive(
                             size: Size2D::new(slice_w, slice_h),
                         }
                     };
-                    draw_tiled(canvas, sprite, &bounds, &slice, color);
+                    draw_tiled(canvas, &texture, &bounds, &slice, color);
                 }
                 "9slice" => {
-                    let sprite = assets::GAMEPLAY_ATLAS
-                        .lookup(texture.as_str())
-                        .ok_or_else(|| format!("No such gameplay texture: {}", texture))?;
                     let dim: Size2D<f32, UnknownUnit> =
-                        assets::GAMEPLAY_ATLAS.sprite_dimensions(sprite).cast();
+                        if let Some(dim) = assets::GAMEPLAY_ATLAS.sprite_dimensions(&texture) {
+                            dim
+                        } else {
+                            return Err(format!("No such gameplay texture: {}", texture));
+                        }.cast();
                     if dim.width < 17.0 || dim.height < 17.0 {
                         return Err(format!(
                             "Cannot draw {} as 9slice: must be at least 17x17",
@@ -567,7 +566,7 @@ fn draw_entity_directive(
                         for y in 0..3_usize {
                             draw_tiled(
                                 canvas,
-                                sprite,
+                                &texture,
                                 &Rect::new(
                                     Point2D::new(bounds_starts_x[x], bounds_starts_y[y])
                                         + bounds.origin.to_vector(),
@@ -674,20 +673,12 @@ fn draw_entity_directive(
 
 fn draw_tiled(
     canvas: &mut Canvas,
-    sprite: SpriteReference,
+    sprite: &str,
     bounds: &Rect<f32, UnknownUnit>,
     slice: &Rect<f32, UnknownUnit>,
     color: femtovg::Color,
 ) {
     tile(bounds, slice.width(), slice.height(), |piece| {
-        //let draw_x = piece.x;
-        //let draw_y = piece.y;
-        //if piece.x < 0.0 {
-        //    piece.x = 0.0;
-        //}
-        //if piece.y < 0.0 {
-        //    piece.y = 0.0;
-        //}
         assets::GAMEPLAY_ATLAS.draw_sprite(
             canvas,
             sprite,

@@ -5,7 +5,6 @@ use std::rc::Rc;
 use vizia::*;
 
 use crate::assets;
-use crate::atlas_img::SpriteReference;
 use crate::config::entity_config::{EntityConfig, EntityTemplate, TriggerConfig};
 use crate::map_struct::CelesteMapEntity;
 use crate::units::*;
@@ -142,9 +141,8 @@ impl PaletteItem for TileSelectable {
     }
 
     fn draw(&self, canvas: &mut Canvas) {
-        canvas.scale(3.0, 3.0);
         if let Some(texture) = self.texture {
-            let texture = assets::GAMEPLAY_ATLAS.lookup(texture).unwrap();
+            canvas.scale(3.0, 3.0);
             assets::GAMEPLAY_ATLAS.draw_sprite(
                 canvas,
                 texture,
@@ -159,39 +157,37 @@ impl PaletteItem for TileSelectable {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct EntitySelectable<'a> {
-    pub config: &'a EntityConfig,
-    pub template: &'a EntityTemplate,
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct EntitySelectable {
+    pub entity: &'static str,
+    pub template: usize,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct TriggerSelectable<'a> {
-    pub config: &'a TriggerConfig,
-    pub template: &'a EntityTemplate,
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct TriggerSelectable {
+    pub trigger: &'static str,
+    pub template: usize,
 }
 
-impl Data for EntitySelectable<'static> {
+impl Data for EntitySelectable {
     fn same(&self, other: &Self) -> bool {
-        // ummmmmm is this a good idea
-        std::ptr::eq(self.template, other.template)
+        self == other
     }
 }
 
-impl Data for TriggerSelectable<'static> {
+impl Data for TriggerSelectable {
     fn same(&self, other: &Self) -> bool {
-        // ummmmmm is this a good idea
-        std::ptr::eq(self.template, other.template)
+        self == other
     }
 }
 
-impl PaletteItem for EntitySelectable<'static> {
+impl PaletteItem for EntitySelectable {
     fn search_text(&self) -> String {
         todo!()
     }
 
     fn display_name(&self) -> String {
-        self.template.name.clone()
+        self.config().templates[self.template].name.clone() // todo: can we not clone please
     }
 
     fn draw(&self, canvas: &mut Canvas) {
@@ -200,21 +196,21 @@ impl PaletteItem for EntitySelectable<'static> {
         let tmp_entity = self.instantiate(
             16,
             16,
-            self.config.minimum_size_x as i32,
-            self.config.minimum_size_y as i32,
+            self.config().minimum_size_x as i32,
+            self.config().minimum_size_y as i32,
             vec![(48, 16)],
         );
         editor_widget::draw_entity(canvas, &tmp_entity, &TileGrid::empty(), false, false);
     }
 }
 
-impl PaletteItem for TriggerSelectable<'static> {
+impl PaletteItem for TriggerSelectable {
     fn search_text(&self) -> String {
         todo!()
     }
 
     fn display_name(&self) -> String {
-        self.template.name.clone()
+        self.config().templates[self.template].name.clone()
     }
 
     const CAN_DRAW: bool = false;
@@ -223,7 +219,11 @@ impl PaletteItem for TriggerSelectable<'static> {
     }
 }
 
-impl EntitySelectable<'_> {
+impl EntitySelectable {
+    pub fn config(&self) -> &'static EntityConfig {
+        assets::ENTITY_CONFIG.get(self.entity).unwrap()
+    }
+
     pub fn instantiate(
         &self,
         x: i32,
@@ -232,6 +232,8 @@ impl EntitySelectable<'_> {
         height: i32,
         nodes: Vec<(i32, i32)>,
     ) -> CelesteMapEntity {
+        let config = self.config();
+
         let (x, width) = if width < 0 {
             (x + width, -width as u32)
         } else {
@@ -242,24 +244,23 @@ impl EntitySelectable<'_> {
         } else {
             (y, height as u32)
         };
-        let width = width.max(self.config.minimum_size_x);
-        let height = height.max(self.config.minimum_size_y);
-        let width = if !self.config.resizable_x {
-            self.config.minimum_size_x
+        let width = width.max(config.minimum_size_x);
+        let height = height.max(config.minimum_size_y);
+        let width = if !config.resizable_x {
+            self.config().minimum_size_x
         } else {
             width
         };
-        let height = if !self.config.resizable_y {
-            self.config.minimum_size_y
+        let height = if !config.resizable_y {
+            self.config().minimum_size_y
         } else {
             height
         };
 
         let mut entity = CelesteMapEntity {
             id: 0,
-            name: self.config.entity_name.clone(),
-            attributes: self
-                .template
+            name: config.entity_name.clone(),
+            attributes: config.templates[self.template]
                 .attributes
                 .iter()
                 .map(|attr| (attr.0.clone(), attr.1.to_binel()))
@@ -270,7 +271,7 @@ impl EntitySelectable<'_> {
             height,
             nodes,
         };
-        for (attr, info) in &self.config.attribute_info {
+        for (attr, info) in &config.attribute_info {
             if !entity.attributes.contains_key(attr) {
                 entity
                     .attributes
@@ -282,7 +283,11 @@ impl EntitySelectable<'_> {
     }
 }
 
-impl TriggerSelectable<'_> {
+impl TriggerSelectable {
+    pub fn config(&self) -> &'static TriggerConfig {
+        assets::TRIGGER_CONFIG.get(self.trigger).unwrap()
+    }
+
     pub fn instantiate(
         &self,
         x: i32,
@@ -291,6 +296,8 @@ impl TriggerSelectable<'_> {
         height: i32,
         nodes: Vec<(i32, i32)>,
     ) -> CelesteMapEntity {
+        let config = self.config();
+
         let (x, width) = if width < 0 {
             (x + width, -width as u32)
         } else {
@@ -306,9 +313,8 @@ impl TriggerSelectable<'_> {
 
         let mut entity = CelesteMapEntity {
             id: 0,
-            name: self.config.trigger_name.clone(),
-            attributes: self
-                .template
+            name: config.trigger_name.clone(),
+            attributes: config.templates[self.template]
                 .attributes
                 .iter()
                 .map(|attr| (attr.0.clone(), attr.1.to_binel()))
@@ -319,7 +325,7 @@ impl TriggerSelectable<'_> {
             height,
             nodes,
         };
-        for (attr, info) in &self.config.attribute_info {
+        for (attr, info) in &config.attribute_info {
             if !entity.attributes.contains_key(attr) {
                 entity
                     .attributes
@@ -352,16 +358,14 @@ impl PaletteItem for DecalSelectable {
     fn draw(&self, canvas: &mut Canvas) {
         assets::GAMEPLAY_ATLAS.draw_sprite(
             canvas,
-            assets::GAMEPLAY_ATLAS
-                .lookup(&("decals/".to_owned() + self.0))
-                .unwrap(),
+            &("decals/".to_owned() + self.0),
             Point2D::new(0.0, 0.0),
             None,
             Some(Vector2D::zero()),
             None,
             None,
             0.0,
-        )
+        );
     }
 }
 

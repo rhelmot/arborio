@@ -20,8 +20,8 @@ pub struct AppState {
     pub current_layer: Layer,
     pub current_fg_tile: TileSelectable,
     pub current_bg_tile: TileSelectable,
-    pub current_entity: EntitySelectable<'static>,
-    pub current_trigger: TriggerSelectable<'static>,
+    pub current_entity: EntitySelectable,
+    pub current_trigger: TriggerSelectable,
     pub current_decal: DecalSelectable,
     pub current_selected: Option<AppSelection>,
 
@@ -103,10 +103,10 @@ pub enum AppEvent {
         tile: TileSelectable,
     },
     SelectPaletteEntity {
-        entity: EntitySelectable<'static>,
+        entity: EntitySelectable,
     },
     SelectPaletteTrigger {
-        trigger: TriggerSelectable<'static>,
+        trigger: TriggerSelectable,
     },
     SelectPaletteDecal {
         decal: DecalSelectable,
@@ -225,7 +225,6 @@ impl AppState {
                 self.current_decal = *decal;
             }
             AppEvent::EntityAdd { entity, trigger } => {
-                dbg!(&event);
                 if let Some(room) = self.current_room_mut() {
                     let mut entity = entity.clone();
                     entity.id = room.next_id();

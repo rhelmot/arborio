@@ -10,16 +10,11 @@ use std::io::{ErrorKind, Read};
 use std::path;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use crate::assets;
 
 use crate::autotiler::TileReference;
 use crate::config::walker::ConfigSource;
 use crate::units::*;
-
-#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
-pub struct SpriteReference {
-    atlas: u32,
-    idx: u32,
-}
 
 enum BlobData {
     Waiting(Img<Vec<RGBA8>>),
@@ -43,12 +38,11 @@ impl BlobData {
 
 pub struct Atlas {
     blobs: Vec<Mutex<BlobData>>,
-    sprites_map: HashMap<String, usize>,
-    sprites: Vec<AtlasSprite>,
+    sprites_map: HashMap<&'static str, AtlasSprite>,
 }
 
 #[derive(Debug)]
-pub struct AtlasSprite {
+struct AtlasSprite {
     blob_idx: usize,
     bounding_box: Rect<u16, UnknownUnit>,
     trim_offset: Vector2D<i16, UnknownUnit>,
@@ -60,7 +54,6 @@ impl Atlas {
         let mut result = Atlas {
             blobs: Vec::new(),
             sprites_map: HashMap::new(),
-            sprites: Vec::new(),
         };
 
         result
@@ -108,9 +101,7 @@ impl Atlas {
                 let real_width = reader.read_u16::<LittleEndian>()?;
                 let real_height = reader.read_u16::<LittleEndian>()?;
 
-                let sprite_idx = self.sprites.len();
-                self.sprites_map.insert(sprite_path, sprite_idx);
-                self.sprites.push(AtlasSprite {
+                self.sprites_map.insert(assets::intern(&sprite_path), AtlasSprite {
                     blob_idx,
                     bounding_box: euclid::Rect {
                         origin: euclid::Point2D::new(x, y),
@@ -125,35 +116,26 @@ impl Atlas {
         Ok(())
     }
 
-    pub fn iter_paths(&self) -> impl Iterator<Item = &str> {
-        self.sprites_map.iter().map(|x| x.0.as_str())
+    pub fn iter_paths(&self) -> impl Iterator<Item = &'static str> + '_ {
+        self.sprites_map.iter().map(|x| *x.0)
     }
 
-    pub fn lookup(&self, path: &str) -> Option<SpriteReference> {
-        let path = path.replace('\\', "/");
-        self.sprites_map.get(&path).map(|v| SpriteReference {
-            atlas: 0,
-            idx: *v as u32,
-        })
-    }
-
-    pub fn sprite_dimensions(&self, sprite_ref: SpriteReference) -> Size2D<u16, UnknownUnit> {
-        let sprite = &self.sprites[sprite_ref.idx as usize];
-        sprite.untrimmed_size
+    pub fn sprite_dimensions(&self, sprite_path: &str) -> Option<Size2D<u16, UnknownUnit>> {
+        self.sprites_map.get(sprite_path).map(|s| s.untrimmed_size)
     }
 
     pub fn draw_sprite(
         &self,
         canvas: &mut vizia::Canvas,
-        sprite_ref: SpriteReference,
+        sprite_path: &str,
         point: Point2D<f32, UnknownUnit>,
         slice: Option<Rect<f32, UnknownUnit>>,
         justify: Option<Vector2D<f32, UnknownUnit>>,
         scale: Option<Point2D<f32, UnknownUnit>>,
         color: Option<Color>,
         rot: f32,
-    ) {
-        let sprite = &self.sprites[sprite_ref.idx as usize];
+    ) -> Option<()> {
+        let sprite = if let Some(sprite) = self.sprites_map.get(sprite_path) { sprite } else { return None };
         let color = color.unwrap_or_else(Color::white);
 
         let justify = justify.unwrap_or(Vector2D::new(0.5, 0.5));
@@ -177,7 +159,7 @@ impl Atlas {
         let slice_visible = if let Some(slice_visible) = slice_visible {
             slice_visible
         } else {
-            return;
+            return Some(());
         };
         let canvas_rect = slice_visible
             .translate(-justify_offset)
@@ -210,6 +192,8 @@ impl Atlas {
         canvas.rotate(rot.to_radians());
         canvas.fill_path(&mut path, paint);
         canvas.restore();
+
+        Some(())
     }
 
     pub fn draw_tile(
@@ -219,7 +203,7 @@ impl Atlas {
         ox: f32,
         oy: f32,
         color: femtovg::Color,
-    ) {
+    ) -> Option<()> {
         self.draw_sprite(
             canvas,
             tile_ref.texture,
@@ -232,7 +216,7 @@ impl Atlas {
             None,
             Some(color),
             0.0,
-        );
+        )
     }
 }
 
@@ -290,14 +274,14 @@ pub fn load_data_file<T: ConfigSource>(
 
 pub struct MultiAtlas<'a> {
     atlases: Vec<&'a Atlas>,
-    path_cache: Mutex<HashMap<String, Option<SpriteReference>>>,
+    path_cache: Mutex<lru::LruCache<&'static str, usize>>,
 }
 
 impl<'a> MultiAtlas<'a> {
     pub fn new() -> Self {
         Self {
             atlases: vec![],
-            path_cache: Mutex::new(HashMap::new()),
+            path_cache: Mutex::new(lru::LruCache::new(1000)),
         }
     }
 
@@ -305,49 +289,45 @@ impl<'a> MultiAtlas<'a> {
         self.atlases.push(atlas);
     }
 
-    pub fn iter_paths(&self) -> impl Iterator<Item = &str> {
+    pub fn iter_paths(&self) -> impl Iterator<Item = &'static str> + '_ {
         self.atlases.iter().flat_map(|a| a.iter_paths())
     }
 
-    pub fn lookup(&self, path: &str) -> Option<SpriteReference> {
-        *self
-            .path_cache
-            .lock()
-            .unwrap()
-            .entry(path.to_owned())
-            .or_insert_with(|| {
-                for (i, atlas) in self.atlases.iter().enumerate() {
-                    if let Some(mut sprite) = atlas.lookup(path) {
-                        sprite.atlas = i as u32;
-                        return Some(sprite);
-                    }
+    fn find_atlas(&self, sprite_path: &str) -> Option<usize> {
+        let sprite_path = assets::intern(sprite_path);
+        let mut path_cache = self.path_cache.lock().unwrap();
+        if let Some(idx) = path_cache.get(&sprite_path) {
+            Some(*idx)
+        } else {
+            for (idx, atlas) in self.atlases.iter().enumerate() {
+                if atlas.sprites_map.contains_key(sprite_path) {
+                    path_cache.put(sprite_path, idx);
+                    return Some(idx);
                 }
-                None
-            })
+            }
+            None
+        }
     }
 
-    pub fn sprite_dimensions(&self, sprite: SpriteReference) -> Size2D<u16, UnknownUnit> {
-        self.atlases
-            .get(sprite.atlas as usize)
-            .unwrap()
-            .sprite_dimensions(sprite)
+    pub fn sprite_dimensions(&self, sprite_path: &str) -> Option<Size2D<u16, UnknownUnit>> {
+        self.find_atlas(sprite_path).and_then(|idx| self.atlases[idx].sprite_dimensions(sprite_path))
     }
 
     pub fn draw_sprite(
         &self,
         canvas: &mut vizia::Canvas,
-        sprite_ref: SpriteReference,
+        sprite_path: &str,
         point: Point2D<f32, UnknownUnit>,
         slice: Option<Rect<f32, UnknownUnit>>,
         justify: Option<Vector2D<f32, UnknownUnit>>,
         scale: Option<Point2D<f32, UnknownUnit>>,
         color: Option<Color>,
         rot: f32,
-    ) {
-        self.atlases
-            .get(sprite_ref.atlas as usize)
-            .unwrap()
-            .draw_sprite(canvas, sprite_ref, point, slice, justify, scale, color, rot);
+    ) -> Option<()> {
+        self.find_atlas(sprite_path).and_then(|idx| self.atlases[idx].draw_sprite(
+            canvas, sprite_path, point,
+            slice, justify, scale, color, rot
+        ))
     }
 
     pub fn draw_tile(
@@ -357,10 +337,9 @@ impl<'a> MultiAtlas<'a> {
         ox: f32,
         oy: f32,
         color: femtovg::Color,
-    ) {
-        self.atlases
-            .get(tile_ref.texture.atlas as usize)
-            .unwrap()
-            .draw_tile(canvas, tile_ref, ox, oy, color);
+    ) -> Option<()> {
+        self.find_atlas(tile_ref.texture).and_then(|idx| self.atlases[idx].draw_tile(
+            canvas, tile_ref, ox, oy, color
+        ))
     }
 }

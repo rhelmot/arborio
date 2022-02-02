@@ -113,15 +113,13 @@ impl Tool for PencilTool {
                 editor_widget::draw_entity(canvas, &tmp_trigger, &TileGrid::empty(), false, true);
             }
             Layer::FgDecals | Layer::BgDecals => {
-                let texture = assets::GAMEPLAY_ATLAS
-                    .lookup(&("decals/".to_owned() + state.current_decal.0))
-                    .unwrap();
+                let texture = "decals/".to_owned() + state.current_decal.0;
                 if cx.mouse.left.state == MouseButtonState::Released {
                     canvas.set_global_alpha(0.5);
                 }
                 assets::GAMEPLAY_ATLAS.draw_sprite(
                     canvas,
-                    texture,
+                    &texture,
                     room_pos.cast().cast_unit(),
                     None,
                     None,
@@ -144,7 +142,7 @@ impl PencilTool {
                 let pencil = if state.current_layer == Layer::Triggers {
                     PencilBehavior::Rect
                 } else {
-                    state.current_entity.config.pencil
+                    state.current_entity.config().pencil
                 };
                 match pencil {
                     PencilBehavior::Line => {}
@@ -188,7 +186,7 @@ impl PencilTool {
                     },
                 }]
             }
-            Layer::Entities if state.current_entity.config.pencil == PencilBehavior::Line => {
+            Layer::Entities if state.current_entity.config().pencil == PencilBehavior::Line => {
                 match self.reference_point {
                     Some(last_draw) => {
                         let diff = (room_pos - last_draw).cast::<f32>().length();
@@ -226,7 +224,7 @@ impl PencilTool {
                 let pencil = if state.current_layer == Layer::Triggers {
                     PencilBehavior::Rect
                 } else {
-                    state.current_entity.config.pencil
+                    state.current_entity.config().pencil
                 };
                 match pencil {
                     PencilBehavior::Line => vec![],
@@ -271,12 +269,12 @@ impl PencilTool {
         selectable: EntitySelectable,
         room_pos: RoomPoint,
     ) -> CelesteMapEntity {
-        match selectable.config.pencil {
+        match selectable.config().pencil {
             PencilBehavior::Line => selectable.instantiate(
                 room_pos.x,
                 room_pos.y,
-                selectable.config.minimum_size_x as i32,
-                selectable.config.minimum_size_y as i32,
+                selectable.config().minimum_size_x as i32,
+                selectable.config().minimum_size_y as i32,
                 vec![],
             ),
             PencilBehavior::Node => {
@@ -284,8 +282,8 @@ impl PencilTool {
                 selectable.instantiate(
                     ref_pos.x,
                     ref_pos.y,
-                    selectable.config.minimum_size_x as i32,
-                    selectable.config.minimum_size_y as i32,
+                    selectable.config().minimum_size_x as i32,
+                    selectable.config().minimum_size_y as i32,
                     vec![(room_pos.x, room_pos.y)],
                 )
             }
