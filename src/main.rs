@@ -24,10 +24,9 @@ use crate::app_state::{AppEvent, AppState, Layer};
 use crate::tools::TOOLS;
 use widgets::palette_widget::PaletteWidget;
 use widgets::tweaker_widget::EntityTweakerWidget;
+use crate::config::aggregate::ModuleAggregate;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    assets::load();
-
     let mut app = Application::new(WindowDescription::new().with_title("Arborio"), |cx| {
         app_state::AppState::new().build(cx);
         //cx.add_theme(include_str!("style.css"));
@@ -108,7 +107,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             let layer = *layer_field.get(cx);
                             PaletteWidget::new(
                                 cx,
-                                StaticLens::new(&*assets::FG_TILES_PALETTE),
+                                AppState::palette.then(ModuleAggregate::fg_tiles_palette),
                                 AppState::current_fg_tile,
                                 |cx, tile| {
                                     cx.emit(AppEvent::SelectPaletteTile { fg: true, tile });
@@ -123,7 +122,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             );
                             PaletteWidget::new(
                                 cx,
-                                StaticLens::new(&*assets::BG_TILES_PALETTE),
+                                AppState::palette.then(ModuleAggregate::bg_tiles_palette),
                                 AppState::current_bg_tile,
                                 |cx, tile| cx.emit(AppEvent::SelectPaletteTile { fg: false, tile }),
                             )
@@ -136,7 +135,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             );
                             PaletteWidget::new(
                                 cx,
-                                StaticLens::new(&*assets::ENTITIES_PALETTE),
+                                AppState::palette.then(ModuleAggregate::entities_palette),
                                 AppState::current_entity,
                                 |cx, entity| cx.emit(AppEvent::SelectPaletteEntity { entity }),
                             )
@@ -149,7 +148,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             );
                             PaletteWidget::new(
                                 cx,
-                                StaticLens::new(&*assets::TRIGGERS_PALETTE),
+                                AppState::palette.then(ModuleAggregate::triggers_palette),
                                 AppState::current_trigger,
                                 |cx, trigger| cx.emit(AppEvent::SelectPaletteTrigger { trigger }),
                             )
@@ -162,7 +161,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             );
                             PaletteWidget::new(
                                 cx,
-                                StaticLens::new(&*assets::DECALS_PALETTE),
+                                AppState::palette.then(ModuleAggregate::decals_palette),
                                 AppState::current_decal,
                                 |cx, decal| cx.emit(AppEvent::SelectPaletteDecal { decal }),
                             )

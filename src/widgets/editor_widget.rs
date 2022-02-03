@@ -86,12 +86,12 @@ impl View for EditorWidget {
             if let WindowEvent::MouseDown(..) = &window_event {
                 cx.focused = cx.current;
             }
-            let state = cx
+            let app = cx
                 .data::<AppState>()
                 .expect("EditorWidget must have an AppState in its ancestry");
-            let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[state.current_tool];
-            let events = tool.event(window_event, state, cx);
-            let cursor = tool.cursor(cx, state);
+            let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[app.current_tool];
+            let events = tool.event(window_event, app, cx);
+            let cursor = tool.cursor(cx, app);
             for event in events {
                 cx.emit(event);
             }
@@ -100,7 +100,7 @@ impl View for EditorWidget {
     }
 
     fn draw(&self, cx: &mut Context, canvas: &mut Canvas) {
-        let state = cx
+        let app = cx
             .data::<AppState>()
             .expect("EditorWidget must have an AppState in its ancestry");
         let entity = cx.current;
@@ -112,17 +112,17 @@ impl View for EditorWidget {
             bounds.h as u32,
             BACKDROP_COLOR,
         );
-        let t = &state.transform;
+        let t = &app.transform;
         canvas.set_transform(t.m11, t.m12, t.m21, t.m22, t.m31.round(), t.m32.round());
 
-        if let Some(map) = &state.map {
+        if let Some(map) = &app.map {
             if *PERF_MONITOR {
                 let now = time::Instant::now();
                 println!(
                     "Drew {}ms ago",
-                    (now - *state.last_draw.borrow()).as_millis()
+                    (now - *app.last_draw.borrow()).as_millis()
                 );
-                *state.last_draw.borrow_mut() = now;
+                *app.last_draw.borrow_mut() = now;
             }
 
             let mut path = Path::new();
@@ -166,28 +166,30 @@ impl View for EditorWidget {
                         room.bounds.height() as u32,
                         ROOM_EMPTY_COLOR,
                     );
-                    draw_tiles(canvas, room, false);
-                    draw_decals(canvas, room, false);
+                    draw_tiles(app, canvas, room, false);
+                    draw_decals(app, canvas, room, false);
                     draw_triggers(
+                        app,
                         canvas,
                         room,
-                        if idx == state.current_room {
-                            state.current_selected
+                        if idx == app.current_room {
+                            app.current_selected
                         } else {
                             None
                         },
                     );
                     draw_entities(
+                        app,
                         canvas,
                         room,
-                        if idx == state.current_room {
-                            state.current_selected
+                        if idx == app.current_room {
+                            app.current_selected
                         } else {
                             None
                         },
                     );
-                    draw_tiles(canvas, room, true);
-                    draw_decals(canvas, room, true);
+                    draw_tiles(app, canvas, room, true);
+                    draw_decals(app, canvas, room, true);
 
                     canvas.restore();
                     canvas.set_render_target(RenderTarget::Screen);
@@ -211,24 +213,24 @@ impl View for EditorWidget {
                     1.0,
                 );
                 canvas.fill_path(&mut path, paint);
-                if idx != state.current_room {
+                if idx != app.current_room {
                     canvas.fill_path(&mut path, Paint::color(ROOM_DESELECTED_COLOR));
                 }
                 canvas.restore();
             }
 
-            let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[state.current_tool];
-            tool.draw(canvas, state, cx);
+            let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[app.current_tool];
+            tool.draw(canvas, app, cx);
         }
     }
 }
 
-fn draw_decals(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
+fn draw_decals(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
     let decals = if fg { &room.fg_decals } else { &room.bg_decals };
     for decal in decals {
         let texture = decal_texture(decal);
         let scale = Point2D::new(decal.scale_x, decal.scale_y);
-        assets::GAMEPLAY_ATLAS.draw_sprite(
+        app.palette.gameplay_atlas.draw_sprite(
             canvas,
             &texture,
             Point2D::new(decal.x, decal.y).cast(),
@@ -247,11 +249,11 @@ pub fn decal_texture(decal: &CelesteMapDecal) -> String {
     path.to_str().unwrap().to_owned()
 }
 
-fn draw_tiles(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
+fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
     let (tiles, tiles_asset) = if fg {
-        (&room.fg_tiles, &*assets::FG_TILES)
+        (&room.fg_tiles, app.palette.autotilers.get("fg").unwrap())
     } else {
-        (&room.bg_tiles, &*assets::BG_TILES)
+        (&room.bg_tiles, app.palette.autotilers.get("bg").unwrap())
     };
 
     let tstride = room.bounds.width() / 8;
@@ -265,48 +267,49 @@ fn draw_tiles(canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
                 .get(&tile)
                 .and_then(|tileset| tileset.tile(pt, &mut |pt| room.tile(pt, fg)))
             {
-                assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, rx, ry, Color::white());
+                app.palette.gameplay_atlas.draw_tile(canvas, tile, rx, ry, Color::white());
             }
         }
     }
 }
 
-fn draw_entities(canvas: &mut Canvas, room: &CelesteMapLevel, selection: Option<AppSelection>) {
+fn draw_entities(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, selection: Option<AppSelection>) {
     let field = room.occupancy_field();
     for entity in &room.entities {
         let selected = matches!(selection, Some(AppSelection::EntityBody(id, false)) | Some(AppSelection::EntityNode(id, _, false)) if id == entity.id);
-        draw_entity(canvas, entity, &field, selected, false);
+        draw_entity(app, canvas, entity, &field, selected, false);
     }
 }
 
-fn draw_triggers(canvas: &mut Canvas, room: &CelesteMapLevel, selection: Option<AppSelection>) {
+fn draw_triggers(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, selection: Option<AppSelection>) {
     for trigger in &room.triggers {
         let selected = matches!(selection, Some(AppSelection::EntityBody(id, true)) | Some(AppSelection::EntityNode(id, _, true)) if id == trigger.id);
-        draw_entity(canvas, trigger, &TileGrid::empty(), selected, true);
+        draw_entity(app, canvas, trigger, &TileGrid::empty(), selected, true);
     }
 }
 
 pub fn draw_entity(
+    app: &AppState,
     canvas: &mut Canvas,
     entity: &CelesteMapEntity,
     field: &TileGrid<FieldEntry>,
     selected: bool,
     trigger: bool,
 ) {
-    let config = assets::get_entity_config(&entity.name, trigger);
+    let config = app.palette.get_entity_config(&entity.name, trigger);
     let env = entity.make_env();
 
     for node_idx in 0..entity.nodes.len() {
         for draw in &config.standard_draw.node_draw {
             let env = entity.make_node_env(env.clone(), node_idx);
-            if let Err(s) = draw_entity_directive(canvas, draw, &env, field) {
+            if let Err(s) = draw_entity_directive(app, canvas, draw, &env, field) {
                 println!("{}", s);
             }
         }
     }
 
     for draw in &config.standard_draw.initial_draw {
-        if let Err(s) = draw_entity_directive(canvas, draw, &env, field) {
+        if let Err(s) = draw_entity_directive(app, canvas, draw, &env, field) {
             println!("{}", s);
         }
     }
@@ -315,14 +318,14 @@ pub fn draw_entity(
         for node_idx in 0..entity.nodes.len() {
             for draw in &config.selected_draw.node_draw {
                 let env = entity.make_node_env(env.clone(), node_idx);
-                if let Err(s) = draw_entity_directive(canvas, draw, &env, field) {
+                if let Err(s) = draw_entity_directive(app, canvas, draw, &env, field) {
                     println!("{}", s);
                 }
             }
         }
 
         for draw in &config.selected_draw.initial_draw {
-            if let Err(s) = draw_entity_directive(canvas, draw, &env, field) {
+            if let Err(s) = draw_entity_directive(app, canvas, draw, &env, field) {
                 println!("{}", s);
             }
         }
@@ -330,6 +333,7 @@ pub fn draw_entity(
 }
 
 fn draw_entity_directive(
+    app: &AppState,
     canvas: &mut Canvas,
     draw: &DrawElement,
     env: &HashMap<&str, Const>,
@@ -477,7 +481,7 @@ fn draw_entity_directive(
             let color = color.evaluate(env)?;
             let scale = scale.evaluate_float(env)?.to_point().cast_unit();
             let rot = rot.evaluate(env)?.as_number()?.to_float();
-            if assets::GAMEPLAY_ATLAS.draw_sprite(
+            if app.palette.gameplay_atlas.draw_sprite(
                 canvas,
                 &texture,
                 point,
@@ -521,7 +525,7 @@ fn draw_entity_directive(
             match tiler.as_str() {
                 "repeat" => {
                     let dim: Size2D<f32, UnknownUnit> =
-                        if let Some(dim) = assets::GAMEPLAY_ATLAS.sprite_dimensions(&texture) {
+                        if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&texture) {
                             dim
                         } else {
                             return Err(format!("No such gameplay texture: {}", texture));
@@ -537,11 +541,11 @@ fn draw_entity_directive(
                             size: Size2D::new(slice_w, slice_h),
                         }
                     };
-                    draw_tiled(canvas, &texture, &bounds, &slice, color);
+                    draw_tiled(app, canvas, &texture, &bounds, &slice, color);
                 }
                 "9slice" => {
                     let dim: Size2D<f32, UnknownUnit> =
-                        if let Some(dim) = assets::GAMEPLAY_ATLAS.sprite_dimensions(&texture) {
+                        if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&texture) {
                             dim
                         } else {
                             return Err(format!("No such gameplay texture: {}", texture));
@@ -565,6 +569,7 @@ fn draw_entity_directive(
                     for x in 0..3_usize {
                         for y in 0..3_usize {
                             draw_tiled(
+                                app,
                                 canvas,
                                 &texture,
                                 &Rect::new(
@@ -594,7 +599,7 @@ fn draw_entity_directive(
                         (tiler.as_str(), false)
                     };
                     let texture = texture.chars().next().unwrap();
-                    let tilemap = if let Some(tilemap) = assets::AUTOTILERS.get(tiler) {
+                    let tilemap = if let Some(tilemap) = app.palette.autotilers.get(tiler) {
                         tilemap
                     } else {
                         return Err(format!("No such tiler {}", tiler));
@@ -629,7 +634,7 @@ fn draw_entity_directive(
                                 {
                                     '1'
                                 } else if let Some(conf) =
-                                    assets::ENTITY_CONFIG.get(e.name.as_str())
+                                    app.palette.entity_config.get(e.name.as_str())
                                 {
                                     if conf.solid {
                                         '2'
@@ -645,7 +650,7 @@ fn draw_entity_directive(
                     for pt in rect_point_iter(tile_bounds, 1) {
                         if let Some(tile) = tileset.tile(pt, &mut tiler) {
                             let fp_pt = point_tile_to_room(&pt).cast::<f32>();
-                            assets::GAMEPLAY_ATLAS.draw_tile(canvas, tile, fp_pt.x, fp_pt.y, color);
+                            app.palette.gameplay_atlas.draw_tile(canvas, tile, fp_pt.x, fp_pt.y, color);
                         }
                     }
                 }
@@ -663,7 +668,7 @@ fn draw_entity_directive(
                 env2.insert("customy", Const::Number(Number(point.y as f64)));
 
                 for draw_element in draw {
-                    draw_entity_directive(canvas, draw_element, &env2, field)?;
+                    draw_entity_directive(app, canvas, draw_element, &env2, field)?;
                 }
             }
         }
@@ -672,6 +677,7 @@ fn draw_entity_directive(
 }
 
 fn draw_tiled(
+    app: &AppState,
     canvas: &mut Canvas,
     sprite: &str,
     bounds: &Rect<f32, UnknownUnit>,
@@ -679,7 +685,7 @@ fn draw_tiled(
     color: femtovg::Color,
 ) {
     tile(bounds, slice.width(), slice.height(), |piece| {
-        assets::GAMEPLAY_ATLAS.draw_sprite(
+        app.palette.gameplay_atlas.draw_sprite(
             canvas,
             sprite,
             piece.origin,

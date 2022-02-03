@@ -1,8 +1,12 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::time;
 use vizia::*;
 
 use crate::assets;
+use crate::config::aggregate::ModuleAggregate;
+use crate::config::module::CelesteModule;
+use crate::config::walker::{EmbeddedSource, FolderSource};
 use crate::map_struct;
 use crate::map_struct::{CelesteMap, CelesteMapDecal, CelesteMapEntity};
 use crate::tools;
@@ -15,6 +19,11 @@ use crate::widgets::palette_widget::{
 
 #[derive(Lens)]
 pub struct AppState {
+    pub modules: HashMap<String, CelesteModule>,
+    pub dependencies: Vec<String>,
+    pub current_module: String,
+    pub palette: ModuleAggregate,
+
     pub current_tool: usize,
     pub current_room: usize,
     pub current_layer: Layer,
@@ -155,15 +164,42 @@ impl Model for AppState {
 
 impl AppState {
     pub fn new() -> AppState {
+        let modules = {
+            let mut result = HashMap::new();
+            let mut celeste_module =
+                FolderSource::new(assets::CONFIG.lock().unwrap().celeste_root.join("Content")).unwrap();
+
+            result.insert(
+                "Celeste".to_owned(), {
+                    let mut r = CelesteModule::new();
+                    r.load(&mut celeste_module);
+                    r
+                }
+            );
+            result.insert(
+                "Arborio".to_owned(), {
+                    let mut r = CelesteModule::new();
+                    r.load(&mut EmbeddedSource());
+                    r
+                }
+            );
+
+            result
+        };
+        let dependencies = vec!["Celeste".to_owned(), "Arborio".to_owned()];
+        let current_module = "Celeste".to_owned();
+        let palette = ModuleAggregate::new(&modules, &dependencies, &current_module);
+
         AppState {
+
             current_tool: 2,
             map: None,
             current_room: 0,
             current_fg_tile: TileSelectable::default(),
             current_bg_tile: TileSelectable::default(),
-            current_entity: assets::ENTITIES_PALETTE[0],
-            current_trigger: assets::TRIGGERS_PALETTE[0],
-            current_decal: assets::DECALS_PALETTE[0],
+            current_entity: palette.entities_palette[0],
+            current_trigger: palette.triggers_palette[0],
+            current_decal: palette.decals_palette[0],
             current_selected: None,
             dirty: false,
             transform: MapToScreen::identity(),
@@ -171,6 +207,11 @@ impl AppState {
             snap: true,
             last_draw: RefCell::new(time::Instant::now()),
             current_layer: Layer::FgTiles,
+
+            modules,
+            dependencies,
+            current_module,
+            palette,
         }
     }
 

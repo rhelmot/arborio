@@ -4,7 +4,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 use vizia::*;
 
-use crate::assets;
+use crate::{AppState, assets};
 use crate::config::entity_config::{EntityConfig, EntityTemplate, TriggerConfig};
 use crate::map_struct::CelesteMapEntity;
 use crate::units::*;
@@ -32,14 +32,17 @@ where
             List::new(cx, items, move |cx, item| {
                 Binding::new(cx, selected, move |cx, selected_field| {
                     let selected = *selected_field.get(cx);
-                    let checked = item.get(cx).same(&selected);
+                    let item = *item.get(cx);
+                    let checked = item.same(&selected);
                     HStack::new(cx, move |cx| {
-                        Label::new(cx, &item.get(cx).display_name());
+                        let app = cx.data().unwrap();
+                        let display_name = &item.display_name(app);
+                        Label::new(cx, display_name);
                     })
                     .class("palette_item")
                     .checked(checked)
                     .on_press(move |cx| {
-                        (callback)(cx, *item.get(cx));
+                        (callback)(cx, item);
                     });
                 });
             });
@@ -88,16 +91,16 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
             ),
         );
 
-        data.draw(canvas);
+        data.draw(cx.data::<AppState>().unwrap(), canvas);
         canvas.restore();
     }
 }
 
 pub trait PaletteItem: Copy + Clone + Data + Debug + Send {
     fn search_text(&self) -> String;
-    fn display_name(&self) -> String;
+    fn display_name(&self, app: &AppState) -> String;
     const CAN_DRAW: bool = true;
-    fn draw(&self, canvas: &mut Canvas);
+    fn draw(&self, app: &AppState, canvas: &mut Canvas);
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -136,14 +139,14 @@ impl PaletteItem for TileSelectable {
         self.name.to_owned()
     }
 
-    fn display_name(&self) -> String {
+    fn display_name(&self, _app: &AppState) -> String {
         self.name.to_owned()
     }
 
-    fn draw(&self, canvas: &mut Canvas) {
+    fn draw(&self, app: &AppState, canvas: &mut Canvas) {
         if let Some(texture) = self.texture {
             canvas.scale(3.0, 3.0);
-            assets::GAMEPLAY_ATLAS.draw_sprite(
+            app.palette.gameplay_atlas.draw_sprite(
                 canvas,
                 texture,
                 Point2D::zero(),
@@ -186,21 +189,22 @@ impl PaletteItem for EntitySelectable {
         todo!()
     }
 
-    fn display_name(&self) -> String {
-        self.config().templates[self.template].name.clone() // todo: can we not clone please
+    fn display_name(&self, app: &AppState) -> String {
+        self.config(app).templates[self.template].name.clone() // todo: can we not clone please
     }
 
-    fn draw(&self, canvas: &mut Canvas) {
+    fn draw(&self, app: &AppState, canvas: &mut Canvas) {
         canvas.scale(2.0, 2.0);
 
         let tmp_entity = self.instantiate(
+            app,
             16,
             16,
-            self.config().minimum_size_x as i32,
-            self.config().minimum_size_y as i32,
+            self.config(app).minimum_size_x as i32,
+            self.config(app).minimum_size_y as i32,
             vec![(48, 16)],
         );
-        editor_widget::draw_entity(canvas, &tmp_entity, &TileGrid::empty(), false, false);
+        editor_widget::draw_entity(app, canvas, &tmp_entity, &TileGrid::empty(), false, false);
     }
 }
 
@@ -209,30 +213,31 @@ impl PaletteItem for TriggerSelectable {
         todo!()
     }
 
-    fn display_name(&self) -> String {
-        self.config().templates[self.template].name.clone()
+    fn display_name(&self, app: &AppState) -> String {
+        self.config(app).templates[self.template].name.clone()
     }
 
     const CAN_DRAW: bool = false;
-    fn draw(&self, canvas: &mut Canvas) {
+    fn draw(&self, _app: &AppState, _canvas: &mut Canvas) {
         panic!("You cannot draw a trigger. don't call me!")
     }
 }
 
 impl EntitySelectable {
-    pub fn config(&self) -> &'static EntityConfig {
-        assets::ENTITY_CONFIG.get(self.entity).unwrap()
+    pub fn config<'a>(&self, app: &'a AppState) -> &'a Rc<EntityConfig> {
+        app.palette.entity_config.get(self.entity).unwrap()
     }
 
     pub fn instantiate(
         &self,
+        app: &AppState,
         x: i32,
         y: i32,
         width: i32,
         height: i32,
         nodes: Vec<(i32, i32)>,
     ) -> CelesteMapEntity {
-        let config = self.config();
+        let config = self.config(app);
 
         let (x, width) = if width < 0 {
             (x + width, -width as u32)
@@ -247,12 +252,12 @@ impl EntitySelectable {
         let width = width.max(config.minimum_size_x);
         let height = height.max(config.minimum_size_y);
         let width = if !config.resizable_x {
-            self.config().minimum_size_x
+            config.minimum_size_x
         } else {
             width
         };
         let height = if !config.resizable_y {
-            self.config().minimum_size_y
+            config.minimum_size_y
         } else {
             height
         };
@@ -284,19 +289,20 @@ impl EntitySelectable {
 }
 
 impl TriggerSelectable {
-    pub fn config(&self) -> &'static TriggerConfig {
-        assets::TRIGGER_CONFIG.get(self.trigger).unwrap()
+    pub fn config<'a>(&self, app: &'a AppState) -> &'a Rc<TriggerConfig> {
+        app.palette.trigger_config.get(self.trigger).unwrap()
     }
 
     pub fn instantiate(
         &self,
+        app: &AppState,
         x: i32,
         y: i32,
         width: i32,
         height: i32,
         nodes: Vec<(i32, i32)>,
     ) -> CelesteMapEntity {
-        let config = self.config();
+        let config = self.config(app);
 
         let (x, width) = if width < 0 {
             (x + width, -width as u32)
@@ -351,12 +357,12 @@ impl PaletteItem for DecalSelectable {
         todo!()
     }
 
-    fn display_name(&self) -> String {
+    fn display_name(&self, _app: &AppState) -> String {
         self.0.to_owned()
     }
 
-    fn draw(&self, canvas: &mut Canvas) {
-        assets::GAMEPLAY_ATLAS.draw_sprite(
+    fn draw(&self, app: &AppState, canvas: &mut Canvas) {
+        app.palette.gameplay_atlas.draw_sprite(
             canvas,
             &("decals/".to_owned() + self.0),
             Point2D::new(0.0, 0.0),

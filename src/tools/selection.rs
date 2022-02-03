@@ -134,19 +134,19 @@ impl Tool for SelectionTool {
         }
     }
 
-    fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent> {
-        let nav_events = generic_nav(event, state, cx);
+    fn event(&mut self, event: &WindowEvent, app: &AppState, cx: &Context) -> Vec<AppEvent> {
+        let nav_events = generic_nav(event, app, cx);
         if !nav_events.is_empty() {
             return nav_events;
         }
 
-        let room = if let Some(room) = state.current_room_ref() {
+        let room = if let Some(room) = app.current_room_ref() {
             room
         } else {
             return vec![];
         };
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
-        let map_pos_precise = state
+        let map_pos_precise = app
             .transform
             .inverse()
             .unwrap()
@@ -155,7 +155,7 @@ impl Tool for SelectionTool {
         let room_pos_unsnapped = (map_pos - room.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos_unsnapped);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
-        let room_pos = if state.snap {
+        let room_pos = if app.snap {
             room_pos_snapped
         } else {
             room_pos_unsnapped
@@ -173,7 +173,7 @@ impl Tool for SelectionTool {
             }
             WindowEvent::MouseDown(MouseButton::Left) => {
                 if self.status == SelectionStatus::None {
-                    let got = self.selectable_at(room, state.current_layer, room_pos_unsnapped);
+                    let got = self.selectable_at(app, room, app.current_layer, room_pos_unsnapped);
                     if self.touches_float(room_pos)
                         || (got.is_some() && self.current_selection.contains(&got.unwrap()))
                     {
@@ -186,7 +186,7 @@ impl Tool for SelectionTool {
                             self.pending_selection = HashSet::from([g]);
                         }
                         if !cx.modifiers.contains(Modifiers::SHIFT) {
-                            self.clear_selection(state)
+                            self.clear_selection(app)
                         } else {
                             vec![]
                         }
@@ -198,7 +198,7 @@ impl Tool for SelectionTool {
             WindowEvent::MouseMove(..) => {
                 let mut events = if let SelectionStatus::CouldStartDragging(pt, unsn) = self.status
                 {
-                    self.begin_dragging(room, pt, unsn) // sets self.status = Dragging | Resizing
+                    self.begin_dragging(app, room, pt, unsn) // sets self.status = Dragging | Resizing
                 } else {
                     vec![]
                 };
@@ -208,8 +208,9 @@ impl Tool for SelectionTool {
                     SelectionStatus::CouldStartDragging(_, _) => unreachable!(),
                     SelectionStatus::Selecting(ref_pos) => {
                         self.pending_selection = self.selectables_in(
+                            app,
                             room,
-                            state.current_layer,
+                            app.current_layer,
                             RoomRect::new(ref_pos, (room_pos - ref_pos).to_size()),
                         );
                         vec![]
@@ -221,7 +222,7 @@ impl Tool for SelectionTool {
                     SelectionStatus::Resizing(ResizingStatus {
                         pointer_reference_point,
                         ..
-                    }) => self.resize(room, room_pos - pointer_reference_point),
+                    }) => self.resize(app, room, room_pos - pointer_reference_point),
                 });
 
                 events
@@ -233,8 +234,9 @@ impl Tool for SelectionTool {
                 Code::ArrowLeft => self.nudge(room, RoomVector::new(-8, 0)),
                 Code::KeyA if cx.modifiers.contains(Modifiers::CTRL) => {
                     self.current_selection = self.selectables_in(
+                        app,
                         room,
-                        state.current_layer,
+                        app.current_layer,
                         RoomRect::new(
                             RoomPoint::new(-1000000, -1000000),
                             RoomSize::new(2000000, 2000000),
@@ -249,9 +251,9 @@ impl Tool for SelectionTool {
         }
     }
 
-    fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &Context) {
+    fn draw(&mut self, canvas: &mut Canvas, app: &AppState, cx: &Context) {
         canvas.save();
-        let room = if let Some(room) = state.current_room_ref() {
+        let room = if let Some(room) = app.current_room_ref() {
             room
         } else {
             return;
@@ -260,8 +262,7 @@ impl Tool for SelectionTool {
         // no scissor!
 
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
-        let map_pos_precise = state
-            .transform
+        let map_pos_precise = app.transform
             .inverse()
             .unwrap()
             .transform_point(screen_pos)
@@ -270,7 +271,7 @@ impl Tool for SelectionTool {
         let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
-        let room_pos = if state.snap {
+        let room_pos = if app.snap {
             room_pos_snapped
         } else {
             room_pos
@@ -298,7 +299,7 @@ impl Tool for SelectionTool {
             .iter()
             .chain(self.current_selection.iter())
         {
-            for rect in self.rects_of(room, *selectable) {
+            for rect in self.rects_of(app, room, *selectable) {
                 path.rect(
                     rect.min_x() as f32,
                     rect.min_y() as f32,
@@ -315,12 +316,12 @@ impl Tool for SelectionTool {
                 let float_pt = pt - float_pos.to_vector();
                 let ch = float_dat.get_or_default(float_pt);
                 if ch != '\0' {
-                    if let Some(tile) = assets::BG_TILES
+                    if let Some(tile) = app.palette.autotilers["bg"]
                         .get(&ch)
                         .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
                     {
                         let room_pos = point_tile_to_room(&pt);
-                        assets::GAMEPLAY_ATLAS.draw_tile(
+                        app.palette.gameplay_atlas.draw_tile(
                             canvas,
                             tile,
                             room_pos.x as f32,
@@ -339,12 +340,12 @@ impl Tool for SelectionTool {
                 let float_pt = pt - float_pos.to_vector();
                 let ch = float_dat.get_or_default(float_pt);
                 if ch != '\0' {
-                    if let Some(tile) = assets::FG_TILES
+                    if let Some(tile) = app.palette.autotilers["fg"]
                         .get(&ch)
                         .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
                     {
                         let room_pos = point_tile_to_room(&pt);
-                        assets::GAMEPLAY_ATLAS.draw_tile(
+                        app.palette.gameplay_atlas.draw_tile(
                             canvas,
                             tile,
                             room_pos.x as f32,
@@ -363,10 +364,10 @@ impl Tool for SelectionTool {
         );
 
         if self.status == SelectionStatus::None {
-            if let Some(sel) = self.selectable_at(room, state.current_layer, room_pos) {
+            if let Some(sel) = self.selectable_at(app, room, app.current_layer, room_pos) {
                 if !self.current_selection.contains(&sel) {
                     let mut path = femtovg::Path::new();
-                    for rect in self.rects_of(room, sel) {
+                    for rect in self.rects_of(app, room, sel) {
                         path.rect(
                             rect.min_x() as f32,
                             rect.min_y() as f32,
@@ -385,14 +386,14 @@ impl Tool for SelectionTool {
         canvas.restore();
     }
 
-    fn cursor(&self, cx: &Context, state: &AppState) -> CursorIcon {
-        let room = if let Some(room) = state.current_room_ref() {
+    fn cursor(&self, cx: &Context, app: &AppState) -> CursorIcon {
+        let room = if let Some(room) = app.current_room_ref() {
             room
         } else {
             return CursorIcon::Default;
         };
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
-        let map_pos_precise = state
+        let map_pos_precise = app
             .transform
             .inverse()
             .unwrap()
@@ -406,7 +407,7 @@ impl Tool for SelectionTool {
 
         match &self.status {
             SelectionStatus::CouldStartDragging(_, _) | SelectionStatus::None => {
-                self.can_resize(room, room_pos).to_cursor_icon()
+                self.can_resize(app, room, room_pos).to_cursor_icon()
             }
             SelectionStatus::Dragging(_) | SelectionStatus::Selecting(_) => CursorIcon::Default,
             SelectionStatus::Resizing(info) => info.side.to_cursor_icon(),
@@ -451,7 +452,7 @@ impl SelectionTool {
         false
     }
 
-    fn rects_of(&self, room: &CelesteMapLevel, selectable: AppSelection) -> Vec<RoomRect> {
+    fn rects_of(&self, app: &AppState, room: &CelesteMapLevel, selectable: AppSelection) -> Vec<RoomRect> {
         match selectable {
             AppSelection::FgTile(pt) => {
                 vec![RoomRect::new(point_tile_to_room(&pt), RoomSize::new(8, 8))]
@@ -461,7 +462,7 @@ impl SelectionTool {
             }
             AppSelection::EntityBody(id, trigger) => {
                 if let Some(entity) = room.entity(id, trigger) {
-                    let config = assets::get_entity_config(&entity.name, trigger);
+                    let config = app.palette.get_entity_config(&entity.name, trigger);
                     let env = entity.make_env();
                     config
                         .hitboxes
@@ -481,7 +482,7 @@ impl SelectionTool {
             }
             AppSelection::EntityNode(id, node_idx, trigger) => {
                 if let Some(entity) = room.entity(id, trigger) {
-                    let config = assets::get_entity_config(&entity.name, trigger);
+                    let config = app.palette.get_entity_config(&entity.name, trigger);
                     let env = entity.make_node_env(entity.make_env(), node_idx);
                     config
                         .hitboxes
@@ -501,7 +502,7 @@ impl SelectionTool {
             }
             AppSelection::Decal(id, fg) => {
                 if let Some(decal) = room.decal(id, fg) {
-                    if let Some(dim) = assets::GAMEPLAY_ATLAS.sprite_dimensions(&decal_texture(decal)) {
+                    if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&decal_texture(decal)) {
                         let size = dim
                             .cast()
                             .cast_unit()
@@ -526,11 +527,12 @@ impl SelectionTool {
 
     fn selectable_at(
         &self,
+        app: &AppState,
         room: &CelesteMapLevel,
         layer: Layer,
         room_pos: RoomPoint,
     ) -> Option<AppSelection> {
-        self.selectables_in(room, layer, RoomRect::new(room_pos, RoomSize::new(1, 1)))
+        self.selectables_in(app, room, layer, RoomRect::new(room_pos, RoomSize::new(1, 1)))
             .iter()
             .next()
             .cloned()
@@ -538,6 +540,7 @@ impl SelectionTool {
 
     fn selectables_in(
         &self,
+        app: &AppState,
         room: &CelesteMapLevel,
         layer: Layer,
         room_rect: RoomRect,
@@ -553,7 +556,7 @@ impl SelectionTool {
             for (idx, decal) in room.fg_decals.iter().enumerate().rev() {
                 room.cache_decal_idx(idx);
                 let sel = AppSelection::Decal(decal.id, true);
-                if intersects_any(&self.rects_of(room, sel), &room_rect) {
+                if intersects_any(&self.rects_of(app, room, sel), &room_rect) {
                     result.insert(sel);
                 }
             }
@@ -573,12 +576,12 @@ impl SelectionTool {
                 room.cache_entity_idx(idx);
                 for node_idx in 0..entity.nodes.len() {
                     let sel = AppSelection::EntityNode(entity.id, node_idx, false);
-                    if intersects_any(&self.rects_of(room, sel), &room_rect) {
+                    if intersects_any(&self.rects_of(app, room, sel), &room_rect) {
                         result.insert(sel);
                     }
                 }
                 let sel = AppSelection::EntityBody(entity.id, false);
-                if intersects_any(&self.rects_of(room, sel), &room_rect) {
+                if intersects_any(&self.rects_of(app, room, sel), &room_rect) {
                     result.insert(sel);
                 }
             }
@@ -588,12 +591,12 @@ impl SelectionTool {
                 room.cache_entity_idx(idx);
                 for node_idx in 0..entity.nodes.len() {
                     let sel = AppSelection::EntityNode(entity.id, node_idx, true);
-                    if intersects_any(&self.rects_of(room, sel), &room_rect) {
+                    if intersects_any(&self.rects_of(app, room, sel), &room_rect) {
                         result.insert(sel);
                     }
                 }
                 let sel = AppSelection::EntityBody(entity.id, true);
-                if intersects_any(&self.rects_of(room, sel), &room_rect) {
+                if intersects_any(&self.rects_of(app, room, sel), &room_rect) {
                     result.insert(sel);
                 }
             }
@@ -602,7 +605,7 @@ impl SelectionTool {
             for (idx, decal) in room.bg_decals.iter().enumerate().rev() {
                 room.cache_decal_idx(idx);
                 let sel = AppSelection::Decal(decal.id, false);
-                if intersects_any(&self.rects_of(room, sel), &room_rect) {
+                if intersects_any(&self.rects_of(app, room, sel), &room_rect) {
                     result.insert(sel);
                 }
             }
@@ -735,7 +738,7 @@ impl SelectionTool {
     }
 
     #[must_use]
-    fn resize(&mut self, room: &CelesteMapLevel, resize: RoomVector) -> Vec<AppEvent> {
+    fn resize(&mut self, app: &AppState, room: &CelesteMapLevel, resize: RoomVector) -> Vec<AppEvent> {
         let mut events = vec![];
 
         let dragging = if let SelectionStatus::Resizing(dragging) = &self.status {
@@ -777,9 +780,7 @@ impl SelectionTool {
                 }
                 AppSelection::EntityBody(id, trigger) => {
                     let mut e = room.entity(*id, *trigger).unwrap().clone();
-                    let config = assets::ENTITY_CONFIG
-                        .get(e.name.as_str())
-                        .unwrap_or_else(|| assets::ENTITY_CONFIG.get("default").unwrap());
+                    let config = app.palette.get_entity_config(e.name.as_str(), false);
                     let start_rect = dragging
                         .map(|d| *d.selection_reference_sizes.get(sel).unwrap())
                         .unwrap_or_else(|| {
@@ -803,7 +804,7 @@ impl SelectionTool {
                 }
                 AppSelection::Decal(id, fg) => {
                     let mut d = room.decal(*id, *fg).unwrap().clone();
-                    if let Some(dim) = assets::GAMEPLAY_ATLAS.sprite_dimensions(&decal_texture(&d)) {
+                    if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&decal_texture(&d)) {
                         let texture_size = dim.cast().cast_unit();
                         let start_rect = dragging
                             .map(|d| *d.selection_reference_sizes.get(sel).unwrap())
@@ -934,11 +935,11 @@ impl SelectionTool {
         events
     }
 
-    fn can_resize(&self, room: &CelesteMapLevel, pointer: RoomPoint) -> ResizeSide {
+    fn can_resize(&self, app: &AppState, room: &CelesteMapLevel, pointer: RoomPoint) -> ResizeSide {
         // get which side of the rectangle we're on
         let mut side = ResizeSide::None;
         'outer: for sel in self.current_selection.iter() {
-            for rect in self.rects_of(room, *sel) {
+            for rect in self.rects_of(app, room, *sel) {
                 if rect.contains(pointer) {
                     let smaller_rect = rect.inflate(-2, -2);
                     let at_top = pointer.y < smaller_rect.min_y();
@@ -962,7 +963,7 @@ impl SelectionTool {
                         AppSelection::FgTile(_) | AppSelection::BgTile(_) => ResizeSide::None,
                         AppSelection::EntityBody(id, trigger) => {
                             if let Some(entity) = room.entity(*id, *trigger) {
-                                let config = assets::get_entity_config(&entity.name, *trigger);
+                                let config = app.palette.get_entity_config(&entity.name, *trigger);
                                 if !config.resizable_x {
                                     side = side.filter_out_left_right();
                                 }
@@ -989,6 +990,7 @@ impl SelectionTool {
     #[must_use]
     fn begin_dragging(
         &mut self,
+        app: &AppState,
         room: &CelesteMapLevel,
         pointer_reference_point: RoomPoint,
         pointer_reference_point_unsnapped: RoomPoint,
@@ -996,7 +998,7 @@ impl SelectionTool {
         // Offload all fg/bg selections into the floats
         let events = self.float_tiles(room);
 
-        let side = self.can_resize(room, pointer_reference_point_unsnapped);
+        let side = self.can_resize(app, room, pointer_reference_point_unsnapped);
         if side != ResizeSide::None {
             // collect reference sizes
             let selection_reference_sizes = self
@@ -1019,7 +1021,7 @@ impl SelectionTool {
                     }
                     AppSelection::Decal(id, fg) => {
                         if let Some(decal) = room.decal(*id, *fg) {
-                            if let Some(dim) = assets::GAMEPLAY_ATLAS.sprite_dimensions(&decal_texture(decal)) {
+                            if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&decal_texture(decal)) {
                                 let size = dim
                                     .cast()
                                     .cast_unit()

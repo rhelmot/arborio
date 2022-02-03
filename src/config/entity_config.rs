@@ -7,7 +7,7 @@ use crate::units::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EntityConfig {
-    pub entity_name: String,
+    pub entity_name: String, // TODO can this be an interned &'static str?
     pub hitboxes: EntityRects,
     #[serde(default)]
     pub standard_draw: EntityDraw,

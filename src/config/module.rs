@@ -1,17 +1,19 @@
+use std::borrow::BorrowMut;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
+
 use crate::atlas_img::Atlas;
 use crate::autotiler;
 use crate::autotiler::Tileset;
 use crate::config::entity_config::{EntityConfig, TriggerConfig};
 use crate::config::walker::ConfigSource;
-use std::borrow::BorrowMut;
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 
 pub struct CelesteModule {
     pub gameplay_atlas: Atlas,
-    pub tilers: HashMap<String, autotiler::Autotiler>,
-    pub entity_config: HashMap<String, EntityConfig>,
-    pub trigger_config: HashMap<String, TriggerConfig>,
+    pub tilers: HashMap<String, Rc<autotiler::Autotiler>>,
+    pub entity_config: HashMap<String, Rc<EntityConfig>>,
+    pub trigger_config: HashMap<String, Rc<TriggerConfig>>,
 }
 
 impl CelesteModule {
@@ -31,15 +33,15 @@ impl CelesteModule {
         if let Some(fp) = source.get_file(&PathBuf::from("Graphics/ForegroundTiles.xml")) {
             self.tilers.insert(
                 "fg".to_owned(),
-                Tileset::load(fp, "tilesets/")
-                    .expect("Could not parse ForegroundTiles.xml"),
+                Rc::new(Tileset::new(fp, "tilesets/")
+                    .expect("Could not parse ForegroundTiles.xml")),
             );
         }
         if let Some(fp) = source.get_file(&PathBuf::from("Graphics/BackgroundTiles.xml")) {
             self.tilers.insert(
                 "bg".to_owned(),
-                Tileset::load(fp, "tilesets/")
-                    .expect("Could not parse BackgroundTiles.xml"),
+                Rc::new(Tileset::new(fp, "tilesets/")
+                    .expect("Could not parse BackgroundTiles.xml")),
             );
         }
         for path in source.list_all_files(&PathBuf::from("Arborio/tilers")) {
@@ -50,8 +52,8 @@ impl CelesteModule {
                         .to_str()
                         .expect("Fatal error: non-utf8 config filepath")
                         .to_owned(),
-                    Tileset::load(fp, "")
-                        .expect("Could not parse custom tileset"),
+                    Rc::new(Tileset::new(fp, "")
+                        .expect("Could not parse custom tileset")),
                 );
             }
         }
@@ -63,7 +65,7 @@ impl CelesteModule {
                 if config.templates.is_empty() {
                     config.templates.push(config.default_template());
                 }
-                self.entity_config.insert(config.entity_name.clone(), config);
+                self.entity_config.insert(config.entity_name.clone(), Rc::new(config));
             } else {
 
             }
@@ -75,7 +77,7 @@ impl CelesteModule {
                 if config.templates.is_empty() {
                     config.templates.push(config.default_template());
                 }
-                self.trigger_config.insert(config.trigger_name.clone(), config);
+                self.trigger_config.insert(config.trigger_name.clone(), Rc::new(config));
             } else {
 
             }

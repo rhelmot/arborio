@@ -2,20 +2,20 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use femtovg::{Color, ImageId, ImageSource, Paint, Path};
 use imgref::Img;
 use rgb::RGBA8;
-use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::fs;
 use std::io;
-use std::io::{ErrorKind, Read};
+use std::io::Read; // trait method import
 use std::path;
-use std::path::PathBuf;
-use std::sync::Mutex;
-use crate::assets;
+use std::rc::Rc;
+use std::cell::RefCell;
 
+use crate::assets;
 use crate::autotiler::TileReference;
 use crate::config::walker::ConfigSource;
 use crate::units::*;
 
+#[derive(Debug)]
 enum BlobData {
     Waiting(Img<Vec<RGBA8>>),
     Loaded(ImageId),
@@ -37,13 +37,13 @@ impl BlobData {
 }
 
 pub struct Atlas {
-    blobs: Vec<Mutex<BlobData>>,
-    sprites_map: HashMap<&'static str, AtlasSprite>,
+    blobs: Vec<Rc<RefCell<BlobData>>>,
+    sprites_map: HashMap<&'static str, Rc<AtlasSprite>>,
 }
 
 #[derive(Debug)]
 struct AtlasSprite {
-    blob_idx: usize,
+    blob: Rc<RefCell<BlobData>>,
     bounding_box: Rect<u16, UnknownUnit>,
     trim_offset: Vector2D<i16, UnknownUnit>,
     untrimmed_size: Size2D<u16, UnknownUnit>,
@@ -61,7 +61,7 @@ impl Atlas {
             .load_crunched(config, atlas)
             .expect("Fatal error parsing packed atlas");
 
-        for path in config.list_all_files(&PathBuf::from("Graphics/Atlases").join(atlas.to_owned())) {
+        for path in config.list_all_files(&path::PathBuf::from("Graphics/Atlases").join(atlas.to_owned())) {
             self.load_loose(config, &path);
         }
     }
@@ -81,7 +81,7 @@ impl Atlas {
         config: &mut T,
         atlas: &str,
     ) -> Result<(), io::Error> {
-        let meta_file = PathBuf::from("Graphics/Atlases").join(atlas.to_owned() + ".meta");
+        let meta_file = path::PathBuf::from("Graphics/Atlases").join(atlas.to_owned() + ".meta");
         let mut reader = if let Some(fp) = config.get_file(&meta_file) {
             fp
         } else {
@@ -98,9 +98,9 @@ impl Atlas {
             let data_file = read_string(&mut reader)? + ".data";
             let data_path = meta_file.with_file_name(&data_file);
             let blob_idx = self.blobs.len();
-            self.blobs.push(Mutex::new(BlobData::Waiting(load_data_file(
+            self.blobs.push(Rc::new(RefCell::new(BlobData::Waiting(load_data_file(
                 config, data_path,
-            )?)));
+            )?))));
 
             let sprites = reader.read_u16::<LittleEndian>()?;
             for _ in 0..sprites {
@@ -114,15 +114,15 @@ impl Atlas {
                 let real_width = reader.read_u16::<LittleEndian>()?;
                 let real_height = reader.read_u16::<LittleEndian>()?;
 
-                self.sprites_map.insert(assets::intern(&sprite_path), AtlasSprite {
-                    blob_idx,
+                self.sprites_map.insert(assets::intern(&sprite_path), Rc::new(AtlasSprite {
+                    blob: self.blobs[self.blobs.len() - 1].clone(),
                     bounding_box: euclid::Rect {
                         origin: euclid::Point2D::new(x, y),
                         size: euclid::Size2D::new(width, height),
                     },
                     trim_offset: Vector2D::new(offset_x, offset_y),
                     untrimmed_size: Size2D::new(real_width, real_height),
-                });
+                }));
             }
         }
 
@@ -181,7 +181,7 @@ impl Atlas {
         // how do we transform the entire fucking atlas to get the rectangle we want to end up inside canvas_rect?
         let atlas_offset = -atlas_center.to_vector().component_mul(scale.to_vector());
 
-        let mut image_blob = self.blobs[sprite.blob_idx].lock().unwrap();
+        let mut image_blob = sprite.blob.borrow_mut();
         let image_id = image_blob.image_id(canvas);
         let (sx, sy) = canvas.image_size(image_id).unwrap();
         let paint = Paint::image_tint(
@@ -233,7 +233,7 @@ impl Atlas {
     }
 }
 
-fn read_string<R: Read>(reader: &mut R) -> Result<String, io::Error> {
+fn read_string<R: io::Read>(reader: &mut R) -> Result<String, io::Error> {
     let strlen = reader.read_u8()? as usize;
     let mut buf = vec![0u8; strlen];
     reader.read_exact(buf.as_mut_slice())?;
@@ -249,7 +249,7 @@ pub fn load_data_file<T: ConfigSource>(
         reader
     } else {
         return Err(io::Error::new(
-            ErrorKind::NotFound,
+            io::ErrorKind::NotFound,
             format!("{:?} not found", data_file),
         ));
     };
@@ -285,45 +285,27 @@ pub fn load_data_file<T: ConfigSource>(
     Ok(Img::new(buf, width as usize, height as usize))
 }
 
-pub struct MultiAtlas<'a> {
-    atlases: Vec<&'a Atlas>,
-    path_cache: Mutex<lru::LruCache<&'static str, usize>>,
+pub struct MultiAtlas {
+    sprites_map: HashMap<&'static str, Rc<AtlasSprite>>,
 }
 
-impl<'a> MultiAtlas<'a> {
+impl MultiAtlas {
     pub fn new() -> Self {
         Self {
-            atlases: vec![],
-            path_cache: Mutex::new(lru::LruCache::new(1000)),
+            sprites_map: HashMap::new()
         }
     }
 
-    pub fn add(&mut self, atlas: &'a Atlas) {
-        self.atlases.push(atlas);
+    pub fn add(&mut self, atlas: &Atlas) {
+        self.sprites_map.extend(atlas.sprites_map.iter().map(|(path, sprite)| (*path, sprite.clone())));
     }
 
     pub fn iter_paths(&self) -> impl Iterator<Item = &'static str> + '_ {
-        self.atlases.iter().flat_map(|a| a.iter_paths())
-    }
-
-    fn find_atlas(&self, sprite_path: &str) -> Option<usize> {
-        let sprite_path = assets::intern(sprite_path);
-        let mut path_cache = self.path_cache.lock().unwrap();
-        if let Some(idx) = path_cache.get(&sprite_path) {
-            Some(*idx)
-        } else {
-            for (idx, atlas) in self.atlases.iter().enumerate() {
-                if atlas.sprites_map.contains_key(sprite_path) {
-                    path_cache.put(sprite_path, idx);
-                    return Some(idx);
-                }
-            }
-            None
-        }
+        self.sprites_map.iter().map(|(path, _)| *path)
     }
 
     pub fn sprite_dimensions(&self, sprite_path: &str) -> Option<Size2D<u16, UnknownUnit>> {
-        self.find_atlas(sprite_path).and_then(|idx| self.atlases[idx].sprite_dimensions(sprite_path))
+        self.sprites_map.get(sprite_path).map(|s| s.untrimmed_size)
     }
 
     pub fn draw_sprite(
@@ -337,10 +319,65 @@ impl<'a> MultiAtlas<'a> {
         color: Option<Color>,
         rot: f32,
     ) -> Option<()> {
-        self.find_atlas(sprite_path).and_then(|idx| self.atlases[idx].draw_sprite(
-            canvas, sprite_path, point,
-            slice, justify, scale, color, rot
-        ))
+        let sprite = if let Some(sprite) = self.sprites_map.get(sprite_path) { sprite } else { return None };
+        let color = color.unwrap_or_else(Color::white);
+
+        let justify = justify.unwrap_or(Vector2D::new(0.5, 0.5));
+        let slice =
+            slice.unwrap_or_else(|| Rect::new(Point2D::zero(), sprite.untrimmed_size.cast()));
+        let scale = scale.unwrap_or(Point2D::new(1.0, 1.0));
+
+        // what atlas-space point does the screen-space point specified correspond to in the atlas?
+        // if point is cropped then we give a point outside the crop. idgaf
+        let atlas_origin = sprite.bounding_box.origin.cast() + sprite.trim_offset;
+        let justify_offset =
+            slice.origin.to_vector() + slice.size.cast().to_vector().component_mul(justify);
+        let atlas_center = atlas_origin.cast() + justify_offset;
+        // we draw so atlas_center corresponds to point
+
+        // what canvas-space bounds should we clip to?
+        let slice_visible = slice.intersection(&Rect::new(
+            -sprite.trim_offset.cast::<f32>().to_point(),
+            sprite.bounding_box.size.cast(),
+        ));
+        let slice_visible = if let Some(slice_visible) = slice_visible {
+            slice_visible
+        } else {
+            return Some(());
+        };
+        let canvas_rect = slice_visible
+            .translate(-justify_offset)
+            .scale(scale.x, scale.y); //.translate(point.to_vector());
+
+        // how do we transform the entire fucking atlas to get the rectangle we want to end up inside canvas_rect?
+        let atlas_offset = -atlas_center.to_vector().component_mul(scale.to_vector());
+
+        let mut image_blob = sprite.blob.borrow_mut();
+        let image_id = image_blob.image_id(canvas);
+        let (sx, sy) = canvas.image_size(image_id).unwrap();
+        let paint = Paint::image_tint(
+            image_id,
+            atlas_offset.x,
+            atlas_offset.y,
+            sx as f32 * scale.x,
+            sy as f32 * scale.y,
+            0.0,
+            color,
+        );
+        let mut path = Path::new();
+        path.rect(
+            canvas_rect.min_x(),
+            canvas_rect.min_y(),
+            canvas_rect.width(),
+            canvas_rect.height(),
+        );
+        canvas.save();
+        canvas.translate(point.x, point.y);
+        canvas.rotate(rot.to_radians());
+        canvas.fill_path(&mut path, paint);
+        canvas.restore();
+
+        Some(())
     }
 
     pub fn draw_tile(
@@ -351,8 +388,18 @@ impl<'a> MultiAtlas<'a> {
         oy: f32,
         color: femtovg::Color,
     ) -> Option<()> {
-        self.find_atlas(tile_ref.texture).and_then(|idx| self.atlases[idx].draw_tile(
-            canvas, tile_ref, ox, oy, color
-        ))
+        self.draw_sprite(
+            canvas,
+            tile_ref.texture,
+            Point2D::new(ox, oy),
+            Some(Rect::new(
+                Point2D::new(tile_ref.tile.x as f32 * 8.0, tile_ref.tile.y as f32 * 8.0),
+                Size2D::new(8.0, 8.0),
+            )),
+            Some(Vector2D::new(0.0, 0.0)),
+            None,
+            Some(color),
+            0.0,
+        )
     }
 }

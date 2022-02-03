@@ -25,7 +25,7 @@ pub struct TileReference {
 #[derive(Clone)]
 pub struct Tileset {
     pub id: char,
-    pub name: String,
+    pub name: &'static str,
     pub texture: &'static str,
     pub edges: Vec<Vec<TextureTile>>,
     pub padding: Vec<TextureTile>,
@@ -87,7 +87,7 @@ pub trait AutoTiler {
 }
 
 impl Tileset {
-    pub fn load<T: io::Read>(
+    pub fn new<T: io::Read>(
         mut fp: T,
         texture_prefix: &str,
     ) -> Result<Autotiler, io::Error> {
@@ -125,7 +125,7 @@ impl Tileset {
             let mut tileset = if s_tileset.copy.is_empty() {
                 Tileset {
                     id: ch,
-                    name: s_tileset.path.to_title_case(),
+                    name: assets::intern(&s_tileset.path.to_title_case()),
                     texture: assets::intern(&texture),
                     edges: vec![Vec::new(); 256],
                     padding: vec![],
@@ -158,7 +158,7 @@ impl Tileset {
                 };
                 r.texture = assets::intern(&texture);
                 r.id = ch;
-                r.name = s_tileset.path.to_title_case();
+                r.name = assets::intern(&s_tileset.path.to_title_case());
                 r
             };
 
@@ -173,7 +173,7 @@ impl Tileset {
                     .collect();
                 // assert_ascii!(s_tileset.ignores);
                 // if s_tileset.ignores.len() > 1 {
-                //     return Err(io::Error::new(io::ErrorKind::InvalidData, format!("I actually don't know how to load this tileset ({}). Can you send your mod to rhelmot?", s_tileset.id)));
+                //     return Err(io::Error::new(io::ErrorKind::InvalidData, format!("I actually don't know how to new this tileset ({}). Can you send your mod to rhelmot?", s_tileset.id)));
                 // }
                 // tileset.ignores.push(s_tileset.ignores.chars().next().unwrap());
             }
