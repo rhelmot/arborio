@@ -50,17 +50,30 @@ struct AtlasSprite {
 }
 
 impl Atlas {
-    pub fn load<T: ConfigSource>(config: &mut T, atlas: &str) -> Atlas {
-        let mut result = Atlas {
+    pub fn new() -> Atlas {
+        Atlas {
             blobs: Vec::new(),
             sprites_map: HashMap::new(),
-        };
-
-        result
+        }
+    }
+    pub fn load<T: ConfigSource>(&mut self, config: &mut T, atlas: &str) {
+        self
             .load_crunched(config, atlas)
             .expect("Fatal error parsing packed atlas");
 
-        result
+        for path in config.list_all_files(&PathBuf::from("Graphics/Atlases").join(atlas.to_owned())) {
+            self.load_loose(config, &path);
+        }
+    }
+
+    fn load_loose<T: ConfigSource>(
+        &mut self,
+        config: &mut T,
+        path: &path::Path
+    ) -> Result<(), io::Error> {
+        let mut reader = if let Some(fp) = config.get_file(path) { fp } else { return Err(io::ErrorKind::NotFound.into()) };
+
+        Ok(())
     }
 
     fn load_crunched<T: ConfigSource>(

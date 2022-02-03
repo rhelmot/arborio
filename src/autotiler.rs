@@ -89,7 +89,6 @@ pub trait AutoTiler {
 impl Tileset {
     pub fn load<T: io::Read>(
         mut fp: T,
-        gameplay_atlas: &atlas_img::Atlas,
         texture_prefix: &str,
     ) -> Result<Autotiler, io::Error> {
         let mut string = String::new();

@@ -51,12 +51,18 @@ lazy_static! {
             FolderSource::new(CONFIG.lock().unwrap().celeste_root.join("Content")).unwrap();
 
         result.insert(
-            "Celeste".to_owned(),
-            CelesteModule::new(&mut celeste_module),
+            "Celeste".to_owned(), {
+                let mut r = CelesteModule::new();
+                r.load(&mut celeste_module);
+                r
+            }
         );
         result.insert(
-            "Arborio".to_owned(),
-            CelesteModule::new(&mut EmbeddedSource()),
+            "Arborio".to_owned(), {
+                let mut r = CelesteModule::new();
+                r.load(&mut EmbeddedSource());
+                r
+            }
         );
 
         result
