@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::iter;
 use std::rc::Rc;
 use itertools::Itertools;
 use vizia::*;
@@ -29,11 +30,13 @@ impl Model for ModuleAggregate {}
 impl ModuleAggregate {
     pub fn new(
         modules: &HashMap<String, CelesteModule>,
-        dependencies: &Vec<String>,
         current_module: &str
     ) -> Self {
         let dep_mods = || {
-            dependencies.iter().map(|dep| (dep, modules.get(dep).unwrap()))
+            modules.get(current_module).unwrap()
+                .everest_metadata.dependencies.iter()
+                .map(|dep| (dep.name.as_str(), modules.get(&dep.name).unwrap()))
+                .chain(iter::once((current_module, modules.get(current_module).unwrap())))
         };
         let gameplay_atlas = {
             let mut multi_atlas = MultiAtlas::new();

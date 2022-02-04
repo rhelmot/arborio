@@ -7,9 +7,11 @@ use crate::atlas_img::Atlas;
 use crate::autotiler;
 use crate::autotiler::Tileset;
 use crate::config::entity_config::{EntityConfig, TriggerConfig};
+use crate::config::everest_yaml::EverestYaml;
 use crate::config::walker::ConfigSource;
 
 pub struct CelesteModule {
+    pub everest_metadata: EverestYaml,
     pub gameplay_atlas: Atlas,
     pub tilers: HashMap<String, Rc<autotiler::Autotiler>>,
     pub entity_config: HashMap<String, Rc<EntityConfig>>,
@@ -17,8 +19,9 @@ pub struct CelesteModule {
 }
 
 impl CelesteModule {
-    pub fn new() -> Self {
+    pub fn new(metadata: EverestYaml) -> Self {
         Self {
+            everest_metadata: metadata,
             gameplay_atlas: Atlas::new(),
             tilers: HashMap::new(),
             entity_config: HashMap::new(),

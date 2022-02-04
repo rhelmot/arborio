@@ -5,6 +5,7 @@ use vizia::*;
 
 use crate::assets;
 use crate::config::aggregate::ModuleAggregate;
+use crate::config::everest_yaml::{arborio_module_yaml, celeste_module_yaml};
 use crate::config::module::CelesteModule;
 use crate::config::walker::{EmbeddedSource, FolderSource};
 use crate::map_struct;
@@ -20,7 +21,6 @@ use crate::widgets::palette_widget::{
 #[derive(Lens)]
 pub struct AppState {
     pub modules: HashMap<String, CelesteModule>,
-    pub dependencies: Vec<String>,
     pub current_module: String,
     pub palette: ModuleAggregate,
 
@@ -168,27 +168,28 @@ impl AppState {
             let mut result = HashMap::new();
             let mut celeste_module =
                 FolderSource::new(assets::CONFIG.lock().unwrap().celeste_root.join("Content")).unwrap();
+            let mut arborio_module = EmbeddedSource();
 
             result.insert(
                 "Celeste".to_owned(), {
-                    let mut r = CelesteModule::new();
+                    let mut r = CelesteModule::new(celeste_module_yaml());
                     r.load(&mut celeste_module);
                     r
                 }
             );
             result.insert(
                 "Arborio".to_owned(), {
-                    let mut r = CelesteModule::new();
-                    r.load(&mut EmbeddedSource());
+                    let mut r = CelesteModule::new(arborio_module_yaml());
+                    r.load(&mut arborio_module);
                     r
                 }
             );
 
             result
         };
-        let dependencies = vec!["Celeste".to_owned(), "Arborio".to_owned()];
-        let current_module = "Celeste".to_owned();
-        let palette = ModuleAggregate::new(&modules, &dependencies, &current_module);
+        let current_module = "Arborio".to_owned();
+        let palette = ModuleAggregate::new(&modules, &current_module);
+        palette.sanity_check();
 
         AppState {
 
@@ -209,7 +210,6 @@ impl AppState {
             current_layer: Layer::FgTiles,
 
             modules,
-            dependencies,
             current_module,
             palette,
         }
