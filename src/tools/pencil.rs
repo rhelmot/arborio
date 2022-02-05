@@ -3,7 +3,7 @@ use vizia::*;
 use crate::app_state::{AppEvent, AppState, Layer};
 use crate::assets;
 use crate::config::entity_config::PencilBehavior;
-use crate::map_struct::{CelesteMapDecal, CelesteMapEntity};
+use crate::map_struct::{CelesteMapDecal, CelesteMapEntity, Node};
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
 use crate::widgets::editor_widget;
@@ -298,7 +298,10 @@ impl PencilTool {
                     ref_pos.y,
                     config.minimum_size_x as i32,
                     config.minimum_size_y as i32,
-                    vec![(room_pos.x, room_pos.y)],
+                    vec![Node {
+                        x: room_pos.x,
+                        y: room_pos.y,
+                    }],
                 )
             }
             PencilBehavior::Rect => {

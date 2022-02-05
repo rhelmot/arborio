@@ -4,7 +4,7 @@ use vizia::*;
 use crate::app_state::{AppEvent, AppSelection, AppState, Layer};
 use crate::assets;
 use crate::autotiler::AutoTiler;
-use crate::map_struct::CelesteMapLevel;
+use crate::map_struct::{CelesteMapLevel, Node};
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
 use crate::widgets::editor_widget::decal_texture;
@@ -707,9 +707,12 @@ impl SelectionTool {
                     let base = dragging
                         .map(|d| d.selection_reference_points[selected])
                         .unwrap_or_else(|| {
-                            RoomPoint::new(e.nodes[*node_idx].0, e.nodes[*node_idx].1)
+                            RoomPoint::new(e.nodes[*node_idx].x, e.nodes[*node_idx].y)
                         });
-                    e.nodes[*node_idx] = (base.x + nudge.x, base.y + nudge.y);
+                    e.nodes[*node_idx] = Node {
+                        x: base.x + nudge.x,
+                        y: base.y + nudge.y,
+                    };
                 }
                 AppSelection::Decal(id, fg) => {
                     if let Some(decal) = room.decal(*id, *fg) {
@@ -1089,7 +1092,7 @@ impl SelectionTool {
                             }
                             AppSelection::EntityNode(id, node_idx, trigger) => {
                                 let e = room.entity(*id, *trigger).unwrap();
-                                RoomPoint::new(e.nodes[*node_idx].0, e.nodes[*node_idx].1)
+                                RoomPoint::new(e.nodes[*node_idx].x, e.nodes[*node_idx].y)
                             }
                             AppSelection::Decal(id, fg) => {
                                 let d = room.decal(*id, *fg).unwrap();

@@ -80,11 +80,6 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                         Default::default()
                     });
                 } else {
-                    // if let Some(converter) = Some(convert_with) {
-                    //     field_values.push(quote! {
-                    //         <#converter>::from_bin_el(elem, #name)?
-                    //     })
-                    // } else
                     if default {
                         field_values.push(quote! {
                             <#convert_with>::from_bin_el_optional(elem, #name)?.unwrap_or_default()

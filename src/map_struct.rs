@@ -98,7 +98,18 @@ pub struct CelesteMapEntity {
     pub width: u32,
     pub height: u32,
     pub attributes: HashMap<String, BinElAttr>,
-    pub nodes: Vec<(i32, i32)>,
+    pub nodes: Vec<Node>,
+}
+
+#[derive(Debug, Clone, PartialEq, TryFromBinEl)]
+pub struct Node {
+    pub x: i32,
+    pub y: i32,
+}
+impl From<(i32, i32)> for Node {
+    fn from((x, y): (i32, i32)) -> Self {
+        Node { x, y }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -413,11 +424,11 @@ impl CelesteMapEntity {
         for (key, val) in &self.attributes {
             env.insert(key.as_str(), Const::from_attr(val));
         }
-        if let Some((x, y)) = self.nodes.first() {
+        if let Some(Node { x, y }) = self.nodes.first() {
             env.insert("firstnodex", Const::from_num(*x));
             env.insert("firstnodey", Const::from_num(*y));
         }
-        if let Some((x, y)) = self.nodes.last() {
+        if let Some(Node { x, y }) = self.nodes.last() {
             env.insert("lastnodex", Const::from_num(*x));
             env.insert("lastnodey", Const::from_num(*y));
         }
@@ -431,11 +442,11 @@ impl CelesteMapEntity {
         node_idx: usize,
     ) -> HashMap<&'a str, Const> {
         env.insert("nodeidx", Const::from_num(node_idx as f64));
-        if let Some((x, y)) = self.nodes.get(node_idx) {
+        if let Some(Node { x, y }) = self.nodes.get(node_idx) {
             env.insert("nodex", Const::from_num(*x));
             env.insert("nodey", Const::from_num(*y));
         }
-        if let Some((x, y)) = self.nodes.get(node_idx + 1) {
+        if let Some(Node { x, y }) = self.nodes.get(node_idx + 1) {
             env.insert("nextnodex", Const::from_num(*x));
             env.insert("nextnodey", Const::from_num(*y));
             env.insert("nextnodexorbase", Const::from_num(*x));
@@ -444,7 +455,7 @@ impl CelesteMapEntity {
             env.insert("nextnodexorbase", Const::from_num(self.x));
             env.insert("nextnodeyorbase", Const::from_num(self.y));
         }
-        if let Some((x, y)) = self.nodes.get(node_idx.wrapping_sub(1)) {
+        if let Some(Node { x, y }) = self.nodes.get(node_idx.wrapping_sub(1)) {
             env.insert("prevnodex", Const::from_num(*x));
             env.insert("prevnodey", Const::from_num(*y));
             env.insert("prevnodexorbase", Const::from_num(*x));
@@ -524,7 +535,7 @@ impl TryFromBinEl for CelesteMapLevel {
                 Some(v) => parse_object_tiles(v, width, height),
                 None => Ok(vec![-1; (width / 8 * height / 8) as usize]),
             }?,
-            entities: TryFromBinEl::try_from_bin_el(get_child(elem, "entities")?)?,
+            entities: DefaultConverter::from_bin_el(elem, "entities")?,
             triggers: TryFromBinEl::try_from_bin_el(get_child(elem, "triggers")?)?,
             fg_decals: fg_decals.map_or(Ok(Vec::new()), TryFromBinEl::try_from_bin_el)?,
             bg_decals: bg_decals.map_or(Ok(Vec::new()), TryFromBinEl::try_from_bin_el)?,
@@ -625,10 +636,6 @@ impl<T: TryFromBinEl> TwoWayConverter<T> for DefaultConverter {
     fn serialize(val: T) -> Self::BinType {
         todo!()
     }
-
-    fn from_bin_el(elem: &BinEl, key: &str) -> Result<T, CelesteMapError> {
-        TryFromBinEl::try_from_bin_el(get_nested_child(elem, key).ok_or_else(|| CelesteMapError::missing_attribute(&elem.name, key))?)
-    }
 }
 macro_rules! attr_converter_impl {
     ($($types:ty),+) => {
@@ -637,19 +644,16 @@ macro_rules! attr_converter_impl {
             type BinType = BinElAttr;
 
             fn try_parse(elem: &Self::BinType) -> Result<$types, CelesteMapError> {
-                unimplemented!()
+                AttrCoercion::try_coerce(elem).ok_or_else(||
+                    CelesteMapError {
+                        kind: CelesteMapErrorType::BadAttrType,
+                        description: format!("Expected {nice}, found {:?}", elem, nice = <$types>::NICE_NAME),
+                    }
+                )
             }
 
             fn serialize(val: $types) -> Self::BinType {
                 todo!()
-            }
-
-            fn from_bin_el(elem: &BinEl, key: &str) -> Result<$types, CelesteMapError> {
-                get_attr(elem, key)
-            }
-
-            fn from_bin_el_optional(elem: &BinEl, key: &str) -> Result<Option<$types>, CelesteMapError> {
-                get_optional_attr(elem, key)
             }
         })+
     }
@@ -672,6 +676,13 @@ impl TryFromBinEl for CelesteMapEntity {
         let y = DefaultConverter::from_bin_el(elem, "y")?;
         let width = DefaultConverter::from_bin_el_optional(elem, "width")?.unwrap_or_default();
         let height = DefaultConverter::from_bin_el_optional(elem, "width")?.unwrap_or_default();
+        let attributes = elem
+            .attributes
+            .iter()
+            .map(|kv| (kv.0.clone(), kv.1.clone()))
+            .filter(|kv| !basic_attrs.contains(kv.0.borrow()))
+            .collect();
+        let nodes = DefaultConverter::try_parse(elem)?;
 
         Ok(CelesteMapEntity {
             id,
@@ -680,18 +691,8 @@ impl TryFromBinEl for CelesteMapEntity {
             y,
             width,
             height,
-            attributes: elem
-                .attributes
-                .iter()
-                .map(|kv| (kv.0.clone(), kv.1.clone()))
-                .filter(|kv| !basic_attrs.contains(kv.0.borrow()))
-                .collect(),
-            nodes: elem
-                .children()
-                .map(|child| -> Result<(i32, i32), CelesteMapError> {
-                    Ok((get_attr(child, "x")?, get_attr(child, "y")?))
-                })
-                .collect::<Result<_, CelesteMapError>>()?,
+            attributes,
+            nodes,
         })
     }
 }
@@ -711,23 +712,20 @@ impl TryFromBinEl for CelesteMapDecal {
 
 impl TryFromBinEl for MapRectStrict {
     fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
-        parse_filler_rect(elem)
+        expect_elem!(elem, "rect");
+
+        let x: i32 = get_attr(elem, "x")?;
+        let y: i32 = get_attr(elem, "y")?;
+        let w: i32 = get_attr(elem, "w")?;
+        let h: i32 = get_attr(elem, "h")?;
+
+        Ok(MapRectStrict {
+            origin: Point2D::new(x * 8, y * 8),
+            size: Size2D::new(w * 8, h * 8),
+        })
     }
 }
 
-fn parse_filler_rect(elem: &BinEl) -> Result<MapRectStrict, CelesteMapError> {
-    expect_elem!(elem, "rect");
-
-    let x: i32 = get_attr(elem, "x")?;
-    let y: i32 = get_attr(elem, "y")?;
-    let w: i32 = get_attr(elem, "w")?;
-    let h: i32 = get_attr(elem, "h")?;
-
-    Ok(MapRectStrict {
-        origin: Point2D::new(x * 8, y * 8),
-        size: Size2D::new(w * 8, h * 8),
-    })
-}
 struct MapComponentConverter;
 impl<T: TryFrom<i32> + TryInto<i32>> TwoWayConverter<T> for MapComponentConverter {
     type BinType = BinElAttr;

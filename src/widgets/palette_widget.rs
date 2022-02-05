@@ -5,7 +5,7 @@ use std::rc::Rc;
 use vizia::*;
 
 use crate::config::entity_config::{EntityConfig, EntityTemplate, TriggerConfig};
-use crate::map_struct::CelesteMapEntity;
+use crate::map_struct::{CelesteMapEntity, Node};
 use crate::units::*;
 use crate::widgets::editor_widget;
 use crate::{assets, AppState};
@@ -202,7 +202,7 @@ impl PaletteItem for EntitySelectable {
             16,
             self.config(app).minimum_size_x as i32,
             self.config(app).minimum_size_y as i32,
-            vec![(48, 16)],
+            vec![(48, 16).into()],
         );
         editor_widget::draw_entity(app, canvas, &tmp_entity, &TileGrid::empty(), false, false);
     }
@@ -235,7 +235,7 @@ impl EntitySelectable {
         y: i32,
         width: i32,
         height: i32,
-        nodes: Vec<(i32, i32)>,
+        nodes: Vec<Node>,
     ) -> CelesteMapEntity {
         let config = self.config(app);
 
@@ -300,7 +300,7 @@ impl TriggerSelectable {
         y: i32,
         width: i32,
         height: i32,
-        nodes: Vec<(i32, i32)>,
+        nodes: Vec<Node>,
     ) -> CelesteMapEntity {
         let config = self.config(app);
 

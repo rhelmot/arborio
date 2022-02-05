@@ -39,6 +39,13 @@ where
 
 pub trait GetAttrOrChild: Sized {
     fn attr_or_child<'a>(elem: &'a BinEl, key: &str) -> Option<&'a Self>;
+    fn nested_attr_or_child<'a>(elem: &'a BinEl, key: &str) -> Option<&'a Self> {
+        if let Some((first, remaining)) = key.split_once('/') {
+            Self::nested_attr_or_child(get_optional_child(elem, first)?, remaining)
+        } else {
+            Self::attr_or_child(elem, key)
+        }
+    }
     fn apply_attr_or_child(elem: &mut BinEl, key: &str, value: Self);
 }
 
@@ -71,16 +78,12 @@ pub trait TwoWayConverter<T> {
 
     fn from_bin_el(elem: &BinEl, key: &str) -> Result<T, CelesteMapError> {
         Self::try_parse(
-            GetAttrOrChild::attr_or_child(elem, key)
+            GetAttrOrChild::nested_attr_or_child(elem, key)
                 .ok_or_else(|| CelesteMapError::missing_child(&elem.name, key))?,
         )
     }
     fn from_bin_el_optional(elem: &BinEl, key: &str) -> Result<Option<T>, CelesteMapError> {
-        let got = GetAttrOrChild::attr_or_child(elem, key);
-        if let Some(got) = got {
-            Ok(Some(Self::try_parse(got)?))
-        } else {
-            Ok(None)
-        }
+        let got = GetAttrOrChild::nested_attr_or_child(elem, key);
+        Ok(got.map(Self::try_parse).transpose()?)
     }
 }
