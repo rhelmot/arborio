@@ -89,15 +89,20 @@ pub struct CelesteMapLevelCache {
     pub last_decal_idx: usize,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, TryFromBinEl)]
 pub struct CelesteMapEntity {
     pub id: i32,
+    #[name]
     pub name: String,
     pub x: i32,
     pub y: i32,
+    #[default]
     pub width: u32,
+    #[default]
     pub height: u32,
+    #[attributes]
     pub attributes: HashMap<String, BinElAttr>,
+    #[children]
     pub nodes: Vec<Node>,
 }
 
@@ -659,43 +664,6 @@ macro_rules! attr_converter_impl {
     }
 }
 attr_converter_impl!(i32, u32, String, f32, bool);
-
-impl TryFromBinEl for CelesteMapEntity {
-    fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
-        let basic_attrs: Vec<String> = vec![
-            "id".to_string(),
-            "x".to_string(),
-            "y".to_string(),
-            "width".to_string(),
-            "height".to_string(),
-        ];
-
-        let id = DefaultConverter::from_bin_el(elem, "id")?;
-        let name = elem.name.clone();
-        let x = DefaultConverter::from_bin_el(elem, "x")?;
-        let y = DefaultConverter::from_bin_el(elem, "y")?;
-        let width = DefaultConverter::from_bin_el_optional(elem, "width")?.unwrap_or_default();
-        let height = DefaultConverter::from_bin_el_optional(elem, "width")?.unwrap_or_default();
-        let attributes = elem
-            .attributes
-            .iter()
-            .map(|kv| (kv.0.clone(), kv.1.clone()))
-            .filter(|kv| !basic_attrs.contains(kv.0.borrow()))
-            .collect();
-        let nodes = DefaultConverter::try_parse(elem)?;
-
-        Ok(CelesteMapEntity {
-            id,
-            name,
-            x,
-            y,
-            width,
-            height,
-            attributes,
-            nodes,
-        })
-    }
-}
 
 impl TryFromBinEl for CelesteMapDecal {
     fn try_from_bin_el(elem: &BinEl) -> Result<CelesteMapDecal, CelesteMapError> {
