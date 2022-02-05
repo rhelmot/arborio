@@ -13,8 +13,10 @@ mod tests {
 
 enum BinElAttribute {
     ConvertWith(TokenStream),
-    Skip,
+    Default,
     Name(TokenStream),
+    Optional,
+    Skip,
 }
 
 impl BinElAttribute {
@@ -24,8 +26,10 @@ impl BinElAttribute {
         iter.into_iter().filter_map(|attr: &Attribute| {
             match attr.path.get_ident()?.to_string().as_str() {
                 "bin_el_skip" => Some(BinElAttribute::Skip),
-                "name" => Some(BinElAttribute::Name(attr.tokens.clone())),
                 "convert_with" => Some(BinElAttribute::ConvertWith(attr.tokens.clone())),
+                "default" => Some(BinElAttribute::Default),
+                "name" => Some(BinElAttribute::Name(attr.tokens.clone())),
+                "optional" => Some(BinElAttribute::Optional),
                 s => panic!("unrecognized attribute \"{}\"", s),
             }
         })
@@ -34,7 +38,7 @@ impl BinElAttribute {
 
 #[proc_macro_derive(
     TryFromBinEl,
-    attributes(bin_el_skip, convert_with, name)
+    attributes(bin_el_skip, convert_with, default, name, optional)
 )]
 pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(item as ItemStruct);
@@ -44,7 +48,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
         match attr {
             BinElAttribute::Name(n) => name = Some(n),
             BinElAttribute::ConvertWith(c) => convert_with = c,
-            BinElAttribute::Skip => todo!("Write fail message for skip"),
+            _ => todo!(),
         }
     }
     let mut fields = Vec::new();
@@ -57,12 +61,16 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                 let name = ident.to_string();
                 let mut name = quote! {#name};
                 let mut skip = false;
+                let mut default = false;
+                let mut optional = false;
                 let mut convert_with = convert_with.clone();
                 for attr in BinElAttribute::filter_map_iter(&field.attrs) {
                     match attr {
                         BinElAttribute::Skip => skip = true,
                         BinElAttribute::Name(n) => name = n,
                         BinElAttribute::ConvertWith(c) => convert_with = c,
+                        BinElAttribute::Default => default = true,
+                        BinElAttribute::Optional => optional = true,
                     }
                 }
                 fields.push(ident);
@@ -72,13 +80,26 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                         Default::default()
                     });
                 } else {
-                    if let Some(converter) = Some(convert_with) {
+                    // if let Some(converter) = Some(convert_with) {
+                    //     field_values.push(quote! {
+                    //         <#converter>::from_bin_el(elem, #name)?
+                    //     })
+                    // } else
+                    if default {
                         field_values.push(quote! {
-                            <#converter>::from_bin_el(elem, #name)?
-                        })
+                            <#convert_with>::from_bin_el_optional(elem, #name)?.unwrap_or_default()
+                        });
+                    } else if optional {
+                        field_values.push(quote! {
+                            <#convert_with>::from_bin_el_optional(elem, #name)?
+                        });
+                    } else if name.is_empty() {
+                        field_values.push(quote! {
+                            (&elem.name).into()
+                        });
                     } else {
                         field_values.push(quote! {
-                            TryFromBinEl::try_from_bin_el(get_nested_child(elem, #name).ok_or_else(|| CelesteMapError::missing_child(&elem.name, #name))?)?
+                            <#convert_with>::from_bin_el(elem, #name)?
                         });
                     }
                 }
