@@ -8,22 +8,28 @@ use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::sync::Mutex;
+use vizia::Data;
 
 use crate::units::*;
+use crate::assets::next_uuid;
 
-lazy_static::lazy_static! {
-    static ref UUID: Mutex<u32> = Mutex::new(0);
+#[derive(Eq, PartialEq, Hash, Debug, Clone)]
+pub struct MapID {
+    pub module: String,
+    pub sid: String,
 }
 
-pub fn next_uuid() -> u32 {
-    let mut locked = UUID.lock().unwrap();
-    let result = *locked;
-    *locked += 1;
-    result
+impl Data for MapID {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
 }
 
 #[derive(Debug)]
 pub struct CelesteMap {
+    pub id: MapID,
+    pub dirty: bool,
+
     pub name: String,
     pub filler: Vec<MapRectStrict>,
     pub foregrounds: Vec<CelesteMapStyleground>,
@@ -432,7 +438,7 @@ macro_rules! expect_elem {
     };
 }
 
-pub fn from_binfile(binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
+pub fn from_binfile(id: MapID, binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
     expect_elem!(binfile.root, "Map");
 
     let filler = get_child(&binfile.root, "Filler")?;
@@ -459,6 +465,8 @@ pub fn from_binfile(binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
         .collect::<Result<_, CelesteMapError>>()?;
 
     Ok(CelesteMap {
+        id,
+        dirty: false,
         name: binfile.package,
         filler: filler_parsed,
         foregrounds: style_fg_parsed,

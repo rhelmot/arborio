@@ -112,116 +112,119 @@ impl View for EditorWidget {
             bounds.h as u32,
             BACKDROP_COLOR,
         );
-        let t = &app.transform;
+        if !app.map_tab_check() {
+            println!("SOMETHING IS WRONG");
+            return;
+        }
+        let t = &app.map_tab_unwrap().transform;
         canvas.set_transform(t.m11, t.m12, t.m21, t.m22, t.m31.round(), t.m32.round());
 
-        if let Some(map) = &app.map {
-            if *PERF_MONITOR {
-                let now = time::Instant::now();
-                println!(
-                    "Drew {}ms ago",
-                    (now - *app.last_draw.borrow()).as_millis()
+        let map = app.loaded_maps.get(&app.map_tab_unwrap().id).unwrap();
+        if *PERF_MONITOR {
+            let now = time::Instant::now();
+            println!(
+                "Drew {}ms ago",
+                (now - *app.last_draw.borrow()).as_millis()
+            );
+            *app.last_draw.borrow_mut() = now;
+        }
+
+        let mut path = Path::new();
+        for filler in &map.filler {
+            path.rect(
+                filler.origin.x as f32,
+                filler.origin.y as f32,
+                filler.width() as f32,
+                filler.height() as f32,
+            );
+        }
+        canvas.fill_path(&mut path, Paint::color(FILLER_COLOR));
+
+        for (idx, room) in map.levels.iter().enumerate() {
+            canvas.save();
+            canvas.translate(room.bounds.min_x() as f32, room.bounds.min_y() as f32);
+            let mut cache = room.cache.borrow_mut();
+            let target = if let Some(target) = cache.render_cache {
+                target
+            } else {
+                canvas
+                    .create_image_empty(
+                        room.bounds.width() as usize,
+                        room.bounds.height() as usize,
+                        PixelFormat::Rgba8,
+                        ImageFlags::NEAREST | ImageFlags::FLIP_Y,
+                    )
+                    .expect("Failed to allocate ")
+            };
+            cache.render_cache = Some(target);
+
+            if !cache.render_cache_valid {
+                canvas.save();
+                canvas.reset();
+                canvas.set_render_target(RenderTarget::Image(target));
+
+                canvas.clear_rect(
+                    0,
+                    0,
+                    room.bounds.width() as u32,
+                    room.bounds.height() as u32,
+                    ROOM_EMPTY_COLOR,
                 );
-                *app.last_draw.borrow_mut() = now;
+                draw_tiles(app, canvas, room, false);
+                draw_decals(app, canvas, room, false);
+                draw_triggers(
+                    app,
+                    canvas,
+                    room,
+                    if idx == app.map_tab_unwrap().current_room {
+                        app.current_selected
+                    } else {
+                        None
+                    },
+                );
+                draw_entities(
+                    app,
+                    canvas,
+                    room,
+                    if idx == app.map_tab_unwrap().current_room {
+                        app.current_selected
+                    } else {
+                        None
+                    },
+                );
+                draw_tiles(app, canvas, room, true);
+                draw_decals(app, canvas, room, true);
+
+                canvas.restore();
+                canvas.set_render_target(RenderTarget::Screen);
+                cache.render_cache_valid = true;
             }
 
             let mut path = Path::new();
-            for filler in &map.filler {
-                path.rect(
-                    filler.origin.x as f32,
-                    filler.origin.y as f32,
-                    filler.width() as f32,
-                    filler.height() as f32,
-                );
+            path.rect(
+                0.0,
+                0.0,
+                room.bounds.width() as f32,
+                room.bounds.height() as f32,
+            );
+            let paint = Paint::image(
+                target,
+                0.0,
+                0.0,
+                room.bounds.width() as f32,
+                room.bounds.height() as f32,
+                0.0,
+                1.0,
+            );
+            canvas.fill_path(&mut path, paint);
+            if idx != app.map_tab_unwrap().current_room {
+                canvas.fill_path(&mut path, Paint::color(ROOM_DESELECTED_COLOR));
             }
-            canvas.fill_path(&mut path, Paint::color(FILLER_COLOR));
-
-            for (idx, room) in map.levels.iter().enumerate() {
-                canvas.save();
-                canvas.translate(room.bounds.min_x() as f32, room.bounds.min_y() as f32);
-                let mut cache = room.cache.borrow_mut();
-                let target = if let Some(target) = cache.render_cache {
-                    target
-                } else {
-                    canvas
-                        .create_image_empty(
-                            room.bounds.width() as usize,
-                            room.bounds.height() as usize,
-                            PixelFormat::Rgba8,
-                            ImageFlags::NEAREST | ImageFlags::FLIP_Y,
-                        )
-                        .expect("Failed to allocate ")
-                };
-                cache.render_cache = Some(target);
-
-                if !cache.render_cache_valid {
-                    canvas.save();
-                    canvas.reset();
-                    canvas.set_render_target(RenderTarget::Image(target));
-
-                    canvas.clear_rect(
-                        0,
-                        0,
-                        room.bounds.width() as u32,
-                        room.bounds.height() as u32,
-                        ROOM_EMPTY_COLOR,
-                    );
-                    draw_tiles(app, canvas, room, false);
-                    draw_decals(app, canvas, room, false);
-                    draw_triggers(
-                        app,
-                        canvas,
-                        room,
-                        if idx == app.current_room {
-                            app.current_selected
-                        } else {
-                            None
-                        },
-                    );
-                    draw_entities(
-                        app,
-                        canvas,
-                        room,
-                        if idx == app.current_room {
-                            app.current_selected
-                        } else {
-                            None
-                        },
-                    );
-                    draw_tiles(app, canvas, room, true);
-                    draw_decals(app, canvas, room, true);
-
-                    canvas.restore();
-                    canvas.set_render_target(RenderTarget::Screen);
-                    cache.render_cache_valid = true;
-                }
-
-                let mut path = Path::new();
-                path.rect(
-                    0.0,
-                    0.0,
-                    room.bounds.width() as f32,
-                    room.bounds.height() as f32,
-                );
-                let paint = Paint::image(
-                    target,
-                    0.0,
-                    0.0,
-                    room.bounds.width() as f32,
-                    room.bounds.height() as f32,
-                    0.0,
-                    1.0,
-                );
-                canvas.fill_path(&mut path, paint);
-                if idx != app.current_room {
-                    canvas.fill_path(&mut path, Paint::color(ROOM_DESELECTED_COLOR));
-                }
-                canvas.restore();
-            }
-
-            let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[app.current_tool];
-            tool.draw(canvas, app, cx);
+            canvas.restore();
         }
+
+        let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[app.current_tool];
+        tool.draw(canvas, app, cx);
     }
 }
 

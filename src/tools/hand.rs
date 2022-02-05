@@ -38,13 +38,13 @@ impl Tool for HandTool {
                 let screen_pt = ScreenPoint::new(*x, *y);
                 if self.last_pos.is_some() {
                     let screen_delta = screen_pt - self.last_pos.unwrap();
-                    let map_pan = state
+                    let map_pan = state.map_tab_unwrap()
                         .transform
                         .inverse()
                         .unwrap()
                         .transform_vector(screen_delta);
                     self.last_pos = Some(screen_pt);
-                    vec![AppEvent::Pan { delta: map_pan }]
+                    vec![AppEvent::Pan { tab: state.current_tab, delta: map_pan }]
                 } else {
                     self.last_pos = Some(screen_pt);
                     vec![]

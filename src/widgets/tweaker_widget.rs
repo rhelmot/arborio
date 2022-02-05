@@ -2,46 +2,17 @@ use celeste::binel::BinElAttr;
 use std::fmt::{Debug, Formatter};
 use vizia::*;
 
-use crate::app_state::{AppEvent, AppSelection, AppState};
+use crate::app_state::{AppEvent, AppSelection, AppState, AppTab, CurrentSelectedEntityLens};
 use crate::assets;
 use crate::map_struct::{CelesteMap, CelesteMapEntity};
 use crate::units::*;
-
-#[derive(Copy, Clone, Debug)]
-pub struct CurrentSelectedEntityLens {}
-
-impl Lens for CurrentSelectedEntityLens {
-    type Source = AppState;
-    type Target = CelesteMapEntity;
-
-    fn view<'a>(&self, source: &'a Self::Source) -> Option<&'a Self::Target> {
-        match source.current_selected {
-            Some(AppSelection::EntityBody(id, trigger)) => Some((id, trigger)),
-            Some(AppSelection::EntityNode(id, _, trigger)) => Some((id, trigger)),
-            _ => None,
-        }
-        .and_then(|(id, trigger)| {
-            source.map.as_ref().and_then(|map| {
-                map.levels
-                    .get(source.current_room)
-                    .and_then(|room| room.entity(id, trigger))
-            })
-        })
-    }
-}
-
-impl CurrentSelectedEntityLens {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
 
 pub struct EntityTweakerWidget {}
 
 impl EntityTweakerWidget {
     pub fn new(cx: &mut Context) -> Handle<'_, Self> {
         Self {}.build2(cx, move |cx| {
-            let lens = CurrentSelectedEntityLens::new();
+            let lens = CurrentSelectedEntityLens {};
             Binding::new_fallible(
                 cx,
                 lens,
@@ -70,14 +41,20 @@ impl EntityTweakerWidget {
                                             entity
                                                 .attributes
                                                 .insert(attr.clone(), BinElAttr::Bool(!b));
+                                            let app_state = cx.data::<AppState>().unwrap();
                                             let trigger = matches!(
-                                                cx.data::<AppState>().unwrap().current_selected,
+                                                app_state.current_selected,
                                                 Some(
                                                     AppSelection::EntityBody(_, true)
                                                         | AppSelection::EntityNode(_, _, true)
                                                 )
                                             );
-                                            cx.emit(AppEvent::EntityUpdate { entity, trigger });
+                                            let (current_map, current_room) = match app_state.tabs.get(app_state.current_tab) {
+                                                Some(AppTab::Map(map_tab)) => (map_tab.id.clone(), map_tab.current_room),
+                                                _ => panic!("How'd you do that"),
+                                            };
+
+                                            cx.emit(AppEvent::EntityUpdate { map: current_map, room: current_room, entity, trigger });
                                         });
                                     }
                                     BinElAttr::Int(_) => {}

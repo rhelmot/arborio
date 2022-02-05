@@ -49,6 +49,15 @@ lazy_static! {
     static ref INTERNSHIP: elsa::sync::FrozenMap<&'static str, &'static str> = {
         elsa::sync::FrozenMap::new()
     };
+
+    static ref UUID: Mutex<u32> = Mutex::new(0);
+}
+
+pub fn next_uuid() -> u32 {
+    let mut locked = UUID.lock().unwrap();
+    let result = *locked;
+    *locked += 1;
+    result
 }
 
 pub fn intern(s: &str) -> &'static str {
