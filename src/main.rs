@@ -40,9 +40,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         VStack::new(cx, move |cx| {
             HStack::new(cx, move |cx| {
                 Button::new(cx, move |cx| {
-                    if let Some(map) = load_workflow() {
-                        cx.emit(AppEvent::Load { map: RefCell::new(Some(map)) })
-                    }
+                    cx.spawn(|cx| {
+                        if let Some(map) = load_workflow() {
+                            cx.emit(AppEvent::Load { map: RefCell::new(Some(map)) });
+                        }
+                    })
                 }, move |cx| {
                     Label::new(cx, "Load Map")
                 });
