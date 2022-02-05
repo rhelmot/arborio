@@ -38,11 +38,17 @@ pub fn next_uuid() -> u32 {
     result
 }
 
-#[derive(Debug)]
+#[derive(Debug, TryFromBinEl)]
+#[bin_el_err(CelesteMapError)]
+#[missing_child(CelesteMapError::missing_child)]
 pub struct CelesteMap {
+    #[bin_el_skip]
     pub name: String,
+    #[name("Filler")]
     pub filler: Vec<MapRectStrict>,
+    #[name("Style/Foregrounds")]
     pub foregrounds: Vec<CelesteMapStyleground>,
+    #[name("Style/Backgrounds")]
     pub backgrounds: Vec<CelesteMapStyleground>,
     pub levels: Vec<CelesteMapLevel>,
 }
@@ -451,36 +457,13 @@ macro_rules! expect_elem {
 pub fn from_binfile(binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
     expect_elem!(binfile.root, "Map");
 
-    let filler = get_child(&binfile.root, "Filler")?;
-    let levels = get_child(&binfile.root, "levels")?;
-    let style = get_child(&binfile.root, "Style")?;
-    let style_fg = get_child(style, "Foregrounds")?;
-    let style_bg = get_child(style, "Backgrounds")?;
+    CelesteMap::try_from_bin_el(&binfile.root)
+}
 
-    let filler_parsed = filler
-        .children()
-        .map(parse_filler_rect)
-        .collect::<Result<_, CelesteMapError>>()?;
-    let style_fg_parsed = style_fg
-        .children()
-        .map(parse_styleground)
-        .collect::<Result<_, CelesteMapError>>()?;
-    let style_bg_parsed = style_bg
-        .children()
-        .map(parse_styleground)
-        .collect::<Result<_, CelesteMapError>>()?;
-    let levels_parsed = levels
-        .children()
-        .map(parse_level)
-        .collect::<Result<_, CelesteMapError>>()?;
-
-    Ok(CelesteMap {
-        name: binfile.package,
-        filler: filler_parsed,
-        foregrounds: style_fg_parsed,
-        backgrounds: style_bg_parsed,
-        levels: levels_parsed,
-    })
+impl TryFromBinEl<CelesteMapError> for CelesteMapLevel {
+    fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
+        parse_level(elem)
+    }
 }
 
 fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
@@ -651,7 +634,7 @@ impl<T: TryFromBinEl<CelesteMapError>> TwoWayConverter<T> for DefaultConverter {
     }
 
     fn from_bin_el(elem: &BinEl, key: &str) -> Result<T, CelesteMapError> {
-        TryFromBinEl::try_from_bin_el(get_nested_child(elem, key).unwrap_or_else(|| todo!()))
+        TryFromBinEl::try_from_bin_el(get_nested_child(elem, key).ok_or_else(|| CelesteMapError::missing_attribute(&elem.name, key))?)
     }
 }
 macro_rules! attr_converter_impl {
@@ -727,6 +710,12 @@ fn parse_decal(elem: &BinEl) -> Result<CelesteMapDecal, CelesteMapError> {
         scale_y: get_attr(elem, "scaleY")?,
         texture: get_attr::<String>(elem, "texture")?.replace('\\', "/"),
     })
+}
+
+impl TryFromBinEl<CelesteMapError> for MapRectStrict {
+    fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
+        parse_filler_rect(elem)
+    }
 }
 
 fn parse_filler_rect(elem: &BinEl) -> Result<MapRectStrict, CelesteMapError> {

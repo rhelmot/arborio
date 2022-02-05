@@ -219,7 +219,9 @@ fn load_workflow() -> Option<map_struct::CelesteMap> {
     let map = match map_struct::from_binfile(binfile) {
         Ok(map) => map,
         Err(e) => {
-            dialog::Message::new(format!("Data validation error: {}", e));
+            let message = format!("Data validation error: {}", e);
+            dialog::Message::new(&message);
+            eprintln!("{}", message);
             return None;
         }
     };
