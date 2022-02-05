@@ -3,16 +3,32 @@ use euclid::{Point2D, Size2D};
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::convert::{TryFrom, TryInto};
 use std::default;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::sync::Mutex;
 
+use crate::from_binel::{get_nested_child, TryFromBinEl, TwoWayConverter};
+
 use crate::units::*;
 
 lazy_static::lazy_static! {
     static ref UUID: Mutex<u32> = Mutex::new(0);
+}
+
+#[derive(Clone, Debug, TryFromBinEl)]
+#[bin_el_err(CelesteMapError)]
+#[missing_child(CelesteMapError::missing_child)]
+#[convert_with(MapComponentConverter)]
+pub struct Rect {
+    pub x: i32,
+    pub y: i32,
+    #[name("w")]
+    pub width: u32,
+    #[name("h")]
+    pub height: u32,
 }
 
 pub fn next_uuid() -> u32 {
@@ -152,7 +168,7 @@ impl Error for CelesteMapError {
 }
 
 impl CelesteMapError {
-    fn missing_child(parent: &str, child: &str) -> CelesteMapError {
+    pub(crate) fn missing_child(parent: &str, child: &str) -> CelesteMapError {
         CelesteMapError {
             kind: CelesteMapErrorType::MissingChild,
             description: format!("Expected child of {}: {} not found", parent, child),
@@ -622,6 +638,48 @@ fn parse_object_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<i32>,
     Ok(data)
 }
 
+struct DefaultConverter;
+impl<T: TryFromBinEl<CelesteMapError>> TwoWayConverter<T> for DefaultConverter {
+    type BinType = BinEl;
+
+    fn try_parse(elem: &Self::BinType) -> Result<T, CelesteMapError> {
+        TryFromBinEl::try_from_bin_el(elem)
+    }
+
+    fn serialize(val: T) -> Self::BinType {
+        todo!()
+    }
+
+    fn from_bin_el(elem: &BinEl, key: &str) -> Result<T, CelesteMapError> {
+        TryFromBinEl::try_from_bin_el(get_nested_child(elem, key).unwrap_or_else(|| todo!()))
+    }
+}
+macro_rules! attr_converter_impl {
+    ($($types:ty),+) => {
+
+        $(impl TwoWayConverter<$types> for DefaultConverter {
+            type BinType = BinElAttr;
+
+            fn try_parse(elem: &Self::BinType) -> Result<$types, CelesteMapError> {
+                unimplemented!()
+            }
+
+            fn serialize(val: $types) -> Self::BinType {
+                todo!()
+            }
+
+            fn from_bin_el(elem: &BinEl, key: &str) -> Result<$types, CelesteMapError> {
+                get_attr(elem, key)
+            }
+
+            fn from_bin_el_optional(elem: &BinEl, key: &str) -> Result<Option<$types>, CelesteMapError> {
+                get_optional_attr(elem, key)
+            }
+        })+
+    }
+}
+attr_converter_impl!(i32, u32, String);
+
 fn parse_entity_trigger(elem: &BinEl) -> Result<CelesteMapEntity, CelesteMapError> {
     let basic_attrs: Vec<String> = vec![
         "id".to_string(),
@@ -630,13 +688,21 @@ fn parse_entity_trigger(elem: &BinEl) -> Result<CelesteMapEntity, CelesteMapErro
         "width".to_string(),
         "height".to_string(),
     ];
+
+    let id = DefaultConverter::from_bin_el(elem, "id")?;
+    let name = elem.name.clone();
+    let x = DefaultConverter::from_bin_el(elem, "x")?;
+    let y = DefaultConverter::from_bin_el(elem, "y")?;
+    let width = DefaultConverter::from_bin_el_optional(elem, "width")?.unwrap_or_default();
+    let height = DefaultConverter::from_bin_el_optional(elem, "width")?.unwrap_or_default();
+
     Ok(CelesteMapEntity {
-        id: get_attr(elem, "id")?,
-        name: elem.name.clone(),
-        x: get_attr(elem, "x")?,
-        y: get_attr(elem, "y")?,
-        width: get_optional_attr(elem, "width")?.unwrap_or(0) as u32,
-        height: get_optional_attr(elem, "height")?.unwrap_or(0) as u32,
+        id,
+        name,
+        x,
+        y,
+        width,
+        height,
         attributes: elem
             .attributes
             .iter()
@@ -676,6 +742,43 @@ fn parse_filler_rect(elem: &BinEl) -> Result<MapRectStrict, CelesteMapError> {
         size: Size2D::new(w * 8, h * 8),
     })
 }
+struct MapComponentConverter;
+impl<T: TryFrom<i32> + TryInto<i32>> TwoWayConverter<T> for MapComponentConverter {
+    type BinType = BinElAttr;
+
+    fn try_parse(elem: &Self::BinType) -> Result<T, CelesteMapError> {
+        if let Some(i) = i32::try_coerce(elem) {
+            Ok((i * 8).try_into().ok().unwrap())
+        } else {
+            Err(CelesteMapError {
+                kind: CelesteMapErrorType::BadAttrType,
+                description: format!("Expected {nice}, found {:?}", elem, nice = i32::NICE_NAME),
+            })
+        }
+    }
+
+    fn serialize(val: T) -> Self::BinType {
+        BinElAttr::Int(val.try_into().ok().unwrap() / 8)
+    }
+}
+
+// impl TryFromBinEl<CelesteMapError> for Rect {
+//     fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
+//         expect_elem!(elem, "rect");
+//
+//         let x = MapComponentConverter::from_bin_el(elem, "x")?;
+//         let y = MapComponentConverter::from_bin_el(elem, "y")?;
+//         let width = MapComponentConverter::from_bin_el(elem, "w")?;
+//         let height = MapComponentConverter::from_bin_el(elem, "h")?;
+//
+//         Ok(Rect {
+//             x,
+//             y,
+//             width,
+//             height,
+//         })
+//     }
+// }
 
 fn parse_styleground(elem: &BinEl) -> Result<CelesteMapStyleground, CelesteMapError> {
     Ok(CelesteMapStyleground {
@@ -694,7 +797,26 @@ fn parse_styleground(elem: &BinEl) -> Result<CelesteMapStyleground, CelesteMapEr
     })
 }
 
-fn get_optional_child<'a>(elem: &'a BinEl, name: &str) -> Option<&'a BinEl> {
+impl TryFromBinEl<CelesteMapError> for CelesteMapStyleground {
+    fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
+        Ok(CelesteMapStyleground {
+            name: elem.name.clone(),
+            texture: get_optional_attr(elem, "texture")?,
+            x: get_optional_attr(elem, "x")?,
+            y: get_optional_attr(elem, "y")?,
+            loop_x: get_optional_attr(elem, "loopx")?,
+            loop_y: get_optional_attr(elem, "loopy")?,
+            scroll_x: get_optional_attr(elem, "scrollx")?,
+            scroll_y: get_optional_attr(elem, "scrolly")?,
+            speed_x: get_optional_attr(elem, "speedx")?,
+            speed_y: get_optional_attr(elem, "speedy")?,
+            color: get_optional_attr(elem, "color")?,
+            blend_mode: get_optional_attr(elem, "blendmode")?,
+        })
+    }
+}
+
+pub fn get_optional_child<'a>(elem: &'a BinEl, name: &str) -> Option<&'a BinEl> {
     let children_of_name = elem.get(name);
     if let [ref child] = children_of_name.as_slice() {
         // if there is exactly one child
@@ -747,6 +869,16 @@ impl AttrCoercion for i32 {
         match *attr {
             BinElAttr::Int(i) => Some(i),
             BinElAttr::Float(f) => Some(f as i32),
+            _ => None,
+        }
+    }
+}
+impl AttrCoercion for u32 {
+    const NICE_NAME: &'static str = "integer";
+    fn try_coerce(attr: &BinElAttr) -> Option<Self> {
+        match *attr {
+            BinElAttr::Int(i) => i.try_into().ok(),
+            BinElAttr::Float(f) => Some(f as u32),
             _ => None,
         }
     }

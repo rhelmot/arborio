@@ -7,6 +7,7 @@ mod atlas_img;
 mod auto_saver;
 mod autotiler;
 mod config;
+mod from_binel;
 mod map_struct;
 mod tools;
 mod units;
@@ -21,10 +22,10 @@ use vizia::*;
 use widgets::editor_widget;
 
 use crate::app_state::{AppEvent, AppState, Layer};
+use crate::config::aggregate::ModuleAggregate;
 use crate::tools::TOOLS;
 use widgets::palette_widget::PaletteWidget;
 use widgets::tweaker_widget::EntityTweakerWidget;
-use crate::config::aggregate::ModuleAggregate;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut app = Application::new(WindowDescription::new().with_title("Arborio"), |cx| {

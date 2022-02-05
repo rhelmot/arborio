@@ -2,13 +2,13 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use femtovg::{Color, ImageId, ImageSource, Paint, Path};
 use imgref::Img;
 use rgb::RGBA8;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::io::Read; // trait method import
 use std::path;
 use std::rc::Rc;
-use std::cell::RefCell;
 
 use crate::assets;
 use crate::autotiler::TileReference;
@@ -57,11 +57,12 @@ impl Atlas {
         }
     }
     pub fn load<T: ConfigSource>(&mut self, config: &mut T, atlas: &str) {
-        self
-            .load_crunched(config, atlas)
+        self.load_crunched(config, atlas)
             .expect("Fatal error parsing packed atlas");
 
-        for path in config.list_all_files(&path::PathBuf::from("Graphics/Atlases").join(atlas.to_owned())) {
+        for path in
+            config.list_all_files(&path::PathBuf::from("Graphics/Atlases").join(atlas.to_owned()))
+        {
             self.load_loose(config, &path);
         }
     }
@@ -69,9 +70,13 @@ impl Atlas {
     fn load_loose<T: ConfigSource>(
         &mut self,
         config: &mut T,
-        path: &path::Path
+        path: &path::Path,
     ) -> Result<(), io::Error> {
-        let mut reader = if let Some(fp) = config.get_file(path) { fp } else { return Err(io::ErrorKind::NotFound.into()) };
+        let mut reader = if let Some(fp) = config.get_file(path) {
+            fp
+        } else {
+            return Err(io::ErrorKind::NotFound.into());
+        };
 
         Ok(())
     }
@@ -98,9 +103,10 @@ impl Atlas {
             let data_file = read_string(&mut reader)? + ".data";
             let data_path = meta_file.with_file_name(&data_file);
             let blob_idx = self.blobs.len();
-            self.blobs.push(Rc::new(RefCell::new(BlobData::Waiting(load_data_file(
-                config, data_path,
-            )?))));
+            self.blobs
+                .push(Rc::new(RefCell::new(BlobData::Waiting(load_data_file(
+                    config, data_path,
+                )?))));
 
             let sprites = reader.read_u16::<LittleEndian>()?;
             for _ in 0..sprites {
@@ -114,15 +120,18 @@ impl Atlas {
                 let real_width = reader.read_u16::<LittleEndian>()?;
                 let real_height = reader.read_u16::<LittleEndian>()?;
 
-                self.sprites_map.insert(assets::intern(&sprite_path), Rc::new(AtlasSprite {
-                    blob: self.blobs[self.blobs.len() - 1].clone(),
-                    bounding_box: euclid::Rect {
-                        origin: euclid::Point2D::new(x, y),
-                        size: euclid::Size2D::new(width, height),
-                    },
-                    trim_offset: Vector2D::new(offset_x, offset_y),
-                    untrimmed_size: Size2D::new(real_width, real_height),
-                }));
+                self.sprites_map.insert(
+                    assets::intern(&sprite_path),
+                    Rc::new(AtlasSprite {
+                        blob: self.blobs[self.blobs.len() - 1].clone(),
+                        bounding_box: euclid::Rect {
+                            origin: euclid::Point2D::new(x, y),
+                            size: euclid::Size2D::new(width, height),
+                        },
+                        trim_offset: Vector2D::new(offset_x, offset_y),
+                        untrimmed_size: Size2D::new(real_width, real_height),
+                    }),
+                );
             }
         }
 
@@ -148,7 +157,11 @@ impl Atlas {
         color: Option<Color>,
         rot: f32,
     ) -> Option<()> {
-        let sprite = if let Some(sprite) = self.sprites_map.get(sprite_path) { sprite } else { return None };
+        let sprite = if let Some(sprite) = self.sprites_map.get(sprite_path) {
+            sprite
+        } else {
+            return None;
+        };
         let color = color.unwrap_or_else(Color::white);
 
         let justify = justify.unwrap_or(Vector2D::new(0.5, 0.5));
@@ -292,12 +305,17 @@ pub struct MultiAtlas {
 impl MultiAtlas {
     pub fn new() -> Self {
         Self {
-            sprites_map: HashMap::new()
+            sprites_map: HashMap::new(),
         }
     }
 
     pub fn add(&mut self, atlas: &Atlas) {
-        self.sprites_map.extend(atlas.sprites_map.iter().map(|(path, sprite)| (*path, sprite.clone())));
+        self.sprites_map.extend(
+            atlas
+                .sprites_map
+                .iter()
+                .map(|(path, sprite)| (*path, sprite.clone())),
+        );
     }
 
     pub fn iter_paths(&self) -> impl Iterator<Item = &'static str> + '_ {
@@ -319,7 +337,11 @@ impl MultiAtlas {
         color: Option<Color>,
         rot: f32,
     ) -> Option<()> {
-        let sprite = if let Some(sprite) = self.sprites_map.get(sprite_path) { sprite } else { return None };
+        let sprite = if let Some(sprite) = self.sprites_map.get(sprite_path) {
+            sprite
+        } else {
+            return None;
+        };
         let color = color.unwrap_or_else(Color::white);
 
         let justify = justify.unwrap_or(Vector2D::new(0.5, 0.5));

@@ -4,11 +4,11 @@ use std::ops::Deref;
 use std::rc::Rc;
 use vizia::*;
 
-use crate::{AppState, assets};
 use crate::config::entity_config::{EntityConfig, EntityTemplate, TriggerConfig};
 use crate::map_struct::CelesteMapEntity;
 use crate::units::*;
 use crate::widgets::editor_widget;
+use crate::{assets, AppState};
 
 pub struct PaletteWidget<T, L> {
     lens: L,

@@ -5,9 +5,9 @@ use std::io;
 use std::path::Path;
 
 use super::atlas_img;
+use crate::assets;
 use crate::map_struct::CelesteMapLevel;
 use crate::units::*;
-use crate::assets;
 
 #[derive(Copy, Clone)]
 pub struct TextureTile {
@@ -87,10 +87,7 @@ pub trait AutoTiler {
 }
 
 impl Tileset {
-    pub fn new<T: io::Read>(
-        mut fp: T,
-        texture_prefix: &str,
-    ) -> Result<Autotiler, io::Error> {
+    pub fn new<T: io::Read>(mut fp: T, texture_prefix: &str) -> Result<Autotiler, io::Error> {
         let mut string = String::new();
         fp.read_to_string(&mut string)?;
         let data: SerData =
@@ -323,10 +320,7 @@ impl AutoTiler for Tileset {
 }
 
 impl TextureTile {
-    fn parse_list(
-        text: &str,
-        sprite: &'static str,
-    ) -> Result<Vec<TextureTile>, io::Error> {
+    fn parse_list(text: &str, sprite: &'static str) -> Result<Vec<TextureTile>, io::Error> {
         let mut result = vec![];
         if text.is_empty() {
             return Ok(result);

@@ -167,22 +167,19 @@ impl AppState {
         let modules = {
             let mut result = HashMap::new();
             let mut celeste_module =
-                FolderSource::new(assets::CONFIG.lock().unwrap().celeste_root.join("Content")).unwrap();
+                FolderSource::new(assets::CONFIG.lock().unwrap().celeste_root.join("Content"))
+                    .unwrap();
 
-            result.insert(
-                "Celeste".to_owned(), {
-                    let mut r = CelesteModule::new();
-                    r.load(&mut celeste_module);
-                    r
-                }
-            );
-            result.insert(
-                "Arborio".to_owned(), {
-                    let mut r = CelesteModule::new();
-                    r.load(&mut EmbeddedSource());
-                    r
-                }
-            );
+            result.insert("Celeste".to_owned(), {
+                let mut r = CelesteModule::new();
+                r.load(&mut celeste_module);
+                r
+            });
+            result.insert("Arborio".to_owned(), {
+                let mut r = CelesteModule::new();
+                r.load(&mut EmbeddedSource());
+                r
+            });
 
             result
         };
@@ -191,7 +188,6 @@ impl AppState {
         let palette = ModuleAggregate::new(&modules, &dependencies, &current_module);
 
         AppState {
-
             current_tool: 2,
             map: None,
             current_room: 0,

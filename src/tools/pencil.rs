@@ -73,7 +73,8 @@ impl Tool for PencilTool {
         );
 
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
-        let map_pos = app.transform
+        let map_pos = app
+            .transform
             .inverse()
             .unwrap()
             .transform_point(screen_pos)
@@ -81,11 +82,7 @@ impl Tool for PencilTool {
         let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
-        let room_pos = if app.snap {
-            room_pos_snapped
-        } else {
-            room_pos
-        };
+        let room_pos = if app.snap { room_pos_snapped } else { room_pos };
 
         match app.current_layer {
             Layer::FgTiles | Layer::BgTiles => {
@@ -104,12 +101,26 @@ impl Tool for PencilTool {
             Layer::Entities => {
                 let tmp_entity = self.get_terminal_entity(app, app.current_entity, room_pos);
                 canvas.set_global_alpha(0.5);
-                editor_widget::draw_entity(app, canvas, &tmp_entity, &TileGrid::empty(), false, false);
+                editor_widget::draw_entity(
+                    app,
+                    canvas,
+                    &tmp_entity,
+                    &TileGrid::empty(),
+                    false,
+                    false,
+                );
             }
             Layer::Triggers => {
                 let tmp_trigger = self.get_terminal_trigger(app, app.current_trigger, room_pos);
                 canvas.set_global_alpha(0.5);
-                editor_widget::draw_entity(app, canvas, &tmp_trigger, &TileGrid::empty(), false, true);
+                editor_widget::draw_entity(
+                    app,
+                    canvas,
+                    &tmp_trigger,
+                    &TileGrid::empty(),
+                    false,
+                    true,
+                );
             }
             Layer::FgDecals | Layer::BgDecals => {
                 let texture = "decals/".to_owned() + app.current_decal.0;

@@ -146,11 +146,7 @@ impl Tool for SelectionTool {
             return vec![];
         };
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
-        let map_pos_precise = app
-            .transform
-            .inverse()
-            .unwrap()
-            .transform_point(screen_pos);
+        let map_pos_precise = app.transform.inverse().unwrap().transform_point(screen_pos);
         let map_pos = point_lose_precision(&map_pos_precise);
         let room_pos_unsnapped = (map_pos - room.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos_unsnapped);
@@ -262,7 +258,8 @@ impl Tool for SelectionTool {
         // no scissor!
 
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
-        let map_pos_precise = app.transform
+        let map_pos_precise = app
+            .transform
             .inverse()
             .unwrap()
             .transform_point(screen_pos)
@@ -271,11 +268,7 @@ impl Tool for SelectionTool {
         let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
-        let room_pos = if app.snap {
-            room_pos_snapped
-        } else {
-            room_pos
-        };
+        let room_pos = if app.snap { room_pos_snapped } else { room_pos };
 
         if let SelectionStatus::Selecting(ref_pos) = &self.status {
             let selection =
@@ -452,7 +445,12 @@ impl SelectionTool {
         false
     }
 
-    fn rects_of(&self, app: &AppState, room: &CelesteMapLevel, selectable: AppSelection) -> Vec<RoomRect> {
+    fn rects_of(
+        &self,
+        app: &AppState,
+        room: &CelesteMapLevel,
+        selectable: AppSelection,
+    ) -> Vec<RoomRect> {
         match selectable {
             AppSelection::FgTile(pt) => {
                 vec![RoomRect::new(point_tile_to_room(&pt), RoomSize::new(8, 8))]
@@ -502,7 +500,11 @@ impl SelectionTool {
             }
             AppSelection::Decal(id, fg) => {
                 if let Some(decal) = room.decal(id, fg) {
-                    if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&decal_texture(decal)) {
+                    if let Some(dim) = app
+                        .palette
+                        .gameplay_atlas
+                        .sprite_dimensions(&decal_texture(decal))
+                    {
                         let size = dim
                             .cast()
                             .cast_unit()
@@ -532,10 +534,15 @@ impl SelectionTool {
         layer: Layer,
         room_pos: RoomPoint,
     ) -> Option<AppSelection> {
-        self.selectables_in(app, room, layer, RoomRect::new(room_pos, RoomSize::new(1, 1)))
-            .iter()
-            .next()
-            .cloned()
+        self.selectables_in(
+            app,
+            room,
+            layer,
+            RoomRect::new(room_pos, RoomSize::new(1, 1)),
+        )
+        .iter()
+        .next()
+        .cloned()
     }
 
     fn selectables_in(
@@ -738,7 +745,12 @@ impl SelectionTool {
     }
 
     #[must_use]
-    fn resize(&mut self, app: &AppState, room: &CelesteMapLevel, resize: RoomVector) -> Vec<AppEvent> {
+    fn resize(
+        &mut self,
+        app: &AppState,
+        room: &CelesteMapLevel,
+        resize: RoomVector,
+    ) -> Vec<AppEvent> {
         let mut events = vec![];
 
         let dragging = if let SelectionStatus::Resizing(dragging) = &self.status {
@@ -804,7 +816,11 @@ impl SelectionTool {
                 }
                 AppSelection::Decal(id, fg) => {
                     let mut d = room.decal(*id, *fg).unwrap().clone();
-                    if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&decal_texture(&d)) {
+                    if let Some(dim) = app
+                        .palette
+                        .gameplay_atlas
+                        .sprite_dimensions(&decal_texture(&d))
+                    {
                         let texture_size = dim.cast().cast_unit();
                         let start_rect = dragging
                             .map(|d| *d.selection_reference_sizes.get(sel).unwrap())
@@ -1021,7 +1037,11 @@ impl SelectionTool {
                     }
                     AppSelection::Decal(id, fg) => {
                         if let Some(decal) = room.decal(*id, *fg) {
-                            if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&decal_texture(decal)) {
+                            if let Some(dim) = app
+                                .palette
+                                .gameplay_atlas
+                                .sprite_dimensions(&decal_texture(decal))
+                            {
                                 let size = dim
                                     .cast()
                                     .cast_unit()

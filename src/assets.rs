@@ -45,10 +45,8 @@ lazy_static! {
         };
         Mutex::new(cfg)
     };
-
-    static ref INTERNSHIP: elsa::sync::FrozenMap<&'static str, &'static str> = {
-        elsa::sync::FrozenMap::new()
-    };
+    static ref INTERNSHIP: elsa::sync::FrozenMap<&'static str, &'static str> =
+        { elsa::sync::FrozenMap::new() };
 }
 
 pub fn intern(s: &str) -> &'static str {
