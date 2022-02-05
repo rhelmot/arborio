@@ -12,11 +12,9 @@ mod tests {
 }
 
 enum BinElAttribute {
-    Err(TokenStream),
     ConvertWith(TokenStream),
     Skip,
     Name(TokenStream),
-    MissingChild(TokenStream),
 }
 
 impl BinElAttribute {
@@ -25,12 +23,10 @@ impl BinElAttribute {
     ) -> impl Iterator<Item = Self> + 'a {
         iter.into_iter().filter_map(|attr: &Attribute| {
             match attr.path.get_ident()?.to_string().as_str() {
-                "bin_el_err" => Some(BinElAttribute::Err(attr.tokens.clone())),
                 "bin_el_skip" => Some(BinElAttribute::Skip),
                 "name" => Some(BinElAttribute::Name(attr.tokens.clone())),
-                "missing_child" => Some(BinElAttribute::MissingChild(attr.tokens.clone())),
                 "convert_with" => Some(BinElAttribute::ConvertWith(attr.tokens.clone())),
-                _ => todo!(),
+                s => panic!("unrecognized attribute \"{}\"", s),
             }
         })
     }
@@ -38,26 +34,19 @@ impl BinElAttribute {
 
 #[proc_macro_derive(
     TryFromBinEl,
-    attributes(bin_el_err, bin_el_skip, convert_with, name, missing_child)
+    attributes(bin_el_skip, convert_with, name)
 )]
 pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(item as ItemStruct);
-    let (mut err, mut missing_child) = (None, None);
     let mut name = None;
     let mut convert_with = quote! {DefaultConverter};
     for attr in BinElAttribute::filter_map_iter(&input.attrs) {
         match attr {
-            BinElAttribute::Err(e) => err = Some(e),
-            BinElAttribute::MissingChild(m) => missing_child = Some(m),
             BinElAttribute::Name(n) => name = Some(n),
             BinElAttribute::ConvertWith(c) => convert_with = c,
-            _ => todo!(),
+            BinElAttribute::Skip => todo!("Write fail message for skip"),
         }
     }
-    let (err, missing_child) = (
-        err.expect("Need an error type defined"),
-        missing_child.expect("Need a handler for if a child is not defined"),
-    );
     let mut fields = Vec::new();
     let mut field_values = Vec::new();
 
@@ -74,7 +63,6 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                         BinElAttribute::Skip => skip = true,
                         BinElAttribute::Name(n) => name = n,
                         BinElAttribute::ConvertWith(c) => convert_with = c,
-                        _ => todo!(),
                     }
                 }
                 fields.push(ident);
@@ -90,7 +78,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                         })
                     } else {
                         field_values.push(quote! {
-                            TryFromBinEl::try_from_bin_el(get_nested_child(elem, #name).ok_or_else(|| #missing_child(&elem.name, #name))?)?
+                            TryFromBinEl::try_from_bin_el(get_nested_child(elem, #name).ok_or_else(|| CelesteMapError::missing_child(&elem.name, #name))?)?
                         });
                     }
                 }
@@ -117,8 +105,8 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
     let ident = proc_macro2::TokenStream::from(TokenStream::from(ident.into_token_stream()));
 
     let impl_ = quote! {
-        impl crate::from_binel::TryFromBinEl<#err> for #ident {
-            fn try_from_bin_el(elem: &BinEl) -> Result<Self, #err> {
+        impl crate::from_binel::TryFromBinEl for #ident {
+            fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
                 #assertion
                 #(let #fields = #field_values;)*
 

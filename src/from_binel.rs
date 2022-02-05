@@ -22,15 +22,15 @@ pub fn get_nested_child<'a>(elem: &'a BinEl, name: &str) -> Option<&'a BinEl> {
     }
 }
 
-pub trait TryFromBinEl<Err>: Sized {
-    fn try_from_bin_el(elem: &BinEl) -> Result<Self, Err>;
+pub trait TryFromBinEl: Sized {
+    fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError>;
 }
 
-impl<T, E> TryFromBinEl<E> for Vec<T>
+impl<T> TryFromBinEl for Vec<T>
 where
-    T: TryFromBinEl<E>,
+    T: TryFromBinEl,
 {
-    fn try_from_bin_el(elem: &BinEl) -> Result<Self, E> {
+    fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
         elem.children()
             .map(|child| T::try_from_bin_el(child))
             .collect()

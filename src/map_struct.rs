@@ -19,8 +19,6 @@ lazy_static::lazy_static! {
 }
 
 #[derive(Clone, Debug, TryFromBinEl)]
-#[bin_el_err(CelesteMapError)]
-#[missing_child(CelesteMapError::missing_child)]
 #[convert_with(MapComponentConverter)]
 pub struct Rect {
     pub x: i32,
@@ -39,8 +37,6 @@ pub fn next_uuid() -> u32 {
 }
 
 #[derive(Debug, TryFromBinEl)]
-#[bin_el_err(CelesteMapError)]
-#[missing_child(CelesteMapError::missing_child)]
 pub struct CelesteMap {
     #[bin_el_skip]
     pub name: String,
@@ -460,7 +456,7 @@ pub fn from_binfile(binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
     CelesteMap::try_from_bin_el(&binfile.root)
 }
 
-impl TryFromBinEl<CelesteMapError> for CelesteMapLevel {
+impl TryFromBinEl for CelesteMapLevel {
     fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
         parse_level(elem)
     }
@@ -622,7 +618,7 @@ fn parse_object_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<i32>,
 }
 
 struct DefaultConverter;
-impl<T: TryFromBinEl<CelesteMapError>> TwoWayConverter<T> for DefaultConverter {
+impl<T: TryFromBinEl> TwoWayConverter<T> for DefaultConverter {
     type BinType = BinEl;
 
     fn try_parse(elem: &Self::BinType) -> Result<T, CelesteMapError> {
@@ -712,7 +708,7 @@ fn parse_decal(elem: &BinEl) -> Result<CelesteMapDecal, CelesteMapError> {
     })
 }
 
-impl TryFromBinEl<CelesteMapError> for MapRectStrict {
+impl TryFromBinEl for MapRectStrict {
     fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
         parse_filler_rect(elem)
     }
@@ -786,7 +782,7 @@ fn parse_styleground(elem: &BinEl) -> Result<CelesteMapStyleground, CelesteMapEr
     })
 }
 
-impl TryFromBinEl<CelesteMapError> for CelesteMapStyleground {
+impl TryFromBinEl for CelesteMapStyleground {
     fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
         Ok(CelesteMapStyleground {
             name: elem.name.clone(),
