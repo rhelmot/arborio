@@ -117,13 +117,17 @@ impl From<(i32, i32)> for Node {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TryFromBinEl)]
 pub struct CelesteMapDecal {
+    #[generate(next_uuid())]
     pub id: u32,
     pub x: i32,
     pub y: i32,
+    #[name("scaleX")]
     pub scale_x: f32,
+    #[name("scaleY")]
     pub scale_y: f32,
+    #[convert_with(ParenFlipper)]
     pub texture: String,
 }
 
@@ -217,6 +221,19 @@ impl CelesteMapError {
             kind: CelesteMapErrorType::MissingAttribute,
             description: format!("Expected attribute of {}: {} not found", parent, attr),
         }
+    }
+}
+
+struct ParenFlipper;
+impl TwoWayConverter<String> for ParenFlipper {
+    type BinType = BinElAttr;
+
+    fn try_parse(elem: &Self::BinType) -> Result<String, CelesteMapError> {
+        DefaultConverter::try_parse(elem).map(|s: String| s.replace('\\', "/"))
+    }
+
+    fn serialize(val: String) -> Self::BinType {
+        BinElAttr::Text(val.replace('/', "\\"))
     }
 }
 
@@ -382,7 +399,7 @@ impl CelesteMapLevel {
             }
         }
         for pt in rect_point_iter(rect_room_to_tile(&self.room_bounds()), 1) {
-            if self.tile(pt, true).unwrap_or('0') != '0' {
+            if let Some('0') | None = self.tile(pt, true) {
                 *result.get_mut(pt).unwrap() = FieldEntry::Fg;
             }
         }
@@ -664,19 +681,6 @@ macro_rules! attr_converter_impl {
     }
 }
 attr_converter_impl!(i32, u32, String, f32, bool);
-
-impl TryFromBinEl for CelesteMapDecal {
-    fn try_from_bin_el(elem: &BinEl) -> Result<CelesteMapDecal, CelesteMapError> {
-        Ok(CelesteMapDecal {
-            id: next_uuid(),
-            x: get_attr(elem, "x")?,
-            y: get_attr(elem, "y")?,
-            scale_x: get_attr(elem, "scaleX")?,
-            scale_y: get_attr(elem, "scaleY")?,
-            texture: get_attr::<String>(elem, "texture")?.replace('\\', "/"),
-        })
-    }
-}
 
 impl TryFromBinEl for MapRectStrict {
     fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {

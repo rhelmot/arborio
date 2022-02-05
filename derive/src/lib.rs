@@ -15,6 +15,7 @@ enum BinElAttribute {
     Attributes,
     Children,
     ConvertWith(TokenStream),
+    Generate(TokenStream),
     Default,
     Name(TokenStream),
     Optional,
@@ -27,13 +28,14 @@ impl BinElAttribute {
     ) -> impl Iterator<Item = Self> + 'a {
         iter.into_iter().filter_map(|attr: &Attribute| {
             match attr.path.get_ident()?.to_string().as_str() {
+                "attributes" => Some(BinElAttribute::Attributes),
                 "bin_el_skip" => Some(BinElAttribute::Skip),
                 "children" => Some(BinElAttribute::Children),
                 "convert_with" => Some(BinElAttribute::ConvertWith(attr.tokens.clone())),
                 "default" => Some(BinElAttribute::Default),
+                "generate" => Some(BinElAttribute::Generate(attr.tokens.clone())),
                 "name" => Some(BinElAttribute::Name(attr.tokens.clone())),
                 "optional" => Some(BinElAttribute::Optional),
-                "attributes" => Some(BinElAttribute::Attributes),
                 s => panic!("unrecognized attribute \"{}\"", s),
             }
         })
@@ -42,7 +44,7 @@ impl BinElAttribute {
 
 #[proc_macro_derive(
     TryFromBinEl,
-    attributes(attributes, bin_el_skip, children, convert_with, default, name, optional)
+    attributes(attributes, bin_el_skip, children, convert_with, default, generate, name, optional)
 )]
 pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(item as ItemStruct);
@@ -67,6 +69,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                 let mut skip = false;
                 let mut default = false;
                 let mut children = false;
+                let mut generate = TokenStream::new();
                 let mut optional = false;
                 let mut attributes = false;
                 let mut convert_with = convert_with.clone();
@@ -79,6 +82,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                         BinElAttribute::Optional => optional = true,
                         BinElAttribute::Children => children = true,
                         BinElAttribute::Attributes => attributes = true,
+                        BinElAttribute::Generate(call) => generate = call,
                     }
                 }
                 fields.push(ident);
@@ -87,6 +91,8 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                     quote! {
                         Default::default()
                     }
+                } else if !generate.is_empty() {
+                    generate
                 } else if children {
                     quote! {
                         Vec::try_from_bin_el(elem)?
