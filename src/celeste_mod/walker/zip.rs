@@ -7,7 +7,7 @@ use std::rc::Rc;
 use zip::read::ZipFile;
 use zip::ZipArchive;
 
-use crate::config::walker::ConfigSource;
+use crate::celeste_mod::walker::ConfigSource;
 
 impl<R: Read + Seek> ConfigSource for ZipArchive<R> {
     type DirIter = impl Iterator<Item = PathBuf>;
@@ -51,7 +51,7 @@ impl<R: Read + Seek> ConfigSource for ZipArchive<R> {
     fn get_file(&mut self, path: &Path) -> Option<Self::FileRead> {
         self.by_name(
             path.to_str()
-                .expect("Fatal error: non-utf8 config filepath"),
+                .expect("Fatal error: non-utf8 celeste_mod filepath"),
         )
         .ok()
         .map(|mut f| {

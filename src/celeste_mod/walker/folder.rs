@@ -3,7 +3,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
 
-use crate::config::walker::ConfigSource;
+use crate::celeste_mod::walker::ConfigSource;
 
 pub struct FolderSource(PathBuf);
 

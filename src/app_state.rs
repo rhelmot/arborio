@@ -6,10 +6,10 @@ use std::time;
 use vizia::*;
 
 use crate::assets;
-use crate::config::aggregate::ModuleAggregate;
-use crate::config::everest_yaml::{arborio_module_yaml, celeste_module_yaml};
-use crate::config::module::CelesteModule;
-use crate::config::walker::{EmbeddedSource, FolderSource};
+use crate::celeste_mod::aggregate::ModuleAggregate;
+use crate::celeste_mod::everest_yaml::{arborio_module_yaml, celeste_module_yaml};
+use crate::celeste_mod::module::CelesteModule;
+use crate::celeste_mod::walker::{EmbeddedSource, FolderSource};
 use crate::map_struct;
 use crate::map_struct::{CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, MapID};
 use crate::tools;

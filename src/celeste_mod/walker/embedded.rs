@@ -4,7 +4,7 @@ use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::slice::Iter;
 
-use crate::config::walker::ConfigSource;
+use crate::celeste_mod::walker::ConfigSource;
 
 const EMBEDDED: Dir = include_dir!("conf");
 #[derive(Copy, Clone)]

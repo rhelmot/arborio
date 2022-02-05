@@ -6,8 +6,8 @@ use vizia::*;
 
 use crate::atlas_img::MultiAtlas;
 use crate::autotiler::{Autotiler, Tileset};
-use crate::config::entity_config::{EntityConfig, TriggerConfig};
-use crate::config::module::CelesteModule;
+use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
+use crate::celeste_mod::module::CelesteModule;
 use crate::widgets::palette_widget::{DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable};
 use crate::assets;
 

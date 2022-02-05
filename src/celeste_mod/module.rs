@@ -6,9 +6,9 @@ use std::rc::Rc;
 use crate::atlas_img::Atlas;
 use crate::autotiler;
 use crate::autotiler::Tileset;
-use crate::config::entity_config::{EntityConfig, TriggerConfig};
-use crate::config::everest_yaml::EverestYaml;
-use crate::config::walker::ConfigSource;
+use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
+use crate::celeste_mod::everest_yaml::EverestYaml;
+use crate::celeste_mod::walker::ConfigSource;
 
 pub struct CelesteModule {
     pub everest_metadata: EverestYaml,
@@ -53,7 +53,7 @@ impl CelesteModule {
                     path.file_stem()
                         .unwrap()
                         .to_str()
-                        .expect("Fatal error: non-utf8 config filepath")
+                        .expect("Fatal error: non-utf8 celeste_mod filepath")
                         .to_owned(),
                     Rc::new(Tileset::new(fp, "")
                         .expect("Could not parse custom tileset")),
@@ -64,7 +64,7 @@ impl CelesteModule {
         for path in source.list_all_files(&PathBuf::from("Arborio/entities")) {
             if let Some(f) = source.get_file(&path) {
                 let mut config: EntityConfig =
-                    serde_yaml::from_reader(f).expect("Failed to parse entity config");
+                    serde_yaml::from_reader(f).expect("Failed to parse entity celeste_mod");
                 if config.templates.is_empty() {
                     config.templates.push(config.default_template());
                 }
@@ -76,7 +76,7 @@ impl CelesteModule {
         for path in source.list_all_files(&PathBuf::from("Arborio/triggers")) {
             if let Some(f) = source.get_file(&path) {
                 let mut config: TriggerConfig =
-                    serde_yaml::from_reader(f).expect("Failed to parse trigger config");
+                    serde_yaml::from_reader(f).expect("Failed to parse trigger celeste_mod");
                 if config.templates.is_empty() {
                     config.templates.push(config.default_template());
                 }

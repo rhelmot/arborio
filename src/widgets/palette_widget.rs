@@ -5,7 +5,7 @@ use std::rc::Rc;
 use vizia::*;
 
 use crate::{AppState, assets};
-use crate::config::entity_config::{EntityConfig, EntityTemplate, TriggerConfig};
+use crate::celeste_mod::entity_config::{EntityConfig, EntityTemplate, TriggerConfig};
 use crate::map_struct::CelesteMapEntity;
 use crate::units::*;
 use crate::widgets::editor_widget;

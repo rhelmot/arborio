@@ -2,7 +2,7 @@ use vizia::*;
 
 use crate::app_state::{AppEvent, AppState, Layer};
 use crate::assets;
-use crate::config::entity_config::PencilBehavior;
+use crate::celeste_mod::entity_config::PencilBehavior;
 use crate::map_struct::{CelesteMapDecal, CelesteMapEntity};
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;

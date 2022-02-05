@@ -12,7 +12,7 @@ use std::cell::RefCell;
 
 use crate::assets;
 use crate::autotiler::TileReference;
-use crate::config::walker::ConfigSource;
+use crate::celeste_mod::walker::ConfigSource;
 use crate::units::*;
 
 #[derive(Debug)]

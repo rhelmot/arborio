@@ -12,9 +12,9 @@ use crate::atlas_img::MultiAtlas;
 use crate::auto_saver::AutoSaver;
 use crate::autotiler;
 use crate::autotiler::Autotiler;
-use crate::config::entity_config::{EntityConfig, TriggerConfig};
-use crate::config::module::CelesteModule;
-use crate::config::walker::{ConfigSource, EmbeddedSource, FolderSource};
+use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
+use crate::celeste_mod::module::CelesteModule;
+use crate::celeste_mod::walker::{ConfigSource, EmbeddedSource, FolderSource};
 use crate::widgets::palette_widget::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
 };
@@ -29,7 +29,7 @@ lazy_static! {
         let cfg: Config = confy::load("arborio").unwrap_or_default();
         let mut cfg = AutoSaver::new(cfg, |cfg: &mut Config| {
             confy::store("arborio", &cfg)
-                .unwrap_or_else(|e| panic!("Failed to save config file: {}", e));
+                .unwrap_or_else(|e| panic!("Failed to save celeste_mod file: {}", e));
         });
         if cfg.celeste_root.as_os_str().is_empty() {
             let celeste_path = PathBuf::from(

@@ -371,7 +371,7 @@ impl CelesteMap {
     }
 }
 
-use crate::config::entity_expression::Const;
+use crate::celeste_mod::entity_expression::Const;
 impl CelesteMapEntity {
     pub fn make_env(&self) -> HashMap<&str, Const> {
         let mut env: HashMap<&str, Const> = HashMap::new();
