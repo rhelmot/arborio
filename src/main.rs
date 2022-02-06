@@ -18,6 +18,7 @@ use std::cell::RefCell;
 use std::error::Error;
 use std::fs;
 use std::io::Read;
+use std::path::PathBuf;
 use vizia::*;
 use widgets::editor_widget;
 
@@ -40,8 +41,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         VStack::new(cx, move |cx| {
             HStack::new(cx, move |cx| {
                 Button::new(cx, move |cx| {
-                    cx.spawn(|cx| {
-                        if let Some(map) = load_workflow() {
+                    let root = cx.data::<AppState>().unwrap().config.celeste_root.clone();
+                    cx.spawn(move |cx| {
+                        if let Some(map) = load_workflow(&root) {
                             cx.emit(AppEvent::Load { map: RefCell::new(Some(map)) });
                         }
                     })
@@ -58,11 +60,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn load_workflow() -> Option<map_struct::CelesteMap> {
+fn load_workflow(root: &PathBuf) -> Option<map_struct::CelesteMap> {
     let path = match dialog::FileSelection::new("Select a map")
         .title("Select a map")
         .mode(FileSelectionMode::Open)
-        .path(&assets::CONFIG.lock().unwrap().celeste_root)
+        .path(root)
         .show()
     {
         Ok(Some(path)) => path,

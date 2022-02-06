@@ -1,11 +1,15 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 use std::time;
+use dialog::DialogBox;
 use vizia::*;
+use serde::{Serialize, Deserialize};
 
 use crate::assets;
+use crate::auto_saver::AutoSaver;
 use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::celeste_mod::everest_yaml::{arborio_module_yaml, celeste_module_yaml};
 use crate::celeste_mod::module::CelesteModule;
@@ -22,6 +26,8 @@ use crate::widgets::palette_widget::{
 
 #[derive(Lens)]
 pub struct AppState {
+    pub config: AutoSaver<ArborioConfig>,
+
     pub modules: HashMap<String, CelesteModule>,
     pub current_module: String,
     pub palette: ModuleAggregate,
@@ -43,6 +49,11 @@ pub struct AppState {
     pub snap: bool,
 
     pub last_draw: RefCell<time::Instant>, // mutable to draw
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct ArborioConfig {
+    pub celeste_root: PathBuf,
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -230,10 +241,28 @@ impl Model for AppState {
 
 impl AppState {
     pub fn new() -> AppState {
+        let cfg: ArborioConfig = confy::load("arborio").unwrap_or_default();
+        let mut cfg = AutoSaver::new(cfg, |cfg: &mut ArborioConfig| {
+            confy::store("arborio", &cfg)
+                .unwrap_or_else(|e| panic!("Failed to save celeste_mod file: {}", e));
+        });
+        if cfg.celeste_root.as_os_str().is_empty() {
+            let celeste_path = PathBuf::from(
+                dialog::FileSelection::new("Celeste Installation")
+                    .title("Please choose Celeste.exe")
+                    .path(".")
+                    .mode(dialog::FileSelectionMode::Open)
+                    .show()
+                    .unwrap_or_else(|_| panic!("Can't run arborio without a Celeste.exe!"))
+                    .unwrap_or_else(|| panic!("Can't run arborio without a Celeste.exe!")),
+            );
+            cfg.borrow_mut().celeste_root = celeste_path.parent().unwrap().to_path_buf();
+        };
+
         let modules = {
             let mut result = HashMap::new();
             let mut celeste_module =
-                FolderSource::new(assets::CONFIG.lock().unwrap().celeste_root.join("Content")).unwrap();
+                FolderSource::new(cfg.celeste_root.join("Content")).unwrap();
             let mut arborio_module = EmbeddedSource();
 
             result.insert(
@@ -258,6 +287,7 @@ impl AppState {
         palette.sanity_check();
 
         AppState {
+            config: cfg,
             current_tab: 0,
             tabs: vec![],
 
