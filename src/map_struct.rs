@@ -9,8 +9,9 @@ use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::sync::Mutex;
+use crate::from_binel::GetAttrOrChild;
 
-use crate::from_binel::{get_nested_child, TryFromBinEl, TwoWayConverter};
+use crate::from_binel::{bin_el_fuzzy_equal, get_nested_child, TryFromBinEl, TwoWayConverter};
 
 use crate::units::*;
 
@@ -107,6 +108,7 @@ pub struct CelesteMapEntity {
 }
 
 #[derive(Debug, Clone, PartialEq, TryFromBinEl)]
+#[name("node")]
 pub struct Node {
     pub x: i32,
     pub y: i32,
@@ -118,6 +120,7 @@ impl From<(i32, i32)> for Node {
 }
 
 #[derive(Debug, Clone, TryFromBinEl)]
+#[name("decal")]
 pub struct CelesteMapDecal {
     #[generate(next_uuid())]
     pub id: u32,
@@ -133,6 +136,8 @@ pub struct CelesteMapDecal {
 
 #[derive(Debug, TryFromBinEl)]
 pub struct CelesteMapStyleground {
+    #[optional]
+    pub alpha: Option<f32>,
     #[name]
     pub name: String,
     #[optional]
@@ -229,10 +234,14 @@ impl TwoWayConverter<String> for ParenFlipper {
     type BinType = BinElAttr;
 
     fn try_parse(elem: &Self::BinType) -> Result<String, CelesteMapError> {
-        DefaultConverter::try_parse(elem).map(|s: String| s.replace('\\', "/"))
+        DefaultConverter::try_parse(elem).map(|s: String| {
+            assert!(!s.contains('/'));
+            s.replace('\\', "/")
+        })
     }
 
-    fn serialize(val: String) -> Self::BinType {
+    fn serialize(val: &String) -> Self::BinType {
+        assert!(!val.contains('\\'));
         BinElAttr::Text(val.replace('/', "\\"))
     }
 }
@@ -565,6 +574,10 @@ impl TryFromBinEl for CelesteMapLevel {
             cache: default::Default::default(),
         })
     }
+
+    fn into_binel(&self) -> BinEl {
+        todo!()
+    }
 }
 
 fn parse_fgbg_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<char>, CelesteMapError> {
@@ -655,8 +668,8 @@ impl<T: TryFromBinEl> TwoWayConverter<T> for DefaultConverter {
         TryFromBinEl::try_from_bin_el(elem)
     }
 
-    fn serialize(val: T) -> Self::BinType {
-        todo!()
+    fn serialize(val: &T) -> Self::BinType {
+        val.into_binel()
     }
 }
 macro_rules! attr_converter_impl {
@@ -674,8 +687,8 @@ macro_rules! attr_converter_impl {
                 )
             }
 
-            fn serialize(val: $types) -> Self::BinType {
-                todo!()
+            fn serialize(val: &$types) -> Self::BinType {
+                val.serialize()
             }
         })+
     }
@@ -696,10 +709,14 @@ impl TryFromBinEl for MapRectStrict {
             size: Size2D::new(w * 8, h * 8),
         })
     }
+
+    fn into_binel(&self) -> BinEl {
+        todo!()
+    }
 }
 
 struct MapComponentConverter;
-impl<T: TryFrom<i32> + TryInto<i32>> TwoWayConverter<T> for MapComponentConverter {
+impl<T: Copy + TryFrom<i32> + TryInto<i32>> TwoWayConverter<T> for MapComponentConverter {
     type BinType = BinElAttr;
 
     fn try_parse(elem: &Self::BinType) -> Result<T, CelesteMapError> {
@@ -713,8 +730,8 @@ impl<T: TryFrom<i32> + TryInto<i32>> TwoWayConverter<T> for MapComponentConverte
         }
     }
 
-    fn serialize(val: T) -> Self::BinType {
-        BinElAttr::Int(val.try_into().ok().unwrap() / 8)
+    fn serialize(val: &T) -> Self::BinType {
+        BinElAttr::Int((*val).try_into().ok().unwrap() / 8)
     }
 }
 
@@ -750,6 +767,20 @@ fn get_child<'a>(elem: &'a BinEl, name: &str) -> Result<&'a BinEl, CelesteMapErr
     get_optional_child(elem, name).ok_or_else(|| CelesteMapError::missing_child(&elem.name, name))
 }
 
+pub fn get_child_mut<'a>(elem: &'a mut BinEl, name: &str) -> &'a mut BinEl {
+    let children = elem.get_mut(name);
+    if children.is_empty() {
+        children.push(BinEl::new(name));
+    }
+    match children.as_mut_slice() {
+        [ref mut child] => child,
+        [] => {
+            unreachable!()
+        }
+        _ => todo!()
+    }
+}
+
 fn get_optional_attr<T>(elem: &BinEl, name: &str) -> Result<Option<T>, CelesteMapError>
 where
     T: AttrCoercion,
@@ -781,6 +812,7 @@ trait AttrCoercion: Sized {
     // Type name to print out when giving BadAttrType errors
     const NICE_NAME: &'static str;
     fn try_coerce(attr: &BinElAttr) -> Option<Self>;
+    fn serialize(&self) -> BinElAttr;
 }
 
 impl AttrCoercion for i32 {
@@ -792,6 +824,9 @@ impl AttrCoercion for i32 {
             _ => None,
         }
     }
+    fn serialize(&self) -> BinElAttr {
+        BinElAttr::Int(*self)
+    }
 }
 impl AttrCoercion for u32 {
     const NICE_NAME: &'static str = "integer";
@@ -801,6 +836,10 @@ impl AttrCoercion for u32 {
             BinElAttr::Float(f) => Some(f as u32),
             _ => None,
         }
+    }
+
+    fn serialize(&self) -> BinElAttr {
+        BinElAttr::Int(*self as i32)
     }
 }
 impl AttrCoercion for bool {
@@ -812,6 +851,10 @@ impl AttrCoercion for bool {
             None
         }
     }
+
+    fn serialize(&self) -> BinElAttr {
+        BinElAttr::Bool(*self)
+    }
 }
 impl AttrCoercion for f32 {
     const NICE_NAME: &'static str = "float";
@@ -822,6 +865,10 @@ impl AttrCoercion for f32 {
             _ => None,
         }
     }
+
+    fn serialize(&self) -> BinElAttr {
+        BinElAttr::Float(*self)
+    }
 }
 impl AttrCoercion for String {
     const NICE_NAME: &'static str = "text";
@@ -831,5 +878,9 @@ impl AttrCoercion for String {
             BinElAttr::Int(i) => Some(i.to_string()),
             _ => None,
         }
+    }
+
+    fn serialize(&self) -> BinElAttr {
+        BinElAttr::Text(self.clone())
     }
 }

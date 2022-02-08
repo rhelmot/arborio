@@ -48,23 +48,26 @@ impl BinElAttribute {
 )]
 pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(item as ItemStruct);
-    let mut name = None;
+    let mut struct_name = None;
     let mut convert_with = quote! {DefaultConverter};
     for attr in BinElAttribute::filter_map_iter(&input.attrs) {
         match attr {
-            BinElAttribute::Name(n) => name = Some(n),
+            BinElAttribute::Name(n) => struct_name = Some(n),
             BinElAttribute::ConvertWith(c) => convert_with = c,
             _ => todo!(),
         }
     }
     let mut fields = Vec::new();
     let mut field_values = Vec::new();
+    let mut into_values = Vec::new();
+    let mut name_field = None;
 
     match &input.fields {
         Fields::Named(named) => {
             for field in &named.named {
                 let ident: &Ident = field.ident.as_ref().unwrap();
                 let name = ident.to_string();
+                let type_ = &field.ty;
                 let mut name = quote! {#name};
                 let mut skip = false;
                 let mut default = false;
@@ -86,6 +89,48 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                     }
                 }
                 fields.push(ident);
+                
+                if name.is_empty() {
+                    name_field = Some(ident);
+                }
+
+                into_values.push(if skip {
+                    None
+                } else if !generate.is_empty() {
+                    None
+                } else if children {
+                    Some(quote!{
+                        let mut serialized_vec = <#convert_with>::serialize(&self.#ident);
+                        for child in serialized_vec.drain() {
+                            binel.insert(child);
+                        }
+                    })
+                } else if default {
+                    Some(quote! {
+                        if self.#ident != <#type_>::default() {
+                            let serialized_field = <#convert_with>::serialize(&self.#ident);
+                            GetAttrOrChild::nested_apply_attr_or_child(&mut binel, #name, serialized_field);
+                        }
+                    })
+                } else if attributes {
+                    Some(quote!{
+                        binel.attributes.extend(self.#ident.clone());
+                    })
+                } else if optional {
+                    Some(quote! {
+                        if let Some(ref field) = self.#ident {
+                            let serialized_field = <#convert_with>::serialize(field);
+                            GetAttrOrChild::nested_apply_attr_or_child(&mut binel, #name, serialized_field);
+                        }
+                    })
+                } else if name.is_empty() {
+                    None
+                } else {
+                    Some(quote! {
+                        let serialized_field = <#convert_with>::serialize(&self.#ident);
+                        GetAttrOrChild::nested_apply_attr_or_child(&mut binel, #name, serialized_field);
+                    })
+                });
 
                 field_values.push(if skip {
                     quote! {
@@ -123,12 +168,13 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                         <#convert_with>::from_bin_el(elem, #name)?
                     }
                 });
+
             }
         }
         _ => todo!(),
     }
 
-    let assertion = name.map(|name| {
+    let assertion = struct_name.as_ref().map(|name| {
         quote! {
             if (elem.name != #name) {
                 return Err(CelesteMapError {
@@ -144,6 +190,14 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
     <syn::Ident as quote::ToTokens>::to_token_stream(&ident);
 
     let ident = proc_macro2::TokenStream::from(TokenStream::from(ident.into_token_stream()));
+    
+    let name = if let Some(name_field) = name_field {
+        quote!{&self.#name_field}
+    } else if let Some(name) = struct_name {
+        name
+    } else {
+        quote!{stringify!(#ident)}
+    };
 
     let impl_ = quote! {
         impl crate::from_binel::TryFromBinEl for #ident {
@@ -152,9 +206,21 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                 let fields_list = [#(stringify!(#fields)),*];
                 #(let #fields = #field_values;)*
 
-                Ok(Self {
+                let struct_ = Self {
                     #(#fields,)*
-                })
+                };
+
+                let reserialized = struct_.into_binel();
+                // assert!(bin_el_fuzzy_equal(elem, &reserialized), "{:?} != {:?}", elem, &reserialized);
+
+                Ok(struct_)
+            }
+            fn into_binel(&self) -> BinEl {
+                let mut binel = BinEl::new(#name);
+
+                #(#into_values)*
+
+                binel
             }
         }
     };
