@@ -63,7 +63,7 @@ fn load_map(module_root: PathBuf, project: String, map: String) -> Option<Celest
             return None;
         }
     };
-    let map = match map_struct::from_binfile(MapID { module: "Arborio".to_string(), sid: map }, binfile) {
+    let map = match map_struct::from_binfile(MapID { module: project.clone(), sid: map }, binfile) {
         Ok(map) => map,
         Err(e) => {
             dialog::Message::new(format!("Data validation error: {}", e));

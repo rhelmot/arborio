@@ -33,10 +33,13 @@ impl ModuleAggregate {
         modules: &HashMap<String, CelesteModule>,
         current_module: &str
     ) -> Self {
+        // TODO: warning on missing dependencies
         let dep_mods = || {
             modules.get(current_module).unwrap()
                 .everest_metadata.dependencies.iter()
-                .map(|dep| (dep.name.as_str(), modules.get(&dep.name).unwrap()))
+                .filter_map(|dep| modules.get(&dep.name).map(|module| (dep.name.as_str(), module)))
+                .chain(iter::once((current_module, modules.get("Arborio").unwrap())))
+                .chain(iter::once((current_module, modules.get("Celeste").unwrap())))
                 .chain(iter::once((current_module, modules.get(current_module).unwrap())))
         };
         let gameplay_atlas = {
@@ -87,7 +90,7 @@ impl ModuleAggregate {
             .map(DecalSelectable::new)
             .collect();
 
-        Self {
+        let result = Self {
             gameplay_atlas,
             autotilers,
             entity_config,
@@ -98,7 +101,9 @@ impl ModuleAggregate {
             entities_palette,
             triggers_palette,
             decals_palette,
-        }
+        };
+        result.sanity_check();
+        result
     }
 
     pub fn sanity_check(&self) {

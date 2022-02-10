@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use byteorder::{LittleEndian, ReadBytesExt};
 use femtovg::{Color, ImageId, ImageSource, Paint, Path};
 use imgref::Img;
@@ -9,7 +10,9 @@ use std::io::Read; // trait method import
 use std::path;
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::convert::{TryFrom, TryInto};
 use std::sync::{Arc, Mutex};
+use image::{DynamicImage, GenericImageView};
 
 use crate::assets;
 use crate::autotiler::TileReference;
@@ -19,6 +22,7 @@ use crate::units::*;
 #[derive(Debug)]
 enum BlobData {
     Waiting(Img<Vec<RGBA8>>),
+    WaitingEncoded(DynamicImage),
     Loaded(ImageId),
 }
 
@@ -28,6 +32,13 @@ impl BlobData {
             BlobData::Waiting(buf) => {
                 let res = canvas
                     .create_image(buf.as_ref(), femtovg::ImageFlags::NEAREST)
+                    .unwrap();
+                *self = BlobData::Loaded(res);
+                res
+            }
+            BlobData::WaitingEncoded(dat) => {
+                let res = canvas
+                    .create_image(ImageSource::try_from(dat.borrow()).unwrap(), femtovg::ImageFlags::NEAREST)
                     .unwrap();
                 *self = BlobData::Loaded(res);
                 res
@@ -64,16 +75,38 @@ impl Atlas {
             .expect("Fatal error parsing packed atlas");
 
         for path in config.list_all_files(&path::PathBuf::from("Graphics/Atlases").join(atlas.to_owned())) {
-            self.load_loose(config, &path);
+            self.load_loose(config, atlas, &path);
         }
     }
 
     fn load_loose(
         &mut self,
         config: &mut ConfigSource,
+        atlas: &str,
         path: &path::Path
     ) -> Result<(), io::Error> {
         let mut reader = if let Some(fp) = config.get_file(path) { fp } else { return Err(io::ErrorKind::NotFound.into()) };
+
+        // TODO it would be really nice to get rid of this buffer, but image requires a seekable reader
+        let mut buf = vec![];
+        reader.read_to_end(&mut buf)?;
+        let img = image::load_from_memory(buf.as_ref())
+            .map_err(|_| -> io::Error { io::ErrorKind::InvalidData.into() })?;
+
+        let (width, height) = img.dimensions();
+        let sprite_path = path.strip_prefix(&path::PathBuf::from("Graphics/Atlases").join(atlas)).unwrap().with_extension("");
+        let sprite_path = sprite_path.to_str().expect("Non-unicode asset path");
+
+        self.blobs.push(Arc::new(Mutex::new(BlobData::WaitingEncoded(img))));
+        self.sprites_map.insert(assets::intern(sprite_path), Arc::new(AtlasSprite {
+            blob: self.blobs[self.blobs.len() - 1].clone(),
+            bounding_box: euclid::Rect {
+                origin: euclid::Point2D::new(0, 0),
+                size: euclid::Size2D::new(width as u16, height as u16),
+            },
+            trim_offset: Vector2D::new(0, 0),
+            untrimmed_size: Size2D::new(width as u16, height as u16),
+        }));
 
         Ok(())
     }
