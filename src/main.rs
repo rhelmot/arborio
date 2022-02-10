@@ -1,5 +1,4 @@
 #![allow(unused)]
-#![feature(type_alias_impl_trait)]
 
 mod app_state;
 mod assets;
