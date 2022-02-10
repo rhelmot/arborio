@@ -171,8 +171,8 @@ fn extract_tiles_palette(map: &HashMap<char, Tileset>) -> Vec<TileSelectable> {
         .iter()
         .map(|item| TileSelectable {
             id: *item.0,
-            name: &item.1.name,
-            texture: Some(&item.1.texture),
+            name: item.1.name,
+            texture: Some(item.1.texture),
         })
         .filter(|ts| ts.id != 'z')
         .sorted_by_key(|ts| ts.id)

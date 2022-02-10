@@ -103,7 +103,7 @@ pub trait TwoWayConverter<T> {
     }
     fn from_bin_el_optional(elem: &BinEl, key: &str) -> Result<Option<T>, CelesteMapError> {
         let got = GetAttrOrChild::nested_attr_or_child(elem, key);
-        Ok(got.map(Self::try_parse).transpose()?)
+        got.map(Self::try_parse).transpose()
     }
 }
 

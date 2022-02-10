@@ -44,7 +44,7 @@ where
     modules.insert("Celeste".to_owned(), {
         let path = root.join("Content");
         let mut source = FolderSource::new(&path).unwrap();
-        let mut r = CelesteModule::new(Some(path.clone()), celeste_module_yaml());
+        let mut r = CelesteModule::new(Some(path), celeste_module_yaml());
         r.load(&mut source.into());
         r
     });

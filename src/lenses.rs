@@ -31,11 +31,7 @@ impl Lens for CurrentSelectedEntityLens {
     type Target = CelesteMapEntity;
 
     fn view<'a>(&self, source: &'a Self::Source) -> Option<&'a Self::Target> {
-        let tab = if let Some(tab) = source.tabs.get(source.current_tab) {
-            tab
-        } else {
-            return None;
-        };
+        let tab = source.tabs.get(source.current_tab)?;
         let MapTab {
             id: map_id,
             current_room,
@@ -50,11 +46,7 @@ impl Lens for CurrentSelectedEntityLens {
             Some(AppSelection::EntityNode(id, _, trigger)) => (id, trigger),
             _ => return None,
         };
-        let map = if let Some(map) = source.loaded_maps.get(&map_id) {
-            map
-        } else {
-            return None;
-        };
+        let map = source.loaded_maps.get(map_id)?;
         map.levels
             .get(*current_room)
             .and_then(|room| room.entity(entity_id, trigger))
@@ -69,11 +61,7 @@ impl Lens for CurrentPaletteLens {
     type Target = ModuleAggregate;
 
     fn view<'a>(&self, source: &'a Self::Source) -> Option<&'a Self::Target> {
-        let tab = if let Some(tab) = source.tabs.get(source.current_tab) {
-            tab
-        } else {
-            return None;
-        };
+        let tab = source.tabs.get(source.current_tab)?;
         let MapTab { id: map_id, .. } = if let AppTab::Map(t) = tab {
             t
         } else {

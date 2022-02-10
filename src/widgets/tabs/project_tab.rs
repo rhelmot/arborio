@@ -12,7 +12,7 @@ use vizia::*;
 pub fn build_project_tab(cx: &mut Context, project: &str) {
     let module = cx.data::<AppState>().unwrap().modules.get(project).unwrap();
     let module_root = module.filesystem_root.clone();
-    let maps = module.maps.iter().cloned().collect::<Vec<_>>();
+    let maps = module.maps.to_vec();
     for map in maps.into_iter() {
         let map2 = map.clone();
         let project = project.to_owned();
@@ -67,7 +67,7 @@ fn load_map(module_root: PathBuf, project: String, map: String) -> Option<Celest
     };
     let map = match map_struct::from_binfile(
         MapID {
-            module: project.clone(),
+            module: project,
             sid: map,
         },
         binfile,

@@ -314,7 +314,7 @@ impl AutoTiler for Tileset {
 
         Some(TileReference {
             tile: tiles[hash % tiles.len()],
-            texture: &self.texture,
+            texture: self.texture,
         })
     }
 }

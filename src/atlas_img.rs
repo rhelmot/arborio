@@ -198,11 +198,7 @@ impl Atlas {
         color: Option<Color>,
         rot: f32,
     ) -> Option<()> {
-        let sprite = if let Some(sprite) = self.sprites_map.get(sprite_path) {
-            sprite
-        } else {
-            return None;
-        };
+        let sprite = self.sprites_map.get(sprite_path)?;
         let color = color.unwrap_or_else(Color::white);
 
         let justify = justify.unwrap_or(Vector2D::new(0.5, 0.5));
@@ -378,11 +374,7 @@ impl MultiAtlas {
         color: Option<Color>,
         rot: f32,
     ) -> Option<()> {
-        let sprite = if let Some(sprite) = self.sprites_map.get(sprite_path) {
-            sprite
-        } else {
-            return None;
-        };
+        let sprite = self.sprites_map.get(sprite_path)?;
         let color = color.unwrap_or_else(Color::white);
 
         let justify = justify.unwrap_or(Vector2D::new(0.5, 0.5));
