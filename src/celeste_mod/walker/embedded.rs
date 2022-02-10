@@ -1,45 +1,49 @@
 use include_dir::{include_dir, Dir, File};
 use std::io;
-use std::io::Cursor;
+use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
 use std::slice::Iter;
 
-use crate::config::walker::ConfigSource;
+use crate::celeste_mod::walker::ConfigSourceTrait;
 
 const EMBEDDED: Dir = include_dir!("conf");
 #[derive(Copy, Clone)]
 pub struct EmbeddedSource();
 
-impl ConfigSource for EmbeddedSource {
-    type DirIter = impl Iterator<Item = PathBuf>;
-    type FileIter = impl Iterator<Item = PathBuf>;
-    type FileRead = Cursor<&'static [u8]>;
+impl ConfigSourceTrait for EmbeddedSource {
+    fn filesystem_root(&mut self) -> Option<PathBuf> {
+        None
+    }
 
-    fn list_dirs(&mut self, path: &Path) -> Self::DirIter {
+    fn list_dirs(&mut self, path: &Path) -> Box<dyn Iterator<Item = PathBuf>> {
         let (dir, go) = if let Some(dir) = EMBEDDED.get_dir(path) {
             (dir, true)
         } else {
             (EMBEDDED, false)
         };
 
-        dir.dirs()
-            .iter()
-            .filter(move |_| go)
-            .map(|d| d.path().to_owned())
+        Box::new(
+            dir.dirs()
+                .iter()
+                .filter(move |_| go)
+                .map(|d| d.path().to_owned()),
+        )
     }
 
-    fn list_all_files(&mut self, path: &Path) -> Self::FileIter {
+    fn list_all_files(&mut self, path: &Path) -> Box<dyn Iterator<Item = PathBuf>> {
         let (dir, go) = if let Some(dir) = EMBEDDED.get_dir(path) {
             (dir, true)
         } else {
             (EMBEDDED, false)
         };
 
-        EmbeddedFileIter::new(!go, dir)
+        Box::new(EmbeddedFileIter::new(!go, dir))
     }
 
-    fn get_file(&mut self, path: &Path) -> Option<Self::FileRead> {
-        EMBEDDED.get_file(path).map(|d| Cursor::new(d.contents()))
+    fn get_file(&mut self, path: &Path) -> Option<Box<dyn Read>> {
+        EMBEDDED
+            .get_file(path)
+            .map(|d| -> Box<dyn Read> { Box::new(Cursor::new(d.contents())) })
     }
 }
 

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::map_struct::{get_optional_child, CelesteMap, CelesteMapError, get_child_mut};
+use crate::map_struct::{get_child_mut, get_optional_child, CelesteMap, CelesteMapError};
 pub use arborio_derive::TryFromBinEl;
 use celeste::binel::{BinEl, BinElAttr};
 use itertools::Itertools;
@@ -131,10 +131,16 @@ pub(crate) fn bin_el_fuzzy_equal(first: &BinEl, second: &BinEl) -> bool {
     let mut second_children = HashMap::new();
 
     for child in first.children() {
-        first_children.entry(child.name.clone()).or_insert_with(Vec::new).push(child);
+        first_children
+            .entry(child.name.clone())
+            .or_insert_with(Vec::new)
+            .push(child);
     }
     for child in second.children() {
-        second_children.entry(child.name.clone()).or_insert_with(Vec::new).push(child);
+        second_children
+            .entry(child.name.clone())
+            .or_insert_with(Vec::new)
+            .push(child);
     }
 
     if first_children.len() != second_children.len() {

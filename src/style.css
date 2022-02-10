@@ -45,6 +45,79 @@ palette>list {
     child-left: 3px;
 }
 
+.tab {
+    background-color: #ffe4c4;
+    border-color: #ffe4c4;
+    border-width: 3px;
+    border-radius: 2px;
+    color: black;
+    child-left: 3px;
+    child-right: 3px;
+    child-top: 1s;
+    child-bottom: 1s;
+    height: 30px;
+}
+
+.tab:checked {
+    background-color: #c0c4c4;
+    border-color: black;
+}
+
+.close_btn {
+    background-color: #ffc0c0;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    color: black;
+
+    right: 10px;
+}
+
+.close_btn:over {
+    background-color: #c0c0f0;
+}
+
+.progress_bar {
+    color: white;
+    background-color: #209020;
+    overflow: hidden;
+    left: 0;
+    child-left: 10px;
+}
+
+.progress_bar_bg {
+    color: black;
+    background-color: white;
+    left: 0;
+    child-left: 10px;
+}
+
+.map_overview_card {
+    width: 100%;
+    child-space: 10px;
+}
+
+.map_title {
+    font-size: 20px;
+}
+
+.map_overview_card:over {
+    background-color: #c0c0f0;
+}
+
+.module_overview_card {
+    width: 100%;
+    child-space: 10px;
+}
+
+.module_title {
+    font-size: 20px;
+}
+
+.module_overview_card:over {
+    background-color: #c0c0f0;
+}
+
 /*
 * {
     border-color: red;

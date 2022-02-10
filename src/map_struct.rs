@@ -1,3 +1,4 @@
+use crate::from_binel::GetAttrOrChild;
 use celeste::binel::*;
 use euclid::{Point2D, Size2D};
 use std::borrow::Borrow;
@@ -9,14 +10,22 @@ use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::sync::Mutex;
-use crate::from_binel::GetAttrOrChild;
+use vizia::Data;
 
+use crate::assets::next_uuid;
 use crate::from_binel::{bin_el_fuzzy_equal, get_nested_child, TryFromBinEl, TwoWayConverter};
-
 use crate::units::*;
 
-lazy_static::lazy_static! {
-    static ref UUID: Mutex<u32> = Mutex::new(0);
+#[derive(Eq, PartialEq, Hash, Debug, Clone, Default)]
+pub struct MapID {
+    pub module: String,
+    pub sid: String,
+}
+
+impl Data for MapID {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
 }
 
 #[derive(Clone, Debug, TryFromBinEl)]
@@ -30,17 +39,15 @@ pub struct Rect {
     pub height: u32,
 }
 
-pub fn next_uuid() -> u32 {
-    let mut locked = UUID.lock().unwrap();
-    let result = *locked;
-    *locked += 1;
-    result
-}
-
 #[derive(Debug, TryFromBinEl)]
 pub struct CelesteMap {
     #[bin_el_skip]
+    pub id: MapID,
+    #[bin_el_skip]
+    pub dirty: bool,
+    #[bin_el_skip]
     pub name: String,
+
     #[name("Filler")]
     pub filler: Vec<MapRectStrict>,
     #[name("Style/Foregrounds")]
@@ -235,7 +242,7 @@ impl TwoWayConverter<String> for ParenFlipper {
 
     fn try_parse(elem: &Self::BinType) -> Result<String, CelesteMapError> {
         DefaultConverter::try_parse(elem).map(|s: String| {
-            assert!(!s.contains('/'));
+            //assert!(!s.contains('/'));  // this fails on custom maps
             s.replace('\\', "/")
         })
     }
@@ -444,7 +451,7 @@ impl CelesteMap {
     }
 }
 
-use crate::config::entity_expression::Const;
+use crate::celeste_mod::entity_expression::Const;
 impl CelesteMapEntity {
     pub fn make_env(&self) -> HashMap<&str, Const> {
         let mut env: HashMap<&str, Const> = HashMap::new();
@@ -511,10 +518,14 @@ macro_rules! expect_elem {
     };
 }
 
-pub fn from_binfile(binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
+pub fn from_binfile(id: MapID, binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
     expect_elem!(binfile.root, "Map");
 
-    CelesteMap::try_from_bin_el(&binfile.root)
+    let mut result = CelesteMap::try_from_bin_el(&binfile.root);
+    if let Ok(ref mut r) = result {
+        r.id = id;
+    }
+    result
 }
 
 impl TryFromBinEl for CelesteMapLevel {
@@ -777,7 +788,7 @@ pub fn get_child_mut<'a>(elem: &'a mut BinEl, name: &str) -> &'a mut BinEl {
         [] => {
             unreachable!()
         }
-        _ => todo!()
+        _ => todo!(),
     }
 }
 

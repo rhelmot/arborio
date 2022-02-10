@@ -44,8 +44,10 @@ pub fn generic_nav(event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<A
     match event {
         WindowEvent::MouseScroll(x, y) if cx.modifiers.contains(Modifiers::CTRL) => {
             vec![AppEvent::Zoom {
+                tab: state.current_tab,
                 delta: y.exp(),
                 focus: state
+                    .map_tab_unwrap()
                     .transform
                     .inverse()
                     .unwrap()
@@ -60,23 +62,31 @@ pub fn generic_nav(event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<A
             };
             let screen_vec = ScreenVector::new(-*x, *y) * SCROLL_SENSITIVITY;
             let map_vec = state
+                .map_tab_unwrap()
                 .transform
                 .inverse()
                 .unwrap()
                 .transform_vector(screen_vec);
-            vec![AppEvent::Pan { delta: map_vec }]
+            vec![AppEvent::Pan {
+                tab: state.current_tab,
+                delta: map_vec,
+            }]
         }
         WindowEvent::MouseDown(btn) if *btn == MouseButton::Left => {
-            if let Some(map) = &state.map {
+            if let Some(map) = state.loaded_maps.get(&state.map_tab_unwrap().id) {
                 let map_pt = state
+                    .map_tab_unwrap()
                     .transform
                     .inverse()
                     .unwrap()
                     .transform_point(screen_pt)
                     .cast();
                 if let Some(idx) = map.level_at(map_pt) {
-                    if idx != state.current_room {
-                        return vec![AppEvent::SelectRoom { idx }];
+                    if idx != state.map_tab_unwrap().current_room {
+                        return vec![AppEvent::SelectRoom {
+                            tab: state.current_tab,
+                            idx,
+                        }];
                     }
                 }
             }

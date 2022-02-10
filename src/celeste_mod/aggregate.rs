@@ -2,13 +2,14 @@ use itertools::Itertools;
 use std::collections::HashMap;
 use std::iter;
 use std::rc::Rc;
+use std::sync::Arc;
 use vizia::*;
 
 use crate::assets;
 use crate::atlas_img::MultiAtlas;
 use crate::autotiler::{Autotiler, Tileset};
-use crate::config::entity_config::{EntityConfig, TriggerConfig};
-use crate::config::module::CelesteModule;
+use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
+use crate::celeste_mod::module::CelesteModule;
 use crate::widgets::palette_widget::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
 };
@@ -16,9 +17,9 @@ use crate::widgets::palette_widget::{
 #[derive(Lens)]
 pub struct ModuleAggregate {
     pub gameplay_atlas: MultiAtlas,
-    pub autotilers: HashMap<String, Rc<Autotiler>>,
-    pub entity_config: HashMap<&'static str, Rc<EntityConfig>>,
-    pub trigger_config: HashMap<&'static str, Rc<TriggerConfig>>,
+    pub autotilers: HashMap<String, Arc<Autotiler>>,
+    pub entity_config: HashMap<&'static str, Arc<EntityConfig>>,
+    pub trigger_config: HashMap<&'static str, Arc<TriggerConfig>>,
 
     pub fg_tiles_palette: Vec<TileSelectable>,
     pub bg_tiles_palette: Vec<TileSelectable>,
@@ -30,15 +31,32 @@ pub struct ModuleAggregate {
 impl Model for ModuleAggregate {}
 
 impl ModuleAggregate {
-    pub fn new(
-        modules: &HashMap<String, CelesteModule>,
-        current_module: &str,
-    ) -> Self {
+    pub fn new(modules: &HashMap<String, CelesteModule>, current_module: &str) -> Self {
+        // TODO: warning on missing dependencies
         let dep_mods = || {
-            modules.get(current_module).unwrap()
-                .everest_metadata.dependencies.iter()
-                .map(|dep| (dep.name.as_str(), modules.get(&dep.name).unwrap()))
-                .chain(iter::once((current_module, modules.get(current_module).unwrap())))
+            modules
+                .get(current_module)
+                .unwrap()
+                .everest_metadata
+                .dependencies
+                .iter()
+                .filter_map(|dep| {
+                    modules
+                        .get(&dep.name)
+                        .map(|module| (dep.name.as_str(), module))
+                })
+                .chain(iter::once((
+                    current_module,
+                    modules.get("Arborio").unwrap(),
+                )))
+                .chain(iter::once((
+                    current_module,
+                    modules.get("Celeste").unwrap(),
+                )))
+                .chain(iter::once((
+                    current_module,
+                    modules.get(current_module).unwrap(),
+                )))
         };
         let gameplay_atlas = {
             let mut multi_atlas = MultiAtlas::new();
@@ -47,7 +65,7 @@ impl ModuleAggregate {
             }
             multi_atlas
         };
-        let mut autotilers: HashMap<String, Rc<Autotiler>> = dep_mods()
+        let mut autotilers: HashMap<String, Arc<Autotiler>> = dep_mods()
             .flat_map(|(name, module)| module.tilers.iter())
             .map(|(name, tiler)| (name.clone(), tiler.clone()))
             .collect();
@@ -80,11 +98,11 @@ impl ModuleAggregate {
             },
         );
 
-        let entity_config: HashMap<&'static str, Rc<EntityConfig>> = dep_mods()
+        let entity_config: HashMap<&'static str, Arc<EntityConfig>> = dep_mods()
             .flat_map(|(_, module)| module.entity_config.iter())
             .map(|(name, config)| (assets::intern(name), config.clone()))
             .collect();
-        let trigger_config: HashMap<&'static str, Rc<TriggerConfig>> = dep_mods()
+        let trigger_config: HashMap<&'static str, Arc<TriggerConfig>> = dep_mods()
             .flat_map(|(_, module)| module.trigger_config.iter())
             .map(|(name, config)| (assets::intern(name), config.clone()))
             .collect();
@@ -106,7 +124,7 @@ impl ModuleAggregate {
             .map(DecalSelectable::new)
             .collect();
 
-        Self {
+        let result = Self {
             gameplay_atlas,
             autotilers,
             entity_config,
@@ -117,7 +135,9 @@ impl ModuleAggregate {
             entities_palette,
             triggers_palette,
             decals_palette,
-        }
+        };
+        result.sanity_check();
+        result
     }
 
     pub fn sanity_check(&self) {
@@ -127,6 +147,7 @@ impl ModuleAggregate {
         assert!(!self.autotilers.get("bg").unwrap().is_empty());
         assert!(self.entity_config.get("default").is_some());
         assert!(self.entity_config.get("trigger").is_some());
+        assert!(self.trigger_config.get("default").is_some());
         assert!(!self.decals_palette.is_empty());
         assert!(!self.entities_palette.is_empty());
         assert!(!self.triggers_palette.is_empty());
@@ -134,7 +155,7 @@ impl ModuleAggregate {
         assert!(!self.bg_tiles_palette.is_empty());
     }
 
-    pub fn get_entity_config(&self, entity_name: &str, trigger: bool) -> &Rc<EntityConfig> {
+    pub fn get_entity_config(&self, entity_name: &str, trigger: bool) -> &Arc<EntityConfig> {
         if trigger {
             self.entity_config.get("trigger").unwrap()
         } else {
@@ -160,7 +181,7 @@ fn extract_tiles_palette(map: &HashMap<char, Tileset>) -> Vec<TileSelectable> {
     vec
 }
 
-fn extract_entities_palette(config: &HashMap<&str, Rc<EntityConfig>>) -> Vec<EntitySelectable> {
+fn extract_entities_palette(config: &HashMap<&str, Arc<EntityConfig>>) -> Vec<EntitySelectable> {
     config
         .iter()
         .flat_map(|(_, c)| {
@@ -177,7 +198,7 @@ fn extract_entities_palette(config: &HashMap<&str, Rc<EntityConfig>>) -> Vec<Ent
         .collect()
 }
 
-fn extract_triggers_palette(config: &HashMap<&str, Rc<TriggerConfig>>) -> Vec<TriggerSelectable> {
+fn extract_triggers_palette(config: &HashMap<&str, Arc<TriggerConfig>>) -> Vec<TriggerSelectable> {
     config
         .iter()
         .flat_map(|(_, c)| {

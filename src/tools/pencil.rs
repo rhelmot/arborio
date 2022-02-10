@@ -2,7 +2,7 @@ use vizia::*;
 
 use crate::app_state::{AppEvent, AppState, Layer};
 use crate::assets;
-use crate::config::entity_config::PencilBehavior;
+use crate::celeste_mod::entity_config::PencilBehavior;
 use crate::map_struct::{CelesteMapDecal, CelesteMapEntity, Node};
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
@@ -38,6 +38,7 @@ impl Tool for PencilTool {
         };
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos = app
+            .map_tab_unwrap()
             .transform
             .inverse()
             .unwrap()
@@ -74,6 +75,7 @@ impl Tool for PencilTool {
 
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos = app
+            .map_tab_unwrap()
             .transform
             .inverse()
             .unwrap()
@@ -127,7 +129,7 @@ impl Tool for PencilTool {
                 if cx.mouse.left.state == MouseButtonState::Released {
                     canvas.set_global_alpha(0.5);
                 }
-                app.palette.gameplay_atlas.draw_sprite(
+                app.current_palette_unwrap().gameplay_atlas.draw_sprite(
                     canvas,
                     &texture,
                     room_pos.cast().cast_unit(),
@@ -188,6 +190,8 @@ impl PencilTool {
                     app.current_bg_tile
                 };
                 vec![AppEvent::TileUpdate {
+                    map: app.map_tab_unwrap().id.clone(),
+                    room: app.map_tab_unwrap().current_room,
                     fg,
                     offset: tile_pos,
                     data: TileGrid {
@@ -203,6 +207,8 @@ impl PencilTool {
                         if diff > app.draw_interval {
                             self.reference_point = Some(room_pos);
                             vec![AppEvent::EntityAdd {
+                                map: app.map_tab_unwrap().id.clone(),
+                                room: app.map_tab_unwrap().current_room,
                                 entity: self.get_terminal_entity(app, app.current_entity, room_pos),
                                 trigger: false,
                             }]
@@ -213,6 +219,8 @@ impl PencilTool {
                     None => {
                         self.reference_point = Some(room_pos);
                         vec![AppEvent::EntityAdd {
+                            map: app.map_tab_unwrap().id.clone(),
+                            room: app.map_tab_unwrap().current_room,
                             entity: self.get_terminal_entity(app, app.current_entity, room_pos),
                             trigger: false,
                         }]
@@ -246,6 +254,8 @@ impl PencilTool {
                                 self.get_terminal_entity(app, app.current_entity, room_pos)
                             };
                             vec![AppEvent::EntityAdd {
+                                map: app.map_tab_unwrap().id.clone(),
+                                room: app.map_tab_unwrap().current_room,
                                 entity,
                                 trigger: app.current_layer == Layer::Triggers,
                             }]
@@ -257,6 +267,8 @@ impl PencilTool {
             }
             Layer::FgDecals | Layer::BgDecals => {
                 vec![AppEvent::DecalAdd {
+                    map: app.map_tab_unwrap().id.clone(),
+                    room: app.map_tab_unwrap().current_room,
                     fg: app.current_layer == Layer::FgDecals,
                     decal: CelesteMapDecal {
                         id: 0,

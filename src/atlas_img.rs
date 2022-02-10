@@ -1,23 +1,28 @@
 use byteorder::{LittleEndian, ReadBytesExt};
 use femtovg::{Color, ImageId, ImageSource, Paint, Path};
+use image::{DynamicImage, GenericImageView};
 use imgref::Img;
 use rgb::RGBA8;
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::convert::{TryFrom, TryInto};
 use std::fs;
 use std::io;
 use std::io::Read; // trait method import
 use std::path;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 use crate::assets;
 use crate::autotiler::TileReference;
-use crate::config::walker::ConfigSource;
+use crate::celeste_mod::walker::{ConfigSource, ConfigSourceTrait};
 use crate::units::*;
 
 #[derive(Debug)]
 enum BlobData {
     Waiting(Img<Vec<RGBA8>>),
+    WaitingEncoded(DynamicImage),
     Loaded(ImageId),
 }
 
@@ -31,19 +36,30 @@ impl BlobData {
                 *self = BlobData::Loaded(res);
                 res
             }
+            BlobData::WaitingEncoded(dat) => {
+                let res = canvas
+                    .create_image(
+                        ImageSource::try_from(dat.borrow()).unwrap(),
+                        femtovg::ImageFlags::NEAREST,
+                    )
+                    .unwrap();
+                *self = BlobData::Loaded(res);
+                res
+            }
             BlobData::Loaded(res) => *res,
         }
     }
 }
 
+#[derive(Debug)]
 pub struct Atlas {
-    blobs: Vec<Rc<RefCell<BlobData>>>,
-    sprites_map: HashMap<&'static str, Rc<AtlasSprite>>,
+    blobs: Vec<Arc<Mutex<BlobData>>>, // TODO: we can get rid of this mutex (and BlobData altogether) if we can somehow push image data into opengl at load time
+    sprites_map: HashMap<&'static str, Arc<AtlasSprite>>,
 }
 
 #[derive(Debug)]
 struct AtlasSprite {
-    blob: Rc<RefCell<BlobData>>,
+    blob: Arc<Mutex<BlobData>>,
     bounding_box: Rect<u16, UnknownUnit>,
     trim_offset: Vector2D<i16, UnknownUnit>,
     untrimmed_size: Size2D<u16, UnknownUnit>,
@@ -56,20 +72,21 @@ impl Atlas {
             sprites_map: HashMap::new(),
         }
     }
-    pub fn load<T: ConfigSource>(&mut self, config: &mut T, atlas: &str) {
+    pub fn load(&mut self, config: &mut ConfigSource, atlas: &str) {
         self.load_crunched(config, atlas)
             .expect("Fatal error parsing packed atlas");
 
         for path in
             config.list_all_files(&path::PathBuf::from("Graphics/Atlases").join(atlas.to_owned()))
         {
-            self.load_loose(config, &path);
+            self.load_loose(config, atlas, &path);
         }
     }
 
-    fn load_loose<T: ConfigSource>(
+    fn load_loose(
         &mut self,
-        config: &mut T,
+        config: &mut ConfigSource,
+        atlas: &str,
         path: &path::Path,
     ) -> Result<(), io::Error> {
         let mut reader = if let Some(fp) = config.get_file(path) {
@@ -78,14 +95,38 @@ impl Atlas {
             return Err(io::ErrorKind::NotFound.into());
         };
 
+        // TODO it would be really nice to get rid of this buffer, but image requires a seekable reader
+        let mut buf = vec![];
+        reader.read_to_end(&mut buf)?;
+        let img = image::load_from_memory(buf.as_ref())
+            .map_err(|_| -> io::Error { io::ErrorKind::InvalidData.into() })?;
+
+        let (width, height) = img.dimensions();
+        let sprite_path = path
+            .strip_prefix(&path::PathBuf::from("Graphics/Atlases").join(atlas))
+            .unwrap()
+            .with_extension("");
+        let sprite_path = sprite_path.to_str().expect("Non-unicode asset path");
+
+        self.blobs
+            .push(Arc::new(Mutex::new(BlobData::WaitingEncoded(img))));
+        self.sprites_map.insert(
+            assets::intern(sprite_path),
+            Arc::new(AtlasSprite {
+                blob: self.blobs[self.blobs.len() - 1].clone(),
+                bounding_box: euclid::Rect {
+                    origin: euclid::Point2D::new(0, 0),
+                    size: euclid::Size2D::new(width as u16, height as u16),
+                },
+                trim_offset: Vector2D::new(0, 0),
+                untrimmed_size: Size2D::new(width as u16, height as u16),
+            }),
+        );
+
         Ok(())
     }
 
-    fn load_crunched<T: ConfigSource>(
-        &mut self,
-        config: &mut T,
-        atlas: &str,
-    ) -> Result<(), io::Error> {
+    fn load_crunched(&mut self, config: &mut ConfigSource, atlas: &str) -> Result<(), io::Error> {
         let meta_file = path::PathBuf::from("Graphics/Atlases").join(atlas.to_owned() + ".meta");
         let mut reader = if let Some(fp) = config.get_file(&meta_file) {
             fp
@@ -104,7 +145,7 @@ impl Atlas {
             let data_path = meta_file.with_file_name(&data_file);
             let blob_idx = self.blobs.len();
             self.blobs
-                .push(Rc::new(RefCell::new(BlobData::Waiting(load_data_file(
+                .push(Arc::new(Mutex::new(BlobData::Waiting(load_data_file(
                     config, data_path,
                 )?))));
 
@@ -122,7 +163,7 @@ impl Atlas {
 
                 self.sprites_map.insert(
                     assets::intern(&sprite_path),
-                    Rc::new(AtlasSprite {
+                    Arc::new(AtlasSprite {
                         blob: self.blobs[self.blobs.len() - 1].clone(),
                         bounding_box: euclid::Rect {
                             origin: euclid::Point2D::new(x, y),
@@ -194,7 +235,7 @@ impl Atlas {
         // how do we transform the entire fucking atlas to get the rectangle we want to end up inside canvas_rect?
         let atlas_offset = -atlas_center.to_vector().component_mul(scale.to_vector());
 
-        let mut image_blob = sprite.blob.borrow_mut();
+        let mut image_blob = sprite.blob.lock().unwrap();
         let image_id = image_blob.image_id(canvas);
         let (sx, sy) = canvas.image_size(image_id).unwrap();
         let paint = Paint::image_tint(
@@ -254,8 +295,8 @@ fn read_string<R: io::Read>(reader: &mut R) -> Result<String, io::Error> {
     String::from_utf8(buf).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Invalid utf8"))
 }
 
-pub fn load_data_file<T: ConfigSource>(
-    config: &mut T,
+pub fn load_data_file(
+    config: &mut ConfigSource,
     data_file: path::PathBuf,
 ) -> Result<Img<Vec<RGBA8>>, io::Error> {
     let mut reader = if let Some(reader) = config.get_file(&data_file) {
@@ -299,7 +340,7 @@ pub fn load_data_file<T: ConfigSource>(
 }
 
 pub struct MultiAtlas {
-    sprites_map: HashMap<&'static str, Rc<AtlasSprite>>,
+    sprites_map: HashMap<&'static str, Arc<AtlasSprite>>,
 }
 
 impl MultiAtlas {
@@ -374,7 +415,7 @@ impl MultiAtlas {
         // how do we transform the entire fucking atlas to get the rectangle we want to end up inside canvas_rect?
         let atlas_offset = -atlas_center.to_vector().component_mul(scale.to_vector());
 
-        let mut image_blob = sprite.blob.borrow_mut();
+        let mut image_blob = sprite.blob.lock().unwrap();
         let image_id = image_blob.image_id(canvas);
         let (sx, sy) = canvas.image_size(image_id).unwrap();
         let paint = Paint::image_tint(

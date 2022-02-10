@@ -19,8 +19,9 @@ serde_yaml = "^0.8"
 nom = "^6.2"
 include_dir = "^0.6"
 #vizia = { path = "../../rust/VIZIA" }
-vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "5012b5407ed3bf027e26bcaf276a295a9bff2b81"}
-femtovg = {git = "https://github.com/rhelmot/femtovg", rev = "4caba90e08e8eacf66dce2125393334a9cee22d1", default-features = false} # not really a dependency, since vizia depends on it
+vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "c8f4edf09304d149558de02ef321646923b4fbed" }
+femtovg = {git = "https://github.com/rhelmot/femtovg", rev = "4caba90e08e8eacf66dce2125393334a9cee22d1", default-features = false, features = ["image-loading"] } # not really a dependency, since vizia depends on it
+image = { version = "0.23.14", default-features = false, features = ["png"] } # not really a dependency either
 imgref = "^1.9"  # not really a dependency either
 rgb = "^0.8"  # not really a dependency either
 dialog = "^0.3"
@@ -33,6 +34,7 @@ walkdir = "^2"
 zip = "^0.5"
 elsa = "^1.6"
 lru = "^0.7"
+enum_dispatch = "^0.3"
 
 [profile.dev.package.vizia_core]
 opt-level = 2

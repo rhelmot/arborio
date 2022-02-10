@@ -146,7 +146,12 @@ impl Tool for SelectionTool {
             return vec![];
         };
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
-        let map_pos_precise = app.transform.inverse().unwrap().transform_point(screen_pos);
+        let map_pos_precise = app
+            .map_tab_unwrap()
+            .transform
+            .inverse()
+            .unwrap()
+            .transform_point(screen_pos);
         let map_pos = point_lose_precision(&map_pos_precise);
         let room_pos_unsnapped = (map_pos - room.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos_unsnapped);
@@ -214,7 +219,7 @@ impl Tool for SelectionTool {
                     SelectionStatus::Dragging(DraggingStatus {
                         pointer_reference_point,
                         ..
-                    }) => self.nudge(room, room_pos - pointer_reference_point),
+                    }) => self.nudge(app, room, room_pos - pointer_reference_point),
                     SelectionStatus::Resizing(ResizingStatus {
                         pointer_reference_point,
                         ..
@@ -224,10 +229,10 @@ impl Tool for SelectionTool {
                 events
             }
             WindowEvent::KeyDown(code, key) if self.status == SelectionStatus::None => match code {
-                Code::ArrowDown => self.nudge(room, RoomVector::new(0, 8)),
-                Code::ArrowUp => self.nudge(room, RoomVector::new(0, -8)),
-                Code::ArrowRight => self.nudge(room, RoomVector::new(8, 0)),
-                Code::ArrowLeft => self.nudge(room, RoomVector::new(-8, 0)),
+                Code::ArrowDown => self.nudge(app, room, RoomVector::new(0, 8)),
+                Code::ArrowUp => self.nudge(app, room, RoomVector::new(0, -8)),
+                Code::ArrowRight => self.nudge(app, room, RoomVector::new(8, 0)),
+                Code::ArrowLeft => self.nudge(app, room, RoomVector::new(-8, 0)),
                 Code::KeyA if cx.modifiers.contains(Modifiers::CTRL) => {
                     self.current_selection = self.selectables_in(
                         app,
@@ -240,7 +245,7 @@ impl Tool for SelectionTool {
                     );
                     vec![]
                 }
-                Code::Backspace | Code::Delete => self.delete_all(room),
+                Code::Backspace | Code::Delete => self.delete_all(app, room),
                 _ => vec![],
             },
             _ => vec![],
@@ -259,6 +264,7 @@ impl Tool for SelectionTool {
 
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos_precise = app
+            .map_tab_unwrap()
             .transform
             .inverse()
             .unwrap()
@@ -309,12 +315,12 @@ impl Tool for SelectionTool {
                 let float_pt = pt - float_pos.to_vector();
                 let ch = float_dat.get_or_default(float_pt);
                 if ch != '\0' {
-                    if let Some(tile) = app.palette.autotilers["bg"]
+                    if let Some(tile) = app.current_palette_unwrap().autotilers["bg"]
                         .get(&ch)
                         .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
                     {
                         let room_pos = point_tile_to_room(&pt);
-                        app.palette.gameplay_atlas.draw_tile(
+                        app.current_palette_unwrap().gameplay_atlas.draw_tile(
                             canvas,
                             tile,
                             room_pos.x as f32,
@@ -333,12 +339,12 @@ impl Tool for SelectionTool {
                 let float_pt = pt - float_pos.to_vector();
                 let ch = float_dat.get_or_default(float_pt);
                 if ch != '\0' {
-                    if let Some(tile) = app.palette.autotilers["fg"]
+                    if let Some(tile) = app.current_palette_unwrap().autotilers["fg"]
                         .get(&ch)
                         .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
                     {
                         let room_pos = point_tile_to_room(&pt);
-                        app.palette.gameplay_atlas.draw_tile(
+                        app.current_palette_unwrap().gameplay_atlas.draw_tile(
                             canvas,
                             tile,
                             room_pos.x as f32,
@@ -387,6 +393,7 @@ impl Tool for SelectionTool {
         };
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos_precise = app
+            .map_tab_unwrap()
             .transform
             .inverse()
             .unwrap()
@@ -460,7 +467,9 @@ impl SelectionTool {
             }
             AppSelection::EntityBody(id, trigger) => {
                 if let Some(entity) = room.entity(id, trigger) {
-                    let config = app.palette.get_entity_config(&entity.name, trigger);
+                    let config = app
+                        .current_palette_unwrap()
+                        .get_entity_config(&entity.name, trigger);
                     let env = entity.make_env();
                     config
                         .hitboxes
@@ -480,7 +489,9 @@ impl SelectionTool {
             }
             AppSelection::EntityNode(id, node_idx, trigger) => {
                 if let Some(entity) = room.entity(id, trigger) {
-                    let config = app.palette.get_entity_config(&entity.name, trigger);
+                    let config = app
+                        .current_palette_unwrap()
+                        .get_entity_config(&entity.name, trigger);
                     let env = entity.make_node_env(entity.make_env(), node_idx);
                     config
                         .hitboxes
@@ -501,7 +512,7 @@ impl SelectionTool {
             AppSelection::Decal(id, fg) => {
                 if let Some(decal) = room.decal(id, fg) {
                     if let Some(dim) = app
-                        .palette
+                        .current_palette_unwrap()
                         .gameplay_atlas
                         .sprite_dimensions(&decal_texture(decal))
                     {
@@ -632,11 +643,13 @@ impl SelectionTool {
     }
 
     #[must_use]
-    fn clear_selection(&mut self, state: &AppState) -> Vec<AppEvent> {
+    fn clear_selection(&mut self, app: &AppState) -> Vec<AppEvent> {
         self.current_selection.clear();
         let mut result = self.notify_selection();
         if let Some((offset, data)) = self.fg_float.take() {
             result.push(AppEvent::TileUpdate {
+                map: app.map_tab_unwrap().id.clone(),
+                room: app.map_tab_unwrap().current_room,
                 fg: true,
                 offset,
                 data,
@@ -644,6 +657,8 @@ impl SelectionTool {
         }
         if let Some((offset, data)) = self.bg_float.take() {
             result.push(AppEvent::TileUpdate {
+                map: app.map_tab_unwrap().id.clone(),
+                room: app.map_tab_unwrap().current_room,
                 fg: false,
                 offset,
                 data,
@@ -655,8 +670,13 @@ impl SelectionTool {
     /// This function interprets nudge as relative to the reference positions in Dragging mode and
     /// relative to the current position in other modes.
     #[must_use]
-    fn nudge(&mut self, room: &CelesteMapLevel, nudge: RoomVector) -> Vec<AppEvent> {
-        let mut events = self.float_tiles(room);
+    fn nudge(
+        &mut self,
+        app: &AppState,
+        room: &CelesteMapLevel,
+        nudge: RoomVector,
+    ) -> Vec<AppEvent> {
+        let mut events = self.float_tiles(app, room);
 
         let dragging = if let SelectionStatus::Dragging(dragging) = &self.status {
             Some(dragging)
@@ -723,7 +743,12 @@ impl SelectionTool {
                         let new = base + nudge;
                         decal.x = new.x;
                         decal.y = new.y;
-                        events.push(AppEvent::DecalUpdate { fg: *fg, decal });
+                        events.push(AppEvent::DecalUpdate {
+                            map: app.map_tab_unwrap().id.clone(),
+                            room: app.map_tab_unwrap().current_room,
+                            fg: *fg,
+                            decal,
+                        });
                     }
                 }
             }
@@ -732,6 +757,8 @@ impl SelectionTool {
         entity_updates
             .into_iter()
             .map(|(_, entity)| AppEvent::EntityUpdate {
+                map: app.map_tab_unwrap().id.clone(),
+                room: app.map_tab_unwrap().current_room,
                 entity,
                 trigger: false,
             })
@@ -739,6 +766,8 @@ impl SelectionTool {
                 trigger_updates
                     .into_iter()
                     .map(|(_, entity)| AppEvent::EntityUpdate {
+                        map: app.map_tab_unwrap().id.clone(),
+                        room: app.map_tab_unwrap().current_room,
                         entity,
                         trigger: true,
                     }),
@@ -795,7 +824,9 @@ impl SelectionTool {
                 }
                 AppSelection::EntityBody(id, trigger) => {
                     let mut e = room.entity(*id, *trigger).unwrap().clone();
-                    let config = app.palette.get_entity_config(e.name.as_str(), false);
+                    let config = app
+                        .current_palette_unwrap()
+                        .get_entity_config(e.name.as_str(), false);
                     let start_rect = dragging
                         .map(|d| *d.selection_reference_sizes.get(sel).unwrap())
                         .unwrap_or_else(|| {
@@ -813,6 +844,8 @@ impl SelectionTool {
                     e.width = new_rect.size.width.max(config.minimum_size_x as i32) as u32;
                     e.height = new_rect.size.height.max(config.minimum_size_y as i32) as u32;
                     events.push(AppEvent::EntityUpdate {
+                        map: app.map_tab_unwrap().id.clone(),
+                        room: app.map_tab_unwrap().current_room,
                         entity: e,
                         trigger: *trigger,
                     });
@@ -820,7 +853,7 @@ impl SelectionTool {
                 AppSelection::Decal(id, fg) => {
                     let mut d = room.decal(*id, *fg).unwrap().clone();
                     if let Some(dim) = app
-                        .palette
+                        .current_palette_unwrap()
                         .gameplay_atlas
                         .sprite_dimensions(&decal_texture(&d))
                     {
@@ -848,7 +881,12 @@ impl SelectionTool {
                         d.y = new_rect.center().y;
                         d.scale_x = new_stretch.x;
                         d.scale_y = new_stretch.y;
-                        events.push(AppEvent::DecalUpdate { fg: *fg, decal: d })
+                        events.push(AppEvent::DecalUpdate {
+                            map: app.map_tab_unwrap().id.clone(),
+                            room: app.map_tab_unwrap().current_room,
+                            fg: *fg,
+                            decal: d,
+                        })
                     }
                     // TODO what happens if we try to resize an untextured decal?
                 }
@@ -915,7 +953,7 @@ impl SelectionTool {
     }
 
     #[must_use]
-    fn float_tiles(&mut self, room: &CelesteMapLevel) -> Vec<AppEvent> {
+    fn float_tiles(&mut self, app: &AppState, room: &CelesteMapLevel) -> Vec<AppEvent> {
         // TODO: do this in an efficient order to avoid frequent reallocations of the float
         let mut i = 0_usize;
         let mut events = vec![];
@@ -924,6 +962,8 @@ impl SelectionTool {
                 AppSelection::FgTile(pt) => {
                     self.add_to_float(room, pt, true);
                     events.push(AppEvent::TileUpdate {
+                        map: app.map_tab_unwrap().id.clone(),
+                        room: app.map_tab_unwrap().current_room,
                         fg: true,
                         offset: pt,
                         data: TileGrid {
@@ -937,6 +977,8 @@ impl SelectionTool {
                 AppSelection::BgTile(pt) => {
                     self.add_to_float(room, pt, false);
                     events.push(AppEvent::TileUpdate {
+                        map: app.map_tab_unwrap().id.clone(),
+                        room: app.map_tab_unwrap().current_room,
                         fg: false,
                         offset: pt,
                         data: TileGrid {
@@ -982,7 +1024,9 @@ impl SelectionTool {
                         AppSelection::FgTile(_) | AppSelection::BgTile(_) => ResizeSide::None,
                         AppSelection::EntityBody(id, trigger) => {
                             if let Some(entity) = room.entity(*id, *trigger) {
-                                let config = app.palette.get_entity_config(&entity.name, *trigger);
+                                let config = app
+                                    .current_palette_unwrap()
+                                    .get_entity_config(&entity.name, *trigger);
                                 if !config.resizable_x {
                                     side = side.filter_out_left_right();
                                 }
@@ -1015,7 +1059,7 @@ impl SelectionTool {
         pointer_reference_point_unsnapped: RoomPoint,
     ) -> Vec<AppEvent> {
         // Offload all fg/bg selections into the floats
-        let events = self.float_tiles(room);
+        let events = self.float_tiles(app, room);
 
         let side = self.can_resize(app, room, pointer_reference_point_unsnapped);
         if side != ResizeSide::None {
@@ -1041,7 +1085,7 @@ impl SelectionTool {
                     AppSelection::Decal(id, fg) => {
                         if let Some(decal) = room.decal(*id, *fg) {
                             if let Some(dim) = app
-                                .palette
+                                .current_palette_unwrap()
                                 .gameplay_atlas
                                 .sprite_dimensions(&decal_texture(decal))
                             {
@@ -1116,8 +1160,8 @@ impl SelectionTool {
     }
 
     #[must_use]
-    fn delete_all(&mut self, room: &CelesteMapLevel) -> Vec<AppEvent> {
-        let mut result = self.float_tiles(room);
+    fn delete_all(&mut self, app: &AppState, room: &CelesteMapLevel) -> Vec<AppEvent> {
+        let mut result = self.float_tiles(app, room);
         self.fg_float = None;
         self.bg_float = None;
 
@@ -1130,6 +1174,8 @@ impl SelectionTool {
                 AppSelection::FgTile(_) | AppSelection::BgTile(_) => unreachable!(),
                 AppSelection::EntityBody(id, trigger) => {
                     result.push(AppEvent::EntityRemove {
+                        map: app.map_tab_unwrap().id.clone(),
+                        room: app.map_tab_unwrap().current_room,
                         id: *id,
                         trigger: *trigger,
                     });
@@ -1151,7 +1197,12 @@ impl SelectionTool {
                     e.insert(node_idx);
                 }
                 AppSelection::Decal(id, fg) => {
-                    result.push(AppEvent::DecalRemove { id: *id, fg: *fg });
+                    result.push(AppEvent::DecalRemove {
+                        map: app.map_tab_unwrap().id.clone(),
+                        room: app.map_tab_unwrap().current_room,
+                        id: *id,
+                        fg: *fg,
+                    });
                 }
             }
         }
@@ -1166,6 +1217,8 @@ impl SelectionTool {
                         }
                     }
                     result.push(AppEvent::EntityUpdate {
+                        map: app.map_tab_unwrap().id.clone(),
+                        room: app.map_tab_unwrap().current_room,
                         entity,
                         trigger: false,
                     });
@@ -1183,6 +1236,8 @@ impl SelectionTool {
                         }
                     }
                     result.push(AppEvent::EntityUpdate {
+                        map: app.map_tab_unwrap().id.clone(),
+                        room: app.map_tab_unwrap().current_room,
                         entity,
                         trigger: true,
                     });

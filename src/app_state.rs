@@ -1,15 +1,24 @@
+use dialog::DialogBox;
+use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::marker::PhantomData;
+use std::ops::DerefMut;
+use std::path::PathBuf;
+use std::rc::{Rc, Weak};
+use std::sync::Mutex;
 use std::time;
 use vizia::*;
 
 use crate::assets;
-use crate::config::aggregate::ModuleAggregate;
-use crate::config::everest_yaml::{arborio_module_yaml, celeste_module_yaml};
-use crate::config::module::CelesteModule;
-use crate::config::walker::{EmbeddedSource, FolderSource};
+use crate::auto_saver::AutoSaver;
+use crate::celeste_mod::aggregate::ModuleAggregate;
+use crate::celeste_mod::discovery;
+use crate::celeste_mod::everest_yaml::{arborio_module_yaml, celeste_module_yaml};
+use crate::celeste_mod::module::CelesteModule;
+use crate::celeste_mod::walker::{EmbeddedSource, FolderSource};
 use crate::map_struct;
-use crate::map_struct::{CelesteMap, CelesteMapDecal, CelesteMapEntity};
+use crate::map_struct::{CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, MapID};
 use crate::tools;
 use crate::tools::Tool;
 use crate::units::*;
@@ -20,28 +29,74 @@ use crate::widgets::palette_widget::{
 
 #[derive(Lens)]
 pub struct AppState {
+    pub config: AutoSaver<AppConfig>,
+
     pub modules: HashMap<String, CelesteModule>,
-    pub current_module: String,
-    pub palette: ModuleAggregate,
+    pub modules_version: u32,
+    pub palettes: HashMap<String, ModuleAggregate>,
+    pub loaded_maps: HashMap<MapID, CelesteMap>,
+
+    pub current_tab: usize,
+    pub tabs: Vec<AppTab>,
 
     pub current_tool: usize,
-    pub current_room: usize,
     pub current_layer: Layer,
     pub current_fg_tile: TileSelectable,
     pub current_bg_tile: TileSelectable,
     pub current_entity: EntitySelectable,
     pub current_trigger: TriggerSelectable,
     pub current_decal: DecalSelectable,
-    pub current_selected: Option<AppSelection>,
-
-    pub map: Option<map_struct::CelesteMap>,
-    pub dirty: bool,
-    pub transform: MapToScreen,
+    pub current_selected: Option<AppSelection>, // awkward. should be part of editor state
 
     pub draw_interval: f32,
     pub snap: bool,
 
     pub last_draw: RefCell<time::Instant>, // mutable to draw
+    pub progress: Progress,
+}
+
+#[derive(Serialize, Deserialize, Default, Lens, Debug)]
+pub struct AppConfig {
+    pub celeste_root: Option<PathBuf>,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum AppTab {
+    CelesteOverview,
+    ProjectOverview(String),
+    Map(MapTab),
+}
+
+#[derive(Clone, Debug)]
+pub struct MapTab {
+    pub id: MapID,
+    pub nonce: u32,
+    pub current_room: usize,
+    pub transform: MapToScreen,
+}
+
+impl PartialEq for MapTab {
+    fn eq(&self, other: &Self) -> bool {
+        self.nonce == other.nonce
+    }
+}
+
+impl Eq for MapTab {}
+
+impl Data for AppTab {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
+impl ToString for AppTab {
+    fn to_string(&self) -> String {
+        match self {
+            AppTab::CelesteOverview => "All Mods".to_owned(),
+            AppTab::ProjectOverview(s) => format!("{} - Overview", s),
+            AppTab::Map(m) => m.id.sid.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, enum_iterator::IntoEnumIterator)]
@@ -86,15 +141,47 @@ pub enum AppSelection {
     Decal(u32, bool),
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Progress {
+    pub progress: i32,
+    pub status: String,
+}
+
+impl Data for Progress {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
 #[derive(Debug)]
 pub enum AppEvent {
+    Progress {
+        progress: Progress,
+    },
+    SetConfigPath {
+        path: PathBuf,
+    },
+    SetModules {
+        modules: Mutex<HashMap<String, CelesteModule>>,
+    },
+    OpenModuleOverview {
+        module: String,
+    },
     Load {
         map: RefCell<Option<CelesteMap>>,
     },
+    SelectTab {
+        idx: usize,
+    },
+    CloseTab {
+        idx: usize,
+    },
     Pan {
+        tab: usize,
         delta: MapVectorPrecise,
     },
     Zoom {
+        tab: usize,
         delta: f32,
         focus: MapPointPrecise,
     },
@@ -102,6 +189,7 @@ pub enum AppEvent {
         idx: usize,
     },
     SelectRoom {
+        tab: usize,
         idx: usize,
     },
     SelectLayer {
@@ -121,34 +209,49 @@ pub enum AppEvent {
         decal: DecalSelectable,
     },
     SelectObject {
+        // TODO uhhhhhhhhhhhhhhhh
         selection: Option<AppSelection>,
     },
     TileUpdate {
+        map: MapID,
+        room: usize,
         fg: bool,
         offset: TilePoint,
         data: TileGrid<char>,
     },
     EntityAdd {
+        map: MapID,
+        room: usize,
         entity: CelesteMapEntity,
         trigger: bool,
     },
     EntityUpdate {
+        map: MapID,
+        room: usize,
         entity: CelesteMapEntity,
         trigger: bool,
     },
     EntityRemove {
+        map: MapID,
+        room: usize,
         id: i32,
         trigger: bool,
     },
     DecalAdd {
+        map: MapID,
+        room: usize,
         fg: bool,
         decal: CelesteMapDecal,
     },
     DecalUpdate {
+        map: MapID,
+        room: usize,
         fg: bool,
         decal: CelesteMapDecal,
     },
     DecalRemove {
+        map: MapID,
+        room: usize,
         fg: bool,
         id: u32,
     },
@@ -157,93 +260,146 @@ pub enum AppEvent {
 impl Model for AppState {
     fn event(&mut self, cx: &mut Context, event: &mut Event) {
         if let Some(app_event) = event.message.downcast() {
-            self.apply(app_event);
+            self.apply(cx, app_event);
         }
     }
 }
 
 impl AppState {
     pub fn new() -> AppState {
-        let modules = {
-            let mut result = HashMap::new();
-            let mut celeste_module =
-                FolderSource::new(assets::CONFIG.lock().unwrap().celeste_root.join("Content")).unwrap();
-            let mut arborio_module = EmbeddedSource();
-
-            result.insert(
-                "Celeste".to_owned(), {
-                    let mut r = CelesteModule::new(celeste_module_yaml());
-                    r.load(&mut celeste_module);
-                    r
-                }
-            );
-            result.insert(
-                "Arborio".to_owned(), {
-                    let mut r = CelesteModule::new(arborio_module_yaml());
-                    r.load(&mut arborio_module);
-                    r
-                }
-            );
-
-            result
-        };
-        let current_module = "Arborio".to_owned();
-        let palette = ModuleAggregate::new(&modules, &current_module);
-        palette.sanity_check();
+        let mut cfg: AppConfig = confy::load("arborio").unwrap_or_default();
+        if !cfg
+            .celeste_root
+            .as_ref()
+            .map(|root| root.is_dir())
+            .unwrap_or_default()
+        {
+            cfg.celeste_root = None;
+        }
+        let mut cfg = AutoSaver::new(cfg, |cfg: &mut AppConfig| {
+            confy::store("arborio", &cfg)
+                .unwrap_or_else(|e| panic!("Failed to save celeste_mod file: {}", e));
+        });
 
         AppState {
+            config: cfg,
+            current_tab: 0,
+            tabs: vec![AppTab::CelesteOverview],
+            loaded_maps: HashMap::new(),
             current_tool: 2,
-            map: None,
-            current_room: 0,
             current_fg_tile: TileSelectable::default(),
             current_bg_tile: TileSelectable::default(),
-            current_entity: palette.entities_palette[0],
-            current_trigger: palette.triggers_palette[0],
-            current_decal: palette.decals_palette[0],
+            current_entity: EntitySelectable::default(),
+            current_trigger: TriggerSelectable::default(),
+            current_decal: DecalSelectable::default(),
             current_selected: None,
-            dirty: false,
-            transform: MapToScreen::identity(),
             draw_interval: 4.0,
             snap: true,
             last_draw: RefCell::new(time::Instant::now()),
             current_layer: Layer::FgTiles,
 
-            modules,
-            current_module,
-            palette,
+            modules: HashMap::new(),
+            modules_version: 0,
+            palettes: HashMap::new(),
+            progress: Progress {
+                progress: 100,
+                status: "".to_owned(),
+            },
         }
     }
 
-    pub fn apply(&mut self, event: &AppEvent) {
+    // a debugging stopgap
+    pub fn map_tab_check(&self) -> bool {
+        matches!(self.tabs.get(self.current_tab), Some(AppTab::Map(_)))
+    }
+
+    // intended mainly for use in tools. can we maybe do better?
+    pub fn map_tab_unwrap(&self) -> &MapTab {
+        if let Some(AppTab::Map(result)) = self.tabs.get(self.current_tab) {
+            result
+        } else {
+            panic!("misuse of map_tab_unwrap");
+        }
+    }
+
+    pub fn current_palette_unwrap(&self) -> &ModuleAggregate {
+        if let Some(AppTab::Map(result)) = self.tabs.get(self.current_tab) {
+            self.palettes
+                .get(&result.id.module)
+                .expect("stale reference")
+        } else {
+            panic!("misuse of current_palette_unwrap");
+        }
+    }
+
+    pub fn current_room_ref(&self) -> Option<&CelesteMapLevel> {
+        if let Some(AppTab::Map(maptab)) = self.tabs.get(self.current_tab) {
+            self.loaded_maps
+                .get(&maptab.id)
+                .and_then(|map| map.levels.get(maptab.current_room))
+        } else {
+            None
+        }
+    }
+
+    pub fn apply(&mut self, cx: &mut Context, event: &AppEvent) {
         match event {
-            AppEvent::Pan { delta } => {
-                self.transform = self.transform.pre_translate(*delta);
+            // global events
+            AppEvent::Progress { progress } => {
+                self.progress = progress.clone();
             }
-            AppEvent::Zoom { delta, focus } => {
-                // TODO scale stepping, high and low limits
-                self.transform = self
-                    .transform
-                    .pre_translate(focus.to_vector())
-                    .pre_scale(*delta, *delta)
-                    .pre_translate(-focus.to_vector());
+            AppEvent::SelectObject { selection } => {
+                self.current_selected = *selection;
+                // TODO uhhhhhhhhhhhhhhhh
+                //if let Some(room) = self.current_room_ref() {
+                //    room.cache.borrow_mut().render_cache_valid = false;
+                //}
+            }
+            AppEvent::OpenModuleOverview { module } => {
+                if !self
+                    .tabs
+                    .iter()
+                    .any(|tab| matches!(tab, AppTab::ProjectOverview(module)))
+                {
+                    self.current_tab = self.tabs.len();
+                    self.tabs.push(AppTab::ProjectOverview(module.clone()));
+                }
             }
             AppEvent::Load { map } => {
                 let mut swapped: Option<CelesteMap> = None;
-                std::mem::swap(&mut *map.borrow_mut(), &mut swapped);
+                if let Some(map) = map.borrow_mut().take() {
+                    if !self.loaded_maps.contains_key(&map.id) {
+                        self.current_tab = self.tabs.len();
+                        self.tabs.push(AppTab::Map(MapTab {
+                            nonce: assets::next_uuid(),
+                            id: map.id.clone(),
+                            current_room: 0,
+                            transform: MapToScreen::identity(),
+                        }));
+                    }
 
-                if swapped.is_some() {
-                    self.map = swapped;
-                    self.transform = MapToScreen::identity();
+                    if !self.palettes.contains_key(&map.id.module) {
+                        self.palettes.insert(
+                            map.id.module.clone(),
+                            ModuleAggregate::new(&self.modules, &map.id.module),
+                        );
+                    }
+
+                    self.loaded_maps.insert(map.id.clone(), map);
                 }
             }
-            AppEvent::TileUpdate { fg, offset, data } => {
-                self.apply_tiles(offset, data, *fg);
+            AppEvent::SetConfigPath { path } => {
+                self.config.borrow_mut().celeste_root = Some(path.clone());
+                trigger_module_load(cx, path.clone());
+            }
+            AppEvent::SetModules { modules } => {
+                let mut r = modules.lock().unwrap();
+                std::mem::swap(r.deref_mut(), &mut self.modules);
+                self.modules_version += 1;
+                trigger_palette_update(&mut self.palettes, &self.modules);
             }
             AppEvent::SelectTool { idx } => {
                 self.current_tool = *idx;
-            }
-            AppEvent::SelectRoom { idx } => {
-                self.current_room = *idx;
             }
             AppEvent::SelectLayer { layer } => {
                 self.current_layer = *layer;
@@ -264,8 +420,66 @@ impl AppState {
             AppEvent::SelectPaletteDecal { decal } => {
                 self.current_decal = *decal;
             }
-            AppEvent::EntityAdd { entity, trigger } => {
-                if let Some(room) = self.current_room_mut() {
+
+            // tab events
+            AppEvent::SelectTab { idx } => {
+                if *idx < self.tabs.len() {
+                    self.current_tab = *idx;
+                }
+            }
+            AppEvent::CloseTab { idx } => {
+                self.tabs.remove(*idx);
+                if (self.current_tab > *idx || self.current_tab >= self.tabs.len())
+                    && self.current_tab > 0
+                {
+                    self.current_tab -= 1;
+                }
+                self.garbage_collect();
+            }
+            AppEvent::Pan { tab, delta } => {
+                if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(*tab) {
+                    map_tab.transform = map_tab.transform.pre_translate(*delta);
+                }
+            }
+            AppEvent::Zoom { tab, delta, focus } => {
+                if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(*tab) {
+                    // TODO scale stepping, high and low limits
+                    map_tab.transform = map_tab
+                        .transform
+                        .pre_translate(focus.to_vector())
+                        .pre_scale(*delta, *delta)
+                        .pre_translate(-focus.to_vector());
+                }
+            }
+            AppEvent::SelectRoom { tab, idx } => {
+                if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(*tab) {
+                    map_tab.current_room = *idx;
+                }
+            }
+
+            // room events
+            AppEvent::TileUpdate {
+                map,
+                room,
+                fg,
+                offset,
+                data,
+            } => {
+                if let Some(map) = self.loaded_maps.get_mut(map) {
+                    apply_tiles(map, *room, offset, data, *fg);
+                }
+            }
+            AppEvent::EntityAdd {
+                map,
+                room,
+                entity,
+                trigger,
+            } => {
+                if let Some(room) = self
+                    .loaded_maps
+                    .get_mut(map)
+                    .and_then(|map| map.levels.get_mut(*room))
+                {
                     let mut entity = entity.clone();
                     entity.id = room.next_id();
                     if *trigger {
@@ -274,20 +488,38 @@ impl AppState {
                         room.entities.push(entity)
                     }
                     room.cache.borrow_mut().render_cache_valid = false;
-                    self.dirty = true;
+                    self.loaded_maps.get_mut(map).unwrap().dirty = true;
                 }
             }
-            AppEvent::EntityUpdate { entity, trigger } => {
-                if let Some(room) = self.current_room_mut() {
+            AppEvent::EntityUpdate {
+                map,
+                room,
+                entity,
+                trigger,
+            } => {
+                if let Some(room) = self
+                    .loaded_maps
+                    .get_mut(map)
+                    .and_then(|map| map.levels.get_mut(*room))
+                {
                     if let Some(mut e) = room.entity_mut(entity.id, *trigger) {
                         *e = entity.clone();
                         room.cache.borrow_mut().render_cache_valid = false;
-                        self.dirty = true;
+                        self.loaded_maps.get_mut(map).unwrap().dirty = true;
                     }
                 }
             }
-            AppEvent::EntityRemove { id, trigger } => {
-                if let Some(room) = self.current_room_mut() {
+            AppEvent::EntityRemove {
+                map,
+                room,
+                id,
+                trigger,
+            } => {
+                if let Some(room) = self
+                    .loaded_maps
+                    .get_mut(map)
+                    .and_then(|map| map.levels.get_mut(*room))
+                {
                     // tfw drain_filter is unstable
                     let mut i = 0;
                     let mut any = false;
@@ -306,41 +538,57 @@ impl AppState {
                     }
                     if any {
                         room.cache.borrow_mut().render_cache_valid = false;
-                        self.dirty = true;
+                        self.loaded_maps.get_mut(map).unwrap().dirty = true;
                     }
                 }
             }
-            AppEvent::SelectObject { selection } => {
-                self.current_selected = *selection;
-                if let Some(room) = self.current_room_ref() {
-                    room.cache.borrow_mut().render_cache_valid = false;
-                }
-            }
-            AppEvent::DecalAdd { fg, decal } => {
-                if let Some(room) = self.current_room_mut() {
+            AppEvent::DecalAdd {
+                map,
+                room,
+                fg,
+                decal,
+            } => {
+                if let Some(room) = self
+                    .loaded_maps
+                    .get_mut(map)
+                    .and_then(|map| map.levels.get_mut(*room))
+                {
                     let mut decal = decal.clone();
                     let decals = if *fg {
                         &mut room.fg_decals
                     } else {
                         &mut room.bg_decals
                     };
-                    decal.id = crate::map_struct::next_uuid();
+                    decal.id = assets::next_uuid();
                     decals.push(decal);
                     room.cache.borrow_mut().render_cache_valid = false;
-                    self.dirty = true;
+                    self.loaded_maps.get_mut(map).unwrap().dirty = true;
                 }
             }
-            AppEvent::DecalUpdate { fg, decal } => {
-                if let Some(room) = self.current_room_mut() {
+            AppEvent::DecalUpdate {
+                map,
+                room,
+                fg,
+                decal,
+            } => {
+                if let Some(room) = self
+                    .loaded_maps
+                    .get_mut(map)
+                    .and_then(|map| map.levels.get_mut(*room))
+                {
                     if let Some(decal_dest) = room.decal_mut(decal.id, *fg) {
                         *decal_dest = decal.clone();
                         room.cache.borrow_mut().render_cache_valid = false;
-                        self.dirty = true;
+                        self.loaded_maps.get_mut(map).unwrap().dirty = true;
                     }
                 }
             }
-            AppEvent::DecalRemove { fg, id } => {
-                if let Some(room) = self.current_room_mut() {
+            AppEvent::DecalRemove { map, room, fg, id } => {
+                if let Some(room) = self
+                    .loaded_maps
+                    .get_mut(map)
+                    .and_then(|map| map.levels.get_mut(*room))
+                {
                     // tfw drain_filter is unstable
                     let mut i = 0;
                     let mut any = false;
@@ -359,53 +607,94 @@ impl AppState {
                     }
                     if any {
                         room.cache.borrow_mut().render_cache_valid = false;
-                        self.dirty = true;
+                        self.loaded_maps.get_mut(map).unwrap().dirty = true;
                     }
                 }
             }
         }
     }
 
-    pub fn apply_tiles(&mut self, offset: &TilePoint, data: &TileGrid<char>, fg: bool) {
-        let mut dirty = false;
-        if let Some(map) = &mut self.map {
-            if let Some(mut room) = map.levels.get_mut(self.current_room) {
-                let mut line_start = *offset;
-                let mut cur = line_start;
-                for (idx, tile) in data.tiles.iter().enumerate() {
-                    if *tile != '\0' {
-                        if let Some(tile_ref) = room.tile_mut(cur, fg) {
-                            if *tile_ref != *tile {
-                                *tile_ref = *tile;
-                                dirty = true;
-                            }
-                        }
-                    }
-                    if (idx + 1) % data.stride == 0 {
-                        line_start += TileVector::new(0, 1);
-                        cur = line_start;
-                    } else {
-                        cur += TileVector::new(1, 0);
-                    }
+    pub fn garbage_collect(&mut self) {
+        let mut open_maps = HashSet::new();
+        for tab in &self.tabs {
+            match tab {
+                AppTab::Map(maptab) => {
+                    open_maps.insert(maptab.id.clone());
                 }
-                if dirty {
-                    room.cache.borrow_mut().render_cache_valid = false;
-                    self.dirty = true;
-                }
+                _ => {}
             }
         }
+        let open_palettes = open_maps
+            .iter()
+            .map(|id| &id.module)
+            .collect::<HashSet<_>>();
+        self.loaded_maps.retain(|id, _| open_maps.contains(id));
+        self.palettes.retain(|name, _| open_palettes.contains(name));
     }
+}
 
-    pub fn current_room_ref(&self) -> Option<&map_struct::CelesteMapLevel> {
-        self.map
-            .as_ref()
-            .and_then(|map| map.levels.get(self.current_room))
-    }
-
-    pub fn current_room_mut(&mut self) -> Option<&mut map_struct::CelesteMapLevel> {
-        if let Some(map) = &mut self.map {
-            return map.levels.get_mut(self.current_room);
+pub fn apply_tiles(
+    map: &mut CelesteMap,
+    room: usize,
+    offset: &TilePoint,
+    data: &TileGrid<char>,
+    fg: bool,
+) {
+    let mut dirty = false;
+    if let Some(mut room) = map.levels.get_mut(room) {
+        let mut line_start = *offset;
+        let mut cur = line_start;
+        for (idx, tile) in data.tiles.iter().enumerate() {
+            if *tile != '\0' {
+                if let Some(tile_ref) = room.tile_mut(cur, fg) {
+                    if *tile_ref != *tile {
+                        *tile_ref = *tile;
+                        dirty = true;
+                    }
+                }
+            }
+            if (idx + 1) % data.stride == 0 {
+                line_start += TileVector::new(0, 1);
+                cur = line_start;
+            } else {
+                cur += TileVector::new(1, 0);
+            }
         }
-        None
+        if dirty {
+            room.cache.borrow_mut().render_cache_valid = false;
+            map.dirty = true;
+        }
+    }
+}
+
+pub fn trigger_module_load(cx: &mut Context, path: PathBuf) {
+    cx.spawn(move |cx| {
+        let mut result = HashMap::new();
+        discovery::load_all(&path, &mut result, |p, s| {
+            cx.emit(AppEvent::Progress {
+                progress: Progress {
+                    progress: (p * 100.0) as i32,
+                    status: s,
+                },
+            });
+        });
+        cx.emit(AppEvent::Progress {
+            progress: Progress {
+                progress: 100,
+                status: "".to_owned(),
+            },
+        });
+        cx.emit(AppEvent::SetModules {
+            modules: Mutex::new(result),
+        });
+    })
+}
+
+pub fn trigger_palette_update(
+    palettes: &mut HashMap<String, ModuleAggregate>,
+    modules: &HashMap<String, CelesteModule>,
+) {
+    for (name, pal) in palettes {
+        *pal = ModuleAggregate::new(modules, name);
     }
 }

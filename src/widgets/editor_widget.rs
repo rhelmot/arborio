@@ -11,8 +11,8 @@ use vizia::*;
 use crate::app_state::{AppSelection, AppState};
 use crate::assets;
 use crate::autotiler::AutoTiler;
-use crate::config::entity_config::DrawElement;
-use crate::config::entity_expression::{Const, Number};
+use crate::celeste_mod::entity_config::DrawElement;
+use crate::celeste_mod::entity_expression::{Const, Number};
 use crate::map_struct;
 use crate::map_struct::{CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, FieldEntry};
 use crate::tools::{Tool, TOOLS};
@@ -112,113 +112,120 @@ impl View for EditorWidget {
             bounds.h as u32,
             BACKDROP_COLOR,
         );
-        let t = &app.transform;
+        if !app.map_tab_check() {
+            // I am worried there are corner cases in vizia where data may hold stale references
+            // for a single frame. if this is the case, I'd like to be able to see that via a single
+            // debug print vs many debug prints.
+            dbg!(&app.tabs, app.current_tab);
+            println!("SOMETHING IS WRONG");
+            return;
+        }
+        let t = &app.map_tab_unwrap().transform;
         canvas.set_transform(t.m11, t.m12, t.m21, t.m22, t.m31.round(), t.m32.round());
 
-        if let Some(map) = &app.map {
-            if *PERF_MONITOR {
-                let now = time::Instant::now();
-                println!("Drew {}ms ago", (now - *app.last_draw.borrow()).as_millis());
-                *app.last_draw.borrow_mut() = now;
+        let map = app.loaded_maps.get(&app.map_tab_unwrap().id).unwrap();
+        if *PERF_MONITOR {
+            let now = time::Instant::now();
+            println!("Drew {}ms ago", (now - *app.last_draw.borrow()).as_millis());
+            *app.last_draw.borrow_mut() = now;
+        }
+
+        let mut path = Path::new();
+        for filler in &map.filler {
+            path.rect(
+                filler.origin.x as f32,
+                filler.origin.y as f32,
+                filler.width() as f32,
+                filler.height() as f32,
+            );
+        }
+        canvas.fill_path(&mut path, Paint::color(FILLER_COLOR));
+
+        for (idx, room) in map.levels.iter().enumerate() {
+            canvas.save();
+            canvas.translate(room.bounds.min_x() as f32, room.bounds.min_y() as f32);
+            let mut cache = room.cache.borrow_mut();
+            let target = if let Some(target) = cache.render_cache {
+                target
+            } else {
+                canvas
+                    .create_image_empty(
+                        room.bounds.width() as usize,
+                        room.bounds.height() as usize,
+                        PixelFormat::Rgba8,
+                        ImageFlags::NEAREST | ImageFlags::FLIP_Y,
+                    )
+                    .expect("Failed to allocate ")
+            };
+            cache.render_cache = Some(target);
+
+            if !cache.render_cache_valid {
+                canvas.save();
+                canvas.reset();
+                canvas.set_render_target(RenderTarget::Image(target));
+
+                canvas.clear_rect(
+                    0,
+                    0,
+                    room.bounds.width() as u32,
+                    room.bounds.height() as u32,
+                    ROOM_EMPTY_COLOR,
+                );
+                draw_tiles(app, canvas, room, false);
+                draw_decals(app, canvas, room, false);
+                draw_triggers(
+                    app,
+                    canvas,
+                    room,
+                    if idx == app.map_tab_unwrap().current_room {
+                        app.current_selected
+                    } else {
+                        None
+                    },
+                );
+                draw_entities(
+                    app,
+                    canvas,
+                    room,
+                    if idx == app.map_tab_unwrap().current_room {
+                        app.current_selected
+                    } else {
+                        None
+                    },
+                );
+                draw_tiles(app, canvas, room, true);
+                draw_decals(app, canvas, room, true);
+
+                canvas.restore();
+                canvas.set_render_target(RenderTarget::Screen);
+                cache.render_cache_valid = true;
             }
 
             let mut path = Path::new();
-            for filler in &map.filler {
-                path.rect(
-                    filler.origin.x as f32,
-                    filler.origin.y as f32,
-                    filler.width() as f32,
-                    filler.height() as f32,
-                );
+            path.rect(
+                0.0,
+                0.0,
+                room.bounds.width() as f32,
+                room.bounds.height() as f32,
+            );
+            let paint = Paint::image(
+                target,
+                0.0,
+                0.0,
+                room.bounds.width() as f32,
+                room.bounds.height() as f32,
+                0.0,
+                1.0,
+            );
+            canvas.fill_path(&mut path, paint);
+            if idx != app.map_tab_unwrap().current_room {
+                canvas.fill_path(&mut path, Paint::color(ROOM_DESELECTED_COLOR));
             }
-            canvas.fill_path(&mut path, Paint::color(FILLER_COLOR));
-
-            for (idx, room) in map.levels.iter().enumerate() {
-                canvas.save();
-                canvas.translate(room.bounds.min_x() as f32, room.bounds.min_y() as f32);
-                let mut cache = room.cache.borrow_mut();
-                let target = if let Some(target) = cache.render_cache {
-                    target
-                } else {
-                    canvas
-                        .create_image_empty(
-                            room.bounds.width() as usize,
-                            room.bounds.height() as usize,
-                            PixelFormat::Rgba8,
-                            ImageFlags::NEAREST | ImageFlags::FLIP_Y,
-                        )
-                        .expect("Failed to allocate ")
-                };
-                cache.render_cache = Some(target);
-
-                if !cache.render_cache_valid {
-                    canvas.save();
-                    canvas.reset();
-                    canvas.set_render_target(RenderTarget::Image(target));
-
-                    canvas.clear_rect(
-                        0,
-                        0,
-                        room.bounds.width() as u32,
-                        room.bounds.height() as u32,
-                        ROOM_EMPTY_COLOR,
-                    );
-                    draw_tiles(app, canvas, room, false);
-                    draw_decals(app, canvas, room, false);
-                    draw_triggers(
-                        app,
-                        canvas,
-                        room,
-                        if idx == app.current_room {
-                            app.current_selected
-                        } else {
-                            None
-                        },
-                    );
-                    draw_entities(
-                        app,
-                        canvas,
-                        room,
-                        if idx == app.current_room {
-                            app.current_selected
-                        } else {
-                            None
-                        },
-                    );
-                    draw_tiles(app, canvas, room, true);
-                    draw_decals(app, canvas, room, true);
-
-                    canvas.restore();
-                    canvas.set_render_target(RenderTarget::Screen);
-                    cache.render_cache_valid = true;
-                }
-
-                let mut path = Path::new();
-                path.rect(
-                    0.0,
-                    0.0,
-                    room.bounds.width() as f32,
-                    room.bounds.height() as f32,
-                );
-                let paint = Paint::image(
-                    target,
-                    0.0,
-                    0.0,
-                    room.bounds.width() as f32,
-                    room.bounds.height() as f32,
-                    0.0,
-                    1.0,
-                );
-                canvas.fill_path(&mut path, paint);
-                if idx != app.current_room {
-                    canvas.fill_path(&mut path, Paint::color(ROOM_DESELECTED_COLOR));
-                }
-                canvas.restore();
-            }
-
-            let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[app.current_tool];
-            tool.draw(canvas, app, cx);
+            canvas.restore();
         }
+
+        let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[app.current_tool];
+        tool.draw(canvas, app, cx);
     }
 }
 
@@ -227,7 +234,7 @@ fn draw_decals(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: 
     for decal in decals {
         let texture = decal_texture(decal);
         let scale = Point2D::new(decal.scale_x, decal.scale_y);
-        app.palette
+        app.current_palette_unwrap()
             .gameplay_atlas
             .draw_sprite(
                 canvas,
@@ -253,9 +260,15 @@ pub fn decal_texture(decal: &CelesteMapDecal) -> String {
 
 fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
     let (tiles, tiles_asset) = if fg {
-        (&room.fg_tiles, app.palette.autotilers.get("fg").unwrap())
+        (
+            &room.fg_tiles,
+            app.current_palette_unwrap().autotilers.get("fg").unwrap(),
+        )
     } else {
-        (&room.bg_tiles, app.palette.autotilers.get("bg").unwrap())
+        (
+            &room.bg_tiles,
+            app.current_palette_unwrap().autotilers.get("bg").unwrap(),
+        )
     };
 
     let tstride = room.bounds.width() / 8;
@@ -269,9 +282,13 @@ fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: b
                 .get(&tile)
                 .and_then(|tileset| tileset.tile(pt, &mut |pt| room.tile(pt, fg)))
             {
-                app.palette
-                    .gameplay_atlas
-                    .draw_tile(canvas, tile, rx, ry, Color::white());
+                app.current_palette_unwrap().gameplay_atlas.draw_tile(
+                    canvas,
+                    tile,
+                    rx,
+                    ry,
+                    Color::white(),
+                );
             }
         }
     }
@@ -310,7 +327,9 @@ pub fn draw_entity(
     selected: bool,
     trigger: bool,
 ) {
-    let config = app.palette.get_entity_config(&entity.name, trigger);
+    let config = app
+        .current_palette_unwrap()
+        .get_entity_config(&entity.name, trigger);
     let env = entity.make_env();
 
     for node_idx in 0..entity.nodes.len() {
@@ -496,7 +515,7 @@ fn draw_entity_directive(
             let scale = scale.evaluate_float(env)?.to_point().cast_unit();
             let rot = rot.evaluate(env)?.as_number()?.to_float();
             if app
-                .palette
+                .current_palette_unwrap()
                 .gameplay_atlas
                 .draw_sprite(
                     canvas,
@@ -543,13 +562,16 @@ fn draw_entity_directive(
 
             match tiler.as_str() {
                 "repeat" => {
-                    let dim: Size2D<f32, UnknownUnit> =
-                        if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&texture) {
-                            dim
-                        } else {
-                            return Err(format!("No such gameplay texture: {}", texture));
-                        }
-                        .cast();
+                    let dim: Size2D<f32, UnknownUnit> = if let Some(dim) = app
+                        .current_palette_unwrap()
+                        .gameplay_atlas
+                        .sprite_dimensions(&texture)
+                    {
+                        dim
+                    } else {
+                        return Err(format!("No such gameplay texture: {}", texture));
+                    }
+                    .cast();
                     let slice: Rect<f32, UnknownUnit> = if slice_w == 0.0 {
                         Rect {
                             origin: Point2D::zero(),
@@ -564,13 +586,16 @@ fn draw_entity_directive(
                     draw_tiled(app, canvas, &texture, &bounds, &slice, color);
                 }
                 "9slice" => {
-                    let dim: Size2D<f32, UnknownUnit> =
-                        if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&texture) {
-                            dim
-                        } else {
-                            return Err(format!("No such gameplay texture: {}", texture));
-                        }
-                        .cast();
+                    let dim: Size2D<f32, UnknownUnit> = if let Some(dim) = app
+                        .current_palette_unwrap()
+                        .gameplay_atlas
+                        .sprite_dimensions(&texture)
+                    {
+                        dim
+                    } else {
+                        return Err(format!("No such gameplay texture: {}", texture));
+                    }
+                    .cast();
                     if dim.width < 17.0 || dim.height < 17.0 {
                         return Err(format!(
                             "Cannot draw {} as 9slice: must be at least 17x17",
@@ -620,11 +645,12 @@ fn draw_entity_directive(
                         (tiler.as_str(), false)
                     };
                     let texture = texture.chars().next().unwrap();
-                    let tilemap = if let Some(tilemap) = app.palette.autotilers.get(tiler) {
-                        tilemap
-                    } else {
-                        return Err(format!("No such tiler {}", tiler));
-                    };
+                    let tilemap =
+                        if let Some(tilemap) = app.current_palette_unwrap().autotilers.get(tiler) {
+                            tilemap
+                        } else {
+                            return Err(format!("No such tiler {}", tiler));
+                        };
                     let tileset = if let Some(tileset) = tilemap.get(&texture) {
                         tileset
                     } else {
@@ -654,8 +680,10 @@ fn draw_entity_directive(
                                     && self_entity.unwrap().attributes == e.attributes
                                 {
                                     '1'
-                                } else if let Some(conf) =
-                                    app.palette.entity_config.get(e.name.as_str())
+                                } else if let Some(conf) = app
+                                    .current_palette_unwrap()
+                                    .entity_config
+                                    .get(e.name.as_str())
                                 {
                                     if conf.solid {
                                         '2'
@@ -671,7 +699,7 @@ fn draw_entity_directive(
                     for pt in rect_point_iter(tile_bounds, 1) {
                         if let Some(tile) = tileset.tile(pt, &mut tiler) {
                             let fp_pt = point_tile_to_room(&pt).cast::<f32>();
-                            app.palette
+                            app.current_palette_unwrap()
                                 .gameplay_atlas
                                 .draw_tile(canvas, tile, fp_pt.x, fp_pt.y, color);
                         }
@@ -708,7 +736,7 @@ fn draw_tiled(
     color: femtovg::Color,
 ) {
     tile(bounds, slice.width(), slice.height(), |piece| {
-        app.palette.gameplay_atlas.draw_sprite(
+        app.current_palette_unwrap().gameplay_atlas.draw_sprite(
             canvas,
             sprite,
             piece.origin,
