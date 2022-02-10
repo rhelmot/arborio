@@ -1253,7 +1253,7 @@ impl SelectionTool {
 }
 
 // oh would it were that rust iterators weren't a fucking pain to write
-fn intersects_any(haystack: &Vec<RoomRect>, needle: &RoomRect) -> bool {
+fn intersects_any(haystack: &[RoomRect], needle: &RoomRect) -> bool {
     for hay in haystack {
         if hay.intersects(needle) {
             return true;

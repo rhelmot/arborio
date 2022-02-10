@@ -201,10 +201,10 @@ impl Atlas {
         let sprite = self.sprites_map.get(sprite_path)?;
         let color = color.unwrap_or_else(Color::white);
 
-        let justify = justify.unwrap_or(Vector2D::new(0.5, 0.5));
+        let justify = justify.unwrap_or_else(|| Vector2D::new(0.5, 0.5));
         let slice =
             slice.unwrap_or_else(|| Rect::new(Point2D::zero(), sprite.untrimmed_size.cast()));
-        let scale = scale.unwrap_or(Point2D::new(1.0, 1.0));
+        let scale = scale.unwrap_or_else(|| Point2D::new(1.0, 1.0));
 
         // what atlas-space point does the screen-space point specified correspond to in the atlas?
         // if point is cropped then we give a point outside the crop. idgaf
@@ -377,10 +377,10 @@ impl MultiAtlas {
         let sprite = self.sprites_map.get(sprite_path)?;
         let color = color.unwrap_or_else(Color::white);
 
-        let justify = justify.unwrap_or(Vector2D::new(0.5, 0.5));
+        let justify = justify.unwrap_or_else(|| Vector2D::new(0.5, 0.5));
         let slice =
             slice.unwrap_or_else(|| Rect::new(Point2D::zero(), sprite.untrimmed_size.cast()));
-        let scale = scale.unwrap_or(Point2D::new(1.0, 1.0));
+        let scale = scale.unwrap_or_else(|| Point2D::new(1.0, 1.0));
 
         // what atlas-space point does the screen-space point specified correspond to in the atlas?
         // if point is cropped then we give a point outside the crop. idgaf
