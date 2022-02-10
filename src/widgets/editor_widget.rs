@@ -113,6 +113,10 @@ impl View for EditorWidget {
             BACKDROP_COLOR,
         );
         if !app.map_tab_check() {
+            // I am worried there are corner cases in vizia where data may hold stale references
+            // for a single frame. if this is the case, I'd like to be able to see that via a single
+            // debug print vs many debug prints.
+            dbg!(&app.tabs, app.current_tab);
             println!("SOMETHING IS WRONG");
             return;
         }
@@ -233,7 +237,7 @@ fn draw_decals(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: 
     for decal in decals {
         let texture = decal_texture(decal);
         let scale = Point2D::new(decal.scale_x, decal.scale_y);
-        app.palette.gameplay_atlas.draw_sprite(
+        app.current_palette_unwrap().gameplay_atlas.draw_sprite(
             canvas,
             &texture,
             Point2D::new(decal.x, decal.y).cast(),
@@ -254,9 +258,9 @@ pub fn decal_texture(decal: &CelesteMapDecal) -> String {
 
 fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
     let (tiles, tiles_asset) = if fg {
-        (&room.fg_tiles, app.palette.autotilers.get("fg").unwrap())
+        (&room.fg_tiles, app.current_palette_unwrap().autotilers.get("fg").unwrap())
     } else {
-        (&room.bg_tiles, app.palette.autotilers.get("bg").unwrap())
+        (&room.bg_tiles, app.current_palette_unwrap().autotilers.get("bg").unwrap())
     };
 
     let tstride = room.bounds.width() / 8;
@@ -270,7 +274,7 @@ fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: b
                 .get(&tile)
                 .and_then(|tileset| tileset.tile(pt, &mut |pt| room.tile(pt, fg)))
             {
-                app.palette.gameplay_atlas.draw_tile(canvas, tile, rx, ry, Color::white());
+                app.current_palette_unwrap().gameplay_atlas.draw_tile(canvas, tile, rx, ry, Color::white());
             }
         }
     }
@@ -299,7 +303,7 @@ pub fn draw_entity(
     selected: bool,
     trigger: bool,
 ) {
-    let config = app.palette.get_entity_config(&entity.name, trigger);
+    let config = app.current_palette_unwrap().get_entity_config(&entity.name, trigger);
     let env = entity.make_env();
 
     for node_idx in 0..entity.nodes.len() {
@@ -484,7 +488,7 @@ fn draw_entity_directive(
             let color = color.evaluate(env)?;
             let scale = scale.evaluate_float(env)?.to_point().cast_unit();
             let rot = rot.evaluate(env)?.as_number()?.to_float();
-            if app.palette.gameplay_atlas.draw_sprite(
+            if app.current_palette_unwrap().gameplay_atlas.draw_sprite(
                 canvas,
                 &texture,
                 point,
@@ -528,7 +532,7 @@ fn draw_entity_directive(
             match tiler.as_str() {
                 "repeat" => {
                     let dim: Size2D<f32, UnknownUnit> =
-                        if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&texture) {
+                        if let Some(dim) = app.current_palette_unwrap().gameplay_atlas.sprite_dimensions(&texture) {
                             dim
                         } else {
                             return Err(format!("No such gameplay texture: {}", texture));
@@ -548,7 +552,7 @@ fn draw_entity_directive(
                 }
                 "9slice" => {
                     let dim: Size2D<f32, UnknownUnit> =
-                        if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&texture) {
+                        if let Some(dim) = app.current_palette_unwrap().gameplay_atlas.sprite_dimensions(&texture) {
                             dim
                         } else {
                             return Err(format!("No such gameplay texture: {}", texture));
@@ -602,7 +606,7 @@ fn draw_entity_directive(
                         (tiler.as_str(), false)
                     };
                     let texture = texture.chars().next().unwrap();
-                    let tilemap = if let Some(tilemap) = app.palette.autotilers.get(tiler) {
+                    let tilemap = if let Some(tilemap) = app.current_palette_unwrap().autotilers.get(tiler) {
                         tilemap
                     } else {
                         return Err(format!("No such tiler {}", tiler));
@@ -637,7 +641,7 @@ fn draw_entity_directive(
                                 {
                                     '1'
                                 } else if let Some(conf) =
-                                    app.palette.entity_config.get(e.name.as_str())
+                                    app.current_palette_unwrap().entity_config.get(e.name.as_str())
                                 {
                                     if conf.solid {
                                         '2'
@@ -653,7 +657,7 @@ fn draw_entity_directive(
                     for pt in rect_point_iter(tile_bounds, 1) {
                         if let Some(tile) = tileset.tile(pt, &mut tiler) {
                             let fp_pt = point_tile_to_room(&pt).cast::<f32>();
-                            app.palette.gameplay_atlas.draw_tile(canvas, tile, fp_pt.x, fp_pt.y, color);
+                            app.current_palette_unwrap().gameplay_atlas.draw_tile(canvas, tile, fp_pt.x, fp_pt.y, color);
                         }
                     }
                 }
@@ -688,7 +692,7 @@ fn draw_tiled(
     color: femtovg::Color,
 ) {
     tile(bounds, slice.width(), slice.height(), |piece| {
-        app.palette.gameplay_atlas.draw_sprite(
+        app.current_palette_unwrap().gameplay_atlas.draw_sprite(
             canvas,
             sprite,
             piece.origin,

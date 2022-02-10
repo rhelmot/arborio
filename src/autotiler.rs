@@ -9,7 +9,7 @@ use crate::map_struct::CelesteMapLevel;
 use crate::units::*;
 use crate::assets;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct TextureTile {
     pub x: u32,
     pub y: u32,
@@ -22,7 +22,7 @@ pub struct TileReference {
     pub texture: &'static str,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Tileset {
     pub id: char,
     pub name: &'static str,

@@ -1,8 +1,10 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
+use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
+use std::sync::Mutex;
 use std::time;
 use dialog::DialogBox;
 use vizia::*;
@@ -11,6 +13,7 @@ use serde::{Serialize, Deserialize};
 use crate::assets;
 use crate::auto_saver::AutoSaver;
 use crate::celeste_mod::aggregate::ModuleAggregate;
+use crate::celeste_mod::discovery;
 use crate::celeste_mod::everest_yaml::{arborio_module_yaml, celeste_module_yaml};
 use crate::celeste_mod::module::CelesteModule;
 use crate::celeste_mod::walker::{EmbeddedSource, FolderSource};
@@ -26,15 +29,15 @@ use crate::widgets::palette_widget::{
 
 #[derive(Lens)]
 pub struct AppState {
-    pub config: AutoSaver<ArborioConfig>,
+    pub config: AutoSaver<AppConfig>,
 
     pub modules: HashMap<String, CelesteModule>,
-    pub current_module: String,
-    pub palette: ModuleAggregate,
+    pub modules_version: u32,
+    pub palettes: HashMap<String, ModuleAggregate>,
+    pub loaded_maps: HashMap<MapID, CelesteMap>,
 
     pub current_tab: usize,
     pub tabs: Vec<AppTab>,
-    pub loaded_maps: HashMap<MapID, map_struct::CelesteMap>,
 
     pub current_tool: usize,
     pub current_layer: Layer,
@@ -49,21 +52,22 @@ pub struct AppState {
     pub snap: bool,
 
     pub last_draw: RefCell<time::Instant>, // mutable to draw
+    pub progress: Progress,
 }
 
-#[derive(Serialize, Deserialize, Default)]
-pub struct ArborioConfig {
-    pub celeste_root: PathBuf,
+#[derive(Serialize, Deserialize, Default, Lens, Debug)]
+pub struct AppConfig {
+    pub celeste_root: Option<PathBuf>,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum AppTab {
     CelesteOverview,
     ProjectOverview(String),
     Map(MapTab),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MapTab {
     pub id: MapID,
     pub nonce: u32,
@@ -139,8 +143,32 @@ pub enum AppSelection {
     Decal(u32, bool),
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Progress {
+    pub progress: i32,
+    pub status: String
+}
+
+impl Data for Progress {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
 #[derive(Debug)]
 pub enum AppEvent {
+    Progress {
+        progress: Progress,
+    },
+    SetConfigPath {
+        path: PathBuf,
+    },
+    SetModules {
+        modules: Mutex<HashMap<String, CelesteModule>>,
+    },
+    OpenModuleOverview {
+        module: String,
+    },
     Load {
         map: RefCell<Option<CelesteMap>>,
     },
@@ -234,92 +262,69 @@ pub enum AppEvent {
 impl Model for AppState {
     fn event(&mut self, cx: &mut Context, event: &mut Event) {
         if let Some(app_event) = event.message.downcast() {
-            self.apply(app_event);
+            self.apply(cx, app_event);
         }
     }
 }
 
 impl AppState {
     pub fn new() -> AppState {
-        let cfg: ArborioConfig = confy::load("arborio").unwrap_or_default();
-        let mut cfg = AutoSaver::new(cfg, |cfg: &mut ArborioConfig| {
+        let mut cfg: AppConfig = confy::load("arborio").unwrap_or_default();
+        if !cfg.celeste_root.as_ref().map(|root| root.is_dir()).unwrap_or_default() {
+            cfg.celeste_root = None;
+        }
+        let mut cfg = AutoSaver::new(cfg, |cfg: &mut AppConfig| {
             confy::store("arborio", &cfg)
                 .unwrap_or_else(|e| panic!("Failed to save celeste_mod file: {}", e));
         });
-        if cfg.celeste_root.as_os_str().is_empty() {
-            let celeste_path = PathBuf::from(
-                dialog::FileSelection::new("Celeste Installation")
-                    .title("Please choose Celeste.exe")
-                    .path(".")
-                    .mode(dialog::FileSelectionMode::Open)
-                    .show()
-                    .unwrap_or_else(|_| panic!("Can't run arborio without a Celeste.exe!"))
-                    .unwrap_or_else(|| panic!("Can't run arborio without a Celeste.exe!")),
-            );
-            cfg.borrow_mut().celeste_root = celeste_path.parent().unwrap().to_path_buf();
-        };
-
-        let modules = {
-            let mut result = HashMap::new();
-            let mut celeste_module =
-                FolderSource::new(cfg.celeste_root.join("Content")).unwrap();
-            let mut arborio_module = EmbeddedSource();
-
-            result.insert(
-                "Celeste".to_owned(), {
-                    let mut r = CelesteModule::new(celeste_module_yaml());
-                    r.load(&mut celeste_module);
-                    r
-                }
-            );
-            result.insert(
-                "Arborio".to_owned(), {
-                    let mut r = CelesteModule::new(arborio_module_yaml());
-                    r.load(&mut arborio_module);
-                    r
-                }
-            );
-
-            result
-        };
-        let current_module = "Arborio".to_owned();
-        let palette = ModuleAggregate::new(&modules, &current_module);
-        palette.sanity_check();
 
         AppState {
             config: cfg,
             current_tab: 0,
-            tabs: vec![],
+            tabs: vec![AppTab::CelesteOverview],
 
             loaded_maps: HashMap::new(),
             current_tool: 2,
             current_fg_tile: TileSelectable::default(),
             current_bg_tile: TileSelectable::default(),
-            current_entity: palette.entities_palette[0],
-            current_trigger: palette.triggers_palette[0],
-            current_decal: palette.decals_palette[0],
+            current_entity: EntitySelectable::default(),
+            current_trigger: TriggerSelectable::default(),
+            current_decal: DecalSelectable::default(),
             current_selected: None,
             draw_interval: 4.0,
             snap: true,
             last_draw: RefCell::new(time::Instant::now()),
             current_layer: Layer::FgTiles,
 
-            modules,
-            current_module,
-            palette,
+            modules: HashMap::new(),
+            modules_version: 0,
+            palettes: HashMap::new(),
+            progress: Progress {
+                progress: 100,
+                status: "".to_owned(),
+            }
         }
     }
 
-    // intended mainly for use in tools
+    // a debugging stopgap
     pub fn map_tab_check(&self) -> bool {
         matches!(self.tabs.get(self.current_tab), Some(AppTab::Map(_)))
     }
 
+    // intended mainly for use in tools. can we maybe do better?
     pub fn map_tab_unwrap(&self) -> &MapTab {
         if let Some(AppTab::Map(result)) = self.tabs.get(self.current_tab) {
             result
         } else {
             panic!("misuse of map_tab_unwrap");
+        }
+    }
+
+    pub fn current_palette_unwrap(&self) -> &ModuleAggregate {
+        if let Some(AppTab::Map(result)) = self.tabs.get(self.current_tab) {
+            self.palettes.get(&result.id.module).expect("stale reference")
+        } else {
+            panic!("misuse of current_palette_unwrap");
         }
     }
 
@@ -331,15 +336,55 @@ impl AppState {
         }
     }
 
-    pub fn apply(&mut self, event: &AppEvent) {
+    pub fn apply(&mut self, cx: &mut Context, event: &AppEvent) {
         match event {
             // global events
+            AppEvent::Progress { progress } => {
+                self.progress = progress.clone();
+            }
             AppEvent::SelectObject { selection } => {
                 self.current_selected = *selection;
                 // TODO uhhhhhhhhhhhhhhhh
                 //if let Some(room) = self.current_room_ref() {
                 //    room.cache.borrow_mut().render_cache_valid = false;
                 //}
+            }
+            AppEvent::OpenModuleOverview { module } => {
+                if !self.tabs.iter().any(|tab| matches!(tab, AppTab::ProjectOverview(module))) {
+                    self.current_tab = self.tabs.len();
+                    self.tabs.push(AppTab::ProjectOverview(module.clone()));
+                }
+            }
+            AppEvent::Load { map } => {
+                let mut swapped: Option<CelesteMap> = None;
+                if let Some(map) = map.borrow_mut().take() {
+                    if !self.loaded_maps.contains_key(&map.id) {
+                        self.current_tab = self.tabs.len();
+                        self.tabs.push(AppTab::Map(MapTab {
+                            nonce: assets::next_uuid(),
+                            id: map.id.clone(),
+                            current_room: 0,
+                            transform: MapToScreen::identity()
+                        }));
+                    }
+
+                    if !self.palettes.contains_key(&map.id.module) {
+                        self.palettes.insert(map.id.module.clone(), ModuleAggregate::new(&self.modules, &map.id.module));
+                    }
+
+                    self.loaded_maps.insert(map.id.clone(), map);
+
+                }
+            }
+            AppEvent::SetConfigPath { path } => {
+                self.config.borrow_mut().celeste_root = Some(path.clone());
+                trigger_module_load(cx, path.clone());
+            }
+            AppEvent::SetModules { modules } => {
+                let mut r = modules.lock().unwrap();
+                std::mem::swap(r.deref_mut(), &mut self.modules);
+                self.modules_version += 1;
+                trigger_palette_update(&mut self.palettes, &self.modules);
             }
             AppEvent::SelectTool { idx } => {
                 self.current_tool = *idx;
@@ -366,13 +411,16 @@ impl AppState {
 
             // tab events
             AppEvent::SelectTab { idx } => {
-                self.current_tab = *idx;
+                if *idx < self.tabs.len() {
+                    self.current_tab = *idx;
+                }
             }
             AppEvent::CloseTab { idx } => {
                 self.tabs.remove(*idx);
-                if self.current_tab > *idx {
+                if (self.current_tab > *idx || self.current_tab >= self.tabs.len()) && self.current_tab > 0 {
                     self.current_tab -= 1;
                 }
+                self.garbage_collect();
             }
             AppEvent::Pan { tab, delta } => {
                 if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(*tab) {
@@ -392,21 +440,6 @@ impl AppState {
             AppEvent::SelectRoom { tab, idx } => {
                 if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(*tab) {
                     map_tab.current_room = *idx;
-                }
-            }
-            AppEvent::Load { map } => {
-                let mut swapped: Option<CelesteMap> = None;
-                if let Some(map) = map.borrow_mut().take() {
-                    if !self.loaded_maps.contains_key(&map.id) {
-                        self.current_tab = self.tabs.len();
-                        self.tabs.push(AppTab::Map(MapTab {
-                            nonce: assets::next_uuid(),
-                            id: map.id.clone(),
-                            current_room: 0,
-                            transform: MapToScreen::identity()
-                        }));
-                    }
-                    self.loaded_maps.insert(map.id.clone(), map);
                 }
             }
 
@@ -511,6 +544,21 @@ impl AppState {
             }
         }
     }
+
+    pub fn garbage_collect(&mut self) {
+        let mut open_maps = HashSet::new();
+        for tab in &self.tabs {
+            match tab {
+                AppTab::Map(maptab) => {
+                    open_maps.insert(maptab.id.clone());
+                }
+                _ => {}
+            }
+        }
+        let open_palettes = open_maps.iter().map(|id| &id.module).collect::<HashSet<_>>();
+        self.loaded_maps.retain(|id, _| open_maps.contains(id));
+        self.palettes.retain(|name, _| open_palettes.contains(name));
+    }
 }
 
 pub fn apply_tiles(map: &mut CelesteMap, room: usize, offset: &TilePoint, data: &TileGrid<char>, fg: bool) {
@@ -541,44 +589,24 @@ pub fn apply_tiles(map: &mut CelesteMap, room: usize, offset: &TilePoint, data: 
     }
 }
 
-// Lenses
-#[derive(Debug, Copy, Clone)]
-pub struct CurrentMapLens {}
-
-impl Lens for CurrentMapLens {
-    type Source = AppState;
-    type Target = MapID;
-
-    fn view<'a>(&self, source: &'a Self::Source) -> Option<&'a Self::Target> {
-        match source.tabs.get(source.current_tab) {
-            Some(AppTab::Map(maptab)) => Some(&maptab.id),
-            _ => None,
-        }
-    }
+pub fn trigger_module_load(cx: &mut Context, path: PathBuf) {
+    cx.spawn(move |cx| {
+        let mut result = HashMap::new();
+        discovery::load_all(&path, &mut result, |p, s| {
+            cx.emit(AppEvent::Progress {
+                progress: Progress {
+                    progress: (p * 100.0) as i32,
+                    status: s,
+                }
+            });
+        });
+        cx.emit(AppEvent::Progress { progress: Progress{ progress: 100, status: "".to_owned() }});
+        cx.emit(AppEvent::SetModules { modules: Mutex::new(result) });
+    })
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct CurrentSelectedEntityLens {}
-
-impl Lens for CurrentSelectedEntityLens {
-    type Source = AppState;
-    type Target = CelesteMapEntity;
-
-    fn view<'a>(&self, source: &'a Self::Source) -> Option<&'a Self::Target> {
-        let tab = if let Some(tab) = source.tabs.get(source.current_tab) { tab } else { return None };
-        let MapTab { id: map_id, current_room, .. } = if let AppTab::Map(t) = tab {
-            t
-        } else {
-            return None;
-        };
-        let (entity_id, trigger) = match source.current_selected {
-            Some(AppSelection::EntityBody(id, trigger)) => (id, trigger),
-            Some(AppSelection::EntityNode(id, _, trigger)) => (id, trigger),
-            _ => { return None },
-        };
-        let map = if let Some(map) = source.loaded_maps.get(&map_id) { map } else { return None };
-        map.levels
-            .get(*current_room)
-            .and_then(|room| room.entity(entity_id, trigger))
+pub fn trigger_palette_update(palettes: &mut HashMap<String, ModuleAggregate>, modules: &HashMap<String, CelesteModule>) {
+    for (name, pal) in palettes {
+        *pal = ModuleAggregate::new(modules, name);
     }
 }

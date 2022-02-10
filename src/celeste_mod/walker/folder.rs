@@ -1,49 +1,52 @@
 use std::fs::File;
 use std::io;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
 
-use crate::celeste_mod::walker::ConfigSource;
+use crate::celeste_mod::walker::ConfigSourceTrait;
 
 pub struct FolderSource(PathBuf);
 
 impl FolderSource {
-    pub fn new(path: PathBuf) -> Option<Self> {
+    pub fn new(path: &Path) -> Option<Self> {
         if path.is_dir() {
-            Some(FolderSource(path))
+            Some(FolderSource(path.to_path_buf()))
         } else {
             None
         }
     }
 }
 
-impl ConfigSource for FolderSource {
-    type DirIter = impl Iterator<Item = PathBuf>;
-    type FileIter = impl Iterator<Item = PathBuf>;
-    type FileRead = File;
+impl ConfigSourceTrait for FolderSource {
+    fn filesystem_root(&mut self) -> Option<PathBuf> {
+        Some(self.0.clone())
+    }
 
-    // TODO: does walkdir return absolute or relative paths?
-
-    fn list_dirs(&mut self, path: &Path) -> Self::DirIter {
-        WalkDir::new(path)
+    fn list_dirs(&mut self, path: &Path) -> Box<dyn Iterator<Item = PathBuf>> {
+        let path = path.to_path_buf();
+        let start = self.0.clone();
+        Box::new(WalkDir::new(self.0.join(&path))
             .min_depth(1)
             .max_depth(1)
             .into_iter()
             .filter_map(|e| e.ok())
-            .map(|e| e.path().to_owned())
-            .filter(|p| p.is_dir())
+            .map(move |e| e.path().to_owned().strip_prefix(&start).unwrap().to_path_buf())
+            .filter(|p| p.is_dir()))
     }
 
-    fn list_all_files(&mut self, path: &Path) -> Self::FileIter {
-        WalkDir::new(path)
+    fn list_all_files(&mut self, path: &Path) -> Box<dyn Iterator<Item = PathBuf>> {
+        let path = path.to_path_buf();
+        let start = self.0.clone();
+        Box::new(WalkDir::new(self.0.join(&path))
             .min_depth(1)
             .into_iter()
             .filter_map(|e| e.ok())
-            .map(|e| e.path().to_owned())
-            .filter(|p| !p.is_dir())
+            .map(move |e| e.path().to_owned().strip_prefix(&start).unwrap().to_path_buf())
+            .filter(|p| !p.is_dir()))
     }
 
-    fn get_file(&mut self, path: &Path) -> Option<Self::FileRead> {
-        File::open(self.0.join(path)).ok()
+    fn get_file(&mut self, path: &Path) -> Option<Box<dyn Read>> {
+        File::open(self.0.join(path)).ok().map(|x| -> Box<dyn Read> { Box::new(x) })
     }
 }

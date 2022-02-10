@@ -117,7 +117,7 @@ impl Tool for PencilTool {
                 if cx.mouse.left.state == MouseButtonState::Released {
                     canvas.set_global_alpha(0.5);
                 }
-                app.palette.gameplay_atlas.draw_sprite(
+                app.current_palette_unwrap().gameplay_atlas.draw_sprite(
                     canvas,
                     &texture,
                     room_pos.cast().cast_unit(),

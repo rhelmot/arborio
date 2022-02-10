@@ -77,6 +77,47 @@ palette>list {
     background-color: #c0c0f0;
 }
 
+.progress_bar {
+    color: white;
+    background-color: #209020;
+    overflow: hidden;
+    left: 0;
+    child-left: 10px;
+}
+
+.progress_bar_bg {
+    color: black;
+    background-color: white;
+    left: 0;
+    child-left: 10px;
+}
+
+.map_overview_card {
+    width: 100%;
+    child-space: 10px;
+}
+
+.map_title {
+    font-size: 20px;
+}
+
+.map_overview_card:over {
+    background-color: #c0c0f0;
+}
+
+.module_overview_card {
+    width: 100%;
+    child-space: 10px;
+}
+
+.module_title {
+    font-size: 20px;
+}
+
+.module_overview_card:over {
+    background-color: #c0c0f0;
+}
+
 /*
 * {
     border-color: red;

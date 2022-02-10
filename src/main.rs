@@ -11,6 +11,7 @@ mod map_struct;
 mod tools;
 mod units;
 mod widgets;
+mod lenses;
 
 use dialog::{DialogBox, FileSelectionMode};
 use enum_iterator::IntoEnumIterator;
@@ -35,62 +36,38 @@ use crate::widgets::tabs::{build_tabs, build_tab_bar};
 fn main() -> Result<(), Box<dyn Error>> {
     let mut app = Application::new(WindowDescription::new().with_title("Arborio"), |cx| {
         app_state::AppState::new().build(cx);
+        if let Some(path) = &cx.data::<AppState>().unwrap().config.celeste_root {
+            let path = path.clone();
+            cx.emit(AppEvent::SetConfigPath { path });
+        }
         //cx.add_theme(include_str!("style.css"));
         cx.add_stylesheet("src/style.css");
 
         VStack::new(cx, move |cx| {
             HStack::new(cx, move |cx| {
-                Button::new(cx, move |cx| {
-                    let root = cx.data::<AppState>().unwrap().config.celeste_root.clone();
-                    cx.spawn(move |cx| {
-                        if let Some(map) = load_workflow(&root) {
-                            cx.emit(AppEvent::Load { map: RefCell::new(Some(map)) });
-                        }
-                    })
-                }, move |cx| {
-                    Label::new(cx, "Load Map")
-                });
+                // menu bar
             });
             build_tab_bar(cx);
             build_tabs(cx);
+
+            Binding::new(cx, AppState::progress, move |cx, progress| {
+                let progress = progress.get(cx);
+                if progress.progress != 100 {
+                    let status = format!("{}% - {}", progress.progress, progress.status);
+                    let progress = progress.progress;
+                    ZStack::new(cx, move |cx| {
+                        Label::new(cx, &status)
+                            .width(Units::Percentage(100.0))
+                            .class("progress_bar_bg");
+                        Label::new(cx, &status)
+                            .width(Units::Percentage(progress as f32))
+                            .class("progress_bar");
+                    });
+                }
+            })
         });
     });
 
     app.run();
     Ok(())
-}
-
-fn load_workflow(root: &PathBuf) -> Option<map_struct::CelesteMap> {
-    let path = match dialog::FileSelection::new("Select a map")
-        .title("Select a map")
-        .mode(FileSelectionMode::Open)
-        .path(root)
-        .show()
-    {
-        Ok(Some(path)) => path,
-        _ => return None,
-    };
-    let file = match std::fs::read(path) {
-        Ok(data) => data,
-        Err(e) => {
-            dialog::Message::new(format!("Could not read file: {}", e)).show();
-            return None;
-        }
-    };
-    let (_, binfile) = match celeste::binel::parser::take_file(file.as_slice()) {
-        Ok(binel) => binel,
-        _ => {
-            dialog::Message::new("Not a Celeste map").show();
-            return None;
-        }
-    };
-    let map = match map_struct::from_binfile(MapID { module: "Arborio".to_string(), sid: format!("weh/{}", next_uuid()) }, binfile) {
-        Ok(map) => map,
-        Err(e) => {
-            dialog::Message::new(format!("Data validation error: {}", e));
-            return None;
-        }
-    };
-
-    Some(map)
 }

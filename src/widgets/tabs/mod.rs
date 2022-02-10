@@ -1,4 +1,6 @@
 pub mod editor_tab;
+pub mod installation_tab;
+pub mod project_tab;
 
 use vizia::*;
 use crate::app_state::AppTab;
@@ -6,24 +8,28 @@ use crate::app_state::{AppState};
 use crate::AppEvent;
 
 pub fn build_tabs(cx: &mut Context) {
-    Binding::new(cx, AppState::current_tab, move |cx, current_tab| {
-        let current_tab = *current_tab.get(cx);
-        Binding::new_fallible(cx, AppState::tabs.index(current_tab), move |cx, current_tab| {
+    Binding::new_fallible(cx, AppState::tabs.index_with_lens(AppState::current_tab), move |cx, current_tab| {
+        VStack::new(cx, move |cx| {
             match current_tab.get(cx) {
-                AppTab::CelesteOverview => {}
-                AppTab::ProjectOverview(_) => {}
+                AppTab::CelesteOverview => {
+                    installation_tab::build_installation_tab(cx);
+                }
+                AppTab::ProjectOverview(project) => {
+                    let project = project.clone();
+                    project_tab::build_project_tab(cx, &project)
+                }
                 AppTab::Map(maptab) => {
                     let id = maptab.id.clone(); // ew
                     editor_tab::build_editor(cx, &id);
                 },
             }
-        }, |cx| {})
-    });
+        });
+    }, move |cx| {});
 }
 
 pub fn build_tab_bar(cx: &mut Context) {
-    List::new(cx, AppState::tabs, move |cx, tab| {
-        Binding::new(cx, AppState::current_tab, move |cx, current_tab| {
+    Binding::new(cx, AppState::current_tab, move |cx, current_tab| {
+        List::new(cx, AppState::tabs, move |cx, tab| {
             let current_tab = *current_tab.get(cx);
             HStack::new(cx, move |cx| {
                 Label::new(cx, &tab.get(cx).to_string());
@@ -36,10 +42,10 @@ pub fn build_tab_bar(cx: &mut Context) {
                 .class("tab")
                 .checked(tab.index() == current_tab)
                 .on_press(move |cx| {
-                    cx.emit(AppEvent::SelectTab { idx: tab.index() })
+                    cx.emit(AppEvent::SelectTab { idx: tab.index() });
                 });
-        });
-    })
-        .layout_type(LayoutType::Row)
-        .height(Units::Auto);
+        })
+            .layout_type(LayoutType::Row)
+            .height(Units::Auto);
+    });
 }

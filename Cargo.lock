@@ -77,6 +77,7 @@ dependencies = [
  "dialog",
  "elsa",
  "enum-iterator",
+ "enum_dispatch",
  "euclid",
  "femtovg",
  "imgref",
@@ -598,6 +599,18 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c134c37760b27a871ba422106eedbb8247da973a09e82558bf26d619c882b159"
 dependencies = [
+ "proc-macro2 1.0.36",
+ "quote 1.0.14",
+ "syn 1.0.84",
+]
+
+[[package]]
+name = "enum_dispatch"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd53b3fde38a39a06b2e66dc282f3e86191e53bd04cc499929c15742beae3df8"
+dependencies = [
+ "once_cell",
  "proc-macro2 1.0.36",
  "quote 1.0.14",
  "syn 1.0.84",
@@ -1939,7 +1952,6 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=05290e0cd647d3927a57feeb0f7eb42aeeba5c8a#05290e0cd647d3927a57feeb0f7eb42aeeba5c8a"
 dependencies = [
  "vizia_core",
  "vizia_glutin",
@@ -1948,12 +1960,12 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=05290e0cd647d3927a57feeb0f7eb42aeeba5c8a#05290e0cd647d3927a57feeb0f7eb42aeeba5c8a"
 dependencies = [
  "bitflags",
  "copypasta",
  "cssparser",
  "femtovg",
+ "fnv",
  "keyboard-types",
  "morphorm",
  "unicode-segmentation",
@@ -1963,7 +1975,6 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=05290e0cd647d3927a57feeb0f7eb42aeeba5c8a#05290e0cd647d3927a57feeb0f7eb42aeeba5c8a"
 dependencies = [
  "proc-macro2 1.0.36",
  "quote 1.0.14",
@@ -1973,7 +1984,6 @@ dependencies = [
 [[package]]
 name = "vizia_glutin"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=05290e0cd647d3927a57feeb0f7eb42aeeba5c8a#05290e0cd647d3927a57feeb0f7eb42aeeba5c8a"
 dependencies = [
  "femtovg",
  "fnv",

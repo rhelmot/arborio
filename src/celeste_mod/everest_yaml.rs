@@ -24,7 +24,7 @@ pub fn arborio_module_yaml() -> EverestYaml {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EverestYaml {
     #[serde(rename = "Name")]
     pub name: String,
@@ -36,7 +36,7 @@ pub struct EverestYaml {
     pub dependencies: Vec<EverestYamlDependency>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EverestYamlDependency {
     #[serde(rename = "Name")]
     pub name: String,
@@ -44,7 +44,7 @@ pub struct EverestYamlDependency {
     pub version: EverestModuleVersion,
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Clone, Debug)]
 pub struct EverestModuleVersion(pub Vec<i32>);
 
 impl<'de> Deserialize<'de> for EverestModuleVersion {

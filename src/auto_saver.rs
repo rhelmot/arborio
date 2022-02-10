@@ -1,4 +1,8 @@
+use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
+use vizia::Lens;
+use crate::Auto;
 
 pub struct AutoSaver<T> {
     value: T,

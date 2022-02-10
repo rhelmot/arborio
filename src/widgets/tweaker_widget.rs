@@ -2,10 +2,11 @@ use celeste::binel::BinElAttr;
 use std::fmt::{Debug, Formatter};
 use vizia::*;
 
-use crate::app_state::{AppEvent, AppSelection, AppState, AppTab, CurrentSelectedEntityLens};
+use crate::app_state::{AppEvent, AppSelection, AppState, AppTab};
 use crate::assets;
 use crate::map_struct::{CelesteMap, CelesteMapEntity};
 use crate::units::*;
+use crate::lenses::CurrentSelectedEntityLens;
 
 pub struct EntityTweakerWidget {}
 

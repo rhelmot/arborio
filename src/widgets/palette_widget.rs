@@ -2,6 +2,7 @@ use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::sync::Arc;
 use vizia::*;
 
 use crate::{AppState, assets};
@@ -23,6 +24,8 @@ where
     where
         F: 'static + Fn(&mut Context, T) + Copy,
         LL: Lens<Target = Vec<T>>,
+        <LI as Lens>::Source: Model,
+        <LL as Lens>::Source: Model,
     {
         let result = Self {
             lens: selected,
@@ -146,7 +149,7 @@ impl PaletteItem for TileSelectable {
     fn draw(&self, app: &AppState, canvas: &mut Canvas) {
         if let Some(texture) = self.texture {
             canvas.scale(3.0, 3.0);
-            app.palette.gameplay_atlas.draw_sprite(
+            app.current_palette_unwrap().gameplay_atlas.draw_sprite(
                 canvas,
                 texture,
                 Point2D::zero(),
@@ -164,6 +167,24 @@ impl PaletteItem for TileSelectable {
 pub struct EntitySelectable {
     pub entity: &'static str,
     pub template: usize,
+}
+
+impl Default for EntitySelectable {
+    fn default() -> Self {
+        Self {
+            entity: "does not exist",
+            template: 0,
+        }
+    }
+}
+
+impl Default for TriggerSelectable {
+    fn default() -> Self {
+        Self {
+            trigger: "does not exist",
+            template: 0,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -224,8 +245,8 @@ impl PaletteItem for TriggerSelectable {
 }
 
 impl EntitySelectable {
-    pub fn config<'a>(&self, app: &'a AppState) -> &'a Rc<EntityConfig> {
-        app.palette.entity_config.get(self.entity).unwrap()
+    pub fn config<'a>(&self, app: &'a AppState) -> &'a Arc<EntityConfig> {
+        app.current_palette_unwrap().get_entity_config(self.entity, false)
     }
 
     pub fn instantiate(
@@ -289,8 +310,11 @@ impl EntitySelectable {
 }
 
 impl TriggerSelectable {
-    pub fn config<'a>(&self, app: &'a AppState) -> &'a Rc<TriggerConfig> {
-        app.palette.trigger_config.get(self.trigger).unwrap()
+    pub fn config<'a>(&self, app: &'a AppState) -> &'a Arc<TriggerConfig> {
+        let palette = app.current_palette_unwrap();
+        palette.trigger_config.get(self.trigger).unwrap_or_else(|| {
+            palette.trigger_config.get("default").unwrap()
+        })
     }
 
     pub fn instantiate(
@@ -362,7 +386,7 @@ impl PaletteItem for DecalSelectable {
     }
 
     fn draw(&self, app: &AppState, canvas: &mut Canvas) {
-        app.palette.gameplay_atlas.draw_sprite(
+        app.current_palette_unwrap().gameplay_atlas.draw_sprite(
             canvas,
             &("decals/".to_owned() + self.0),
             Point2D::new(0.0, 0.0),
@@ -378,5 +402,13 @@ impl PaletteItem for DecalSelectable {
 impl DecalSelectable {
     pub fn new(path: &'static str) -> Self {
         Self(path)
+    }
+}
+
+impl Default for DecalSelectable {
+    fn default() -> Self {
+        Self {
+            0: "does not exist"
+        }
     }
 }

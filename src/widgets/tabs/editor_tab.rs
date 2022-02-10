@@ -1,7 +1,7 @@
 use vizia::*;
 use enum_iterator::IntoEnumIterator;
 
-use crate::app_state::CurrentMapLens;
+use crate::lenses::{CurrentMapLens, CurrentPaletteLens};
 use crate::app_state::{AppState};
 use crate::map_struct::{CelesteMap, MapID};
 use crate::editor_widget::EditorWidget;
@@ -93,7 +93,7 @@ pub fn build_palette_widgets(cx: &mut Context) {
             let layer = *layer_field.get(cx);
             PaletteWidget::new(
                 cx,
-                AppState::palette.then(ModuleAggregate::fg_tiles_palette),
+                CurrentPaletteLens{}.then(ModuleAggregate::fg_tiles_palette),
                 AppState::current_fg_tile,
                 |cx, tile| {
                     cx.emit(AppEvent::SelectPaletteTile { fg: true, tile });
@@ -102,28 +102,28 @@ pub fn build_palette_widgets(cx: &mut Context) {
                 .display(layer == Layer::FgTiles && tool_idx == 2);
             PaletteWidget::new(
                 cx,
-                AppState::palette.then(ModuleAggregate::bg_tiles_palette),
+                CurrentPaletteLens{}.then(ModuleAggregate::bg_tiles_palette),
                 AppState::current_bg_tile,
                 |cx, tile| cx.emit(AppEvent::SelectPaletteTile { fg: false, tile }),
             )
                 .display(layer == Layer::BgTiles && tool_idx == 2);
             PaletteWidget::new(
                 cx,
-                AppState::palette.then(ModuleAggregate::entities_palette),
+                CurrentPaletteLens{}.then(ModuleAggregate::entities_palette),
                 AppState::current_entity,
                 |cx, entity| cx.emit(AppEvent::SelectPaletteEntity { entity }),
             )
                 .display(layer == Layer::Entities && tool_idx == 2);
             PaletteWidget::new(
                 cx,
-                AppState::palette.then(ModuleAggregate::triggers_palette),
+                CurrentPaletteLens{}.then(ModuleAggregate::triggers_palette),
                 AppState::current_trigger,
                 |cx, trigger| cx.emit(AppEvent::SelectPaletteTrigger { trigger }),
             )
                 .display(layer == Layer::Triggers && tool_idx == 2);
             PaletteWidget::new(
                 cx,
-                AppState::palette.then(ModuleAggregate::decals_palette),
+                CurrentPaletteLens{}.then(ModuleAggregate::decals_palette),
                 AppState::current_decal,
                 |cx, decal| cx.emit(AppEvent::SelectPaletteDecal { decal }),
             )

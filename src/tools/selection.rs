@@ -317,12 +317,12 @@ impl Tool for SelectionTool {
                 let float_pt = pt - float_pos.to_vector();
                 let ch = float_dat.get_or_default(float_pt);
                 if ch != '\0' {
-                    if let Some(tile) = app.palette.autotilers["bg"]
+                    if let Some(tile) = app.current_palette_unwrap().autotilers["bg"]
                         .get(&ch)
                         .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
                     {
                         let room_pos = point_tile_to_room(&pt);
-                        app.palette.gameplay_atlas.draw_tile(
+                        app.current_palette_unwrap().gameplay_atlas.draw_tile(
                             canvas,
                             tile,
                             room_pos.x as f32,
@@ -341,12 +341,12 @@ impl Tool for SelectionTool {
                 let float_pt = pt - float_pos.to_vector();
                 let ch = float_dat.get_or_default(float_pt);
                 if ch != '\0' {
-                    if let Some(tile) = app.palette.autotilers["fg"]
+                    if let Some(tile) = app.current_palette_unwrap().autotilers["fg"]
                         .get(&ch)
                         .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
                     {
                         let room_pos = point_tile_to_room(&pt);
-                        app.palette.gameplay_atlas.draw_tile(
+                        app.current_palette_unwrap().gameplay_atlas.draw_tile(
                             canvas,
                             tile,
                             room_pos.x as f32,
@@ -463,7 +463,7 @@ impl SelectionTool {
             }
             AppSelection::EntityBody(id, trigger) => {
                 if let Some(entity) = room.entity(id, trigger) {
-                    let config = app.palette.get_entity_config(&entity.name, trigger);
+                    let config = app.current_palette_unwrap().get_entity_config(&entity.name, trigger);
                     let env = entity.make_env();
                     config
                         .hitboxes
@@ -483,7 +483,7 @@ impl SelectionTool {
             }
             AppSelection::EntityNode(id, node_idx, trigger) => {
                 if let Some(entity) = room.entity(id, trigger) {
-                    let config = app.palette.get_entity_config(&entity.name, trigger);
+                    let config = app.current_palette_unwrap().get_entity_config(&entity.name, trigger);
                     let env = entity.make_node_env(entity.make_env(), node_idx);
                     config
                         .hitboxes
@@ -503,7 +503,7 @@ impl SelectionTool {
             }
             AppSelection::Decal(id, fg) => {
                 if let Some(decal) = room.decal(id, fg) {
-                    if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&decal_texture(decal)) {
+                    if let Some(dim) = app.current_palette_unwrap().gameplay_atlas.sprite_dimensions(&decal_texture(decal)) {
                         let size = dim
                             .cast()
                             .cast_unit()
@@ -794,7 +794,7 @@ impl SelectionTool {
                 }
                 AppSelection::EntityBody(id, trigger) => {
                     let mut e = room.entity(*id, *trigger).unwrap().clone();
-                    let config = app.palette.get_entity_config(e.name.as_str(), false);
+                    let config = app.current_palette_unwrap().get_entity_config(e.name.as_str(), false);
                     let start_rect = dragging
                         .map(|d| *d.selection_reference_sizes.get(sel).unwrap())
                         .unwrap_or_else(|| {
@@ -820,7 +820,7 @@ impl SelectionTool {
                 }
                 AppSelection::Decal(id, fg) => {
                     let mut d = room.decal(*id, *fg).unwrap().clone();
-                    if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&decal_texture(&d)) {
+                    if let Some(dim) = app.current_palette_unwrap().gameplay_atlas.sprite_dimensions(&decal_texture(&d)) {
                         let texture_size = dim.cast().cast_unit();
                         let start_rect = dragging
                             .map(|d| *d.selection_reference_sizes.get(sel).unwrap())
@@ -988,7 +988,7 @@ impl SelectionTool {
                         AppSelection::FgTile(_) | AppSelection::BgTile(_) => ResizeSide::None,
                         AppSelection::EntityBody(id, trigger) => {
                             if let Some(entity) = room.entity(*id, *trigger) {
-                                let config = app.palette.get_entity_config(&entity.name, *trigger);
+                                let config = app.current_palette_unwrap().get_entity_config(&entity.name, *trigger);
                                 if !config.resizable_x {
                                     side = side.filter_out_left_right();
                                 }
@@ -1046,7 +1046,7 @@ impl SelectionTool {
                     }
                     AppSelection::Decal(id, fg) => {
                         if let Some(decal) = room.decal(*id, *fg) {
-                            if let Some(dim) = app.palette.gameplay_atlas.sprite_dimensions(&decal_texture(decal)) {
+                            if let Some(dim) = app.current_palette_unwrap().gameplay_atlas.sprite_dimensions(&decal_texture(decal)) {
                                 let size = dim
                                     .cast()
                                     .cast_unit()
