@@ -168,7 +168,7 @@ pub enum AppEvent {
         module: String,
     },
     Load {
-        map: RefCell<Option<CelesteMap>>,
+        map: RefCell<Option<Box<CelesteMap>>>,
     },
     SelectTab {
         idx: usize,
@@ -385,7 +385,7 @@ impl AppState {
                         );
                     }
 
-                    self.loaded_maps.insert(map.id.clone(), map);
+                    self.loaded_maps.insert(map.id.clone(), *map);
                 }
             }
             AppEvent::SetConfigPath { path } => {

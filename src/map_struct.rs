@@ -1,4 +1,3 @@
-use crate::from_binel::GetAttrOrChild;
 use celeste::binel::*;
 use euclid::{Point2D, Size2D};
 use std::borrow::Borrow;
@@ -13,7 +12,9 @@ use std::sync::Mutex;
 use vizia::Data;
 
 use crate::assets::next_uuid;
-use crate::from_binel::{bin_el_fuzzy_equal, get_nested_child, TryFromBinEl, TwoWayConverter};
+use crate::from_binel::{
+    bin_el_fuzzy_equal, get_nested_child, GetAttrOrChild, TryFromBinEl, TwoWayConverter,
+};
 use crate::units::*;
 
 #[derive(Eq, PartialEq, Hash, Debug, Clone, Default)]
@@ -55,6 +56,71 @@ pub struct CelesteMap {
     #[name("Style/Backgrounds")]
     pub backgrounds: Vec<CelesteMapStyleground>,
     pub levels: Vec<CelesteMapLevel>,
+    #[name("meta")]
+    pub meta: CelesteMapMeta,
+}
+
+// this is a fucking mess.
+#[derive(Debug, Default, TryFromBinEl)]
+pub struct CelesteMapMeta {
+    #[name("OverrideASideMeta")]
+    pub override_aside_meta: bool,
+    #[name("ColorGrade")]
+    pub color_grade: String,
+    #[name("Dreaming")]
+    pub dreaming: bool,
+    #[name("ForegroundTiles")]
+    pub fg_tiles: String,
+    #[name("BackgroundTiles")]
+    pub bg_tiles: String,
+    #[name("IntroType")]
+    pub intro_type: String, // TODO I think this is an enum
+    #[name("TitleTextColor")]
+    pub title_text_color: String, // this too
+    #[name("TitleBaseColor")]
+    pub title_base_color: String, // this too
+    #[name("TitleAccentColor")]
+    pub title_accent_color: String, // this too
+    #[name("Icon")]
+    pub icon: String,
+    #[name("Interlude")]
+    pub interlude: bool,
+    #[name("Wipe")]
+    pub wipe: String,
+    #[name("BloomBase")]
+    pub bloom_base: f32,
+    #[name("BloomStrength")]
+    pub bloom_strength: f32,
+    // TODO more fields that ahorn doesn't let you change but everest will read from map.meta.yaml
+    #[children]
+    pub modes: Vec<CelesteMapMetaMode>, // [Option<_>; 3] perhaps?
+}
+
+#[derive(Debug, TryFromBinEl)]
+#[name("mode")]
+pub struct CelesteMapMetaMode {
+    #[name("HeartIsEnd")]
+    pub heart_is_end: bool,
+    #[name("Inventory")]
+    pub inventory: String,
+    #[name("StartLevel")]
+    pub start_level: String,
+    #[name("SeekerSlowdown")]
+    pub seeker_slowdown: bool,
+    #[name("TheoInBubble")]
+    pub theo_in_bubble: bool,
+    #[name("IgnoreLevelAudioLayerData")]
+    pub ignore_level_audio_layer_data: bool,
+    #[name("audiostate")]
+    pub audio_state: CelesteMapMetaAudioState,
+}
+
+#[derive(Debug, TryFromBinEl)]
+pub struct CelesteMapMetaAudioState {
+    #[name("Ambience")]
+    pub ambience: String,
+    #[name("Music")]
+    pub music: String,
 }
 
 #[derive(Debug)]

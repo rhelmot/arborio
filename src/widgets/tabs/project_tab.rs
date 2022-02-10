@@ -30,7 +30,7 @@ pub fn build_project_tab(cx: &mut Context, project: &str) {
                     let map = map.clone();
                     if let Some(map_struct) = load_map(module_root.clone(), project, map) {
                         cx.emit(AppEvent::Load {
-                            map: RefCell::new(Some(map_struct)),
+                            map: RefCell::new(Some(Box::new(map_struct))),
                         });
                     }
                 })
