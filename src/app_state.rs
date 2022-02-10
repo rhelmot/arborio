@@ -192,7 +192,6 @@ impl AppState {
         palette.sanity_check();
 
         AppState {
-
             current_tool: 2,
             map: None,
             current_room: 0,

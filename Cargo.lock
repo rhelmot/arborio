@@ -70,6 +70,7 @@ name = "arborio"
 version = "0.1.0"
 dependencies = [
  "Inflector",
+ "arborio-derive",
  "array-init",
  "byteorder",
  "celeste",
@@ -93,6 +94,16 @@ dependencies = [
  "vizia",
  "walkdir",
  "zip",
+]
+
+[[package]]
+name = "arborio-derive"
+version = "0.1.0"
+dependencies = [
+ "itertools 0.8.2",
+ "proc-macro2 1.0.36",
+ "quote 1.0.14",
+ "syn 1.0.84",
 ]
 
 [[package]]

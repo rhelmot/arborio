@@ -3,16 +3,31 @@ use euclid::{Point2D, Size2D};
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::convert::{TryFrom, TryInto};
 use std::default;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::sync::Mutex;
+use crate::from_binel::GetAttrOrChild;
+
+use crate::from_binel::{bin_el_fuzzy_equal, get_nested_child, TryFromBinEl, TwoWayConverter};
 
 use crate::units::*;
 
 lazy_static::lazy_static! {
     static ref UUID: Mutex<u32> = Mutex::new(0);
+}
+
+#[derive(Clone, Debug, TryFromBinEl)]
+#[convert_with(MapComponentConverter)]
+pub struct Rect {
+    pub x: i32,
+    pub y: i32,
+    #[name("w")]
+    pub width: u32,
+    #[name("h")]
+    pub height: u32,
 }
 
 pub fn next_uuid() -> u32 {
@@ -22,11 +37,15 @@ pub fn next_uuid() -> u32 {
     result
 }
 
-#[derive(Debug)]
+#[derive(Debug, TryFromBinEl)]
 pub struct CelesteMap {
+    #[bin_el_skip]
     pub name: String,
+    #[name("Filler")]
     pub filler: Vec<MapRectStrict>,
+    #[name("Style/Foregrounds")]
     pub foregrounds: Vec<CelesteMapStyleground>,
+    #[name("Style/Backgrounds")]
     pub backgrounds: Vec<CelesteMapStyleground>,
     pub levels: Vec<CelesteMapLevel>,
 }
@@ -71,41 +90,84 @@ pub struct CelesteMapLevelCache {
     pub last_decal_idx: usize,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, TryFromBinEl)]
 pub struct CelesteMapEntity {
     pub id: i32,
+    #[name]
     pub name: String,
     pub x: i32,
     pub y: i32,
+    #[default]
     pub width: u32,
+    #[default]
     pub height: u32,
+    #[attributes]
     pub attributes: HashMap<String, BinElAttr>,
-    pub nodes: Vec<(i32, i32)>,
+    #[children]
+    pub nodes: Vec<Node>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, TryFromBinEl)]
+#[name("node")]
+pub struct Node {
+    pub x: i32,
+    pub y: i32,
+}
+impl From<(i32, i32)> for Node {
+    fn from((x, y): (i32, i32)) -> Self {
+        Node { x, y }
+    }
+}
+
+#[derive(Debug, Clone, TryFromBinEl)]
+#[name("decal")]
 pub struct CelesteMapDecal {
+    #[generate(next_uuid())]
     pub id: u32,
     pub x: i32,
     pub y: i32,
+    #[name("scaleX")]
     pub scale_x: f32,
+    #[name("scaleY")]
     pub scale_y: f32,
+    #[convert_with(ParenFlipper)]
     pub texture: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, TryFromBinEl)]
 pub struct CelesteMapStyleground {
+    #[optional]
+    pub alpha: Option<f32>,
+    #[name]
     pub name: String,
+    #[optional]
     pub texture: Option<String>,
+    #[optional]
     pub x: Option<i32>,
+    #[optional]
     pub y: Option<i32>,
+    #[optional]
+    #[name("loopx")]
     pub loop_x: Option<bool>,
+    #[optional]
+    #[name("loopy")]
     pub loop_y: Option<bool>,
+    #[optional]
+    #[name("scrollx")]
     pub scroll_x: Option<f32>,
+    #[optional]
+    #[name("scrolly")]
     pub scroll_y: Option<f32>,
+    #[optional]
+    #[name("speedx")]
     pub speed_x: Option<f32>,
+    #[optional]
+    #[name("speedy")]
     pub speed_y: Option<f32>,
+    #[optional]
     pub color: Option<String>,
+    #[optional]
+    #[name("blendmode")]
     pub blend_mode: Option<String>,
 }
 
@@ -152,7 +214,7 @@ impl Error for CelesteMapError {
 }
 
 impl CelesteMapError {
-    fn missing_child(parent: &str, child: &str) -> CelesteMapError {
+    pub(crate) fn missing_child(parent: &str, child: &str) -> CelesteMapError {
         CelesteMapError {
             kind: CelesteMapErrorType::MissingChild,
             description: format!("Expected child of {}: {} not found", parent, child),
@@ -164,6 +226,23 @@ impl CelesteMapError {
             kind: CelesteMapErrorType::MissingAttribute,
             description: format!("Expected attribute of {}: {} not found", parent, attr),
         }
+    }
+}
+
+struct ParenFlipper;
+impl TwoWayConverter<String> for ParenFlipper {
+    type BinType = BinElAttr;
+
+    fn try_parse(elem: &Self::BinType) -> Result<String, CelesteMapError> {
+        DefaultConverter::try_parse(elem).map(|s: String| {
+            assert!(!s.contains('/'));
+            s.replace('\\', "/")
+        })
+    }
+
+    fn serialize(val: &String) -> Self::BinType {
+        assert!(!val.contains('\\'));
+        BinElAttr::Text(val.replace('/', "\\"))
     }
 }
 
@@ -329,7 +408,7 @@ impl CelesteMapLevel {
             }
         }
         for pt in rect_point_iter(rect_room_to_tile(&self.room_bounds()), 1) {
-            if self.tile(pt, true).unwrap_or('0') != '0' {
+            if let Some('0') | None = self.tile(pt, true) {
                 *result.get_mut(pt).unwrap() = FieldEntry::Fg;
             }
         }
@@ -376,11 +455,11 @@ impl CelesteMapEntity {
         for (key, val) in &self.attributes {
             env.insert(key.as_str(), Const::from_attr(val));
         }
-        if let Some((x, y)) = self.nodes.first() {
+        if let Some(Node { x, y }) = self.nodes.first() {
             env.insert("firstnodex", Const::from_num(*x));
             env.insert("firstnodey", Const::from_num(*y));
         }
-        if let Some((x, y)) = self.nodes.last() {
+        if let Some(Node { x, y }) = self.nodes.last() {
             env.insert("lastnodex", Const::from_num(*x));
             env.insert("lastnodey", Const::from_num(*y));
         }
@@ -394,11 +473,11 @@ impl CelesteMapEntity {
         node_idx: usize,
     ) -> HashMap<&'a str, Const> {
         env.insert("nodeidx", Const::from_num(node_idx as f64));
-        if let Some((x, y)) = self.nodes.get(node_idx) {
+        if let Some(Node { x, y }) = self.nodes.get(node_idx) {
             env.insert("nodex", Const::from_num(*x));
             env.insert("nodey", Const::from_num(*y));
         }
-        if let Some((x, y)) = self.nodes.get(node_idx + 1) {
+        if let Some(Node { x, y }) = self.nodes.get(node_idx + 1) {
             env.insert("nextnodex", Const::from_num(*x));
             env.insert("nextnodey", Const::from_num(*y));
             env.insert("nextnodexorbase", Const::from_num(*x));
@@ -407,7 +486,7 @@ impl CelesteMapEntity {
             env.insert("nextnodexorbase", Const::from_num(self.x));
             env.insert("nextnodeyorbase", Const::from_num(self.y));
         }
-        if let Some((x, y)) = self.nodes.get(node_idx.wrapping_sub(1)) {
+        if let Some(Node { x, y }) = self.nodes.get(node_idx.wrapping_sub(1)) {
             env.insert("prevnodex", Const::from_num(*x));
             env.insert("prevnodey", Const::from_num(*y));
             env.insert("prevnodexorbase", Const::from_num(*x));
@@ -435,111 +514,70 @@ macro_rules! expect_elem {
 pub fn from_binfile(binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
     expect_elem!(binfile.root, "Map");
 
-    let filler = get_child(&binfile.root, "Filler")?;
-    let levels = get_child(&binfile.root, "levels")?;
-    let style = get_child(&binfile.root, "Style")?;
-    let style_fg = get_child(style, "Foregrounds")?;
-    let style_bg = get_child(style, "Backgrounds")?;
-
-    let filler_parsed = filler
-        .children()
-        .map(parse_filler_rect)
-        .collect::<Result<_, CelesteMapError>>()?;
-    let style_fg_parsed = style_fg
-        .children()
-        .map(parse_styleground)
-        .collect::<Result<_, CelesteMapError>>()?;
-    let style_bg_parsed = style_bg
-        .children()
-        .map(parse_styleground)
-        .collect::<Result<_, CelesteMapError>>()?;
-    let levels_parsed = levels
-        .children()
-        .map(parse_level)
-        .collect::<Result<_, CelesteMapError>>()?;
-
-    Ok(CelesteMap {
-        name: binfile.package,
-        filler: filler_parsed,
-        foregrounds: style_fg_parsed,
-        backgrounds: style_bg_parsed,
-        levels: levels_parsed,
-    })
+    CelesteMap::try_from_bin_el(&binfile.root)
 }
 
-fn parse_level(elem: &BinEl) -> Result<CelesteMapLevel, CelesteMapError> {
-    expect_elem!(elem, "level");
+impl TryFromBinEl for CelesteMapLevel {
+    fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
+        expect_elem!(elem, "level");
 
-    let x = get_attr(elem, "x")?;
-    let y = get_attr(elem, "y")?;
-    let width = get_attr(elem, "width")?;
-    let height = get_attr(elem, "height")?;
-    let object_tiles = get_optional_child(elem, "fgtiles");
-    let fg_decals = get_optional_child(elem, "fgdecals");
-    let bg_decals = get_optional_child(elem, "bgdecals");
+        let x = get_attr(elem, "x")?;
+        let y = get_attr(elem, "y")?;
+        let width = get_attr(elem, "width")?;
+        let height = get_attr(elem, "height")?;
+        let object_tiles = get_optional_child(elem, "fgtiles");
+        let fg_decals = get_optional_child(elem, "fgdecals");
+        let bg_decals = get_optional_child(elem, "bgdecals");
 
-    Ok(CelesteMapLevel {
-        bounds: MapRectStrict {
-            origin: Point2D::new(x, y),
-            size: Size2D::new(width, height),
-        },
-        name: get_attr(elem, "name")?,
-        color: get_optional_attr(elem, "c")?.unwrap_or_default(),
-        camera_offset_x: get_optional_attr(elem, "cameraOffsetX")?.unwrap_or_default(),
-        camera_offset_y: get_optional_attr(elem, "cameraOffsetY")?.unwrap_or_default(),
-        wind_pattern: get_optional_attr(elem, "windPattern")?.unwrap_or_default(),
-        space: get_optional_attr(elem, "space")?.unwrap_or_default(),
-        underwater: get_optional_attr(elem, "underwater")?.unwrap_or_default(),
-        whisper: get_optional_attr(elem, "whisper")?.unwrap_or_default(),
-        dark: get_optional_attr(elem, "dark")?.unwrap_or_default(),
-        disable_down_transition: get_optional_attr(elem, "disableDownTransition")?
-            .unwrap_or_default(),
+        Ok(CelesteMapLevel {
+            bounds: MapRectStrict {
+                origin: Point2D::new(x, y),
+                size: Size2D::new(width, height),
+            },
+            name: get_attr(elem, "name")?,
+            color: get_optional_attr(elem, "c")?.unwrap_or_default(),
+            camera_offset_x: get_optional_attr(elem, "cameraOffsetX")?.unwrap_or_default(),
+            camera_offset_y: get_optional_attr(elem, "cameraOffsetY")?.unwrap_or_default(),
+            wind_pattern: get_optional_attr(elem, "windPattern")?.unwrap_or_default(),
+            space: get_optional_attr(elem, "space")?.unwrap_or_default(),
+            underwater: get_optional_attr(elem, "underwater")?.unwrap_or_default(),
+            whisper: get_optional_attr(elem, "whisper")?.unwrap_or_default(),
+            dark: get_optional_attr(elem, "dark")?.unwrap_or_default(),
+            disable_down_transition: get_optional_attr(elem, "disableDownTransition")?
+                .unwrap_or_default(),
 
-        music: get_optional_attr(elem, "music")?.unwrap_or_default(),
-        alt_music: get_optional_attr(elem, "alt_music")?.unwrap_or_default(),
-        ambience: get_optional_attr(elem, "ambience")?.unwrap_or_default(),
-        music_layers: [
-            get_optional_attr(elem, "musicLayer1")?.unwrap_or_default(),
-            get_optional_attr(elem, "musicLayer2")?.unwrap_or_default(),
-            get_optional_attr(elem, "musicLayer3")?.unwrap_or_default(),
-            get_optional_attr(elem, "musicLayer4")?.unwrap_or_default(),
-            get_optional_attr(elem, "musicLayer5")?.unwrap_or_default(),
-            get_optional_attr(elem, "musicLayer6")?.unwrap_or_default(),
-        ],
-        music_progress: get_optional_attr(elem, "musicProgress")?.unwrap_or_default(),
-        ambience_progress: get_optional_attr(elem, "ambienceProgress")?.unwrap_or_default(),
+            music: get_optional_attr(elem, "music")?.unwrap_or_default(),
+            alt_music: get_optional_attr(elem, "alt_music")?.unwrap_or_default(),
+            ambience: get_optional_attr(elem, "ambience")?.unwrap_or_default(),
+            music_layers: [
+                get_optional_attr(elem, "musicLayer1")?.unwrap_or_default(),
+                get_optional_attr(elem, "musicLayer2")?.unwrap_or_default(),
+                get_optional_attr(elem, "musicLayer3")?.unwrap_or_default(),
+                get_optional_attr(elem, "musicLayer4")?.unwrap_or_default(),
+                get_optional_attr(elem, "musicLayer5")?.unwrap_or_default(),
+                get_optional_attr(elem, "musicLayer6")?.unwrap_or_default(),
+            ],
+            music_progress: get_optional_attr(elem, "musicProgress")?.unwrap_or_default(),
+            ambience_progress: get_optional_attr(elem, "ambienceProgress")?.unwrap_or_default(),
 
-        fg_tiles: parse_fgbg_tiles(get_child(elem, "solids")?, width / 8, height / 8)?,
-        bg_tiles: parse_fgbg_tiles(get_child(elem, "bg")?, width / 8, height / 8)?,
-        object_tiles: match object_tiles {
-            Some(v) => parse_object_tiles(v, width, height),
-            None => Ok(vec![-1; (width / 8 * height / 8) as usize]),
-        }?,
-        entities: get_child(elem, "entities")?
-            .children()
-            .map(parse_entity_trigger)
-            .collect::<Result<_, CelesteMapError>>()?,
-        triggers: get_child(elem, "triggers")?
-            .children()
-            .map(parse_entity_trigger)
-            .collect::<Result<_, CelesteMapError>>()?,
-        fg_decals: match fg_decals {
-            Some(v) => v
-                .children()
-                .map(parse_decal)
-                .collect::<Result<_, CelesteMapError>>()?,
-            None => vec![],
-        },
-        bg_decals: match bg_decals {
-            Some(v) => v
-                .children()
-                .map(parse_decal)
-                .collect::<Result<_, CelesteMapError>>()?,
-            None => vec![],
-        },
+            fg_tiles: parse_fgbg_tiles(get_child(elem, "solids")?, width / 8, height / 8)?,
+            bg_tiles: parse_fgbg_tiles(get_child(elem, "bg")?, width / 8, height / 8)?,
+            object_tiles: match object_tiles {
+                Some(v) => parse_object_tiles(v, width, height),
+                None => Ok(vec![-1; (width / 8 * height / 8) as usize]),
+            }?,
+            entities: DefaultConverter::from_bin_el(elem, "entities")?,
+            triggers: TryFromBinEl::try_from_bin_el(get_child(elem, "triggers")?)?,
+            fg_decals: fg_decals.map_or(Ok(Vec::new()), TryFromBinEl::try_from_bin_el)?,
+            bg_decals: bg_decals.map_or(Ok(Vec::new()), TryFromBinEl::try_from_bin_el)?,
 
-        cache: default::Default::default(),
-    })
+            cache: default::Default::default(),
+        })
+    }
+
+    fn into_binel(&self) -> BinEl {
+        todo!()
+    }
 }
 
 fn parse_fgbg_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<char>, CelesteMapError> {
@@ -622,79 +660,100 @@ fn parse_object_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<i32>,
     Ok(data)
 }
 
-fn parse_entity_trigger(elem: &BinEl) -> Result<CelesteMapEntity, CelesteMapError> {
-    let basic_attrs: Vec<String> = vec![
-        "id".to_string(),
-        "x".to_string(),
-        "y".to_string(),
-        "width".to_string(),
-        "height".to_string(),
-    ];
-    Ok(CelesteMapEntity {
-        id: get_attr(elem, "id")?,
-        name: elem.name.clone(),
-        x: get_attr(elem, "x")?,
-        y: get_attr(elem, "y")?,
-        width: get_optional_attr(elem, "width")?.unwrap_or(0) as u32,
-        height: get_optional_attr(elem, "height")?.unwrap_or(0) as u32,
-        attributes: elem
-            .attributes
-            .iter()
-            .map(|kv| (kv.0.clone(), kv.1.clone()))
-            .filter(|kv| !basic_attrs.contains(kv.0.borrow()))
-            .collect(),
-        nodes: elem
-            .children()
-            .map(|child| -> Result<(i32, i32), CelesteMapError> {
-                Ok((get_attr(child, "x")?, get_attr(child, "y")?))
+struct DefaultConverter;
+impl<T: TryFromBinEl> TwoWayConverter<T> for DefaultConverter {
+    type BinType = BinEl;
+
+    fn try_parse(elem: &Self::BinType) -> Result<T, CelesteMapError> {
+        TryFromBinEl::try_from_bin_el(elem)
+    }
+
+    fn serialize(val: &T) -> Self::BinType {
+        val.into_binel()
+    }
+}
+macro_rules! attr_converter_impl {
+    ($($types:ty),+) => {
+
+        $(impl TwoWayConverter<$types> for DefaultConverter {
+            type BinType = BinElAttr;
+
+            fn try_parse(elem: &Self::BinType) -> Result<$types, CelesteMapError> {
+                AttrCoercion::try_coerce(elem).ok_or_else(||
+                    CelesteMapError {
+                        kind: CelesteMapErrorType::BadAttrType,
+                        description: format!("Expected {nice}, found {:?}", elem, nice = <$types>::NICE_NAME),
+                    }
+                )
+            }
+
+            fn serialize(val: &$types) -> Self::BinType {
+                val.serialize()
+            }
+        })+
+    }
+}
+attr_converter_impl!(i32, u32, String, f32, bool);
+
+impl TryFromBinEl for MapRectStrict {
+    fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
+        expect_elem!(elem, "rect");
+
+        let x: i32 = get_attr(elem, "x")?;
+        let y: i32 = get_attr(elem, "y")?;
+        let w: i32 = get_attr(elem, "w")?;
+        let h: i32 = get_attr(elem, "h")?;
+
+        Ok(MapRectStrict {
+            origin: Point2D::new(x * 8, y * 8),
+            size: Size2D::new(w * 8, h * 8),
+        })
+    }
+
+    fn into_binel(&self) -> BinEl {
+        todo!()
+    }
+}
+
+struct MapComponentConverter;
+impl<T: Copy + TryFrom<i32> + TryInto<i32>> TwoWayConverter<T> for MapComponentConverter {
+    type BinType = BinElAttr;
+
+    fn try_parse(elem: &Self::BinType) -> Result<T, CelesteMapError> {
+        if let Some(i) = i32::try_coerce(elem) {
+            Ok((i * 8).try_into().ok().unwrap())
+        } else {
+            Err(CelesteMapError {
+                kind: CelesteMapErrorType::BadAttrType,
+                description: format!("Expected {nice}, found {:?}", elem, nice = i32::NICE_NAME),
             })
-            .collect::<Result<_, CelesteMapError>>()?,
-    })
+        }
+    }
+
+    fn serialize(val: &T) -> Self::BinType {
+        BinElAttr::Int((*val).try_into().ok().unwrap() / 8)
+    }
 }
 
-fn parse_decal(elem: &BinEl) -> Result<CelesteMapDecal, CelesteMapError> {
-    Ok(CelesteMapDecal {
-        id: next_uuid(),
-        x: get_attr(elem, "x")?,
-        y: get_attr(elem, "y")?,
-        scale_x: get_attr(elem, "scaleX")?,
-        scale_y: get_attr(elem, "scaleY")?,
-        texture: get_attr::<String>(elem, "texture")?.replace('\\', "/"),
-    })
-}
+// impl TryFromBinEl<CelesteMapError> for Rect {
+//     fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
+//         expect_elem!(elem, "rect");
+//
+//         let x = MapComponentConverter::from_bin_el(elem, "x")?;
+//         let y = MapComponentConverter::from_bin_el(elem, "y")?;
+//         let width = MapComponentConverter::from_bin_el(elem, "w")?;
+//         let height = MapComponentConverter::from_bin_el(elem, "h")?;
+//
+//         Ok(Rect {
+//             x,
+//             y,
+//             width,
+//             height,
+//         })
+//     }
+// }
 
-fn parse_filler_rect(elem: &BinEl) -> Result<MapRectStrict, CelesteMapError> {
-    expect_elem!(elem, "rect");
-
-    let x: i32 = get_attr(elem, "x")?;
-    let y: i32 = get_attr(elem, "y")?;
-    let w: i32 = get_attr(elem, "w")?;
-    let h: i32 = get_attr(elem, "h")?;
-
-    Ok(MapRectStrict {
-        origin: Point2D::new(x * 8, y * 8),
-        size: Size2D::new(w * 8, h * 8),
-    })
-}
-
-fn parse_styleground(elem: &BinEl) -> Result<CelesteMapStyleground, CelesteMapError> {
-    Ok(CelesteMapStyleground {
-        name: elem.name.clone(),
-        texture: get_optional_attr(elem, "texture")?,
-        x: get_optional_attr(elem, "x")?,
-        y: get_optional_attr(elem, "y")?,
-        loop_x: get_optional_attr(elem, "loopx")?,
-        loop_y: get_optional_attr(elem, "loopy")?,
-        scroll_x: get_optional_attr(elem, "scrollx")?,
-        scroll_y: get_optional_attr(elem, "scrolly")?,
-        speed_x: get_optional_attr(elem, "speedx")?,
-        speed_y: get_optional_attr(elem, "speedy")?,
-        color: get_optional_attr(elem, "color")?,
-        blend_mode: get_optional_attr(elem, "blendmode")?,
-    })
-}
-
-fn get_optional_child<'a>(elem: &'a BinEl, name: &str) -> Option<&'a BinEl> {
+pub fn get_optional_child<'a>(elem: &'a BinEl, name: &str) -> Option<&'a BinEl> {
     let children_of_name = elem.get(name);
     if let [ref child] = children_of_name.as_slice() {
         // if there is exactly one child
@@ -706,6 +765,20 @@ fn get_optional_child<'a>(elem: &'a BinEl, name: &str) -> Option<&'a BinEl> {
 
 fn get_child<'a>(elem: &'a BinEl, name: &str) -> Result<&'a BinEl, CelesteMapError> {
     get_optional_child(elem, name).ok_or_else(|| CelesteMapError::missing_child(&elem.name, name))
+}
+
+pub fn get_child_mut<'a>(elem: &'a mut BinEl, name: &str) -> &'a mut BinEl {
+    let children = elem.get_mut(name);
+    if children.is_empty() {
+        children.push(BinEl::new(name));
+    }
+    match children.as_mut_slice() {
+        [ref mut child] => child,
+        [] => {
+            unreachable!()
+        }
+        _ => todo!()
+    }
 }
 
 fn get_optional_attr<T>(elem: &BinEl, name: &str) -> Result<Option<T>, CelesteMapError>
@@ -739,6 +812,7 @@ trait AttrCoercion: Sized {
     // Type name to print out when giving BadAttrType errors
     const NICE_NAME: &'static str;
     fn try_coerce(attr: &BinElAttr) -> Option<Self>;
+    fn serialize(&self) -> BinElAttr;
 }
 
 impl AttrCoercion for i32 {
@@ -750,6 +824,23 @@ impl AttrCoercion for i32 {
             _ => None,
         }
     }
+    fn serialize(&self) -> BinElAttr {
+        BinElAttr::Int(*self)
+    }
+}
+impl AttrCoercion for u32 {
+    const NICE_NAME: &'static str = "integer";
+    fn try_coerce(attr: &BinElAttr) -> Option<Self> {
+        match *attr {
+            BinElAttr::Int(i) => i.try_into().ok(),
+            BinElAttr::Float(f) => Some(f as u32),
+            _ => None,
+        }
+    }
+
+    fn serialize(&self) -> BinElAttr {
+        BinElAttr::Int(*self as i32)
+    }
 }
 impl AttrCoercion for bool {
     const NICE_NAME: &'static str = "bool";
@@ -759,6 +850,10 @@ impl AttrCoercion for bool {
         } else {
             None
         }
+    }
+
+    fn serialize(&self) -> BinElAttr {
+        BinElAttr::Bool(*self)
     }
 }
 impl AttrCoercion for f32 {
@@ -770,6 +865,10 @@ impl AttrCoercion for f32 {
             _ => None,
         }
     }
+
+    fn serialize(&self) -> BinElAttr {
+        BinElAttr::Float(*self)
+    }
 }
 impl AttrCoercion for String {
     const NICE_NAME: &'static str = "text";
@@ -779,5 +878,9 @@ impl AttrCoercion for String {
             BinElAttr::Int(i) => Some(i.to_string()),
             _ => None,
         }
+    }
+
+    fn serialize(&self) -> BinElAttr {
+        BinElAttr::Text(self.clone())
     }
 }

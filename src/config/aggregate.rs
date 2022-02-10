@@ -1,15 +1,17 @@
+use itertools::Itertools;
 use std::collections::HashMap;
 use std::iter;
 use std::rc::Rc;
-use itertools::Itertools;
 use vizia::*;
 
+use crate::assets;
 use crate::atlas_img::MultiAtlas;
 use crate::autotiler::{Autotiler, Tileset};
 use crate::config::entity_config::{EntityConfig, TriggerConfig};
 use crate::config::module::CelesteModule;
-use crate::widgets::palette_widget::{DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable};
-use crate::assets;
+use crate::widgets::palette_widget::{
+    DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
+};
 
 #[derive(Lens)]
 pub struct ModuleAggregate {
@@ -30,7 +32,7 @@ impl Model for ModuleAggregate {}
 impl ModuleAggregate {
     pub fn new(
         modules: &HashMap<String, CelesteModule>,
-        current_module: &str
+        current_module: &str,
     ) -> Self {
         let dep_mods = || {
             modules.get(current_module).unwrap()
@@ -49,16 +51,34 @@ impl ModuleAggregate {
             .flat_map(|(name, module)| module.tilers.iter())
             .map(|(name, tiler)| (name.clone(), tiler.clone()))
             .collect();
-        autotilers.insert("fg".to_owned(), if let Some(fg) = modules.get(current_module).unwrap().tilers.get("fg") {
-            fg.clone()
-        } else {
-            modules.get("Celeste").unwrap().tilers.get("fg").unwrap().clone()
-        });
-        autotilers.insert("bg".to_owned(), if let Some(fg) = modules.get(current_module).unwrap().tilers.get("bg") {
-            fg.clone()
-        } else {
-            modules.get("Celeste").unwrap().tilers.get("bg").unwrap().clone()
-        });
+        autotilers.insert(
+            "fg".to_owned(),
+            if let Some(fg) = modules.get(current_module).unwrap().tilers.get("fg") {
+                fg.clone()
+            } else {
+                modules
+                    .get("Celeste")
+                    .unwrap()
+                    .tilers
+                    .get("fg")
+                    .unwrap()
+                    .clone()
+            },
+        );
+        autotilers.insert(
+            "bg".to_owned(),
+            if let Some(fg) = modules.get(current_module).unwrap().tilers.get("bg") {
+                fg.clone()
+            } else {
+                modules
+                    .get("Celeste")
+                    .unwrap()
+                    .tilers
+                    .get("bg")
+                    .unwrap()
+                    .clone()
+            },
+        );
 
         let entity_config: HashMap<&'static str, Rc<EntityConfig>> = dep_mods()
             .flat_map(|(_, module)| module.entity_config.iter())
@@ -140,32 +160,34 @@ fn extract_tiles_palette(map: &HashMap<char, Tileset>) -> Vec<TileSelectable> {
     vec
 }
 
-fn extract_entities_palette(
-    config: &HashMap<&str, Rc<EntityConfig>>,
-) -> Vec<EntitySelectable> {
+fn extract_entities_palette(config: &HashMap<&str, Rc<EntityConfig>>) -> Vec<EntitySelectable> {
     config
         .iter()
         .flat_map(|(_, c)| {
-            c.templates.iter().enumerate().map(move |(idx, _)| EntitySelectable {
-                entity: assets::intern(&c.entity_name),
-                template: idx,
-            })
+            c.templates
+                .iter()
+                .enumerate()
+                .map(move |(idx, _)| EntitySelectable {
+                    entity: assets::intern(&c.entity_name),
+                    template: idx,
+                })
         })
         .filter(|es| es.entity != "default")
         .sorted_by_key(|es| es.template)
         .collect()
 }
 
-fn extract_triggers_palette(
-    config: &HashMap<&str, Rc<TriggerConfig>>,
-) -> Vec<TriggerSelectable> {
+fn extract_triggers_palette(config: &HashMap<&str, Rc<TriggerConfig>>) -> Vec<TriggerSelectable> {
     config
         .iter()
         .flat_map(|(_, c)| {
-            c.templates.iter().enumerate().map(move |(idx, _)| TriggerSelectable {
-                trigger: assets::intern(&c.trigger_name),
-                template: idx,
-            })
+            c.templates
+                .iter()
+                .enumerate()
+                .map(move |(idx, _)| TriggerSelectable {
+                    trigger: assets::intern(&c.trigger_name),
+                    template: idx,
+                })
         })
         .filter(|es| es.trigger != "default")
         .sorted_by_key(|es| es.template)

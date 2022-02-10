@@ -36,15 +36,17 @@ impl CelesteModule {
         if let Some(fp) = source.get_file(&PathBuf::from("Graphics/ForegroundTiles.xml")) {
             self.tilers.insert(
                 "fg".to_owned(),
-                Rc::new(Tileset::new(fp, "tilesets/")
-                    .expect("Could not parse ForegroundTiles.xml")),
+                Rc::new(
+                    Tileset::new(fp, "tilesets/").expect("Could not parse ForegroundTiles.xml"),
+                ),
             );
         }
         if let Some(fp) = source.get_file(&PathBuf::from("Graphics/BackgroundTiles.xml")) {
             self.tilers.insert(
                 "bg".to_owned(),
-                Rc::new(Tileset::new(fp, "tilesets/")
-                    .expect("Could not parse BackgroundTiles.xml")),
+                Rc::new(
+                    Tileset::new(fp, "tilesets/").expect("Could not parse BackgroundTiles.xml"),
+                ),
             );
         }
         for path in source.list_all_files(&PathBuf::from("Arborio/tilers")) {
@@ -55,8 +57,7 @@ impl CelesteModule {
                         .to_str()
                         .expect("Fatal error: non-utf8 config filepath")
                         .to_owned(),
-                    Rc::new(Tileset::new(fp, "")
-                        .expect("Could not parse custom tileset")),
+                    Rc::new(Tileset::new(fp, "").expect("Could not parse custom tileset")),
                 );
             }
         }
@@ -68,9 +69,9 @@ impl CelesteModule {
                 if config.templates.is_empty() {
                     config.templates.push(config.default_template());
                 }
-                self.entity_config.insert(config.entity_name.clone(), Rc::new(config));
+                self.entity_config
+                    .insert(config.entity_name.clone(), Rc::new(config));
             } else {
-
             }
         }
         for path in source.list_all_files(&PathBuf::from("Arborio/triggers")) {
@@ -80,9 +81,9 @@ impl CelesteModule {
                 if config.templates.is_empty() {
                     config.templates.push(config.default_template());
                 }
-                self.trigger_config.insert(config.trigger_name.clone(), Rc::new(config));
+                self.trigger_config
+                    .insert(config.trigger_name.clone(), Rc::new(config));
             } else {
-
             }
         }
     }
