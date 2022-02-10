@@ -112,6 +112,7 @@ pub struct EntityDraw {
     pub node_draw: Vec<DrawElement>,
 }
 
+#[allow(clippy::large_enum_variant, clippy::enum_variant_names)]
 #[derive(Debug, Serialize, Deserialize)]
 pub enum DrawElement {
     DrawRect {

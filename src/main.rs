@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![allow(clippy::too_many_arguments)]
 
 mod app_state;
 mod assets;

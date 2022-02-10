@@ -586,7 +586,7 @@ impl TryFromBinEl for CelesteMapLevel {
         })
     }
 
-    fn into_binel(&self) -> BinEl {
+    fn to_binel(&self) -> BinEl {
         todo!()
     }
 }
@@ -680,7 +680,7 @@ impl<T: TryFromBinEl> TwoWayConverter<T> for DefaultConverter {
     }
 
     fn serialize(val: &T) -> Self::BinType {
-        val.into_binel()
+        val.to_binel()
     }
 }
 macro_rules! attr_converter_impl {
@@ -721,7 +721,7 @@ impl TryFromBinEl for MapRectStrict {
         })
     }
 
-    fn into_binel(&self) -> BinEl {
+    fn to_binel(&self) -> BinEl {
         todo!()
     }
 }

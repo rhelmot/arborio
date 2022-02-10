@@ -617,6 +617,7 @@ impl AppState {
     pub fn garbage_collect(&mut self) {
         let mut open_maps = HashSet::new();
         for tab in &self.tabs {
+            #[allow(clippy::single_match)] // we will want more arms in the future
             match tab {
                 AppTab::Map(maptab) => {
                     open_maps.insert(maptab.id.clone());

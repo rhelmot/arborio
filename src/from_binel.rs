@@ -26,7 +26,7 @@ pub fn get_nested_child<'a>(elem: &'a BinEl, name: &str) -> Option<&'a BinEl> {
 
 pub trait TryFromBinEl: Sized {
     fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError>;
-    fn into_binel(&self) -> BinEl;
+    fn to_binel(&self) -> BinEl;
 }
 
 impl<T> TryFromBinEl for Vec<T>
@@ -38,10 +38,10 @@ where
             .map(|child| T::try_from_bin_el(child))
             .collect()
     }
-    fn into_binel(&self) -> BinEl {
+    fn to_binel(&self) -> BinEl {
         let mut b = BinEl::new("");
         for child in self {
-            b.insert(child.into_binel())
+            b.insert(child.to_binel())
         }
         b
     }
