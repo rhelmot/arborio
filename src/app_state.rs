@@ -363,7 +363,9 @@ impl AppState {
                     }
                 }
                 self.tabs.push(AppTab::ProjectOverview(module.clone()));
-                cx.emit(AppEvent::SelectTab { idx: self.tabs.len() - 1 });
+                cx.emit(AppEvent::SelectTab {
+                    idx: self.tabs.len() - 1,
+                });
             }
             AppEvent::Load { map } => {
                 let mut swapped: Option<CelesteMap> = None;
