@@ -21,6 +21,7 @@ use std::error::Error;
 use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
+use image::GenericImageView;
 use vizia::*;
 use widgets::editor_widget;
 
@@ -35,7 +36,13 @@ use widgets::palette_widget::PaletteWidget;
 use widgets::tweaker_widget::EntityTweakerWidget;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut app = Application::new(WindowDescription::new().with_title("Arborio"), |cx| {
+    let icon_img = image::load_from_memory(include_bytes!("../img/icon.png")).unwrap();
+    let (width, height) = (icon_img.width(), icon_img.height());
+    let mut app = Application::new(
+        WindowDescription::new()
+            .with_title("Arborio")
+            .with_icon(icon_img.into_bytes(), width, height),
+    |cx| {
         app_state::AppState::new().build(cx);
         if let Some(path) = &cx.data::<AppState>().unwrap().config.celeste_root {
             let path = path.clone();
