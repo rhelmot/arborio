@@ -16,12 +16,12 @@ mod widgets;
 
 use dialog::{DialogBox, FileSelectionMode};
 use enum_iterator::IntoEnumIterator;
+use image::GenericImageView;
 use std::cell::RefCell;
 use std::error::Error;
 use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
-use image::GenericImageView;
 use vizia::*;
 use widgets::editor_widget;
 
@@ -39,42 +39,45 @@ fn main() -> Result<(), Box<dyn Error>> {
     let icon_img = image::load_from_memory(include_bytes!("../img/icon.png")).unwrap();
     let (width, height) = (icon_img.width(), icon_img.height());
     let mut app = Application::new(
-        WindowDescription::new()
-            .with_title("Arborio")
-            .with_icon(icon_img.into_bytes(), width, height),
-    |cx| {
-        app_state::AppState::new().build(cx);
-        if let Some(path) = &cx.data::<AppState>().unwrap().config.celeste_root {
-            let path = path.clone();
-            cx.emit(AppEvent::SetConfigPath { path });
-        }
-        //cx.add_theme(include_str!("style.css"));
-        cx.add_stylesheet("src/style.css");
+        WindowDescription::new().with_title("Arborio").with_icon(
+            icon_img.into_bytes(),
+            width,
+            height,
+        ),
+        |cx| {
+            app_state::AppState::new().build(cx);
+            if let Some(path) = &cx.data::<AppState>().unwrap().config.celeste_root {
+                let path = path.clone();
+                cx.emit(AppEvent::SetConfigPath { path });
+            }
+            //cx.add_theme(include_str!("style.css"));
+            cx.add_stylesheet("src/style.css");
 
-        VStack::new(cx, move |cx| {
-            HStack::new(cx, move |cx| {
-                // menu bar
+            VStack::new(cx, move |cx| {
+                HStack::new(cx, move |cx| {
+                    // menu bar
+                });
+                build_tab_bar(cx);
+                build_tabs(cx);
+
+                Binding::new(cx, AppState::progress, move |cx, progress| {
+                    let progress = progress.get(cx);
+                    if progress.progress != 100 {
+                        let status = format!("{}% - {}", progress.progress, progress.status);
+                        let progress = progress.progress;
+                        ZStack::new(cx, move |cx| {
+                            Label::new(cx, &status)
+                                .width(Units::Percentage(100.0))
+                                .class("progress_bar_bg");
+                            Label::new(cx, &status)
+                                .width(Units::Percentage(progress as f32))
+                                .class("progress_bar");
+                        });
+                    }
+                })
             });
-            build_tab_bar(cx);
-            build_tabs(cx);
-
-            Binding::new(cx, AppState::progress, move |cx, progress| {
-                let progress = progress.get(cx);
-                if progress.progress != 100 {
-                    let status = format!("{}% - {}", progress.progress, progress.status);
-                    let progress = progress.progress;
-                    ZStack::new(cx, move |cx| {
-                        Label::new(cx, &status)
-                            .width(Units::Percentage(100.0))
-                            .class("progress_bar_bg");
-                        Label::new(cx, &status)
-                            .width(Units::Percentage(progress as f32))
-                            .class("progress_bar");
-                    });
-                }
-            })
-        });
-    });
+        },
+    );
 
     app.run();
     Ok(())
