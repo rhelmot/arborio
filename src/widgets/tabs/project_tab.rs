@@ -1,4 +1,4 @@
-use crate::app_state::{AppEvent, AppState};
+use crate::app_state::{AppEvent, AppState, AppTab};
 use crate::celeste_mod::walker::{open_module, ConfigSourceTrait};
 use crate::map_struct::CelesteMap;
 use crate::{assets, map_struct, MapID};
@@ -24,6 +24,12 @@ pub fn build_project_tab(cx: &mut Context, project: &str) {
         .on_press(move |cx| {
             let project = project.clone();
             let map = map.clone();
+            for (idx, tab) in cx.data::<AppState>().unwrap().tabs.iter().enumerate() {
+                if matches!(tab, AppTab::Map(maptab) if maptab.id.sid == map) {
+                    cx.emit(AppEvent::SelectTab { idx });
+                    return;
+                }
+            }
             if let Some(module_root) = module_root.clone() {
                 cx.spawn(move |cx| {
                     let project = project.clone();

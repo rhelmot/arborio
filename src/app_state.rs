@@ -356,14 +356,14 @@ impl AppState {
                 //}
             }
             AppEvent::OpenModuleOverview { module } => {
-                if !self
-                    .tabs
-                    .iter()
-                    .any(|tab| matches!(tab, AppTab::ProjectOverview(module)))
-                {
-                    self.current_tab = self.tabs.len();
-                    self.tabs.push(AppTab::ProjectOverview(module.clone()));
+                for (i, tab) in self.tabs.iter().enumerate() {
+                    if matches!(tab, AppTab::ProjectOverview(m) if m == module) {
+                        cx.emit(AppEvent::SelectTab { idx: i });
+                        return;
+                    }
                 }
+                self.tabs.push(AppTab::ProjectOverview(module.clone()));
+                cx.emit(AppEvent::SelectTab { idx: self.tabs.len() - 1 });
             }
             AppEvent::Load { map } => {
                 let mut swapped: Option<CelesteMap> = None;
