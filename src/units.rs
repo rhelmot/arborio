@@ -1,4 +1,5 @@
-use euclid::num::Zero;
+#![allow(unused)]
+
 use euclid::*;
 pub use euclid::{Point2D, Rect, Size2D, UnknownUnit, Vector2D};
 
@@ -76,7 +77,6 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         let cur = self.next_pt;
-        let mut next = cur;
         if let Some(mut next) = cur {
             next.x = next.x + self.step;
             if next.x >= self.rect.max_x() {

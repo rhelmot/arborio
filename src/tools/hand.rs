@@ -1,7 +1,6 @@
 use crate::app_state::{AppEvent, AppState};
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
-use std::cell::RefCell;
 
 use vizia::*;
 

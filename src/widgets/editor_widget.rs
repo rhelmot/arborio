@@ -1,25 +1,21 @@
 use euclid::{Angle, Point2D, Rect, Size2D, Transform2D, UnknownUnit, Vector2D};
 use femtovg::{Color, ImageFlags, Paint, Path, PixelFormat, RenderTarget};
 use lazy_static::lazy_static;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
-use std::rc::Rc;
 use std::time;
 use vizia::*;
 
 use crate::app_state::{AppSelection, AppState};
-use crate::assets;
 use crate::autotiler::{TextureTile, TileReference};
 use crate::celeste_mod::entity_config::DrawElement;
 use crate::celeste_mod::entity_expression::{Const, Number};
-use crate::map_struct;
 use crate::map_struct::{CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, FieldEntry};
 use crate::tools::{Tool, TOOLS};
 use crate::units::*;
 
 lazy_static! {
-    static ref PERF_MONITOR: bool = { env::var("ARBORIO_PERF_MONITOR").is_ok() };
+    static ref PERF_MONITOR: bool = env::var("ARBORIO_PERF_MONITOR").is_ok();
 }
 
 const BACKDROP_COLOR: Color = Color {
@@ -46,24 +42,6 @@ const ROOM_DESELECTED_COLOR: Color = Color {
     b: 0.00,
     a: 0.30,
 };
-const ROOM_FG_COLOR: Color = Color {
-    r: 0.21,
-    g: 0.38,
-    b: 0.88,
-    a: 1.00,
-};
-const ROOM_BG_COLOR: Color = Color {
-    r: 0.08,
-    g: 0.08,
-    b: 0.25,
-    a: 1.00,
-};
-const ROOM_ENTITY_COLOR: Color = Color {
-    r: 1.00,
-    g: 0.00,
-    b: 0.00,
-    a: 1.00,
-};
 
 pub struct EditorWidget {}
 
@@ -89,7 +67,7 @@ impl View for EditorWidget {
             let app = cx
                 .data::<AppState>()
                 .expect("EditorWidget must have an AppState in its ancestry");
-            let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[app.current_tool];
+            let tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[app.current_tool];
             let events = tool.event(window_event, app, cx);
             let cursor = tool.cursor(cx, app);
             for event in events {
@@ -224,7 +202,7 @@ impl View for EditorWidget {
             canvas.restore();
         }
 
-        let mut tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[app.current_tool];
+        let tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[app.current_tool];
         tool.draw(canvas, app, cx);
     }
 }
@@ -271,7 +249,7 @@ fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: b
         )
     };
 
-    let tstride = room.bounds.width() / 8;
+    // TODO use point_iter
     for ty in 0..room.bounds.height() / 8 {
         for tx in 0..room.bounds.width() / 8 {
             let pt = TilePoint::new(tx, ty);
@@ -555,7 +533,7 @@ fn draw_entity_directive(
             texture,
             bounds,
             slice,
-            scale,
+            scale: _, // TODO: do we want to allow scale?
             color,
             tiler,
         } => {

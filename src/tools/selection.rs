@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 use vizia::*;
 
 use crate::app_state::{AppEvent, AppSelection, AppState, Layer};
-use crate::assets;
 use crate::map_struct::{CelesteMapLevel, Node};
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
@@ -69,13 +68,6 @@ impl ResizeSide {
 
     fn is_right(&self) -> bool {
         matches!(self, Self::Right | Self::TopRight | Self::BottomRight)
-    }
-    fn is_top_bottom(&self) -> bool {
-        self.is_top() || self.is_bottom()
-    }
-
-    fn is_left_right(&self) -> bool {
-        self.is_left() | self.is_right()
     }
 
     fn from_sides(at_top: bool, at_bottom: bool, at_left: bool, at_right: bool) -> Self {
@@ -227,7 +219,7 @@ impl Tool for SelectionTool {
 
                 events
             }
-            WindowEvent::KeyDown(code, key) if self.status == SelectionStatus::None => match code {
+            WindowEvent::KeyDown(code, _) if self.status == SelectionStatus::None => match code {
                 Code::ArrowDown => self.nudge(app, room, RoomVector::new(0, 8)),
                 Code::ArrowUp => self.nudge(app, room, RoomVector::new(0, -8)),
                 Code::ArrowRight => self.nudge(app, room, RoomVector::new(8, 0)),
@@ -400,7 +392,7 @@ impl Tool for SelectionTool {
             .cast();
         let map_pos = point_lose_precision(&map_pos_precise);
         let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
-        let tile_pos = point_room_to_tile(&room_pos);
+        // let tile_pos = point_room_to_tile(&room_pos);
         // let room_pos_snapped = point_tile_to_room(&tile_pos);
         // let room_pos = if state.snap { room_pos_snapped } else { room_pos };
 
@@ -578,7 +570,7 @@ impl SelectionTool {
                 }
             }
         }
-        if let (Layer::FgTiles | Layer::All) = layer {
+        if let Layer::FgTiles | Layer::All = layer {
             if let Some(room_rect_cropped) = room_rect_cropped {
                 for tile_pos_unaligned in rect_point_iter(room_rect_cropped, 8) {
                     let tile_pos = point_room_to_tile(&tile_pos_unaligned);
@@ -627,7 +619,7 @@ impl SelectionTool {
                 }
             }
         }
-        if (layer == Layer::BgTiles || layer == Layer::All) {
+        if layer == Layer::BgTiles || layer == Layer::All {
             if let Some(room_rect_cropped) = room_rect_cropped {
                 for tile_pos_unaligned in rect_point_iter(room_rect_cropped, 8) {
                     let tile_pos = point_room_to_tile(&tile_pos_unaligned);
@@ -918,7 +910,7 @@ impl SelectionTool {
 
             let new_origin = old_origin.min(pt);
             let new_supnum = old_supnum.max(pt + TileVector::new(1, 1));
-            let new_size = (new_supnum - new_origin);
+            let new_size = new_supnum - new_origin;
 
             let new_dat = if new_size != old_size {
                 let mut new_dat = TileGrid {
@@ -934,7 +926,6 @@ impl SelectionTool {
                         ..(dest_start_offset + line * new_size.x + old_size.x) as usize]
                         .clone_from_slice(src);
                 }
-                let movement = pt - new_origin;
                 if fg {
                     self.fg_float = Some((new_origin, new_dat));
                     &mut self.fg_float.as_mut().unwrap().1
@@ -954,7 +945,6 @@ impl SelectionTool {
     #[must_use]
     fn float_tiles(&mut self, app: &AppState, room: &CelesteMapLevel) -> Vec<AppEvent> {
         // TODO: do this in an efficient order to avoid frequent reallocations of the float
-        let mut i = 0_usize;
         let mut events = vec![];
         for sel in self.current_selection.iter().cloned().collect::<Vec<_>>() {
             match sel {

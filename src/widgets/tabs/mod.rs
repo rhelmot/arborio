@@ -12,23 +12,20 @@ pub fn build_tabs(cx: &mut Context) {
         cx,
         AppState::tabs.index_with_lens(AppState::current_tab),
         move |cx, current_tab| {
-            VStack::new(cx, move |cx| {
-                match current_tab.get(cx) {
-                    AppTab::CelesteOverview => {
-                        installation_tab::build_installation_tab(cx);
-                    }
-                    AppTab::ProjectOverview(project) => {
-                        let project = project.clone();
-                        project_tab::build_project_tab(cx, &project)
-                    }
-                    AppTab::Map(maptab) => {
-                        let id = maptab.id.clone(); // ew
-                        editor_tab::build_editor(cx, &id);
-                    }
+            VStack::new(cx, move |cx| match current_tab.get(cx) {
+                AppTab::CelesteOverview => {
+                    installation_tab::build_installation_tab(cx);
+                }
+                AppTab::ProjectOverview(project) => {
+                    let project = project.clone();
+                    project_tab::build_project_tab(cx, &project)
+                }
+                AppTab::Map(_) => {
+                    editor_tab::build_editor(cx);
                 }
             });
         },
-        move |cx| {},
+        move |_| {},
     );
 }
 

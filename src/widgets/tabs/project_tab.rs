@@ -1,11 +1,10 @@
 use crate::app_state::{AppEvent, AppState, AppTab};
 use crate::celeste_mod::walker::{open_module, ConfigSourceTrait};
 use crate::map_struct::CelesteMap;
-use crate::{assets, map_struct, MapID};
+use crate::{map_struct, MapID};
 use dialog::DialogBox;
 use std::cell::RefCell;
-use std::fs::File;
-use std::io::{Read, Seek};
+use std::io::Read;
 use std::path::PathBuf;
 use vizia::*;
 
@@ -38,7 +37,8 @@ pub fn build_project_tab(cx: &mut Context, project: &str) {
                     if let Some(map_struct) = load_map(module_root.clone(), project, map) {
                         cx.emit(AppEvent::Load {
                             map: RefCell::new(Some(Box::new(map_struct))),
-                        });
+                        })
+                        .unwrap();
                     }
                 })
             }
@@ -50,25 +50,31 @@ fn load_map(module_root: PathBuf, project: String, map: String) -> Option<Celest
     let mut config = if let Some(config) = open_module(&module_root) {
         config
     } else {
-        dialog::Message::new("Module has disappeared!").show();
+        dialog::Message::new("Module has disappeared!")
+            .show()
+            .unwrap();
         return None;
     };
     let mut reader =
         if let Some(reader) = config.get_file(&PathBuf::from("Maps").join(map.clone() + ".bin")) {
             reader
         } else {
-            dialog::Message::new("Map file has disappeared!").show();
+            dialog::Message::new("Map file has disappeared!")
+                .show()
+                .unwrap();
             return None;
         };
     let mut file = vec![];
     if let Err(e) = reader.read_to_end(&mut file) {
-        dialog::Message::new(format!("Could not read file: {}", e)).show();
+        dialog::Message::new(format!("Could not read file: {}", e))
+            .show()
+            .unwrap();
         return None;
     };
     let (_, binfile) = match celeste::binel::parser::take_file(file.as_slice()) {
         Ok(binel) => binel,
         _ => {
-            dialog::Message::new("Not a Celeste map").show();
+            dialog::Message::new("Not a Celeste map").show().unwrap();
             return None;
         }
     };
@@ -81,7 +87,9 @@ fn load_map(module_root: PathBuf, project: String, map: String) -> Option<Celest
     ) {
         Ok(map) => map,
         Err(e) => {
-            dialog::Message::new(format!("Data validation error: {}", e)).show();
+            dialog::Message::new(format!("Data validation error: {}", e))
+                .show()
+                .unwrap();
             return None;
         }
     };

@@ -1,6 +1,8 @@
+#![allow(unused)]
+
 use std::collections::HashMap;
 
-use crate::map_struct::{get_child_mut, get_optional_child, CelesteMap, CelesteMapError};
+use crate::map_struct::{get_child_mut, get_optional_child, CelesteMapError};
 pub use arborio_derive::TryFromBinEl;
 use celeste::binel::{BinEl, BinElAttr};
 use itertools::Itertools;
@@ -76,7 +78,7 @@ impl GetAttrOrChild for BinEl {
     }
 
     fn apply_attr_or_child(elem: &mut BinEl, key: &str, value: Self) {
-        std::mem::replace(elem.get_mut(key), vec![value]);
+        *elem.get_mut(key) = vec![value];
     }
 }
 

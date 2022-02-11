@@ -1,8 +1,6 @@
 use std::collections::HashMap;
-use std::fs::File;
 use std::path::Path;
 use walkdir::WalkDir;
-use zip::ZipArchive;
 
 use crate::celeste_mod::everest_yaml::{arborio_module_yaml, celeste_module_yaml, EverestYaml};
 use crate::celeste_mod::module::CelesteModule;
@@ -43,14 +41,14 @@ where
     progress((total - 2.0) / total, "Loading Celeste".to_owned());
     modules.insert("Celeste".to_owned(), {
         let path = root.join("Content");
-        let mut source = FolderSource::new(&path).unwrap();
+        let source = FolderSource::new(&path).unwrap();
         let mut r = CelesteModule::new(Some(path), celeste_module_yaml());
         r.load(&mut source.into());
         r
     });
     progress((total - 1.0) / total, "Loading built-in config".to_owned());
     modules.insert("Arborio".to_owned(), {
-        let mut source = EmbeddedSource();
+        let source = EmbeddedSource();
         let mut r = CelesteModule::new(None, arborio_module_yaml());
         r.load(&mut source.into());
         r
@@ -60,7 +58,7 @@ where
 pub fn load_into(mut source: ConfigSource, modules: &mut HashMap<String, CelesteModule>) {
     if let Some(mut reader) = source.get_file(Path::new("everest.yaml")) {
         let mut data = String::new();
-        reader.read_to_string(&mut data);
+        reader.read_to_string(&mut data).unwrap();
         let everest_yaml: Vec<EverestYaml> =
             match serde_yaml::from_str(data.trim_start_matches('\u{FEFF}')) {
                 Ok(e) => e,

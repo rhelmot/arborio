@@ -19,7 +19,7 @@ serde_yaml = "^0.8"
 nom = "^6.2"
 include_dir = "^0.6"
 #vizia = { path = "../../rust/VIZIA" }
-vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "034f480dc9a998164185099a662438c78be7fbc0" }
+vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "7de3e28403be790df852ede5efcb49bd4eff865d" }
 femtovg = {git = "https://github.com/rhelmot/femtovg", rev = "4caba90e08e8eacf66dce2125393334a9cee22d1", default-features = false, features = ["image-loading"] } # not really a dependency, since vizia depends on it
 image = { version = "0.23.14", default-features = false, features = ["png"] } # not really a dependency either
 imgref = "^1.9"  # not really a dependency either

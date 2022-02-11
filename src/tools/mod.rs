@@ -20,9 +20,9 @@ pub trait Tool: Send {
 
     fn switch_on(&mut self) {}
 
-    fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &Context) {}
+    fn draw(&mut self, _canvas: &mut Canvas, _state: &AppState, _cx: &Context) {}
 
-    fn cursor(&self, cx: &Context, state: &AppState) -> CursorIcon {
+    fn cursor(&self, _cx: &Context, _state: &AppState) -> CursorIcon {
         CursorIcon::Default
     }
 }
@@ -42,7 +42,7 @@ const SCROLL_SENSITIVITY: f32 = 35.0;
 pub fn generic_nav(event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent> {
     let screen_pt = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
     match event {
-        WindowEvent::MouseScroll(x, y) if cx.modifiers.contains(Modifiers::CTRL) => {
+        WindowEvent::MouseScroll(_, y) if cx.modifiers.contains(Modifiers::CTRL) => {
             vec![AppEvent::Zoom {
                 tab: state.current_tab,
                 delta: y.exp(),

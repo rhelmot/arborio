@@ -1,8 +1,6 @@
-use include_dir::{include_dir, Dir, File};
-use std::io;
+use include_dir::{include_dir, Dir};
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
-use std::slice::Iter;
 
 use crate::celeste_mod::walker::ConfigSourceTrait;
 

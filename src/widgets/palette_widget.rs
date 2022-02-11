@@ -1,15 +1,13 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 use std::marker::PhantomData;
-use std::ops::Deref;
-use std::rc::Rc;
 use std::sync::Arc;
 use vizia::*;
 
-use crate::celeste_mod::entity_config::{EntityConfig, EntityTemplate, TriggerConfig};
+use crate::app_state::AppState;
+use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
 use crate::map_struct::{CelesteMapEntity, Node};
 use crate::units::*;
 use crate::widgets::editor_widget;
-use crate::{assets, AppState};
 
 pub struct PaletteWidget<T, L> {
     lens: L,

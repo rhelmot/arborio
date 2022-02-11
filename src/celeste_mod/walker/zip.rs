@@ -1,11 +1,7 @@
-use std::cell::RefCell;
-
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::{Cursor, Error, Read, Seek};
+use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
-use zip::read::ZipFile;
 use zip::ZipArchive;
 
 use crate::celeste_mod::walker::ConfigSourceTrait;

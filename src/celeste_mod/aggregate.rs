@@ -1,7 +1,6 @@
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::iter;
-use std::rc::Rc;
 use std::sync::Arc;
 use vizia::*;
 
@@ -66,7 +65,7 @@ impl ModuleAggregate {
             multi_atlas
         };
         let mut autotilers: HashMap<String, Arc<Autotiler>> = dep_mods()
-            .flat_map(|(name, module)| module.tilers.iter())
+            .flat_map(|(_, module)| module.tilers.iter())
             .map(|(name, tiler)| (name.clone(), tiler.clone()))
             .collect();
         autotilers.insert(

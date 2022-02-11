@@ -1,11 +1,9 @@
 use dialog::DialogBox;
-use itertools::Itertools;
-use std::io::ErrorKind;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use vizia::*;
 
 use crate::app_state::{AppConfig, AppState};
-use crate::celeste_mod::module::{CelesteModule, CelesteModuleKind};
+use crate::celeste_mod::module::CelesteModuleKind;
 use crate::lenses::{AutoSaverLens, UnwrapLens};
 use crate::AppEvent;
 

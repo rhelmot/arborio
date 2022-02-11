@@ -2,13 +2,11 @@ use enum_iterator::IntoEnumIterator;
 use vizia::*;
 
 use crate::app_state::AppState;
-use crate::editor_widget::EditorWidget;
 use crate::lenses::{CurrentMapLens, CurrentPaletteLens};
-use crate::map_struct::{CelesteMap, MapID};
-use crate::units::*;
+use crate::widgets::editor_widget::EditorWidget;
 use crate::{AppEvent, EntityTweakerWidget, Layer, ModuleAggregate, PaletteWidget, TOOLS};
 
-pub fn build_editor(cx: &mut Context, id: &MapID) {
+pub fn build_editor(cx: &mut Context) {
     HStack::new(cx, |cx| {
         VStack::new(cx, |cx| {
             build_tool_picker(cx);

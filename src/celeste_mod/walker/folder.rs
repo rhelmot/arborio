@@ -1,8 +1,7 @@
 use std::fs::File;
-use std::io;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use walkdir::{DirEntry, WalkDir};
+use walkdir::WalkDir;
 
 use crate::celeste_mod::walker::ConfigSourceTrait;
 

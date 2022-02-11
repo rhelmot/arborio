@@ -1,12 +1,8 @@
 use inflector::Inflector;
 use std::collections::HashMap;
-use std::fs;
 use std::io;
-use std::path::Path;
 
-use super::atlas_img;
 use crate::assets;
-use crate::map_struct::CelesteMapLevel;
 use crate::units::*;
 
 #[derive(Copy, Clone, Debug)]
@@ -62,6 +58,7 @@ struct SerSet {
     #[serde(default)]
     pub tiles: String,
     #[serde(default)]
+    #[allow(unused)] // TODO
     pub sprites: String,
 }
 

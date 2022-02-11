@@ -1,7 +1,6 @@
-use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::atlas_img::Atlas;

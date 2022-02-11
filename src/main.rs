@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![allow(clippy::too_many_arguments)]
 
 mod app_state;
@@ -15,21 +14,12 @@ mod tools;
 mod units;
 mod widgets;
 
-use dialog::{DialogBox, FileSelectionMode};
-use enum_iterator::IntoEnumIterator;
 use image::GenericImageView;
-use std::cell::RefCell;
 use std::error::Error;
-use std::fs;
-use std::io::Read;
-use std::path::PathBuf;
 use vizia::*;
-use widgets::editor_widget;
 
 use crate::app_state::{AppEvent, AppState, Layer};
-use crate::assets::next_uuid;
 use crate::celeste_mod::aggregate::ModuleAggregate;
-use crate::celeste_mod::walker::ConfigSource;
 use crate::map_struct::MapID;
 use crate::tools::TOOLS;
 use crate::widgets::tabs::{build_tab_bar, build_tabs};
@@ -39,7 +29,7 @@ use widgets::tweaker_widget::EntityTweakerWidget;
 fn main() -> Result<(), Box<dyn Error>> {
     let icon_img = image::load_from_memory(include_bytes!("../img/icon.png")).unwrap();
     let (width, height) = (icon_img.width(), icon_img.height());
-    let mut app = Application::new(
+    let app = Application::new(
         WindowDescription::new().with_title("Arborio").with_icon(
             icon_img.into_bytes(),
             width,
@@ -52,10 +42,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                 cx.emit(AppEvent::SetConfigPath { path });
             }
             //cx.add_theme(include_str!("style.css"));
-            cx.add_stylesheet("src/style.css");
+            cx.add_stylesheet("src/style.css")
+                .expect("Could not load stylesheet. Are you running me in the right directory?");
 
             VStack::new(cx, move |cx| {
-                HStack::new(cx, move |cx| {
+                HStack::new(cx, move |_| {
                     // menu bar
                 });
                 build_tab_bar(cx);

@@ -1,7 +1,6 @@
 use vizia::*;
 
 use crate::app_state::{AppEvent, AppState, Layer};
-use crate::assets;
 use crate::celeste_mod::entity_config::PencilBehavior;
 use crate::map_struct::{CelesteMapDecal, CelesteMapEntity, Node};
 use crate::tools::{generic_nav, Tool};
@@ -26,7 +25,7 @@ impl Tool for PencilTool {
     }
 
     fn event(&mut self, event: &WindowEvent, app: &AppState, cx: &Context) -> Vec<AppEvent> {
-        let mut events = generic_nav(event, app, cx);
+        let events = generic_nav(event, app, cx);
         if !events.is_empty() {
             return events;
         }
@@ -34,7 +33,7 @@ impl Tool for PencilTool {
         let room = if let Some(room) = app.current_room_ref() {
             room
         } else {
-            return events;
+            return vec![];
         };
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos = app
@@ -87,7 +86,7 @@ impl Tool for PencilTool {
         let room_pos = if app.snap { room_pos_snapped } else { room_pos };
 
         match app.current_layer {
-            Layer::FgTiles | Layer::BgTiles => {
+            Layer::FgTiles | Layer::BgTiles | Layer::ObjectTiles => {
                 let mut path = femtovg::Path::new();
                 path.rect(
                     room_pos_snapped.x as f32,

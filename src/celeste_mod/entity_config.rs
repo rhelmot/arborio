@@ -253,13 +253,6 @@ impl Color {
 }
 
 impl Vec2 {
-    pub fn mk_const(con_x: i32, con_y: i32) -> Vec2 {
-        Vec2 {
-            x: Expression::mk_const(con_x),
-            y: Expression::mk_const(con_y),
-        }
-    }
-
     pub fn evaluate_int(&self, env: &HashMap<&str, Const>) -> Result<RoomVector, String> {
         let x = self.x.evaluate(env)?.as_number()?.to_int();
         let y = self.y.evaluate(env)?.as_number()?.to_int();

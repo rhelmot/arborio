@@ -1,6 +1,7 @@
+#![allow(unused_parens)] // TODO: ???
+
 use celeste::binel::*;
 use euclid::{Point2D, Size2D};
-use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
@@ -8,13 +9,10 @@ use std::default;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
-use std::sync::Mutex;
 use vizia::Data;
 
 use crate::assets::next_uuid;
-use crate::from_binel::{
-    bin_el_fuzzy_equal, get_nested_child, GetAttrOrChild, TryFromBinEl, TwoWayConverter,
-};
+use crate::from_binel::{GetAttrOrChild, TryFromBinEl, TwoWayConverter};
 use crate::units::*;
 
 #[derive(Eq, PartialEq, Hash, Debug, Clone, Default)]

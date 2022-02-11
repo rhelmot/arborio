@@ -1,12 +1,8 @@
 use celeste::binel::BinElAttr;
-use std::fmt::{Debug, Formatter};
 use vizia::*;
 
 use crate::app_state::{AppEvent, AppSelection, AppState, AppTab};
-use crate::assets;
 use crate::lenses::CurrentSelectedEntityLens;
-use crate::map_struct::{CelesteMap, CelesteMapEntity};
-use crate::units::*;
 
 pub struct EntityTweakerWidget {}
 
@@ -24,7 +20,7 @@ impl EntityTweakerWidget {
                         let mut attrs = entity
                             .attributes
                             .iter()
-                            .map(|(a, b)| Some(a.clone()))
+                            .map(|(a, _)| Some(a.clone()))
                             .collect::<Vec<_>>();
                         Label::new(cx, &msg);
 

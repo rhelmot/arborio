@@ -1,11 +1,8 @@
-use dialog::DialogBox;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use std::marker::PhantomData;
 use std::ops::DerefMut;
 use std::path::PathBuf;
-use std::rc::{Rc, Weak};
 use std::sync::Mutex;
 use std::time;
 use vizia::*;
@@ -14,15 +11,9 @@ use crate::assets;
 use crate::auto_saver::AutoSaver;
 use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::celeste_mod::discovery;
-use crate::celeste_mod::everest_yaml::{arborio_module_yaml, celeste_module_yaml};
 use crate::celeste_mod::module::CelesteModule;
-use crate::celeste_mod::walker::{EmbeddedSource, FolderSource};
-use crate::map_struct;
 use crate::map_struct::{CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, MapID};
-use crate::tools;
-use crate::tools::Tool;
 use crate::units::*;
-use crate::widgets::editor_widget;
 use crate::widgets::palette_widget::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
 };
@@ -276,7 +267,7 @@ impl AppState {
         {
             cfg.celeste_root = None;
         }
-        let mut cfg = AutoSaver::new(cfg, |cfg: &mut AppConfig| {
+        let cfg = AutoSaver::new(cfg, |cfg: &mut AppConfig| {
             confy::store("arborio", &cfg)
                 .unwrap_or_else(|e| panic!("Failed to save celeste_mod file: {}", e));
         });
@@ -367,7 +358,6 @@ impl AppState {
                 });
             }
             AppEvent::Load { map } => {
-                let mut swapped: Option<CelesteMap> = None;
                 if let Some(map) = map.borrow_mut().take() {
                     if !self.loaded_maps.contains_key(&map.id) {
                         self.current_tab = self.tabs.len();
@@ -506,7 +496,7 @@ impl AppState {
                     .get_mut(map)
                     .and_then(|map| map.levels.get_mut(*room))
                 {
-                    if let Some(mut e) = room.entity_mut(entity.id, *trigger) {
+                    if let Some(e) = room.entity_mut(entity.id, *trigger) {
                         *e = entity.clone();
                         room.cache.borrow_mut().render_cache_valid = false;
                         self.loaded_maps.get_mut(map).unwrap().dirty = true;
@@ -527,7 +517,7 @@ impl AppState {
                     // tfw drain_filter is unstable
                     let mut i = 0;
                     let mut any = false;
-                    let mut entities = if *trigger {
+                    let entities = if *trigger {
                         &mut room.triggers
                     } else {
                         &mut room.entities
@@ -646,7 +636,7 @@ pub fn apply_tiles(
     fg: bool,
 ) {
     let mut dirty = false;
-    if let Some(mut room) = map.levels.get_mut(room) {
+    if let Some(room) = map.levels.get_mut(room) {
         let mut line_start = *offset;
         let mut cur = line_start;
         for (idx, tile) in data.tiles.iter().enumerate() {
@@ -681,17 +671,20 @@ pub fn trigger_module_load(cx: &mut Context, path: PathBuf) {
                     progress: (p * 100.0) as i32,
                     status: s,
                 },
-            });
+            })
+            .unwrap();
         });
         cx.emit(AppEvent::Progress {
             progress: Progress {
                 progress: 100,
                 status: "".to_owned(),
             },
-        });
+        })
+        .unwrap();
         cx.emit(AppEvent::SetModules {
             modules: Mutex::new(result),
-        });
+        })
+        .unwrap();
     })
 }
 

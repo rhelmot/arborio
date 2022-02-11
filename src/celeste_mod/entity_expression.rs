@@ -1,9 +1,8 @@
 use celeste::binel::BinElAttr;
 use nom::{
     alt, character::complete::multispace0 as ws, complete, delimited, do_parse, eof, error::Error,
-    error::ErrorKind, fold_many0, is_a, is_not, many0, map_res, named, number::complete::double,
-    one_of, opt, pair, preceded, recognize, separated_list0, separated_pair, tag, terminated,
-    tuple, IResult,
+    error::ErrorKind, fold_many0, is_not, many0, map_res, named, number::complete::double, one_of,
+    opt, pair, recognize, separated_list0, separated_pair, tag, terminated, tuple,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
@@ -173,11 +172,11 @@ named!(string_lit_squote<&str, &str>,
 );
 
 named!(string_lit_empty_dquote<&str, &str>,
-    map_res!(tag!("\"\""), |s: &str| -> Result<&str, Error<&str>> { Ok("") })
+    map_res!(tag!("\"\""), |_: &str| -> Result<&str, Error<&str>> { Ok("") })
 );
 
 named!(string_lit_empty_squote<&str, &str>,
-    map_res!(tag!("''"), |s: &str| -> Result<&str, Error<&str>> { Ok("") })
+    map_res!(tag!("''"), |_: &str| -> Result<&str, Error<&str>> { Ok("") })
 );
 
 named!(string_lit<&str, &str>,
