@@ -110,6 +110,7 @@ impl Tool for PencilTool {
                     &TileGrid::empty(),
                     false,
                     false,
+                    &room.object_tiles,
                 );
             }
             Layer::Triggers => {
@@ -122,6 +123,7 @@ impl Tool for PencilTool {
                     &TileGrid::empty(),
                     false,
                     true,
+                    &TileGrid::empty(),
                 );
             }
             Layer::FgDecals | Layer::BgDecals => {

@@ -3,7 +3,6 @@ use vizia::*;
 
 use crate::app_state::{AppEvent, AppSelection, AppState, Layer};
 use crate::assets;
-use crate::autotiler::AutoTiler;
 use crate::map_struct::{CelesteMapLevel, Node};
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;

@@ -13,7 +13,6 @@ use crate::units::*;
 pub struct TextureTile {
     pub x: u32,
     pub y: u32,
-    pub sprite: &'static str,
 }
 
 #[derive(Copy, Clone)]
@@ -78,12 +77,6 @@ macro_rules! assert_ascii {
             ));
         }
     };
-}
-
-pub trait AutoTiler {
-    fn tile<F>(&self, pt: TilePoint, tile: &mut F) -> Option<TileReference>
-    where
-        F: Fn(TilePoint) -> Option<char>;
 }
 
 impl Tileset {
@@ -189,7 +182,7 @@ impl Tileset {
                 //    }
                 //    r
                 //};
-                let tiles = TextureTile::parse_list(&s_set.tiles, assets::intern(&texture))?;
+                let tiles = TextureTile::parse_list(&s_set.tiles)?;
                 if s_set.mask == "padding" {
                     tileset.padding = tiles;
                 } else if s_set.mask == "center" {
@@ -254,10 +247,8 @@ impl Tileset {
             None => true,
         }
     }
-}
 
-impl AutoTiler for Tileset {
-    fn tile<F>(&self, pt: TilePoint, tile: &mut F) -> Option<TileReference>
+    pub fn tile<F>(&self, pt: TilePoint, tile: &mut F) -> Option<TileReference>
     where
         F: Fn(TilePoint) -> Option<char>,
     {
@@ -320,7 +311,7 @@ impl AutoTiler for Tileset {
 }
 
 impl TextureTile {
-    fn parse_list(text: &str, sprite: &'static str) -> Result<Vec<TextureTile>, io::Error> {
+    fn parse_list(text: &str) -> Result<Vec<TextureTile>, io::Error> {
         let mut result = vec![];
         if text.is_empty() {
             return Ok(result);
@@ -341,7 +332,6 @@ impl TextureTile {
             result.push(TextureTile {
                 x: x.unwrap(),
                 y: y.unwrap(),
-                sprite,
             })
         }
 

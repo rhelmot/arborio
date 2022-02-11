@@ -7,6 +7,7 @@ mod atlas_img;
 mod auto_saver;
 mod autotiler;
 mod celeste_mod;
+#[macro_use]
 mod from_binel;
 mod lenses;
 mod map_struct;

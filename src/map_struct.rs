@@ -166,13 +166,13 @@ pub struct CelesteMapLevel {
     pub music_progress: String,
     pub ambience_progress: String,
 
-    pub object_tiles: Vec<i32>,
-    pub fg_decals: Vec<CelesteMapDecal>,
-    pub bg_decals: Vec<CelesteMapDecal>,
-    pub fg_tiles: Vec<char>,
-    pub bg_tiles: Vec<char>,
+    pub fg_tiles: TileGrid<char>,
+    pub bg_tiles: TileGrid<char>,
+    pub object_tiles: TileGrid<i32>,
     pub entities: Vec<CelesteMapEntity>,
     pub triggers: Vec<CelesteMapEntity>,
+    pub fg_decals: Vec<CelesteMapDecal>,
+    pub bg_decals: Vec<CelesteMapDecal>,
 
     pub cache: RefCell<CelesteMapLevelCache>,
 }
@@ -353,7 +353,7 @@ impl CelesteMapLevel {
             &self.bg_tiles
         };
 
-        tiles.get((pt.x + pt.y * w) as usize).copied()
+        tiles.get(pt).copied()
     }
 
     pub fn tile_mut(&mut self, pt: TilePoint, foreground: bool) -> Option<&mut char> {
@@ -367,7 +367,7 @@ impl CelesteMapLevel {
             &mut self.bg_tiles
         };
 
-        tiles.get_mut((pt.x + pt.y * w) as usize)
+        tiles.get_mut(pt)
     }
 
     pub fn entity(&self, id: i32, trigger: bool) -> Option<&CelesteMapEntity> {
@@ -595,17 +595,6 @@ impl CelesteMapEntity {
     }
 }
 
-macro_rules! expect_elem {
-    ($elem:expr, $name:expr) => {
-        if ($elem.name != $name) {
-            return Err(CelesteMapError {
-                kind: CelesteMapErrorType::ParseError,
-                description: format!("Expected {} element, found {}", $name, $elem.name),
-            });
-        }
-    };
-}
-
 pub fn from_binfile(id: MapID, binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
     expect_elem!(binfile.root, "Map");
 
@@ -624,7 +613,7 @@ impl TryFromBinEl for CelesteMapLevel {
         let y = get_attr(elem, "y")?;
         let width = get_attr(elem, "width")?;
         let height = get_attr(elem, "height")?;
-        let object_tiles = get_optional_child(elem, "fgtiles");
+        let object_tiles = get_optional_child(elem, "objtiles");
         let fg_decals = get_optional_child(elem, "fgdecals");
         let bg_decals = get_optional_child(elem, "bgdecals");
 
@@ -663,7 +652,10 @@ impl TryFromBinEl for CelesteMapLevel {
             bg_tiles: parse_fgbg_tiles(get_child(elem, "bg")?, width / 8, height / 8)?,
             object_tiles: match object_tiles {
                 Some(v) => parse_object_tiles(v, width, height),
-                None => Ok(vec![-1; (width / 8 * height / 8) as usize]),
+                None => Ok(TileGrid {
+                    tiles: vec![-1; (width / 8 * height / 8) as usize],
+                    stride: (width / 8) as usize,
+                }),
             }?,
             entities: DefaultConverter::from_bin_el(elem, "entities")?,
             triggers: TryFromBinEl::try_from_bin_el(get_child(elem, "triggers")?)?,
@@ -679,7 +671,11 @@ impl TryFromBinEl for CelesteMapLevel {
     }
 }
 
-fn parse_fgbg_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<char>, CelesteMapError> {
+fn parse_fgbg_tiles(
+    elem: &BinEl,
+    width: i32,
+    height: i32,
+) -> Result<TileGrid<char>, CelesteMapError> {
     let offset_x: i32 = get_optional_attr(elem, "offsetX")?.unwrap_or_default();
     let offset_y: i32 = get_optional_attr(elem, "offsetY")?.unwrap_or_default();
     let exc = Err(CelesteMapError {
@@ -710,10 +706,17 @@ fn parse_fgbg_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<char>, 
         }
     }
 
-    Ok(data)
+    Ok(TileGrid {
+        tiles: data,
+        stride: width as usize,
+    })
 }
 
-fn parse_object_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<i32>, CelesteMapError> {
+fn parse_object_tiles(
+    elem: &BinEl,
+    width: i32,
+    height: i32,
+) -> Result<TileGrid<i32>, CelesteMapError> {
     let offset_x: i32 = get_optional_attr(elem, "offsetX")?.unwrap_or_default();
     let offset_y: i32 = get_optional_attr(elem, "offsetY")?.unwrap_or_default();
     let exc = Err(CelesteMapError {
@@ -756,7 +759,10 @@ fn parse_object_tiles(elem: &BinEl, width: i32, height: i32) -> Result<Vec<i32>,
         y += 1;
     }
 
-    Ok(data)
+    Ok(TileGrid {
+        tiles: data,
+        stride: width as usize,
+    })
 }
 
 struct DefaultConverter;

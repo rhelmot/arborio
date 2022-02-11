@@ -225,7 +225,15 @@ impl PaletteItem for EntitySelectable {
             self.config(app).minimum_size_y as i32,
             vec![(48, 16).into()],
         );
-        editor_widget::draw_entity(app, canvas, &tmp_entity, &TileGrid::empty(), false, false);
+        editor_widget::draw_entity(
+            app,
+            canvas,
+            &tmp_entity,
+            &TileGrid::empty(),
+            false,
+            false,
+            &TileGrid::empty(),
+        );
     }
 }
 
