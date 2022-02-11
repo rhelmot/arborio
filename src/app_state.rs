@@ -350,10 +350,9 @@ impl AppState {
             }
             AppEvent::SelectObject { selection } => {
                 self.current_selected = *selection;
-                // TODO uhhhhhhhhhhhhhhhh
-                //if let Some(room) = self.current_room_ref() {
-                //    room.cache.borrow_mut().render_cache_valid = false;
-                //}
+                if let Some(room) = self.current_room_ref() {
+                    room.cache.borrow_mut().render_cache_valid = false;
+                }
             }
             AppEvent::OpenModuleOverview { module } => {
                 for (i, tab) in self.tabs.iter().enumerate() {
@@ -456,6 +455,9 @@ impl AppState {
             AppEvent::SelectRoom { tab, idx } => {
                 if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(*tab) {
                     map_tab.current_room = *idx;
+                    if let Some(room) = self.current_room_ref() {
+                        room.cache.borrow_mut().render_cache_valid = false;
+                    }
                 }
             }
 
