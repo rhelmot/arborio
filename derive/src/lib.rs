@@ -99,7 +99,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                 } else if !generate.is_empty() {
                     None
                 } else if children {
-                    Some(quote!{
+                    Some(quote! {
                         let mut serialized_vec = <#convert_with>::serialize(&self.#ident);
                         for child in serialized_vec.drain() {
                             binel.insert(child);

@@ -57,40 +57,55 @@ pub struct CelesteMap {
     pub backgrounds: Vec<CelesteMapStyleground>,
     pub levels: Vec<CelesteMapLevel>,
     #[name("meta")]
-    pub meta: CelesteMapMeta,
+    #[optional]
+    pub meta: Option<CelesteMapMeta>,
 }
 
 // this is a fucking mess.
-#[derive(Debug, Default, TryFromBinEl)]
+#[derive(Debug, TryFromBinEl)]
 pub struct CelesteMapMeta {
     #[name("OverrideASideMeta")]
-    pub override_aside_meta: bool,
+    #[optional]
+    pub override_aside_meta: Option<bool>,
     #[name("ColorGrade")]
-    pub color_grade: String,
+    #[optional]
+    pub color_grade: Option<String>,
     #[name("Dreaming")]
-    pub dreaming: bool,
+    #[optional]
+    pub dreaming: Option<bool>,
     #[name("ForegroundTiles")]
-    pub fg_tiles: String,
+    #[optional]
+    pub fg_tiles: Option<String>,
     #[name("BackgroundTiles")]
-    pub bg_tiles: String,
+    #[optional]
+    pub bg_tiles: Option<String>,
     #[name("IntroType")]
-    pub intro_type: String, // TODO I think this is an enum
+    #[optional]
+    pub intro_type: Option<String>, // TODO I think this is an enum
     #[name("TitleTextColor")]
-    pub title_text_color: String, // this too
+    #[optional]
+    pub title_text_color: Option<String>, // this too
     #[name("TitleBaseColor")]
-    pub title_base_color: String, // this too
+    #[optional]
+    pub title_base_color: Option<String>, // this too
     #[name("TitleAccentColor")]
-    pub title_accent_color: String, // this too
+    #[optional]
+    pub title_accent_color: Option<String>, // this too
     #[name("Icon")]
-    pub icon: String,
+    #[optional]
+    pub icon: Option<String>,
     #[name("Interlude")]
-    pub interlude: bool,
+    #[optional]
+    pub interlude: Option<bool>,
     #[name("Wipe")]
-    pub wipe: String,
+    #[optional]
+    pub wipe: Option<String>,
     #[name("BloomBase")]
-    pub bloom_base: f32,
+    #[optional]
+    pub bloom_base: Option<f32>,
     #[name("BloomStrength")]
-    pub bloom_strength: f32,
+    #[optional]
+    pub bloom_strength: Option<f32>,
     // TODO more fields that ahorn doesn't let you change but everest will read from map.meta.yaml
     #[children]
     pub modes: Vec<CelesteMapMetaMode>, // [Option<_>; 3] perhaps?
@@ -100,19 +115,26 @@ pub struct CelesteMapMeta {
 #[name("mode")]
 pub struct CelesteMapMetaMode {
     #[name("HeartIsEnd")]
-    pub heart_is_end: bool,
+    #[optional]
+    pub heart_is_end: Option<bool>,
     #[name("Inventory")]
-    pub inventory: String,
+    #[optional]
+    pub inventory: Option<String>,
     #[name("StartLevel")]
-    pub start_level: String,
+    #[optional]
+    pub start_level: Option<String>,
     #[name("SeekerSlowdown")]
-    pub seeker_slowdown: bool,
+    #[optional]
+    pub seeker_slowdown: Option<bool>,
     #[name("TheoInBubble")]
-    pub theo_in_bubble: bool,
+    #[optional]
+    pub theo_in_bubble: Option<bool>,
     #[name("IgnoreLevelAudioLayerData")]
-    pub ignore_level_audio_layer_data: bool,
+    #[optional]
+    pub ignore_level_audio_layer_data: Option<bool>,
     #[name("audiostate")]
-    pub audio_state: CelesteMapMetaAudioState,
+    #[optional]
+    pub audio_state: Option<CelesteMapMetaAudioState>,
 }
 
 #[derive(Debug, TryFromBinEl)]
