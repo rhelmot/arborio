@@ -12,7 +12,8 @@ use vizia::*;
 pub fn build_project_tab(cx: &mut Context, project: &str) {
     let module = cx.data::<AppState>().unwrap().modules.get(project).unwrap();
     let module_root = module.filesystem_root.clone();
-    let maps = module.maps.to_vec();
+    let mut maps = module.maps.to_vec();
+    maps.sort();
     for map in maps.into_iter() {
         let map2 = map.clone();
         let project = project.to_owned();

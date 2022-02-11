@@ -54,11 +54,11 @@ pub fn build_installation_tab(cx: &mut Context) {
                 let mut idx = 0usize;
                 let mut first = true;
                 while idx < modules_list.len() {
-                    if matches!(modules_list[idx].3, CelesteModuleKind::Zip) {
+                    if matches!(modules_list[idx].3, CelesteModuleKind::Builtin) {
                         let (sid, num_maps, name, _) = modules_list.remove(idx);
                         if first {
                             first = false;
-                            Label::new(cx, "Downloaded Mods");
+                            Label::new(cx, "Builtin Modules");
                         }
                         build_project_overview_card(cx, sid, name, num_maps);
                     } else {
@@ -69,11 +69,11 @@ pub fn build_installation_tab(cx: &mut Context) {
                 let mut idx = 0usize;
                 let mut first = true;
                 while idx < modules_list.len() {
-                    if matches!(modules_list[idx].3, CelesteModuleKind::Builtin) {
+                    if matches!(modules_list[idx].3, CelesteModuleKind::Zip) {
                         let (sid, num_maps, name, _) = modules_list.remove(idx);
                         if first {
                             first = false;
-                            Label::new(cx, "Builtin Modules");
+                            Label::new(cx, "Downloaded Mods");
                         }
                         build_project_overview_card(cx, sid, name, num_maps);
                     } else {

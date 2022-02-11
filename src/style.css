@@ -107,7 +107,7 @@ palette>list {
 
 .module_overview_card {
     width: 100%;
-    child-space: 10px;
+    child-space: 5px;
 }
 
 .module_title {
