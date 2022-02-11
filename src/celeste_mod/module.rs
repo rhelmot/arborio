@@ -1,6 +1,6 @@
 use std::borrow::BorrowMut;
 use std::collections::HashMap;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -107,4 +107,26 @@ impl CelesteModule {
             }
         }
     }
+
+    pub fn module_kind(&self) -> CelesteModuleKind {
+        if self.everest_metadata.name == "Celeste" {
+            return CelesteModuleKind::Builtin;
+        }
+
+        if let Some(path) = &self.filesystem_root {
+            if path.extension() == Some(&OsString::from("zip")) {
+                CelesteModuleKind::Zip
+            } else {
+                CelesteModuleKind::Directory
+            }
+        } else {
+            CelesteModuleKind::Builtin
+        }
+    }
+}
+
+pub enum CelesteModuleKind {
+    Builtin,
+    Zip,
+    Directory,
 }
