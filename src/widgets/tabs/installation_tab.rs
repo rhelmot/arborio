@@ -3,6 +3,7 @@ use std::path::Path;
 use vizia::*;
 
 use crate::app_state::{AppConfig, AppState};
+use crate::assets::Interned;
 use crate::celeste_mod::module::CelesteModuleKind;
 use crate::lenses::{AutoSaverLens, UnwrapLens};
 use crate::AppEvent;
@@ -25,14 +26,14 @@ pub fn build_installation_tab(cx: &mut Context) {
                     .iter()
                     .map(|(name, module)| {
                         (
-                            name.clone(),
+                            name,
                             module.maps.len(),
-                            module.everest_metadata.name.clone(),
+                            module.everest_metadata.name,
                             module.module_kind(),
                         )
                     })
                     .collect::<Vec<_>>();
-                modules_list.sort_by_key(|(_, _, name, _)| name.clone());
+                modules_list.sort_by_key(|(_, _, name, _)| *name);
 
                 let mut idx = 0usize;
                 let mut first = true;
@@ -105,18 +106,14 @@ pub fn build_installation_tab(cx: &mut Context) {
     )
 }
 
-fn build_project_overview_card(cx: &mut Context, sid: String, name: String, num_maps: usize) {
+fn build_project_overview_card(cx: &mut Context, sid: Interned, name: Interned, num_maps: usize) {
     VStack::new(cx, move |cx| {
-        Label::new(cx, &name).class("module_title");
+        Label::new(cx, *name).class("module_title");
         Label::new(
             cx,
             &format!("{} map{}", num_maps, if num_maps == 1 { "" } else { "s" }),
         );
     })
     .class("module_overview_card")
-    .on_press(move |cx| {
-        cx.emit(AppEvent::OpenModuleOverview {
-            module: sid.clone(),
-        })
-    });
+    .on_press(move |cx| cx.emit(AppEvent::OpenModuleOverview { module: sid }));
 }

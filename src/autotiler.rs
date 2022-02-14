@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::io;
 
 use crate::assets;
+use crate::assets::Interned;
 use crate::units::*;
 
 #[derive(Copy, Clone, Debug)]
@@ -14,14 +15,14 @@ pub struct TextureTile {
 #[derive(Copy, Clone)]
 pub struct TileReference {
     pub tile: TextureTile,
-    pub texture: &'static str,
+    pub texture: Interned,
 }
 
 #[derive(Clone, Debug)]
 pub struct Tileset {
     pub id: char,
-    pub name: &'static str,
-    pub texture: &'static str,
+    pub name: Interned,
+    pub texture: Interned,
     pub edges: Vec<Vec<TextureTile>>,
     pub padding: Vec<TextureTile>,
     pub center: Vec<TextureTile>,
@@ -42,7 +43,7 @@ struct SerTileset {
     #[serde(default)]
     pub id: String,
     #[serde(default)]
-    pub path: String,
+    pub path: Interned,
     #[serde(default)]
     pub copy: String,
     #[serde(default)]
@@ -103,7 +104,7 @@ impl Tileset {
             let texture = format!(
                 "{}{}",
                 texture_prefix,
-                if s_tileset.path == "template" {
+                if *s_tileset.path == "template" {
                     "dirt"
                 } else {
                     &s_tileset.path

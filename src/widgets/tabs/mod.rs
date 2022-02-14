@@ -17,8 +17,8 @@ pub fn build_tabs(cx: &mut Context) {
                     installation_tab::build_installation_tab(cx);
                 }
                 AppTab::ProjectOverview(project) => {
-                    let project = project.clone();
-                    project_tab::build_project_tab(cx, &project)
+                    let project = *project;
+                    project_tab::build_project_tab(cx, project)
                 }
                 AppTab::Map(_) => {
                     editor_tab::build_editor(cx);

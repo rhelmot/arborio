@@ -11,14 +11,14 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 use vizia::Data;
 
-use crate::assets::next_uuid;
+use crate::assets::{next_uuid, Interned};
 use crate::from_binel::{GetAttrOrChild, TryFromBinEl, TwoWayConverter};
 use crate::units::*;
 
 #[derive(Eq, PartialEq, Hash, Debug, Clone, Default)]
 pub struct MapID {
-    pub module: String,
-    pub sid: String,
+    pub module: Interned,
+    pub sid: Interned,
 }
 
 impl Data for MapID {

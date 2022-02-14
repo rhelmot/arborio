@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use vizia::*;
 
 use crate::app_state::{AppEvent, AppSelection, AppState, Layer};
+use crate::assets::intern;
 use crate::autotiler::{TextureTile, TileReference};
 use crate::map_struct::{CelesteMapLevel, Node};
 use crate::tools::{generic_nav, Tool};
@@ -310,7 +311,11 @@ impl Tool for SelectionTool {
                 let float_pt = pt - float_pos.to_vector();
                 let ch = float_dat.get_or_default(float_pt);
                 if ch != '\0' {
-                    if let Some(tile) = app.current_palette_unwrap().autotilers["bg"]
+                    if let Some(tile) = app
+                        .current_palette_unwrap()
+                        .autotilers
+                        .get("bg")
+                        .unwrap()
                         .get(&ch)
                         .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
                     {
@@ -334,7 +339,11 @@ impl Tool for SelectionTool {
                 let float_pt = pt - float_pos.to_vector();
                 let ch = float_dat.get_or_default(float_pt);
                 if ch != '\0' {
-                    if let Some(tile) = app.current_palette_unwrap().autotilers["fg"]
+                    if let Some(tile) = app
+                        .current_palette_unwrap()
+                        .autotilers
+                        .get("fg")
+                        .unwrap()
                         .get(&ch)
                         .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
                     {
@@ -362,7 +371,7 @@ impl Tool for SelectionTool {
                             x: (ch % 32) as u32,
                             y: (ch / 32) as u32,
                         },
-                        texture: "tilesets/scenery",
+                        texture: intern("tilesets/scenery"), // TODO we shouldn't be doing this lookup during draw. cache this string statically?
                     };
                     let room_pos = point_tile_to_room(&pt);
                     app.current_palette_unwrap().gameplay_atlas.draw_tile(

@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
 
-#[derive(Debug, Clone, PartialEq)] // WHY DO WE NEED CLONE OMG
+#[derive(Debug, Clone, PartialEq)] // TODO WHY DO WE NEED CLONE OMG
 pub enum Expression {
     Const(Const),
     Atom(String),
@@ -398,7 +398,7 @@ impl<'de> Deserialize<'de> for Expression {
         let parsed = expression(s.as_str());
         if let Err(e) = parsed {
             dbg!(e);
-            panic!("Error parsing {}", s); // ummmm how do you construct this kind of error
+            panic!("Error parsing {}", s); // TODO ummmm how do you construct this kind of error
         }
         Ok(parsed.unwrap().1)
     }

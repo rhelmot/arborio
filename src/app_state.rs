@@ -7,7 +7,7 @@ use std::sync::Mutex;
 use std::time;
 use vizia::*;
 
-use crate::assets;
+use crate::assets::{next_uuid, Interned, InternedMap};
 use crate::auto_saver::AutoSaver;
 use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::celeste_mod::discovery;
@@ -22,9 +22,9 @@ use crate::widgets::palette_widget::{
 pub struct AppState {
     pub config: AutoSaver<AppConfig>,
 
-    pub modules: HashMap<String, CelesteModule>,
+    pub modules: InternedMap<CelesteModule>,
     pub modules_version: u32,
-    pub palettes: HashMap<String, ModuleAggregate>,
+    pub palettes: InternedMap<ModuleAggregate>,
     pub loaded_maps: HashMap<MapID, CelesteMap>,
 
     pub current_tab: usize,
@@ -56,7 +56,7 @@ pub struct AppConfig {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum AppTab {
     CelesteOverview,
-    ProjectOverview(String),
+    ProjectOverview(Interned),
     Map(MapTab),
 }
 
@@ -87,7 +87,7 @@ impl ToString for AppTab {
         match self {
             AppTab::CelesteOverview => "All Mods".to_owned(),
             AppTab::ProjectOverview(s) => format!("{} - Overview", s),
-            AppTab::Map(m) => m.id.sid.clone(),
+            AppTab::Map(m) => m.id.sid.to_string(),
         }
     }
 }
@@ -156,10 +156,10 @@ pub enum AppEvent {
         path: PathBuf,
     },
     SetModules {
-        modules: Mutex<HashMap<String, CelesteModule>>,
+        modules: Mutex<InternedMap<CelesteModule>>,
     },
     OpenModuleOverview {
-        module: String,
+        module: Interned,
     },
     Load {
         map: RefCell<Option<Box<CelesteMap>>>,
@@ -310,9 +310,9 @@ impl AppState {
             current_objtile: 0,
             objtiles_transform: MapToScreen::identity(),
 
-            modules: HashMap::new(),
+            modules: InternedMap::new(),
             modules_version: 0,
-            palettes: HashMap::new(),
+            palettes: InternedMap::new(),
             progress: Progress {
                 progress: 100,
                 status: "".to_owned(),
@@ -373,7 +373,7 @@ impl AppState {
                         return;
                     }
                 }
-                self.tabs.push(AppTab::ProjectOverview(module.clone()));
+                self.tabs.push(AppTab::ProjectOverview(*module));
                 cx.emit(AppEvent::SelectTab {
                     idx: self.tabs.len() - 1,
                 });
@@ -383,7 +383,7 @@ impl AppState {
                     if !self.loaded_maps.contains_key(&map.id) {
                         self.current_tab = self.tabs.len();
                         self.tabs.push(AppTab::Map(MapTab {
-                            nonce: assets::next_uuid(),
+                            nonce: next_uuid(),
                             id: map.id.clone(),
                             current_room: 0,
                             transform: MapToScreen::identity(),
@@ -392,8 +392,8 @@ impl AppState {
 
                     if !self.palettes.contains_key(&map.id.module) {
                         self.palettes.insert(
-                            map.id.module.clone(),
-                            ModuleAggregate::new(&self.modules, &map.id.module),
+                            map.id.module,
+                            ModuleAggregate::new(&self.modules, *map.id.module),
                         );
                     }
 
@@ -615,7 +615,7 @@ impl AppState {
                     } else {
                         &mut room.bg_decals
                     };
-                    decal.id = assets::next_uuid();
+                    decal.id = next_uuid();
                     decals.push(decal);
                     room.cache.borrow_mut().render_cache_valid = false;
                     self.loaded_maps.get_mut(map).unwrap().dirty = true;
@@ -683,7 +683,7 @@ impl AppState {
         }
         let open_palettes = open_maps
             .iter()
-            .map(|id| &id.module)
+            .map(|id| *id.module)
             .collect::<HashSet<_>>();
         self.loaded_maps.retain(|id, _| open_maps.contains(id));
         self.palettes.retain(|name, _| open_palettes.contains(name));
@@ -720,7 +720,7 @@ pub fn apply_tiles<T: Copy + Eq>(
 
 pub fn trigger_module_load(cx: &mut Context, path: PathBuf) {
     cx.spawn(move |cx| {
-        let mut result = HashMap::new();
+        let mut result = InternedMap::new();
         discovery::load_all(&path, &mut result, |p, s| {
             cx.emit(AppEvent::Progress {
                 progress: Progress {
@@ -745,10 +745,10 @@ pub fn trigger_module_load(cx: &mut Context, path: PathBuf) {
 }
 
 pub fn trigger_palette_update(
-    palettes: &mut HashMap<String, ModuleAggregate>,
-    modules: &HashMap<String, CelesteModule>,
+    palettes: &mut InternedMap<ModuleAggregate>,
+    modules: &InternedMap<CelesteModule>,
 ) {
-    for (name, pal) in palettes {
-        *pal = ModuleAggregate::new(modules, name);
+    for (name, pal) in palettes.iter_mut() {
+        *pal = ModuleAggregate::new(modules, *name);
     }
 }

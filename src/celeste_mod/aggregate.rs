@@ -4,7 +4,7 @@ use std::iter;
 use std::sync::Arc;
 use vizia::*;
 
-use crate::assets;
+use crate::assets::{intern, InternedMap};
 use crate::atlas_img::MultiAtlas;
 use crate::autotiler::{Autotiler, Tileset};
 use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
@@ -16,9 +16,9 @@ use crate::widgets::palette_widget::{
 #[derive(Lens)]
 pub struct ModuleAggregate {
     pub gameplay_atlas: MultiAtlas,
-    pub autotilers: HashMap<String, Arc<Autotiler>>,
-    pub entity_config: HashMap<&'static str, Arc<EntityConfig>>,
-    pub trigger_config: HashMap<&'static str, Arc<TriggerConfig>>,
+    pub autotilers: InternedMap<Arc<Autotiler>>,
+    pub entity_config: InternedMap<Arc<EntityConfig>>,
+    pub trigger_config: InternedMap<Arc<TriggerConfig>>,
 
     pub fg_tiles_palette: Vec<TileSelectable>,
     pub bg_tiles_palette: Vec<TileSelectable>,
@@ -30,7 +30,7 @@ pub struct ModuleAggregate {
 impl Model for ModuleAggregate {}
 
 impl ModuleAggregate {
-    pub fn new(modules: &HashMap<String, CelesteModule>, current_module: &str) -> Self {
+    pub fn new(modules: &InternedMap<CelesteModule>, current_module: &str) -> Self {
         // TODO: warning on missing dependencies
         let dep_mods = || {
             modules
@@ -39,11 +39,7 @@ impl ModuleAggregate {
                 .everest_metadata
                 .dependencies
                 .iter()
-                .filter_map(|dep| {
-                    modules
-                        .get(&dep.name)
-                        .map(|module| (dep.name.as_str(), module))
-                })
+                .filter_map(|dep| modules.get(&dep.name).map(|module| (*dep.name, module)))
                 .chain(iter::once((
                     current_module,
                     modules.get("Arborio").unwrap(),
@@ -64,12 +60,12 @@ impl ModuleAggregate {
             }
             multi_atlas
         };
-        let mut autotilers: HashMap<String, Arc<Autotiler>> = dep_mods()
+        let mut autotilers: InternedMap<Arc<Autotiler>> = dep_mods()
             .flat_map(|(_, module)| module.tilers.iter())
-            .map(|(name, tiler)| (name.clone(), tiler.clone()))
+            .map(|(name, tiler)| (name, tiler.clone()))
             .collect();
         autotilers.insert(
-            "fg".to_owned(),
+            intern("fg"),
             if let Some(fg) = modules.get(current_module).unwrap().tilers.get("fg") {
                 fg.clone()
             } else {
@@ -83,7 +79,7 @@ impl ModuleAggregate {
             },
         );
         autotilers.insert(
-            "bg".to_owned(),
+            intern("bg"),
             if let Some(fg) = modules.get(current_module).unwrap().tilers.get("bg") {
                 fg.clone()
             } else {
@@ -97,13 +93,13 @@ impl ModuleAggregate {
             },
         );
 
-        let entity_config: HashMap<&'static str, Arc<EntityConfig>> = dep_mods()
+        let entity_config: InternedMap<Arc<EntityConfig>> = dep_mods()
             .flat_map(|(_, module)| module.entity_config.iter())
-            .map(|(name, config)| (assets::intern(name), config.clone()))
+            .map(|(name, config)| (name, config.clone()))
             .collect();
-        let trigger_config: HashMap<&'static str, Arc<TriggerConfig>> = dep_mods()
+        let trigger_config: InternedMap<Arc<TriggerConfig>> = dep_mods()
             .flat_map(|(_, module)| module.trigger_config.iter())
-            .map(|(name, config)| (assets::intern(name), config.clone()))
+            .map(|(name, config)| (name, config.clone()))
             .collect();
 
         let fg_tiles_palette = extract_tiles_palette(autotilers.get("fg").unwrap());
@@ -120,7 +116,7 @@ impl ModuleAggregate {
                 }
             })
             .sorted()
-            .map(DecalSelectable::new)
+            .map(|x| DecalSelectable::new(intern(x)))
             .collect();
 
         let result = Self {
@@ -170,8 +166,8 @@ fn extract_tiles_palette(map: &HashMap<char, Tileset>) -> Vec<TileSelectable> {
         .iter()
         .map(|item| TileSelectable {
             id: *item.0,
-            name: item.1.name,
-            texture: Some(item.1.texture),
+            name: &item.1.name,
+            texture: Some(&item.1.texture),
         })
         .filter(|ts| ts.id != 'z')
         .sorted_by_key(|ts| ts.id)
@@ -180,7 +176,7 @@ fn extract_tiles_palette(map: &HashMap<char, Tileset>) -> Vec<TileSelectable> {
     vec
 }
 
-fn extract_entities_palette(config: &HashMap<&str, Arc<EntityConfig>>) -> Vec<EntitySelectable> {
+fn extract_entities_palette(config: &InternedMap<Arc<EntityConfig>>) -> Vec<EntitySelectable> {
     config
         .iter()
         .flat_map(|(_, c)| {
@@ -188,16 +184,16 @@ fn extract_entities_palette(config: &HashMap<&str, Arc<EntityConfig>>) -> Vec<En
                 .iter()
                 .enumerate()
                 .map(move |(idx, _)| EntitySelectable {
-                    entity: assets::intern(&c.entity_name),
+                    entity: intern(&c.entity_name),
                     template: idx,
                 })
         })
-        .filter(|es| es.entity != "default")
+        .filter(|es| *es.entity != "default")
         .sorted_by_key(|es| es.template)
         .collect()
 }
 
-fn extract_triggers_palette(config: &HashMap<&str, Arc<TriggerConfig>>) -> Vec<TriggerSelectable> {
+fn extract_triggers_palette(config: &InternedMap<Arc<TriggerConfig>>) -> Vec<TriggerSelectable> {
     config
         .iter()
         .flat_map(|(_, c)| {
@@ -205,11 +201,11 @@ fn extract_triggers_palette(config: &HashMap<&str, Arc<TriggerConfig>>) -> Vec<T
                 .iter()
                 .enumerate()
                 .map(move |(idx, _)| TriggerSelectable {
-                    trigger: assets::intern(&c.trigger_name),
+                    trigger: c.trigger_name,
                     template: idx,
                 })
         })
-        .filter(|es| es.trigger != "default")
+        .filter(|es| *es.trigger != "default")
         .sorted_by_key(|es| es.template)
         .collect()
 }

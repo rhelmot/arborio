@@ -35,6 +35,7 @@ zip = "^0.5"
 elsa = "^1.6"
 lru = "^0.7"
 enum_dispatch = "^0.3"
+stable_deref_trait = "^1.2"
 
 [profile.dev.package.vizia_core]
 opt-level = 2

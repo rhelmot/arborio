@@ -2,12 +2,13 @@ use serde;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::assets;
 use crate::celeste_mod::entity_expression::{Const, Expression};
 use crate::units::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EntityConfig {
-    pub entity_name: String, // TODO can this be an interned &'static str?
+    pub entity_name: assets::Interned,
     pub hitboxes: EntityRects,
     #[serde(default)]
     pub standard_draw: EntityDraw,
@@ -26,18 +27,18 @@ pub struct EntityConfig {
     #[serde(default)]
     pub solid: bool,
     #[serde(default)]
-    pub attribute_info: HashMap<String, AttributeInfo>,
+    pub attribute_info: assets::InternedMap<AttributeInfo>,
     #[serde(default)]
     pub templates: Vec<EntityTemplate>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TriggerConfig {
-    pub trigger_name: String,
+    pub trigger_name: assets::Interned,
     #[serde(default)]
     pub nodes: bool,
     #[serde(default)]
-    pub attribute_info: HashMap<String, AttributeInfo>,
+    pub attribute_info: assets::InternedMap<AttributeInfo>,
     #[serde(default)]
     pub templates: Vec<EntityTemplate>,
 }
@@ -92,8 +93,8 @@ pub enum AttributeValue {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EntityTemplate {
-    pub name: String,
-    pub attributes: HashMap<String, AttributeValue>,
+    pub name: assets::Interned,
+    pub attributes: HashMap<assets::Interned, AttributeValue>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -300,7 +301,7 @@ impl Default for Color {
 impl EntityConfig {
     pub fn default_template(&self) -> EntityTemplate {
         EntityTemplate {
-            name: self.entity_name.clone(),
+            name: self.entity_name,
             attributes: HashMap::new(),
         }
     }
@@ -309,7 +310,7 @@ impl EntityConfig {
 impl TriggerConfig {
     pub fn default_template(&self) -> EntityTemplate {
         EntityTemplate {
-            name: self.trigger_name.clone(),
+            name: self.trigger_name,
             attributes: HashMap::new(),
         }
     }

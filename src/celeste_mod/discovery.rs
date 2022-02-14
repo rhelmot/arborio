@@ -1,14 +1,14 @@
-use std::collections::HashMap;
 use std::path::Path;
 use walkdir::WalkDir;
 
+use crate::assets::{intern, InternedMap};
 use crate::celeste_mod::everest_yaml::{arborio_module_yaml, celeste_module_yaml, EverestYaml};
 use crate::celeste_mod::module::CelesteModule;
 use crate::celeste_mod::walker::{
     open_module, ConfigSource, ConfigSourceTrait, EmbeddedSource, FolderSource,
 };
 
-pub fn load_all<F>(root: &Path, modules: &mut HashMap<String, CelesteModule>, mut progress: F)
+pub fn load_all<F>(root: &Path, modules: &mut InternedMap<CelesteModule>, mut progress: F)
 where
     F: FnMut(f32, String),
 {
@@ -39,7 +39,7 @@ where
     }
 
     progress((total - 2.0) / total, "Loading Celeste".to_owned());
-    modules.insert("Celeste".to_owned(), {
+    modules.insert(intern("Celeste"), {
         let path = root.join("Content");
         let source = FolderSource::new(&path).unwrap();
         let mut r = CelesteModule::new(Some(path), celeste_module_yaml());
@@ -47,7 +47,7 @@ where
         r
     });
     progress((total - 1.0) / total, "Loading built-in config".to_owned());
-    modules.insert("Arborio".to_owned(), {
+    modules.insert(intern("Arborio"), {
         let source = EmbeddedSource();
         let mut r = CelesteModule::new(None, arborio_module_yaml());
         r.load(&mut source.into());
@@ -55,7 +55,7 @@ where
     });
 }
 
-pub fn load_into(mut source: ConfigSource, modules: &mut HashMap<String, CelesteModule>) {
+pub fn load_into(mut source: ConfigSource, modules: &mut InternedMap<CelesteModule>) {
     if let Some(mut reader) = source.get_file(Path::new("everest.yaml")) {
         let mut data = String::new();
         reader.read_to_string(&mut data).unwrap();
@@ -91,6 +91,6 @@ pub fn load_into(mut source: ConfigSource, modules: &mut HashMap<String, Celeste
             everest_yaml.into_iter().next().unwrap(),
         );
         module.load(&mut source);
-        modules.insert(module.everest_metadata.name.clone(), module);
+        modules.insert(module.everest_metadata.name, module);
     }
 }

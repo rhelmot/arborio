@@ -4,14 +4,13 @@ use image::{DynamicImage, GenericImageView};
 use imgref::Img;
 use rgb::RGBA8;
 use std::borrow::Borrow;
-use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::io;
 use std::io::Read; // trait method import
 use std::path;
 use std::sync::{Arc, Mutex};
 
-use crate::assets;
+use crate::assets::{intern, Interned, InternedMap};
 use crate::autotiler::TileReference;
 use crate::celeste_mod::walker::{ConfigSource, ConfigSourceTrait};
 use crate::units::*;
@@ -51,7 +50,7 @@ impl BlobData {
 #[derive(Debug)]
 pub struct Atlas {
     blobs: Vec<Arc<Mutex<BlobData>>>, // TODO: we can get rid of this mutex (and BlobData altogether) if we can somehow push image data into opengl at load time
-    sprites_map: HashMap<&'static str, Arc<AtlasSprite>>,
+    sprites_map: InternedMap<Arc<AtlasSprite>>,
 }
 
 #[derive(Debug)]
@@ -66,7 +65,7 @@ impl Atlas {
     pub fn new() -> Atlas {
         Atlas {
             blobs: Vec::new(),
-            sprites_map: HashMap::new(),
+            sprites_map: InternedMap::new(),
         }
     }
     pub fn load(&mut self, config: &mut ConfigSource, atlas: &str) {
@@ -111,7 +110,7 @@ impl Atlas {
         self.blobs
             .push(Arc::new(Mutex::new(BlobData::WaitingEncoded(img))));
         self.sprites_map.insert(
-            assets::intern(sprite_path),
+            intern(sprite_path),
             Arc::new(AtlasSprite {
                 blob: self.blobs[self.blobs.len() - 1].clone(),
                 bounding_box: euclid::Rect {
@@ -161,7 +160,7 @@ impl Atlas {
                 let real_height = reader.read_u16::<LittleEndian>()?;
 
                 self.sprites_map.insert(
-                    assets::intern(&sprite_path),
+                    intern(&sprite_path),
                     Arc::new(AtlasSprite {
                         blob: self.blobs[self.blobs.len() - 1].clone(),
                         bounding_box: euclid::Rect {
@@ -232,13 +231,13 @@ pub fn load_data_file(
 }
 
 pub struct MultiAtlas {
-    sprites_map: HashMap<&'static str, Arc<AtlasSprite>>,
+    sprites_map: InternedMap<Arc<AtlasSprite>>,
 }
 
 impl MultiAtlas {
     pub fn new() -> Self {
         Self {
-            sprites_map: HashMap::new(),
+            sprites_map: InternedMap::new(),
         }
     }
 
@@ -247,12 +246,12 @@ impl MultiAtlas {
             atlas
                 .sprites_map
                 .iter()
-                .map(|(path, sprite)| (*path, sprite.clone())),
+                .map(|(path, sprite)| (path, sprite.clone())),
         );
     }
 
-    pub fn iter_paths(&self) -> impl Iterator<Item = &'static str> + '_ {
-        self.sprites_map.iter().map(|(path, _)| *path)
+    pub fn iter_paths(&self) -> impl Iterator<Item = Interned> + '_ {
+        self.sprites_map.iter().map(|(path, _)| path)
     }
 
     pub fn sprite_dimensions(&self, sprite_path: &str) -> Option<Size2D<u16, UnknownUnit>> {
@@ -341,7 +340,7 @@ impl MultiAtlas {
     ) -> Option<()> {
         self.draw_sprite(
             canvas,
-            tile_ref.texture,
+            *tile_ref.texture,
             Point2D::new(ox, oy),
             Some(Rect::new(
                 Point2D::new(tile_ref.tile.x as f32 * 8.0, tile_ref.tile.y as f32 * 8.0),

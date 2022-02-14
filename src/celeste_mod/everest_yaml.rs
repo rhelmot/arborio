@@ -1,10 +1,11 @@
+use crate::assets::{intern, Interned};
 use itertools::Itertools;
 use serde::de::{Error, Unexpected};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub fn celeste_module_yaml() -> EverestYaml {
     EverestYaml {
-        name: "Celeste".to_owned(),
+        name: intern("Celeste"),
         version: EverestModuleVersion(vec![1, 4, 0, 0]),
         dll: None,
         dependencies: vec![],
@@ -13,11 +14,11 @@ pub fn celeste_module_yaml() -> EverestYaml {
 
 pub fn arborio_module_yaml() -> EverestYaml {
     EverestYaml {
-        name: "Arborio".to_owned(),
+        name: intern("Arborio"),
         version: EverestModuleVersion(vec![0, 1, 0]),
         dll: None,
         dependencies: vec![EverestYamlDependency {
-            name: "Celeste".to_owned(),
+            name: intern("Celeste"),
             version: EverestModuleVersion(vec![1, 4, 0, 0]),
         }],
     }
@@ -26,7 +27,7 @@ pub fn arborio_module_yaml() -> EverestYaml {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EverestYaml {
     #[serde(rename = "Name")]
-    pub name: String,
+    pub name: Interned,
     #[serde(rename = "Version")]
     pub version: EverestModuleVersion,
     #[serde(rename = "DLL", default)]
@@ -38,7 +39,7 @@ pub struct EverestYaml {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EverestYamlDependency {
     #[serde(rename = "Name")]
-    pub name: String,
+    pub name: Interned,
     #[serde(rename = "Version")]
     pub version: EverestModuleVersion,
 }

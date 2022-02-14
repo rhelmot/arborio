@@ -99,6 +99,7 @@ dependencies = [
  "serde",
  "serde-xml-rs",
  "serde_yaml",
+ "stable_deref_trait",
  "vizia",
  "walkdir",
  "zip",

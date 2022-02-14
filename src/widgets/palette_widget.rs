@@ -4,6 +4,7 @@ use std::sync::Arc;
 use vizia::*;
 
 use crate::app_state::AppState;
+use crate::assets::{intern, Interned};
 use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
 use crate::map_struct::{CelesteMapEntity, Node};
 use crate::units::*;
@@ -163,14 +164,14 @@ impl PaletteItem for TileSelectable {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct EntitySelectable {
-    pub entity: &'static str,
+    pub entity: Interned,
     pub template: usize,
 }
 
 impl Default for EntitySelectable {
     fn default() -> Self {
         Self {
-            entity: "does not exist",
+            entity: intern("does not exist"),
             template: 0,
         }
     }
@@ -179,7 +180,7 @@ impl Default for EntitySelectable {
 impl Default for TriggerSelectable {
     fn default() -> Self {
         Self {
-            trigger: "does not exist",
+            trigger: intern("does not exist"),
             template: 0,
         }
     }
@@ -187,7 +188,7 @@ impl Default for TriggerSelectable {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct TriggerSelectable {
-    pub trigger: &'static str,
+    pub trigger: Interned,
     pub template: usize,
 }
 
@@ -209,7 +210,7 @@ impl PaletteItem for EntitySelectable {
     }
 
     fn display_name(&self, app: &AppState) -> String {
-        self.config(app).templates[self.template].name.clone() // todo: can we not clone please
+        (*self.config(app).templates[self.template].name).to_owned()
     }
 
     fn draw(&self, app: &AppState, canvas: &mut Canvas) {
@@ -241,7 +242,7 @@ impl PaletteItem for TriggerSelectable {
     }
 
     fn display_name(&self, app: &AppState) -> String {
-        self.config(app).templates[self.template].name.clone()
+        (*self.config(app).templates[self.template].name).to_owned()
     }
 
     const CAN_DRAW: bool = false;
@@ -253,7 +254,7 @@ impl PaletteItem for TriggerSelectable {
 impl EntitySelectable {
     pub fn config<'a>(&self, app: &'a AppState) -> &'a Arc<EntityConfig> {
         app.current_palette_unwrap()
-            .get_entity_config(self.entity, false)
+            .get_entity_config(*self.entity, false)
     }
 
     pub fn instantiate(
@@ -292,11 +293,11 @@ impl EntitySelectable {
 
         let mut entity = CelesteMapEntity {
             id: 0,
-            name: config.entity_name.clone(),
+            name: config.entity_name.to_string(),
             attributes: config.templates[self.template]
                 .attributes
                 .iter()
-                .map(|attr| (attr.0.clone(), attr.1.to_binel()))
+                .map(|attr| (attr.0.to_string(), attr.1.to_binel()))
                 .collect(),
             x,
             y,
@@ -304,11 +305,11 @@ impl EntitySelectable {
             height,
             nodes,
         };
-        for (attr, info) in &config.attribute_info {
-            if !entity.attributes.contains_key(attr) {
+        for (attr, info) in config.attribute_info.iter() {
+            if !entity.attributes.contains_key(*attr) {
                 entity
                     .attributes
-                    .insert(attr.clone(), info.default.to_binel());
+                    .insert(attr.to_string(), info.default.to_binel());
             }
         }
 
@@ -321,7 +322,7 @@ impl TriggerSelectable {
         let palette = app.current_palette_unwrap();
         palette
             .trigger_config
-            .get(self.trigger)
+            .get(&self.trigger)
             .unwrap_or_else(|| palette.trigger_config.get("default").unwrap())
     }
 
@@ -351,11 +352,11 @@ impl TriggerSelectable {
 
         let mut entity = CelesteMapEntity {
             id: 0,
-            name: config.trigger_name.clone(),
+            name: config.trigger_name.to_string(),
             attributes: config.templates[self.template]
                 .attributes
                 .iter()
-                .map(|attr| (attr.0.clone(), attr.1.to_binel()))
+                .map(|attr| (attr.0.to_string(), attr.1.to_binel()))
                 .collect(),
             x,
             y,
@@ -363,11 +364,11 @@ impl TriggerSelectable {
             height,
             nodes,
         };
-        for (attr, info) in &config.attribute_info {
-            if !entity.attributes.contains_key(attr) {
+        for (attr, info) in config.attribute_info.iter() {
+            if !entity.attributes.contains_key(*attr) {
                 entity
                     .attributes
-                    .insert(attr.clone(), info.default.to_binel());
+                    .insert(attr.to_string(), info.default.to_binel());
             }
         }
 
@@ -376,7 +377,7 @@ impl TriggerSelectable {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct DecalSelectable(pub &'static str);
+pub struct DecalSelectable(pub Interned);
 
 impl Data for DecalSelectable {
     fn same(&self, other: &Self) -> bool {
@@ -390,13 +391,13 @@ impl PaletteItem for DecalSelectable {
     }
 
     fn display_name(&self, _app: &AppState) -> String {
-        self.0.to_owned()
+        self.0.to_string()
     }
 
     fn draw(&self, app: &AppState, canvas: &mut Canvas) {
         app.current_palette_unwrap().gameplay_atlas.draw_sprite(
             canvas,
-            &("decals/".to_owned() + self.0),
+            &format!("decals/{}", self.0),
             Point2D::new(0.0, 0.0),
             None,
             Some(Vector2D::zero()),
@@ -408,7 +409,7 @@ impl PaletteItem for DecalSelectable {
 }
 
 impl DecalSelectable {
-    pub fn new(path: &'static str) -> Self {
+    pub fn new(path: Interned) -> Self {
         Self(path)
     }
 }
@@ -416,7 +417,7 @@ impl DecalSelectable {
 impl Default for DecalSelectable {
     fn default() -> Self {
         Self {
-            0: "does not exist",
+            0: intern("does not exist"),
         }
     }
 }

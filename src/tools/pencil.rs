@@ -126,7 +126,7 @@ impl Tool for PencilTool {
                 );
             }
             Layer::FgDecals | Layer::BgDecals => {
-                let texture = "decals/".to_owned() + app.current_decal.0;
+                let texture = format!("decals/{}", app.current_decal.0);
                 if cx.mouse.left.state == MouseButtonState::Released {
                     canvas.set_global_alpha(0.5);
                 }
@@ -288,7 +288,7 @@ impl PencilTool {
                         y: room_pos.y,
                         scale_x: 1.0,
                         scale_y: 1.0,
-                        texture: app.current_decal.0.to_owned(),
+                        texture: app.current_decal.0.to_string(),
                     },
                 }]
             }

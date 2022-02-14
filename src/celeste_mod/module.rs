@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use crate::assets::{intern, Interned, InternedMap};
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -16,10 +16,10 @@ pub struct CelesteModule {
     pub filesystem_root: Option<PathBuf>,
     pub everest_metadata: EverestYaml,
     pub gameplay_atlas: Atlas,
-    pub tilers: HashMap<String, Arc<autotiler::Autotiler>>,
-    pub entity_config: HashMap<String, Arc<EntityConfig>>,
-    pub trigger_config: HashMap<String, Arc<TriggerConfig>>,
-    pub maps: Vec<String>,
+    pub tilers: InternedMap<Arc<autotiler::Autotiler>>,
+    pub entity_config: InternedMap<Arc<EntityConfig>>,
+    pub trigger_config: InternedMap<Arc<TriggerConfig>>,
+    pub maps: Vec<Interned>,
 }
 
 impl CelesteModule {
@@ -28,9 +28,9 @@ impl CelesteModule {
             filesystem_root: root,
             everest_metadata: metadata,
             gameplay_atlas: Atlas::new(),
-            tilers: HashMap::new(),
-            entity_config: HashMap::new(),
-            trigger_config: HashMap::new(),
+            tilers: InternedMap::new(),
+            entity_config: InternedMap::new(),
+            trigger_config: InternedMap::new(),
             maps: vec![],
         }
     }
@@ -41,7 +41,7 @@ impl CelesteModule {
 
         if let Some(fp) = source.get_file(&PathBuf::from("Graphics/ForegroundTiles.xml")) {
             self.tilers.insert(
-                "fg".to_owned(),
+                intern("fg"),
                 Arc::new(
                     Tileset::new(fp, "tilesets/").expect("Could not parse ForegroundTiles.xml"),
                 ),
@@ -49,7 +49,7 @@ impl CelesteModule {
         }
         if let Some(fp) = source.get_file(&PathBuf::from("Graphics/BackgroundTiles.xml")) {
             self.tilers.insert(
-                "bg".to_owned(),
+                intern("bg"),
                 Arc::new(
                     Tileset::new(fp, "tilesets/").expect("Could not parse BackgroundTiles.xml"),
                 ),
@@ -58,11 +58,12 @@ impl CelesteModule {
         for path in source.list_all_files(&PathBuf::from("Arborio/tilers")) {
             if let Some(fp) = source.get_file(&path) {
                 self.tilers.insert(
-                    path.file_stem()
-                        .unwrap()
-                        .to_str()
-                        .expect("Fatal error: non-utf8 celeste_mod filepath")
-                        .to_owned(),
+                    intern(
+                        path.file_stem()
+                            .unwrap()
+                            .to_str()
+                            .expect("Fatal error: non-utf8 celeste_mod filepath"),
+                    ),
                     Arc::new(Tileset::new(fp, "").expect("Could not parse custom tileset")),
                 );
             }
@@ -76,7 +77,7 @@ impl CelesteModule {
                     config.templates.push(config.default_template());
                 }
                 self.entity_config
-                    .insert(config.entity_name.clone(), Arc::new(config));
+                    .insert(config.entity_name, Arc::new(config));
             } else {
             }
         }
@@ -88,7 +89,7 @@ impl CelesteModule {
                     config.templates.push(config.default_template());
                 }
                 self.trigger_config
-                    .insert(config.trigger_name.clone(), Arc::new(config));
+                    .insert(config.trigger_name, Arc::new(config));
             } else {
             }
         }
@@ -101,14 +102,14 @@ impl CelesteModule {
                     .with_extension("")
                     .to_str()
                 {
-                    self.maps.push(sid.to_owned());
+                    self.maps.push(intern(sid));
                 }
             }
         }
     }
 
     pub fn module_kind(&self) -> CelesteModuleKind {
-        if self.everest_metadata.name == "Celeste" {
+        if *self.everest_metadata.name == "Celeste" {
             return CelesteModuleKind::Builtin;
         }
 
