@@ -4,6 +4,7 @@ use vizia::*;
 use crate::app_state::AppState;
 use crate::lenses::{CurrentMapLens, CurrentPaletteLens};
 use crate::widgets::editor_widget::EditorWidget;
+use crate::widgets::tile_palette_widget::TilePaletteWidget;
 use crate::{AppEvent, EntityTweakerWidget, Layer, ModuleAggregate, PaletteWidget, TOOLS};
 
 pub fn build_editor(cx: &mut Context) {
@@ -123,6 +124,16 @@ pub fn build_palette_widgets(cx: &mut Context) {
                 |cx, decal| cx.emit(AppEvent::SelectPaletteDecal { decal }),
             )
             .display((layer == Layer::FgDecals || layer == Layer::BgDecals) && tool_idx == 2);
+            Binding::new(cx, AppState::current_objtile, move |cx, objtile| {
+                TilePaletteWidget::new(cx, *objtile.get(cx), |cx, tile| {
+                    cx.emit(AppEvent::SelectPaletteObjectTile { tile })
+                })
+                .display(layer == Layer::ObjectTiles && tool_idx == 2)
+                .min_height(Units::Pixels(100.0))
+                .min_width(Units::Pixels(100.0))
+                .height(Units::Stretch(1.0))
+                .width(Units::Stretch(1.0));
+            });
         });
     });
 }

@@ -38,6 +38,8 @@ pub struct AppState {
     pub current_trigger: TriggerSelectable,
     pub current_decal: DecalSelectable,
     pub current_selected: Option<AppSelection>, // awkward. should be part of editor state
+    pub current_objtile: u32,
+    pub objtiles_transform: MapToScreen,
 
     pub draw_interval: f32,
     pub snap: bool,
@@ -127,6 +129,7 @@ impl Layer {
 pub enum AppSelection {
     FgTile(TilePoint),
     BgTile(TilePoint),
+    ObjectTile(TilePoint),
     EntityBody(i32, bool),
     EntityNode(i32, usize, bool),
     Decal(u32, bool),
@@ -176,6 +179,13 @@ pub enum AppEvent {
         delta: f32,
         focus: MapPointPrecise,
     },
+    PanObjectTiles {
+        delta: MapVectorPrecise,
+    },
+    ZoomObjectTiles {
+        delta: f32,
+        focus: MapPointPrecise,
+    },
     SelectTool {
         idx: usize,
     },
@@ -189,6 +199,9 @@ pub enum AppEvent {
     SelectPaletteTile {
         fg: bool,
         tile: TileSelectable,
+    },
+    SelectPaletteObjectTile {
+        tile: u32,
     },
     SelectPaletteEntity {
         entity: EntitySelectable,
@@ -209,6 +222,12 @@ pub enum AppEvent {
         fg: bool,
         offset: TilePoint,
         data: TileGrid<char>,
+    },
+    ObjectTileUpdate {
+        map: MapID,
+        room: usize,
+        offset: TilePoint,
+        data: TileGrid<i32>,
     },
     EntityAdd {
         map: MapID,
@@ -288,6 +307,8 @@ impl AppState {
             snap: true,
             last_draw: RefCell::new(time::Instant::now()),
             current_layer: Layer::FgTiles,
+            current_objtile: 0,
+            objtiles_transform: MapToScreen::identity(),
 
             modules: HashMap::new(),
             modules_version: 0,
@@ -402,6 +423,9 @@ impl AppState {
                     self.current_bg_tile = *tile;
                 }
             }
+            AppEvent::SelectPaletteObjectTile { tile } => {
+                self.current_objtile = *tile;
+            }
             AppEvent::SelectPaletteEntity { entity } => {
                 self.current_entity = *entity;
             }
@@ -410,6 +434,17 @@ impl AppState {
             }
             AppEvent::SelectPaletteDecal { decal } => {
                 self.current_decal = *decal;
+            }
+            AppEvent::PanObjectTiles { delta } => {
+                // TODO limits
+                self.objtiles_transform = self.objtiles_transform.pre_translate(*delta);
+            }
+            AppEvent::ZoomObjectTiles { delta, focus } => {
+                self.objtiles_transform = self
+                    .objtiles_transform
+                    .pre_translate(focus.to_vector())
+                    .pre_scale(*delta, *delta)
+                    .pre_translate(-focus.to_vector());
             }
 
             // tab events
@@ -460,7 +495,34 @@ impl AppState {
                 data,
             } => {
                 if let Some(map) = self.loaded_maps.get_mut(map) {
-                    apply_tiles(map, *room, offset, data, *fg);
+                    if let Some(room) = map.levels.get_mut(*room) {
+                        let target = if *fg {
+                            &mut room.fg_tiles
+                        } else {
+                            &mut room.bg_tiles
+                        };
+                        let dirty = apply_tiles(offset, data, target, '\0');
+                        if dirty {
+                            room.cache.borrow_mut().render_cache_valid = false;
+                            map.dirty = true;
+                        }
+                    }
+                }
+            }
+            AppEvent::ObjectTileUpdate {
+                map,
+                room,
+                offset,
+                data,
+            } => {
+                if let Some(map) = self.loaded_maps.get_mut(map) {
+                    if let Some(room) = map.levels.get_mut(*room) {
+                        let dirty = apply_tiles(offset, data, &mut room.object_tiles, -2);
+                        if dirty {
+                            room.cache.borrow_mut().render_cache_valid = false;
+                            map.dirty = true;
+                        }
+                    }
                 }
             }
             AppEvent::EntityAdd {
@@ -628,38 +690,32 @@ impl AppState {
     }
 }
 
-pub fn apply_tiles(
-    map: &mut CelesteMap,
-    room: usize,
+pub fn apply_tiles<T: Copy + Eq>(
     offset: &TilePoint,
-    data: &TileGrid<char>,
-    fg: bool,
-) {
+    data: &TileGrid<T>,
+    target: &mut TileGrid<T>,
+    ignore: T,
+) -> bool {
     let mut dirty = false;
-    if let Some(room) = map.levels.get_mut(room) {
-        let mut line_start = *offset;
-        let mut cur = line_start;
-        for (idx, tile) in data.tiles.iter().enumerate() {
-            if *tile != '\0' {
-                if let Some(tile_ref) = room.tile_mut(cur, fg) {
-                    if *tile_ref != *tile {
-                        *tile_ref = *tile;
-                        dirty = true;
-                    }
+    let mut line_start = *offset;
+    let mut cur = line_start;
+    for (idx, tile) in data.tiles.iter().enumerate() {
+        if *tile != ignore {
+            if let Some(tile_ref) = target.get_mut(cur) {
+                if *tile_ref != *tile {
+                    *tile_ref = *tile;
+                    dirty = true;
                 }
             }
-            if (idx + 1) % data.stride == 0 {
-                line_start += TileVector::new(0, 1);
-                cur = line_start;
-            } else {
-                cur += TileVector::new(1, 0);
-            }
         }
-        if dirty {
-            room.cache.borrow_mut().render_cache_valid = false;
-            map.dirty = true;
+        if (idx + 1) % data.stride == 0 {
+            line_start += TileVector::new(0, 1);
+            cur = line_start;
+        } else {
+            cur += TileVector::new(1, 0);
         }
     }
+    dirty
 }
 
 pub fn trigger_module_load(cx: &mut Context, path: PathBuf) {

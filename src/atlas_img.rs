@@ -76,8 +76,10 @@ impl Atlas {
         for path in
             config.list_all_files(&path::PathBuf::from("Graphics/Atlases").join(atlas.to_owned()))
         {
-            self.load_loose(config, atlas, &path)
-                .expect("Fatal error parsing image file");
+            if path.extension().and_then(|ext| ext.to_str()) == Some("png") {
+                self.load_loose(config, atlas, &path)
+                    .unwrap_or_else(|_| panic!("Fatal error parsing image file {:?}", path));
+            }
         }
     }
 

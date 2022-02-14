@@ -354,20 +354,6 @@ impl CelesteMapLevel {
         tiles.get(pt).copied()
     }
 
-    pub fn tile_mut(&mut self, pt: TilePoint, foreground: bool) -> Option<&mut char> {
-        let w = self.bounds.width() as i32 / 8;
-        if pt.x < 0 || pt.x >= w {
-            return None;
-        }
-        let tiles = if foreground {
-            &mut self.fg_tiles
-        } else {
-            &mut self.bg_tiles
-        };
-
-        tiles.get_mut(pt)
-    }
-
     pub fn entity(&self, id: i32, trigger: bool) -> Option<&CelesteMapEntity> {
         let entities = if trigger {
             &self.triggers

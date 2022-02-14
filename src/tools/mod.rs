@@ -37,7 +37,7 @@ lazy_static! {
     };
 }
 
-const SCROLL_SENSITIVITY: f32 = 35.0;
+pub const SCROLL_SENSITIVITY: f32 = 35.0;
 
 pub fn generic_nav(event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent> {
     let screen_pt = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);

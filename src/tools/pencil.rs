@@ -183,6 +183,17 @@ impl PencilTool {
         };
 
         match app.current_layer {
+            Layer::ObjectTiles => {
+                vec![AppEvent::ObjectTileUpdate {
+                    map: app.map_tab_unwrap().id.clone(),
+                    room: app.map_tab_unwrap().current_room,
+                    offset: tile_pos,
+                    data: TileGrid {
+                        tiles: vec![app.current_objtile as i32],
+                        stride: 1,
+                    },
+                }]
+            }
             Layer::FgTiles | Layer::BgTiles => {
                 let fg = app.current_layer == Layer::FgTiles;
                 let ch = if fg {
