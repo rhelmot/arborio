@@ -7,7 +7,6 @@ use std::time;
 use vizia::*;
 
 use crate::app_state::{AppSelection, AppState};
-use crate::assets::intern;
 use crate::autotiler::{TextureTile, TileReference};
 use crate::celeste_mod::entity_config::DrawElement;
 use crate::celeste_mod::entity_expression::{Const, Number};
@@ -705,7 +704,7 @@ fn draw_entity_directive(
                                             x: (*objtile_idx % 32) as u32,
                                             y: (*objtile_idx / 32) as u32,
                                         },
-                                        texture: intern("tilesets/scenery"), // TODO see similar TODO in selection.rs
+                                        texture: "tilesets/scenery".into(), // TODO see similar TODO in selection.rs
                                     },
                                     fp_pt.x,
                                     fp_pt.y,

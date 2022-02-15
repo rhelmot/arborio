@@ -4,7 +4,7 @@ use std::iter;
 use std::sync::Arc;
 use vizia::*;
 
-use crate::assets::{intern, InternedMap};
+use crate::assets::{intern_str, InternedMap};
 use crate::atlas_img::MultiAtlas;
 use crate::autotiler::{Autotiler, Tileset};
 use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
@@ -65,7 +65,7 @@ impl ModuleAggregate {
             .map(|(name, tiler)| (*name, tiler.clone()))
             .collect();
         autotilers.insert(
-            intern("fg"),
+            "fg".into(),
             if let Some(fg) = modules.get(current_module).unwrap().tilers.get("fg") {
                 fg.clone()
             } else {
@@ -79,7 +79,7 @@ impl ModuleAggregate {
             },
         );
         autotilers.insert(
-            intern("bg"),
+            "bg".into(),
             if let Some(fg) = modules.get(current_module).unwrap().tilers.get("bg") {
                 fg.clone()
             } else {
@@ -108,15 +108,9 @@ impl ModuleAggregate {
         let triggers_palette = extract_triggers_palette(&trigger_config);
         let decals_palette = gameplay_atlas
             .iter_paths()
-            .filter_map(|path| {
-                if path.starts_with("decals/") {
-                    Some(path.trim_start_matches("decals/"))
-                } else {
-                    None
-                }
-            })
+            .filter_map(|path| path.strip_prefix("decals/").map(intern_str))
             .sorted()
-            .map(|x| DecalSelectable::new(intern(x)))
+            .map(DecalSelectable::new)
             .collect();
 
         let result = Self {
@@ -184,7 +178,7 @@ fn extract_entities_palette(config: &InternedMap<Arc<EntityConfig>>) -> Vec<Enti
                 .iter()
                 .enumerate()
                 .map(move |(idx, _)| EntitySelectable {
-                    entity: intern(&c.entity_name),
+                    entity: c.entity_name,
                     template: idx,
                 })
         })

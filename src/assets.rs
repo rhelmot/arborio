@@ -1,18 +1,17 @@
 use lazy_static::lazy_static;
+use parking_lot::Mutex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use stable_deref_trait::StableDeref;
-use std::borrow::Borrow;
-use std::collections::HashMap;
+use std::borrow::{Borrow, Cow};
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 use std::ops::Deref;
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 pub fn next_uuid() -> u32 {
-    let mut locked = UUID.lock().unwrap();
-    let result = *locked;
-    *locked += 1;
-    result
+    static UUID: AtomicU32 = AtomicU32::new(0);
+    UUID.fetch_add(1, Ordering::Relaxed)
 }
 
 #[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, PartialOrd, Ord)]
@@ -21,9 +20,7 @@ pub struct Interned(&'static str);
 pub type InternedMap<T> = HashMap<Interned, T>;
 
 lazy_static! {
-    static ref INTERNSHIP: elsa::sync::FrozenMap<&'static str, &'static str> =
-        elsa::sync::FrozenMap::new();
-    static ref UUID: Mutex<u32> = Mutex::new(0);
+    static ref INTERNSHIP: Mutex<HashSet<&'static str>> = Default::default();
 }
 
 impl Deref for Interned {
@@ -37,18 +34,44 @@ unsafe impl StableDeref for Interned {}
 
 impl Default for Interned {
     fn default() -> Self {
-        intern("")
+        "".into()
     }
 }
 
-pub fn intern(s: &str) -> Interned {
-    // not sure why this API is missing so much
-    Interned(if let Some(res) = INTERNSHIP.get(s) {
+fn intern_impl<S: Borrow<str>>(s: S, f: impl FnOnce(S) -> &'static str) -> Interned {
+    let mut locked = INTERNSHIP.lock();
+    Interned(if let Some(res) = locked.get(s.borrow()) {
         res
     } else {
-        let mine = Box::leak(Box::new(s.to_owned()));
-        INTERNSHIP.insert(mine, mine)
+        let s = f(s);
+        locked.insert(s);
+        s
     })
+}
+
+pub fn intern_static(s: &'static str) -> Interned {
+    intern_impl(s, |s| s)
+}
+
+impl From<&'static str> for Interned {
+    fn from(s: &'static str) -> Self {
+        intern_static(s)
+    }
+}
+impl From<String> for Interned {
+    fn from(s: String) -> Self {
+        intern_owned(s)
+    }
+}
+
+pub fn intern_str(s: &str) -> Interned {
+    intern_impl(s, |s| Box::leak(s.to_owned().into()))
+}
+
+pub fn intern_owned(s: impl Into<Box<str>>) -> Interned {
+    let s = s.into();
+    #[allow(clippy::redundant_closure)] // false positive
+    intern_impl(s, |s| Box::leak(s))
 }
 
 impl Serialize for Interned {
@@ -59,8 +82,12 @@ impl Serialize for Interned {
 
 impl<'de> Deserialize<'de> for Interned {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let owned: String = Deserialize::deserialize(d)?;
-        Ok(intern(&owned))
+        let cow: Cow<str> = Deserialize::deserialize(d)?;
+
+        Ok(match cow {
+            Cow::Borrowed(s) => intern_str(s),
+            Cow::Owned(s) => intern_owned(s),
+        })
     }
 }
 
@@ -71,7 +98,7 @@ impl Display for Interned {
 }
 
 impl Borrow<str> for Interned {
-    fn borrow(&self) -> &str {
+    fn borrow(&self) -> &'static str {
         self.0
     }
 }

@@ -1,7 +1,7 @@
 use std::path::Path;
 use walkdir::WalkDir;
 
-use crate::assets::{intern, InternedMap};
+use crate::assets::InternedMap;
 use crate::celeste_mod::everest_yaml::{arborio_module_yaml, celeste_module_yaml, EverestYaml};
 use crate::celeste_mod::module::CelesteModule;
 use crate::celeste_mod::walker::{
@@ -39,7 +39,7 @@ where
     }
 
     progress((total - 2.0) / total, "Loading Celeste".to_owned());
-    modules.insert(intern("Celeste"), {
+    modules.insert("Celeste".into(), {
         let path = root.join("Content");
         let source = FolderSource::new(&path).unwrap();
         let mut r = CelesteModule::new(Some(path), celeste_module_yaml());
@@ -47,7 +47,7 @@ where
         r
     });
     progress((total - 1.0) / total, "Loading built-in config".to_owned());
-    modules.insert(intern("Arborio"), {
+    modules.insert("Arborio".into(), {
         let source = EmbeddedSource();
         let mut r = CelesteModule::new(None, arborio_module_yaml());
         r.load(&mut source.into());

@@ -36,6 +36,7 @@ elsa = "^1.6"
 lru = "^0.7"
 enum_dispatch = "^0.3"
 stable_deref_trait = "^1.2"
+parking_lot = "^0.12"
 
 [profile.dev.package.vizia_core]
 opt-level = 2

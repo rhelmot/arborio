@@ -1,11 +1,11 @@
-use crate::assets::{intern, Interned};
+use crate::assets::Interned;
 use itertools::Itertools;
 use serde::de::{Error, Unexpected};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub fn celeste_module_yaml() -> EverestYaml {
     EverestYaml {
-        name: intern("Celeste"),
+        name: "Celeste".into(),
         version: EverestModuleVersion(vec![1, 4, 0, 0]),
         dll: None,
         dependencies: vec![],
@@ -14,11 +14,11 @@ pub fn celeste_module_yaml() -> EverestYaml {
 
 pub fn arborio_module_yaml() -> EverestYaml {
     EverestYaml {
-        name: intern("Arborio"),
+        name: "Arborio".into(),
         version: EverestModuleVersion(vec![0, 1, 0]),
         dll: None,
         dependencies: vec![EverestYamlDependency {
-            name: intern("Celeste"),
+            name: "Celeste".into(),
             version: EverestModuleVersion(vec![1, 4, 0, 0]),
         }],
     }

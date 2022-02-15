@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 use vizia::*;
 
 use crate::app_state::{AppEvent, AppSelection, AppState, Layer};
-use crate::assets::intern;
 use crate::autotiler::{TextureTile, TileReference};
 use crate::map_struct::{CelesteMapLevel, Node};
 use crate::tools::{generic_nav, Tool};
@@ -371,7 +370,7 @@ impl Tool for SelectionTool {
                             x: (ch % 32) as u32,
                             y: (ch / 32) as u32,
                         },
-                        texture: intern("tilesets/scenery"), // TODO we shouldn't be doing this lookup during draw. cache this string statically?
+                        texture: "tilesets/scenery".into(), // TODO we shouldn't be doing this lookup during draw. cache this string statically?
                     };
                     let room_pos = point_tile_to_room(&pt);
                     app.current_palette_unwrap().gameplay_atlas.draw_tile(

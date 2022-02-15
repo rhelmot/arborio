@@ -4,7 +4,7 @@ use std::sync::Arc;
 use vizia::*;
 
 use crate::app_state::AppState;
-use crate::assets::{intern, Interned};
+use crate::assets::Interned;
 use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
 use crate::map_struct::{CelesteMapEntity, Node};
 use crate::units::*;
@@ -171,7 +171,7 @@ pub struct EntitySelectable {
 impl Default for EntitySelectable {
     fn default() -> Self {
         Self {
-            entity: intern("does not exist"),
+            entity: "does not exist".into(),
             template: 0,
         }
     }
@@ -180,7 +180,7 @@ impl Default for EntitySelectable {
 impl Default for TriggerSelectable {
     fn default() -> Self {
         Self {
-            trigger: intern("does not exist"),
+            trigger: "does not exist".into(),
             template: 0,
         }
     }
@@ -416,8 +416,6 @@ impl DecalSelectable {
 
 impl Default for DecalSelectable {
     fn default() -> Self {
-        Self {
-            0: intern("does not exist"),
-        }
+        Self("does not exist".into())
     }
 }

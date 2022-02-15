@@ -1,4 +1,4 @@
-use crate::assets::{intern, Interned, InternedMap};
+use crate::assets::{intern_str, Interned, InternedMap};
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -41,7 +41,7 @@ impl CelesteModule {
 
         if let Some(fp) = source.get_file(&PathBuf::from("Graphics/ForegroundTiles.xml")) {
             self.tilers.insert(
-                intern("fg"),
+                "fg".into(),
                 Arc::new(
                     Tileset::new(fp, "tilesets/").expect("Could not parse ForegroundTiles.xml"),
                 ),
@@ -49,7 +49,7 @@ impl CelesteModule {
         }
         if let Some(fp) = source.get_file(&PathBuf::from("Graphics/BackgroundTiles.xml")) {
             self.tilers.insert(
-                intern("bg"),
+                "bg".into(),
                 Arc::new(
                     Tileset::new(fp, "tilesets/").expect("Could not parse BackgroundTiles.xml"),
                 ),
@@ -58,7 +58,7 @@ impl CelesteModule {
         for path in source.list_all_files(&PathBuf::from("Arborio/tilers")) {
             if let Some(fp) = source.get_file(&path) {
                 self.tilers.insert(
-                    intern(
+                    intern_str(
                         path.file_stem()
                             .unwrap()
                             .to_str()
@@ -102,7 +102,7 @@ impl CelesteModule {
                     .with_extension("")
                     .to_str()
                 {
-                    self.maps.push(intern(sid));
+                    self.maps.push(intern_str(sid));
                 }
             }
         }

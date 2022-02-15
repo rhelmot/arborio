@@ -10,7 +10,7 @@ use std::io::Read; // trait method import
 use std::path;
 use std::sync::{Arc, Mutex};
 
-use crate::assets::{intern, Interned, InternedMap};
+use crate::assets::{intern_owned, Interned, InternedMap};
 use crate::autotiler::TileReference;
 use crate::celeste_mod::walker::{ConfigSource, ConfigSourceTrait};
 use crate::units::*;
@@ -72,9 +72,7 @@ impl Atlas {
         self.load_crunched(config, atlas)
             .expect("Fatal error parsing packed atlas");
 
-        for path in
-            config.list_all_files(&path::PathBuf::from("Graphics/Atlases").join(atlas.to_owned()))
-        {
+        for path in config.list_all_files(&path::PathBuf::from("Graphics/Atlases").join(atlas)) {
             if path.extension().and_then(|ext| ext.to_str()) == Some("png") {
                 self.load_loose(config, atlas, &path)
                     .unwrap_or_else(|_| panic!("Fatal error parsing image file {:?}", path));
@@ -105,12 +103,15 @@ impl Atlas {
             .strip_prefix(&path::PathBuf::from("Graphics/Atlases").join(atlas))
             .unwrap()
             .with_extension("");
-        let sprite_path = sprite_path.to_str().expect("Non-unicode asset path");
+        let sprite_path = sprite_path
+            .into_os_string()
+            .into_string()
+            .expect("Non-unicode asset path");
 
         self.blobs
             .push(Arc::new(Mutex::new(BlobData::WaitingEncoded(img))));
         self.sprites_map.insert(
-            intern(sprite_path),
+            intern_owned(sprite_path),
             Arc::new(AtlasSprite {
                 blob: self.blobs[self.blobs.len() - 1].clone(),
                 bounding_box: euclid::Rect {
@@ -160,7 +161,7 @@ impl Atlas {
                 let real_height = reader.read_u16::<LittleEndian>()?;
 
                 self.sprites_map.insert(
-                    intern(&sprite_path),
+                    sprite_path.into(),
                     Arc::new(AtlasSprite {
                         blob: self.blobs[self.blobs.len() - 1].clone(),
                         bounding_box: euclid::Rect {

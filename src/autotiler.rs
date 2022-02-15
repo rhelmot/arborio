@@ -2,7 +2,6 @@ use inflector::Inflector;
 use std::collections::HashMap;
 use std::io;
 
-use crate::assets;
 use crate::assets::Interned;
 use crate::units::*;
 
@@ -109,12 +108,14 @@ impl Tileset {
                 } else {
                     &s_tileset.path
                 }
-            );
+            )
+            .into();
+            let name = s_tileset.path.to_title_case().into();
             let mut tileset = if s_tileset.copy.is_empty() {
                 Tileset {
                     id: ch,
-                    name: assets::intern(&s_tileset.path.to_title_case()),
-                    texture: assets::intern(&texture),
+                    name,
+                    texture,
                     edges: vec![Vec::new(); 256],
                     padding: vec![],
                     center: vec![],
@@ -144,9 +145,9 @@ impl Tileset {
                         ))
                     }
                 };
-                r.texture = assets::intern(&texture);
+                r.texture = texture;
                 r.id = ch;
-                r.name = assets::intern(&s_tileset.path.to_title_case());
+                r.name = name;
                 r
             };
 
