@@ -19,7 +19,7 @@ serde_yaml = "^0.8"
 nom = "^6.2"
 include_dir = "^0.7"
 #vizia = { path = "../../rust/VIZIA" }
-vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "b4cd10d036e973e3efe0b8710ed731a6378bfd91" }
+vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "48a095f7ab68971079e2ba344a9fb0ec14485949" }
 femtovg = { version = "0.3.0", default-features = false, features = ["image-loading"] } # inhert from vizia
 image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
 imgref = "1.6.1"  # inherit from femtovg
