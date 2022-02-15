@@ -1,9 +1,13 @@
 use celeste::binel::BinElAttr;
-use nom::{
-    alt, character::complete::multispace0 as ws, complete, delimited, do_parse, eof, error::Error,
-    error::ErrorKind, fold_many0, is_not, many0, map_res, named, number::complete::double, one_of,
-    opt, pair, recognize, separated_list0, separated_pair, tag, terminated, tuple,
-};
+use nom::branch::alt;
+use nom::bytes::complete::tag;
+use nom::character::complete::{one_of, space0};
+use nom::combinator::{complete, eof, map, map_res, opt, recognize};
+use nom::error::{Error, ErrorKind};
+use nom::multi::{fold_many0, many0, separated_list0};
+use nom::number::complete;
+use nom::sequence::{delimited, pair, separated_pair, terminated, tuple};
+use nom::{IResult, InputTakeAtPosition, Parser};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fmt::Formatter;
@@ -22,7 +26,7 @@ pub enum Expression {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BinOp {
     Add,
     Sub,
@@ -37,44 +41,48 @@ pub enum BinOp {
     Ne,
 }
 
-impl std::fmt::Display for BinOp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                BinOp::Add => "+",
-                BinOp::Sub => "-",
-                BinOp::Mul => "*",
-                BinOp::Div => "/",
-                BinOp::Mod => "%",
-                BinOp::Lt => "<",
-                BinOp::Gt => ">",
-                BinOp::Le => "<=",
-                BinOp::Ge => ">=",
-                BinOp::Eq => "==",
-                BinOp::Ne => "!=",
-            }
-        )
+impl BinOp {
+    fn as_str(&self) -> &'static str {
+        match self {
+            BinOp::Add => "+",
+            BinOp::Sub => "-",
+            BinOp::Mul => "*",
+            BinOp::Div => "/",
+            BinOp::Mod => "%",
+            BinOp::Lt => "<",
+            BinOp::Gt => ">",
+            BinOp::Le => "<=",
+            BinOp::Ge => ">=",
+            BinOp::Eq => "==",
+            BinOp::Ne => "!=",
+        }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl std::fmt::Display for BinOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum UnOp {
     Neg,
     Exists,
 }
 
+impl UnOp {
+    fn as_str(&self) -> &'static str {
+        match self {
+            UnOp::Neg => "-",
+            UnOp::Exists => "?",
+        }
+    }
+}
+
 impl std::fmt::Display for UnOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                UnOp::Neg => "-",
-                UnOp::Exists => "?",
-            }
-        )
+        f.write_str(self.as_str())
     }
 }
 
@@ -142,109 +150,104 @@ impl Hash for Number {
     }
 }
 
-named!(num_lit<&str, Number>,
-    map_res!(
-        alt!(hex_num | double),
-        |s: f64| -> Result<Number, Error<&str>> { Ok(Number(s)) }
-    )
-);
+fn num_lit(input: &str) -> IResult<&str, Number> {
+    map(alt((hex_num, complete::double)), Number)(input)
+}
 
-named!(hex_num<&str, f64>,
-    map_res!(
-        complete!(tuple!(
-            opt!(alt!(tag!("-") | tag!("+"))),
-            alt!(tag!("0x") | tag!("0X")),
-            nom::character::complete::hex_digit1
-        )),
-        |t: (Option<&str>, &str, &str)| i64::from_str_radix(t.2, 16).map(
-            |q: i64| q as f64 * if t.0 == Some("-") { -1f64 } else { 1f64 }
-        )
-    )
-);
+fn hex_num(input: &str) -> IResult<&str, f64> {
+    map_res(
+        complete(tuple((
+            opt(alt((tag("-"), tag("+")))),
+            alt((tag("0x"), tag("0X"))),
+            nom::character::complete::hex_digit1,
+        ))),
+        |(sign, _, digits)| {
+            i64::from_str_radix(digits, 16)
+                .map(|q| (q as f64) * if sign == Some("-") { -1f64 } else { 1f64 })
+        },
+    )(input)
+}
+
+fn not_char(ch: char) -> impl FnMut(&str) -> IResult<&str, &str> {
+    move |input: &str| input.split_at_position(|ch2| ch2 == ch)
+}
 
 // TODO use escaped_transform
-named!(string_lit_dquote<&str, &str>,
-    delimited!(tag!("\""),is_not!("\""),tag!("\""))
-);
+fn string_lit_dquote(input: &str) -> IResult<&str, &str> {
+    delimited(tag("\""), not_char('"'), tag("\""))(input)
+}
 
-named!(string_lit_squote<&str, &str>,
-    delimited!(tag!("'"),is_not!("'"),tag!("'"))
-);
+fn string_lit_squote(input: &str) -> IResult<&str, &str> {
+    delimited(tag("'"), not_char('\''), tag("'"))(input)
+}
 
-named!(string_lit_empty_dquote<&str, &str>,
-    map_res!(tag!("\"\""), |_: &str| -> Result<&str, Error<&str>> { Ok("") })
-);
-
-named!(string_lit_empty_squote<&str, &str>,
-    map_res!(tag!("''"), |_: &str| -> Result<&str, Error<&str>> { Ok("") })
-);
-
-named!(string_lit<&str, &str>,
-    alt!(string_lit_dquote | string_lit_squote | string_lit_empty_dquote | string_lit_empty_squote)
-);
+fn string_lit(input: &str) -> IResult<&str, &str> {
+    alt((string_lit_dquote, string_lit_squote))(input)
+}
 
 const IDENT_START_CHARS: &str = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const IDENT_CONT_CHARS: &str = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-named!(atom<&str, Expression>,
-    map_res!(
-        delimited!(
-            ws,
-            recognize!(pair!(
-                one_of!(IDENT_START_CHARS),
-                many0!(complete!(one_of!(IDENT_CONT_CHARS)))
+fn atom(input: &str) -> IResult<&str, Expression> {
+    map(
+        delimited(
+            space0,
+            recognize(pair(
+                one_of(IDENT_START_CHARS),
+                many0(complete(one_of(IDENT_CONT_CHARS))),
             )),
-            ws),
-        |s: &str| -> Result<Expression, Error<&str>> { Ok(Expression::Atom(s.to_owned())) }
-    )
-);
+            space0,
+        ),
+        |s: &str| Expression::Atom(s.to_owned()),
+    )(input)
+}
 
-named!(string_const<&str, Expression>,
-    map_res!(
-        delimited!(ws, string_lit, ws),
-        |s: &str| -> Result<Expression, Error<&str>> { Ok(Expression::Const(Const::String(s.to_owned()))) }
-    )
-);
+fn string_const(input: &str) -> IResult<&str, Const> {
+    delimited(space0, string_lit, space0)
+        .map(str::to_owned)
+        .map(Const::String)
+        .parse(input)
+}
 
-named!(num_const<&str, Expression>,
-    map_res!(
-        delimited!(ws, num_lit, ws),
-        |s: Number| -> Result<Expression, Error<&str>> { Ok(Expression::Const(Const::Number(s))) }
-    )
-);
+fn num_const(input: &str) -> IResult<&str, Const> {
+    map(delimited(space0, num_lit, space0), Const::Number)(input)
+}
 
-named!(parenthetical<&str, Expression>,
-    delimited!(
-        delimited!(ws, tag!("("), ws),
+fn const_expression(input: &str) -> IResult<&str, Expression> {
+    alt((string_const, num_const))
+        .map(Expression::Const)
+        .parse(input)
+}
+
+fn parenthetical(input: &str) -> IResult<&str, Expression> {
+    delimited(
+        tuple((space0, tag("("), space0)),
         expression_4,
-        delimited!(ws, tag!(")"), ws)
-    )
-);
+        tuple((space0, tag(")"), space0)),
+    )(input)
+}
 
-named!(match_case_const<&str, Option<Const>>,
-    map_res!(
-        alt!(string_const | num_const),
-        |s: Expression| -> Result<Option<Const>, Error<&str>> { Ok(Some(match s { // oops I did not architect this correctly
-            Expression::Const(c) => c,
-            _ => unreachable!()
-        })) }
-    )
-);
+fn match_case_const(input: &str) -> IResult<&str, Option<Const>> {
+    alt((string_const, num_const)).map(Some).parse(input)
+}
 
-named!(match_case_default<&str, Option<Const>>,
-    map_res!(
-        delimited!(ws, tag!("_"), ws),
-        |_| -> Result<Option<Const>, Error<&str>> { Ok(None) }
-    )
-);
+fn match_case_default(input: &str) -> IResult<&str, Option<Const>> {
+    delimited(space0, tag("_"), space0)
+        .map(|_| None)
+        .parse(input)
+}
 
-named!(match_case<&str, Option<Const>>,
-    alt!(match_case_const | match_case_default)
-);
+fn match_case(input: &str) -> IResult<&str, Option<Const>> {
+    alt((match_case_const, match_case_default))(input)
+}
 
-named!(match_arm<&str, (Option<Const>, Expression)>,
-    separated_pair!(match_case, delimited!(ws, tag!("=>"), ws), expression_4)
-);
+fn match_arm(input: &str) -> IResult<&str, (Option<Const>, Expression)> {
+    separated_pair(
+        match_case,
+        delimited(space0, tag("=>"), space0),
+        expression_4,
+    )(input)
+}
 
 fn construct_match_expr(
     test: Expression,
@@ -280,114 +283,114 @@ fn construct_match_expr(
     }
 }
 
-named!(match_expr_with_errors<&str, Result<Expression, ()>>,
-    do_parse!(
-        delimited!(ws, tag!("match"), ws) >>
-        test: expression_4 >>
-        delimited!(ws, tag!("{"), ws) >>
-        arms_list: separated_list0!(delimited!(ws, tag!(","), ws), match_arm) >>
-        delimited!(ws, tag!("}"), ws) >>
-        (construct_match_expr(test, arms_list))
+fn match_expr_with_errors(input: &str) -> IResult<&str, Result<Expression, ()>> {
+    pair(
+        delimited(
+            tuple((space0, pair(tag("match"), space0))),
+            expression_4,
+            space0,
+        ),
+        delimited(
+            pair(tag("{"), space0),
+            separated_list0(delimited(space0, tag(","), space0), match_arm),
+            pair(space0, tag("}")),
+        ),
     )
-);
+    .map(|(test, arms_list)| construct_match_expr(test, arms_list))
+    .parse(input)
+}
 
-named!(match_expr<&str, Expression>,
-    map_res!(
-        match_expr_with_errors,
-        |s: Result<Expression, ()>| -> Result<Expression, Error<&str>> {
-            s.map_err(|_| Error { input: "what", code: ErrorKind::MapRes })
-        }
-    )
-);
+fn match_expr(input: &str) -> IResult<&str, Expression> {
+    map_res(match_expr_with_errors, |s| {
+        s.map_err(|_| Error {
+            input: "what",
+            code: ErrorKind::MapRes,
+        })
+    })(input)
+}
 
-named!(expression_4<&str, Expression>,
-    do_parse!(
-        init: expression_3 >>
-        res: fold_many0!(
-            complete!(pair!(
-                delimited!(ws, alt!(tag!(">=") | tag!("<=") | tag!(">") | tag!("<") | tag!("==") | tag!("!=")), ws),
-                expression_2
+fn bin_op(op: BinOp) -> impl FnMut(&str) -> IResult<&str, BinOp> {
+    move |input| {
+        map(tag(op.as_str()), move |_| op)(input)
+    }
+}
+
+fn un_op(op: UnOp) -> impl FnMut(&str) -> IResult<&str, UnOp> {
+    move |input| map(tag(op.as_str()), move |_| op)(input)
+}
+
+fn bin_expression<'a>(
+    mut operator: impl Parser<&'a str, BinOp, Error<&'a str>>,
+    mut sub_expression: impl Parser<&'a str, Expression, Error<&'a str>>,
+) -> impl FnMut(&'a str) -> IResult<&'a str, Expression> {
+    move |input: &str| {
+        let (input, init) = sub_expression.parse(input)?;
+        let mut init = Some(init);
+        fold_many0(
+            complete(pair(
+                delimited(space0, |input| operator.parse(input), space0),
+                |input| sub_expression.parse(input),
             )),
-            init,
-            |acc, next| Expression::BinOp(match next.0 {
-                "<" => BinOp::Lt,
-                ">" => BinOp::Gt,
-                "<=" => BinOp::Le,
-                ">=" => BinOp::Ge,
-                "==" => BinOp::Eq,
-                "!=" => BinOp::Ne,
-                _ => unreachable!(),
-            }, Box::new((acc, next.1)))
-        ) >>
-        (res)
-    )
-);
+            move || init.take().unwrap(),
+            |acc, (op, rhs)| Expression::BinOp(op, Box::new((acc, rhs))),
+        )(input)
+    }
+}
 
-named!(expression_3<&str, Expression>,
-    do_parse!(
-        init: expression_2 >>
-        res: fold_many0!(
-            complete!(pair!(
-                delimited!(ws, alt!(tag!("+") | tag!("-")), ws),
-                expression_2
-            )),
-            init,
-            |acc, next| Expression::BinOp(match next.0 {
-                "+" => BinOp::Add,
-                "-" => BinOp::Sub,
-                _ => unreachable!(),
-            }, Box::new((acc, next.1)))
-        ) >>
-        (res)
-    )
-);
+fn operator_4(input: &str) -> IResult<&str, BinOp> {
+    use BinOp::*;
+    alt((
+        bin_op(Ge),
+        bin_op(Le),
+        bin_op(Gt),
+        bin_op(Lt),
+        bin_op(Eq),
+        bin_op(Ne),
+    ))(input)
+}
 
-named!(expression_2<&str, Expression>,
-    do_parse!(
-        init: expression_1 >>
-        res: fold_many0!(
-            complete!(pair!(
-                delimited!(ws, alt!(tag!("*") | tag!("/") | tag!("%")), ws),
-                expression_1
-            )),
-            init,
-            |acc, next| Expression::BinOp(match next.0 {
-                "*" => BinOp::Mul,
-                "/" => BinOp::Div,
-                "%" => BinOp::Mod,
-                _ => unreachable!(),
-            }, Box::new((acc, next.1)))
-        ) >>
-        (res)
-    )
-);
+fn expression_4(input: &str) -> IResult<&str, Expression> {
+    bin_expression(operator_4, expression_3)(input)
+}
 
-named!(expression_1<&str, Expression>,
-    alt!(
-        expression_0 |
-        map_res!(
-            tuple!(
-                delimited!(ws, alt!(tag!("-") | tag!("?")), ws),
-                expression_1
-            ), |s: (&str, Expression)| -> Result<Expression, Error<&str>> {
-                Ok(Expression::UnOp(match s.0 {
-                    "-" => UnOp::Neg,
-                    "?" => UnOp::Exists,
-                    _ => unreachable!(),
-                }, Box::new(s.1)))
-            }
+fn operator_3(input: &str) -> IResult<&str, BinOp> {
+    use BinOp::*;
+    alt((bin_op(Add), bin_op(Sub)))(input)
+}
+
+fn expression_3(input: &str) -> IResult<&str, Expression> {
+    bin_expression(operator_3, expression_2)(input)
+}
+
+fn operator_2(input: &str) -> IResult<&str, BinOp> {
+    use BinOp::*;
+    alt((bin_op(Mul), bin_op(Div), bin_op(Mod)))(input)
+}
+
+fn expression_2(input: &str) -> IResult<&str, Expression> {
+    bin_expression(operator_2, expression_1)(input)
+}
+
+fn expression_1(input: &str) -> IResult<&str, Expression> {
+    use UnOp::*;
+    alt((
+        expression_0,
+        pair(
+            delimited(space0, alt((un_op(Neg), un_op(Exists))), space0),
+            expression_1,
         )
-    )
-);
+        .map(|(op, expr)| Expression::UnOp(op, Box::new(expr))),
+    ))(input)
+}
 
-named!(expression_0<&str, Expression>,
+fn expression_0(input: &str) -> IResult<&str, Expression> {
     // match must go first in the list since it could be interpreted as an atom
-    alt!(match_expr | string_const | num_const | atom | parenthetical)
-);
+    alt((match_expr, const_expression, atom, parenthetical))(input)
+}
 
-named!(expression<&str, Expression>,
-    terminated!(expression_4, eof!())
-);
+fn expression(input: &str) -> IResult<&str, Expression> {
+    terminated(expression_4, eof)(input)
+}
 
 impl<'de> Deserialize<'de> for Expression {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
