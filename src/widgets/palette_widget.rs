@@ -306,7 +306,7 @@ impl EntitySelectable {
             nodes,
         };
         for (attr, info) in config.attribute_info.iter() {
-            if !entity.attributes.contains_key(*attr) {
+            if !entity.attributes.contains_key(**attr) {
                 entity
                     .attributes
                     .insert(attr.to_string(), info.default.to_binel());
@@ -365,7 +365,7 @@ impl TriggerSelectable {
             nodes,
         };
         for (attr, info) in config.attribute_info.iter() {
-            if !entity.attributes.contains_key(*attr) {
+            if !entity.attributes.contains_key(**attr) {
                 entity
                     .attributes
                     .insert(attr.to_string(), info.default.to_binel());

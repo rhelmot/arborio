@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::ops::DerefMut;
 use std::path::PathBuf;
@@ -390,11 +391,8 @@ impl AppState {
                         }));
                     }
 
-                    if !self.palettes.contains_key(&map.id.module) {
-                        self.palettes.insert(
-                            map.id.module,
-                            ModuleAggregate::new(&self.modules, *map.id.module),
-                        );
+                    if let Entry::Vacant(e) = self.palettes.entry(map.id.module) {
+                        e.insert(ModuleAggregate::new(&self.modules, *map.id.module));
                     }
 
                     self.loaded_maps.insert(map.id.clone(), *map);
@@ -681,10 +679,7 @@ impl AppState {
                 _ => {}
             }
         }
-        let open_palettes = open_maps
-            .iter()
-            .map(|id| *id.module)
-            .collect::<HashSet<_>>();
+        let open_palettes = open_maps.iter().map(|id| id.module).collect::<HashSet<_>>();
         self.loaded_maps.retain(|id, _| open_maps.contains(id));
         self.palettes.retain(|name, _| open_palettes.contains(name));
     }
@@ -749,6 +744,6 @@ pub fn trigger_palette_update(
     modules: &InternedMap<CelesteModule>,
 ) {
     for (name, pal) in palettes.iter_mut() {
-        *pal = ModuleAggregate::new(modules, *name);
+        *pal = ModuleAggregate::new(modules, name);
     }
 }

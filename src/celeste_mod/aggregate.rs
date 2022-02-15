@@ -62,7 +62,7 @@ impl ModuleAggregate {
         };
         let mut autotilers: InternedMap<Arc<Autotiler>> = dep_mods()
             .flat_map(|(_, module)| module.tilers.iter())
-            .map(|(name, tiler)| (name, tiler.clone()))
+            .map(|(name, tiler)| (*name, tiler.clone()))
             .collect();
         autotilers.insert(
             intern("fg"),
@@ -95,11 +95,11 @@ impl ModuleAggregate {
 
         let entity_config: InternedMap<Arc<EntityConfig>> = dep_mods()
             .flat_map(|(_, module)| module.entity_config.iter())
-            .map(|(name, config)| (name, config.clone()))
+            .map(|(name, config)| (*name, config.clone()))
             .collect();
         let trigger_config: InternedMap<Arc<TriggerConfig>> = dep_mods()
             .flat_map(|(_, module)| module.trigger_config.iter())
-            .map(|(name, config)| (name, config.clone()))
+            .map(|(name, config)| (*name, config.clone()))
             .collect();
 
         let fg_tiles_palette = extract_tiles_palette(autotilers.get("fg").unwrap());

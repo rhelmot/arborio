@@ -26,7 +26,7 @@ pub fn build_installation_tab(cx: &mut Context) {
                     .iter()
                     .map(|(name, module)| {
                         (
-                            name,
+                            *name,
                             module.maps.len(),
                             module.everest_metadata.name,
                             module.module_kind(),

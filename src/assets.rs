@@ -1,6 +1,7 @@
 use lazy_static::lazy_static;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use stable_deref_trait::StableDeref;
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::hash::Hash;
@@ -16,6 +17,8 @@ pub fn next_uuid() -> u32 {
 
 #[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, PartialOrd, Ord)]
 pub struct Interned(&'static str);
+
+pub type InternedMap<T> = HashMap<Interned, T>;
 
 lazy_static! {
     static ref INTERNSHIP: elsa::sync::FrozenMap<&'static str, &'static str> =
@@ -67,71 +70,8 @@ impl Display for Interned {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct InternedMap<T>(HashMap<&'static str, T>);
-
-impl<T> InternedMap<T> {
-    pub fn new() -> Self {
-        Self(HashMap::new())
-    }
-
-    pub fn get(&self, key: &str) -> Option<&T> {
-        self.0.get(key)
-    }
-
-    pub fn insert(&mut self, key: Interned, value: T) -> Option<T> {
-        self.0.insert(key.0, value)
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (Interned, &T)> {
-        self.0.iter().map(|(k, v)| (Interned(k), v))
-    }
-
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (Interned, &mut T)> {
-        self.0.iter_mut().map(|(k, v)| (Interned(k), v))
-    }
-
-    pub fn contains_key(&self, key: &str) -> bool {
-        self.0.contains_key(key)
-    }
-
-    pub fn retain<F: FnMut(&&'static str, &mut T) -> bool>(&mut self, filter: F) {
-        self.0.retain(filter)
-    }
-
-    pub fn extend<I: IntoIterator<Item = (Interned, T)>>(&mut self, iter: I) {
-        self.0.extend(iter.into_iter().map(|(k, v)| (k.0, v)))
+impl Borrow<str> for Interned {
+    fn borrow(&self) -> &str {
+        self.0
     }
 }
-impl<T: Serialize> Serialize for InternedMap<T> {
-    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        self.0.serialize(s)
-    }
-}
-
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for InternedMap<T> {
-    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let owned: HashMap<String, T> = Deserialize::deserialize(d)?;
-        Ok(InternedMap(
-            owned.into_iter().map(|(k, v)| (intern(&k).0, v)).collect(),
-        ))
-    }
-}
-
-impl<T> FromIterator<(Interned, T)> for InternedMap<T> {
-    fn from_iter<I: IntoIterator<Item = (Interned, T)>>(iter: I) -> Self {
-        Self(HashMap::from_iter(iter.into_iter().map(|(k, v)| (k.0, v))))
-    }
-}
-
-impl<T> Default for InternedMap<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-//impl<T> FromIterator<(&str, T)> for InternedMap<T> {
-//    fn from_iter<I: IntoIterator<Item=Interned>>(iter: I) -> Self {
-//        Self(HashMap::from_iter(iter.into_iter().map(|(k, v)| (intern(k).0, v))))
-//    }
-//}

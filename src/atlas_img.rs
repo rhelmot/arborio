@@ -246,11 +246,11 @@ impl MultiAtlas {
             atlas
                 .sprites_map
                 .iter()
-                .map(|(path, sprite)| (path, sprite.clone())),
+                .map(|(path, sprite)| (*path, sprite.clone())),
         );
     }
 
-    pub fn iter_paths(&self) -> impl Iterator<Item = Interned> + '_ {
+    pub fn iter_paths(&self) -> impl Iterator<Item = &Interned> + '_ {
         self.sprites_map.iter().map(|(path, _)| path)
     }
 
