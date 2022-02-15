@@ -1,4 +1,4 @@
-use include_dir::{include_dir, Dir};
+use include_dir::{include_dir, Dir, DirEntry};
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
 
@@ -14,70 +14,58 @@ impl ConfigSourceTrait for EmbeddedSource {
     }
 
     fn list_dirs(&mut self, path: &Path) -> Box<dyn Iterator<Item = PathBuf>> {
-        let (dir, go) = if let Some(dir) = EMBEDDED.get_dir(path) {
-            (dir, true)
-        } else {
-            (EMBEDDED, false)
-        };
-
         Box::new(
-            dir.dirs()
-                .iter()
-                .filter(move |_| go)
-                .map(|d| d.path().to_owned()),
+            EMBEDDED
+                .get_dir(path)
+                .map(Dir::dirs)
+                .into_iter()
+                .flatten()
+                .map(Dir::path)
+                .map(Path::to_owned),
         )
     }
 
     fn list_all_files(&mut self, path: &Path) -> Box<dyn Iterator<Item = PathBuf>> {
-        let (dir, go) = if let Some(dir) = EMBEDDED.get_dir(path) {
-            (dir, true)
-        } else {
-            (EMBEDDED, false)
-        };
-
-        Box::new(EmbeddedFileIter::new(!go, dir))
+        Box::new(
+            EMBEDDED
+                .get_dir(path)
+                .map(EmbeddedFileIter::new)
+                .into_iter()
+                .flatten()
+                .map(Path::to_path_buf),
+        )
     }
 
     fn get_file(&mut self, path: &Path) -> Option<Box<dyn Read>> {
-        EMBEDDED
-            .get_file(path)
-            .map(|d| -> Box<dyn Read> { Box::new(Cursor::new(d.contents())) })
+        Some(Box::new(Cursor::new(EMBEDDED.get_file(path)?.contents())))
     }
 }
 
-struct EmbeddedFileIter {
-    bunk: bool,
-    stack: Vec<(Dir<'static>, bool, usize)>,
+struct EmbeddedFileIter<'a> {
+    stack: Vec<(&'a Dir<'a>, usize)>,
 }
 
-impl EmbeddedFileIter {
-    fn new(bunk: bool, start: Dir<'static>) -> Self {
+impl<'a> EmbeddedFileIter<'a> {
+    fn new(start: &'a Dir) -> Self {
         Self {
-            bunk,
-            stack: vec![(start, false, 0)],
+            stack: vec![(start, 0)],
         }
     }
 }
 
-impl Iterator for EmbeddedFileIter {
-    type Item = PathBuf;
+impl<'a> Iterator for EmbeddedFileIter<'a> {
+    type Item = &'a Path;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.bunk {
-            return None;
-        }
-
-        while let Some((cur_dir, doing_dirs, cur_idx)) = self.stack.pop() {
-            if doing_dirs {
-                if let Some(next_dir) = cur_dir.dirs.get(cur_idx) {
-                    self.stack.push((cur_dir, true, cur_idx + 1));
-                    self.stack.push((*next_dir, false, 0));
+        while let Some((cur_dir, cur_idx)) = self.stack.last_mut() {
+            if let Some(entry) = cur_dir.entries().get(*cur_idx) {
+                *cur_idx += 1;
+                match entry {
+                    DirEntry::Dir(sub_dir) => self.stack.push((sub_dir, 0)),
+                    DirEntry::File(file) => return Some(file.path()),
                 }
-            } else if let Some(file) = cur_dir.files.get(cur_idx) {
-                self.stack.push((cur_dir, false, cur_idx + 1));
-                return Some(file.path().to_owned());
             } else {
-                self.stack.push((cur_dir, true, 0));
+                self.stack.pop();
             }
         }
 

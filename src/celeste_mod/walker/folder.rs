@@ -30,14 +30,8 @@ impl ConfigSourceTrait for FolderSource {
                 .min_depth(1)
                 .max_depth(1)
                 .into_iter()
-                .filter_map(|e| e.ok())
-                .map(move |e| {
-                    e.path()
-                        .to_owned()
-                        .strip_prefix(&start)
-                        .unwrap()
-                        .to_path_buf()
-                })
+                .filter_map(Result::ok)
+                .map(move |e| e.path().strip_prefix(&start).unwrap().to_path_buf())
                 .filter(|p| p.is_dir()),
         )
     }
@@ -49,14 +43,8 @@ impl ConfigSourceTrait for FolderSource {
             WalkDir::new(self.0.join(&path))
                 .min_depth(1)
                 .into_iter()
-                .filter_map(|e| e.ok())
-                .map(move |e| {
-                    e.path()
-                        .to_owned()
-                        .strip_prefix(&start)
-                        .unwrap()
-                        .to_path_buf()
-                })
+                .filter_map(Result::ok)
+                .map(move |e| e.path().strip_prefix(&start).unwrap().to_path_buf())
                 .filter(|p| !p.is_dir()),
         )
     }
