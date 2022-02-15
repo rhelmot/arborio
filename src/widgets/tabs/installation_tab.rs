@@ -5,103 +5,101 @@ use vizia::*;
 use crate::app_state::{AppConfig, AppState};
 use crate::assets::Interned;
 use crate::celeste_mod::module::CelesteModuleKind;
-use crate::lenses::{AutoSaverLens, UnwrapLens};
+use crate::lenses::AutoSaverLens;
 use crate::AppEvent;
 
 pub fn build_installation_tab(cx: &mut Context) {
-    Binding::new_fallible(
+    Binding::new(
         cx,
         AppState::config
             .then(AutoSaverLens::new())
             .then(AppConfig::celeste_root)
             .then(UnwrapLens::new()),
         |cx, root| {
-            Label::new(
-                cx,
-                &format!("Current celeste install is {:?}", root.get(cx)),
-            );
-            Binding::new(cx, AppState::modules_version, move |cx, _| {
-                let modules = &cx.data::<AppState>().unwrap().modules;
-                let mut modules_list = modules
-                    .iter()
-                    .map(|(name, module)| {
-                        (
-                            *name,
-                            module.maps.len(),
-                            module.everest_metadata.name,
-                            module.module_kind(),
-                        )
-                    })
-                    .collect::<Vec<_>>();
-                modules_list.sort_by_key(|(_, _, name, _)| *name);
+            if let Some(root) = root.get_fallible(cx) {
+                Label::new(cx, &format!("Current celeste install is {:?}", *root));
+                Binding::new(cx, AppState::modules_version, move |cx, _| {
+                    let modules = &cx.data::<AppState>().unwrap().modules;
+                    let mut modules_list = modules
+                        .iter()
+                        .map(|(name, module)| {
+                            (
+                                *name,
+                                module.maps.len(),
+                                module.everest_metadata.name,
+                                module.module_kind(),
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    modules_list.sort_by_key(|(_, _, name, _)| *name);
 
-                let mut idx = 0usize;
-                let mut first = true;
-                while idx < modules_list.len() {
-                    if matches!(modules_list[idx].3, CelesteModuleKind::Directory) {
-                        let (sid, num_maps, name, _) = modules_list.remove(idx);
-                        if first {
-                            first = false;
-                            Label::new(cx, "My Mods");
+                    let mut idx = 0usize;
+                    let mut first = true;
+                    while idx < modules_list.len() {
+                        if matches!(modules_list[idx].3, CelesteModuleKind::Directory) {
+                            let (sid, num_maps, name, _) = modules_list.remove(idx);
+                            if first {
+                                first = false;
+                                Label::new(cx, "My Mods");
+                            }
+                            build_project_overview_card(cx, sid, name, num_maps);
+                        } else {
+                            idx += 1;
                         }
-                        build_project_overview_card(cx, sid, name, num_maps);
-                    } else {
-                        idx += 1;
                     }
-                }
 
-                let mut idx = 0usize;
-                let mut first = true;
-                while idx < modules_list.len() {
-                    if matches!(modules_list[idx].3, CelesteModuleKind::Builtin) {
-                        let (sid, num_maps, name, _) = modules_list.remove(idx);
-                        if first {
-                            first = false;
-                            Label::new(cx, "Builtin Modules");
+                    let mut idx = 0usize;
+                    let mut first = true;
+                    while idx < modules_list.len() {
+                        if matches!(modules_list[idx].3, CelesteModuleKind::Builtin) {
+                            let (sid, num_maps, name, _) = modules_list.remove(idx);
+                            if first {
+                                first = false;
+                                Label::new(cx, "Builtin Modules");
+                            }
+                            build_project_overview_card(cx, sid, name, num_maps);
+                        } else {
+                            idx += 1;
                         }
-                        build_project_overview_card(cx, sid, name, num_maps);
-                    } else {
-                        idx += 1;
                     }
-                }
 
-                let mut idx = 0usize;
-                let mut first = true;
-                while idx < modules_list.len() {
-                    if matches!(modules_list[idx].3, CelesteModuleKind::Zip) {
-                        let (sid, num_maps, name, _) = modules_list.remove(idx);
-                        if first {
-                            first = false;
-                            Label::new(cx, "Downloaded Mods");
+                    let mut idx = 0usize;
+                    let mut first = true;
+                    while idx < modules_list.len() {
+                        if matches!(modules_list[idx].3, CelesteModuleKind::Zip) {
+                            let (sid, num_maps, name, _) = modules_list.remove(idx);
+                            if first {
+                                first = false;
+                                Label::new(cx, "Downloaded Mods");
+                            }
+                            build_project_overview_card(cx, sid, name, num_maps);
+                        } else {
+                            idx += 1;
                         }
-                        build_project_overview_card(cx, sid, name, num_maps);
-                    } else {
-                        idx += 1;
                     }
-                }
 
-                assert_eq!(modules_list.len(), 0);
-            });
-        },
-        |cx| {
-            Button::new(
-                cx,
-                move |cx| {
-                    if let Ok(Some(celeste_path)) =
-                        dialog::FileSelection::new("Celeste Installation")
-                            .title("Please choose Celeste.exe")
-                            .path(".")
-                            .mode(dialog::FileSelectionMode::Open)
-                            .show()
-                    {
-                        cx.emit(AppEvent::SetConfigPath {
-                            path: Path::new(&celeste_path).parent().unwrap().to_path_buf(),
-                        });
-                    }
-                },
-                move |cx| Label::new(cx, "Select Celeste.exe"),
-            );
-            Label::new(cx, "Please show me where Celeste is installed.");
+                    assert_eq!(modules_list.len(), 0);
+                });
+            } else {
+                Button::new(
+                    cx,
+                    move |cx| {
+                        if let Ok(Some(celeste_path)) =
+                            dialog::FileSelection::new("Celeste Installation")
+                                .title("Please choose Celeste.exe")
+                                .path(".")
+                                .mode(dialog::FileSelectionMode::Open)
+                                .show()
+                        {
+                            cx.emit(AppEvent::SetConfigPath {
+                                path: Path::new(&celeste_path).parent().unwrap().to_path_buf(),
+                            });
+                        }
+                    },
+                    move |cx| Label::new(cx, "Select Celeste.exe"),
+                );
+                Label::new(cx, "Please show me where Celeste is installed.");
+            }
         },
     )
 }

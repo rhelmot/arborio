@@ -19,23 +19,23 @@ serde_yaml = "^0.8"
 nom = "^6.2"
 include_dir = "^0.7"
 #vizia = { path = "../../rust/VIZIA" }
-vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "7de3e28403be790df852ede5efcb49bd4eff865d" }
-femtovg = {git = "https://github.com/rhelmot/femtovg", rev = "4caba90e08e8eacf66dce2125393334a9cee22d1", default-features = false, features = ["image-loading"] } # not really a dependency, since vizia depends on it
-image = { version = "0.23.14", default-features = false, features = ["png"] } # not really a dependency either
-imgref = "^1.9"  # not really a dependency either
-rgb = "^0.8"  # not really a dependency either
+vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "b4cd10d036e973e3efe0b8710ed731a6378bfd91" }
+femtovg = { version = "0.3.0", default-features = false, features = ["image-loading"] } # inhert from vizia
+image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
+imgref = "1.6.1"  # inherit from femtovg
+rgb = "0.8.20"  # inherit from femtovg
 dialog = "^0.3"
 euclid = "^0.22"
 Inflector = "^0.11"
 itertools = "^0.10"
 enum-iterator = "^0.7"
-num-traits = "^0.2" # not really a dependency either
+num-traits = "0.2.10" # inherit from euclid
 walkdir = "^2"
 zip = "^0.5"
 elsa = "^1.6"
 lru = "^0.7"
 enum_dispatch = "^0.3"
-stable_deref_trait = "^1.2"
+#stable_deref_trait = "^1.2"
 parking_lot = "^0.12"
 
 [profile.dev.package.vizia_core]

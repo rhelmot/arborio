@@ -14,7 +14,6 @@ mod tools;
 mod units;
 mod widgets;
 
-use image::GenericImageView;
 use std::error::Error;
 use vizia::*;
 

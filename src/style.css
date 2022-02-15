@@ -118,6 +118,11 @@ palette>list {
     background-color: #c0c0f0;
 }
 
+tweaker textbox {
+    width: 1s;
+    child-space: 1px;
+}
+
 /*
 * {
     border-color: red;

@@ -94,7 +94,6 @@ dependencies = [
  "serde",
  "serde-xml-rs",
  "serde_yaml",
- "stable_deref_trait",
  "vizia",
  "walkdir",
  "zip",
@@ -503,12 +502,11 @@ dependencies = [
 
 [[package]]
 name = "deflate"
-version = "0.8.6"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73770f8e1fe7d64df17ca66ad28994a0a623ea497fa69486e14984e715c5d174"
+checksum = "c86f7e25f518f4b81808a2cf1c50996a61f5c2eb394b2393bd87f2a4780a432f"
 dependencies = [
  "adler32",
- "byteorder",
 ]
 
 [[package]]
@@ -667,20 +665,22 @@ dependencies = [
 
 [[package]]
 name = "femtovg"
-version = "0.2.8"
-source = "git+https://github.com/rhelmot/femtovg?rev=4caba90e08e8eacf66dce2125393334a9cee22d1#4caba90e08e8eacf66dce2125393334a9cee22d1"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8adbd34e37b365324ab17e3886b74e4eb3b9416d80660a09be510812895435bb"
 dependencies = [
  "bitflags",
  "fnv",
  "generational-arena",
  "glow",
+ "glutin",
  "image",
  "imgref",
  "lru",
  "ouroboros",
  "rgb",
  "rustybuzz",
- "ttf-parser 0.13.4",
+ "ttf-parser 0.14.0",
  "unicode-bidi",
  "unicode-segmentation",
  "wasm-bindgen",
@@ -884,9 +884,9 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "image"
-version = "0.23.14"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24ffcb7e7244a9bf19d35bf2883b9c080c4ced3c07a9895572178cdb8f13f6a1"
+checksum = "e94ac3d41f882c624a82d7945952032388488681f45f9d4077999a6c85688d61"
 dependencies = [
  "bytemuck",
  "byteorder",
@@ -1119,21 +1119,21 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "miniz_oxide"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "791daaae1ed6889560f8c4359194f56648355540573244a5448a83ba1ecc7435"
-dependencies = [
- "adler32",
-]
-
-[[package]]
-name = "miniz_oxide"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a92518e98c078586bc6c934028adcca4c92a53d6a958196de835170a01d84e4b"
 dependencies = [
  "adler",
  "autocfg",
+]
+
+[[package]]
+name = "miniz_oxide"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2b29bd4bc3f33391105ebee3589c19197c4271e3e5a9ec9bfe8127eeff8f082"
+dependencies = [
+ "adler",
 ]
 
 [[package]]
@@ -1301,9 +1301,9 @@ dependencies = [
 
 [[package]]
 name = "num-rational"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12ac428b1cb17fce6f731001d307d351ec70a6d202fc2e60f7d4c5e42d8f4f07"
+checksum = "d41702bd167c2df5520b384281bc111a4b5efcf7fbc4c9c222c815b07e0a6a6a"
 dependencies = [
  "autocfg",
  "num-integer",
@@ -1393,9 +1393,9 @@ dependencies = [
 
 [[package]]
 name = "ouroboros"
-version = "0.13.0"
+version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f357ef82d1b4db66fbed0b8d542cbd3c22d0bf5b393b3c257b9ba4568e70c9c3"
+checksum = "71643f290d126e18ac2598876d01e1d57aed164afc78fdb6e2a0c6589a1f6662"
 dependencies = [
  "aliasable",
  "ouroboros_macro",
@@ -1404,9 +1404,9 @@ dependencies = [
 
 [[package]]
 name = "ouroboros_macro"
-version = "0.13.0"
+version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44a0b52c2cbaef7dffa5fec1a43274afe8bd2a644fa9fc50a9ef4ff0269b1257"
+checksum = "ed9a247206016d424fe8497bc611e510887af5c261fbbf977877c4bb55ca4d82"
 dependencies = [
  "Inflector",
  "proc-macro-error",
@@ -1521,14 +1521,14 @@ checksum = "58893f751c9b0412871a09abd62ecd2a00298c6c83befa223ef98c52aef40cbe"
 
 [[package]]
 name = "png"
-version = "0.16.8"
+version = "0.17.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c3287920cb847dee3de33d301c463fba14dda99db24214ddf93f83d3021f4c6"
+checksum = "8e8f1882177b17c98ec33a51f5910ecbf4db92ca0def706781a1f8d0c661f393"
 dependencies = [
  "bitflags",
  "crc32fast",
  "deflate",
- "miniz_oxide 0.3.7",
+ "miniz_oxide 0.5.1",
 ]
 
 [[package]]
@@ -1990,9 +1990,9 @@ checksum = "7ae2f58a822f08abdaf668897e96a5656fe72f5a9ce66422423e8849384872e6"
 
 [[package]]
 name = "ttf-parser"
-version = "0.13.4"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76dacc724328b3d5e2ed67f9e30cdb56893a34ab239032502cc8f19f8dae4bbc"
+checksum = "4ccbe8381883510b6a2d8f1e32905bddd178c11caef8083086d0c0c9ab0ac281"
 
 [[package]]
 name = "unicode-bidi"
@@ -2063,7 +2063,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=7de3e28403be790df852ede5efcb49bd4eff865d#7de3e28403be790df852ede5efcb49bd4eff865d"
+source = "git+https://github.com/rhelmot/VIZIA?rev=b4cd10d036e973e3efe0b8710ed731a6378bfd91#b4cd10d036e973e3efe0b8710ed731a6378bfd91"
 dependencies = [
  "vizia_core",
  "vizia_glutin",
@@ -2072,7 +2072,7 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=7de3e28403be790df852ede5efcb49bd4eff865d#7de3e28403be790df852ede5efcb49bd4eff865d"
+source = "git+https://github.com/rhelmot/VIZIA?rev=b4cd10d036e973e3efe0b8710ed731a6378bfd91#b4cd10d036e973e3efe0b8710ed731a6378bfd91"
 dependencies = [
  "bitflags",
  "copypasta",
@@ -2088,7 +2088,7 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=7de3e28403be790df852ede5efcb49bd4eff865d#7de3e28403be790df852ede5efcb49bd4eff865d"
+source = "git+https://github.com/rhelmot/VIZIA?rev=b4cd10d036e973e3efe0b8710ed731a6378bfd91#b4cd10d036e973e3efe0b8710ed731a6378bfd91"
 dependencies = [
  "proc-macro2 1.0.36",
  "quote 1.0.14",
@@ -2098,7 +2098,7 @@ dependencies = [
 [[package]]
 name = "vizia_glutin"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=7de3e28403be790df852ede5efcb49bd4eff865d#7de3e28403be790df852ede5efcb49bd4eff865d"
+source = "git+https://github.com/rhelmot/VIZIA?rev=b4cd10d036e973e3efe0b8710ed731a6378bfd91#b4cd10d036e973e3efe0b8710ed731a6378bfd91"
 dependencies = [
  "femtovg",
  "fnv",

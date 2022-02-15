@@ -27,12 +27,12 @@ where
         <LL as Lens>::Source: Model,
     {
         let result = Self {
-            lens: selected,
+            lens: selected.clone(),
             marker: PhantomData {},
         }
         .build2(cx, move |cx| {
-            List::new(cx, items, move |cx, item| {
-                Binding::new(cx, selected, move |cx, selected_field| {
+            List::new(cx, items, move |cx, _, item| {
+                Binding::new(cx, selected.clone(), move |cx, selected_field| {
                     let selected = *selected_field.get(cx);
                     let item = *item.get(cx);
                     let checked = item.same(&selected);
@@ -72,8 +72,7 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
         let bounds = cx.cache.get_bounds(entity);
         let data = self
             .lens
-            .view(cx.data::<<L as Lens>::Source>().unwrap())
-            .unwrap();
+            .view(cx.data::<<L as Lens>::Source>().unwrap(), |x| *x.unwrap());
 
         canvas.save();
         canvas.translate(bounds.x, bounds.y);

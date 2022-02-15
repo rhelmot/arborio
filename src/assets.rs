@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use stable_deref_trait::StableDeref;
+//use stable_deref_trait::StableDeref;
 use std::borrow::{Borrow, Cow};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
@@ -30,7 +30,7 @@ impl Deref for Interned {
         &self.0
     }
 }
-unsafe impl StableDeref for Interned {}
+//unsafe impl StableDeref for Interned {}
 
 impl Default for Interned {
     fn default() -> Self {
