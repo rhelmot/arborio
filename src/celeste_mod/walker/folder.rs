@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::Read;
+use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
@@ -50,8 +50,8 @@ impl ConfigSourceTrait for FolderSource {
     }
 
     fn get_file(&mut self, path: &Path) -> Option<Box<dyn Read>> {
-        File::open(self.0.join(path))
-            .ok()
-            .map(|x| -> Box<dyn Read> { Box::new(x) })
+        Some(Box::new(BufReader::new(
+            File::open(self.0.join(path)).ok()?,
+        )))
     }
 }

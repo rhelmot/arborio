@@ -209,24 +209,19 @@ pub fn load_data_file(
     let mut buf: Vec<RGBA8> = vec![RGBA8::new(0, 0, 0, 0); total_px];
 
     while current_px < total_px {
-        let repeat = reader.read_u8()?;
-        let repeat = if repeat > 0 { repeat - 1 } else { 0 } as usize; // this is off-by-one from the julia code because it's more ergonomic
+        let repeat = reader.read_u8()? as usize;
+        debug_assert_ne!(repeat, 0);
         let alpha = if has_alpha { reader.read_u8()? } else { 255 };
         if alpha > 0 {
             let mut px = [0u8; 3];
             reader.read_exact(&mut px)?;
-            buf[current_px] = RGBA8::new(px[2], px[1], px[0], alpha);
+            let pixel = RGBA8::new(px[2], px[1], px[0], alpha);
+
+            buf[current_px..][..repeat].fill(pixel);
         }
         // no else case needed: they're already zeros
 
-        if repeat > 0 {
-            let src = buf[current_px];
-            for dst_idx in 1..=repeat {
-                buf[current_px + dst_idx] = src;
-            }
-        }
-
-        current_px += repeat + 1;
+        current_px += repeat;
     }
     Ok(Img::new(buf, width as usize, height as usize))
 }
