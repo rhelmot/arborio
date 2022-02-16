@@ -24,7 +24,8 @@ pub fn build_tabs(cx: &mut Context) {
                         AppTab::Map(_) => {
                             editor_tab::build_editor(cx);
                         }
-                    });
+                    })
+                    .height(Units::Stretch(1.0));
                 }
             },
         );
@@ -49,5 +50,5 @@ pub fn build_tab_bar(cx: &mut Context) {
         });
     })
     .layout_type(LayoutType::Row)
-    .height(Units::Auto);
+    .height(Units::Stretch(0.0));
 }
