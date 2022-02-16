@@ -26,9 +26,15 @@ impl EntityTweakerWidget {
                     move |cx, len| {
                         let len = len.get_fallible(cx).map(|x| *x).unwrap_or(0);
                         for i in 0..len {
-                            let _key_lens = attributes_lens.then(HashMapNthKeyLens::new(i));
+                            let key_lens = attributes_lens.then(HashMapNthKeyLens::new(i));
                             HStack::new(cx, move |cx| {
-                                Label::new(cx, "Attribute");
+                                Label::new(cx, "Attribute").bind(
+                                    key_lens,
+                                    move |handle, key_lens| {
+                                        let key_lens = &*key_lens.get(handle.cx);
+                                        handle.text(key_lens);
+                                    },
+                                );
                             });
                         }
                     },
@@ -43,22 +49,6 @@ impl View for EntityTweakerWidget {
         Some("tweaker".to_owned())
     }
 }
-
-#[derive(Lens)]
-pub struct IntVal {
-    pub item: i32,
-}
-impl Model for IntVal {}
-#[derive(Lens)]
-pub struct FloatVal {
-    pub item: f32,
-}
-impl Model for FloatVal {}
-#[derive(Lens)]
-pub struct StringVal {
-    pub item: String,
-}
-impl Model for StringVal {}
 
 pub struct TweakerWidgetAttribute {}
 

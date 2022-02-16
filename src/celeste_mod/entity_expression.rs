@@ -310,9 +310,7 @@ fn match_expr(input: &str) -> IResult<&str, Expression> {
 }
 
 fn bin_op(op: BinOp) -> impl FnMut(&str) -> IResult<&str, BinOp> {
-    move |input| {
-        map(tag(op.as_str()), move |_| op)(input)
-    }
+    move |input| map(tag(op.as_str()), move |_| op)(input)
 }
 
 fn un_op(op: UnOp) -> impl FnMut(&str) -> IResult<&str, UnOp> {

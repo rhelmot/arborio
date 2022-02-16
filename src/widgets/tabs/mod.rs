@@ -4,31 +4,25 @@ pub mod project_tab;
 
 use crate::app_state::AppState;
 use crate::app_state::AppTab;
+use crate::lenses::IndexWithLens;
 use crate::AppEvent;
 use vizia::*;
 
 pub fn build_tabs(cx: &mut Context) {
-    Binding::new(cx, AppState::current_tab, move |cx, current_tab_idx| {
-        Binding::new(
-            cx,
-            AppState::tabs.index(*current_tab_idx.get(cx)),
-            move |cx, current_tab| {
-                if let Some(current_tab) = current_tab.get_fallible(cx) {
-                    VStack::new(cx, move |cx| match *current_tab {
-                        AppTab::CelesteOverview => {
-                            installation_tab::build_installation_tab(cx);
-                        }
-                        AppTab::ProjectOverview(project) => {
-                            project_tab::build_project_tab(cx, project)
-                        }
-                        AppTab::Map(_) => {
-                            editor_tab::build_editor(cx);
-                        }
-                    })
-                    .height(Units::Stretch(1.0));
+    let lens = IndexWithLens::new(AppState::tabs, AppState::current_tab);
+    Binding::new(cx, lens, move |cx, current_tab| {
+        if let Some(current_tab) = current_tab.get_fallible(cx) {
+            VStack::new(cx, move |cx| match *current_tab {
+                AppTab::CelesteOverview => {
+                    installation_tab::build_installation_tab(cx);
                 }
-            },
-        );
+                AppTab::ProjectOverview(project) => project_tab::build_project_tab(cx, project),
+                AppTab::Map(_) => {
+                    editor_tab::build_editor(cx);
+                }
+            })
+            .height(Units::Stretch(1.0));
+        }
     });
 }
 

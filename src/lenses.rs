@@ -239,3 +239,45 @@ impl<K: 'static + Ord, V: 'static> Lens for HashMapNthKeyLens<K, V> {
         map(keys.get(self.idx).copied())
     }
 }
+
+#[derive(Debug)]
+pub struct IndexWithLens<L1, L2, T> {
+    l1: L1,
+    l2: L2,
+    t: PhantomData<T>,
+}
+
+impl<L1, L2, T> IndexWithLens<L1, L2, T> {
+    pub fn new(l1: L1, l2: L2) -> Self {
+        Self {
+            l1,
+            l2,
+            t: PhantomData::default(),
+        }
+    }
+}
+
+impl<L1: Clone, L2: Clone, T> Clone for IndexWithLens<L1, L2, T> {
+    fn clone(&self) -> Self {
+        Self::new(self.l1.clone(), self.l2.clone())
+    }
+}
+
+impl<L1: Copy, L2: Copy, T> Copy for IndexWithLens<L1, L2, T> {}
+
+impl<L1, L2, T: 'static + Debug> Lens for IndexWithLens<L1, L2, T>
+where
+    L1: Lens<Target = Vec<T>>,
+    L2: Lens<Source = <L1 as Lens>::Source, Target = usize>,
+{
+    type Source = <L1 as Lens>::Source;
+    type Target = T;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        if let Some(index) = self.l2.view(source, |s| s.copied()) {
+            self.l1.view(source, |s| map(s.and_then(|s| s.get(index))))
+        } else {
+            map(None)
+        }
+    }
+}

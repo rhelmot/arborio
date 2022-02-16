@@ -146,6 +146,11 @@ impl PaletteItem for TileSelectable {
 
     fn draw(&self, app: &AppState, canvas: &mut Canvas) {
         if let Some(texture) = self.texture {
+            if app.map_tab_check() {
+                println!("SOMETHING IS WRONG");
+                return;
+            }
+
             canvas.scale(3.0, 3.0);
             app.current_palette_unwrap().gameplay_atlas.draw_sprite(
                 canvas,
