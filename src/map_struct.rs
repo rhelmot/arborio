@@ -9,7 +9,7 @@ use std::default;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
-use vizia::Data;
+use vizia::{Data, Lens};
 
 use crate::assets::{next_uuid, Interned};
 use crate::from_binel::{GetAttrOrChild, TryFromBinEl, TwoWayConverter};
@@ -183,7 +183,7 @@ pub struct CelesteMapLevelCache {
     pub last_decal_idx: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, TryFromBinEl)]
+#[derive(Debug, Clone, PartialEq, TryFromBinEl, Lens)]
 pub struct CelesteMapEntity {
     pub id: i32,
     #[name]

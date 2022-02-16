@@ -146,3 +146,96 @@ impl<T: Debug + 'static> Lens for HashMapStringKeyLens<T> {
         map(source.get(*self.key))
     }
 }
+
+#[derive(Debug)]
+pub struct VecLenLens<T> {
+    p: PhantomData<T>,
+}
+
+impl<T> Clone for VecLenLens<T> {
+    fn clone(&self) -> Self {
+        Self {
+            p: PhantomData::default(),
+        }
+    }
+}
+
+impl<T> Copy for VecLenLens<T> {}
+
+impl<T: 'static> Lens for VecLenLens<T> {
+    type Source = Vec<T>;
+    type Target = usize;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        map(Some(&source.len()))
+    }
+}
+
+#[derive(Debug)]
+pub struct HashMapLenLens<K, V> {
+    p: PhantomData<(K, V)>,
+}
+
+impl<K, V> HashMapLenLens<K, V> {
+    pub fn new() -> Self {
+        Self {
+            p: PhantomData::default(),
+        }
+    }
+}
+
+impl<K, V> Clone for HashMapLenLens<K, V> {
+    fn clone(&self) -> Self {
+        Self {
+            p: PhantomData::default(),
+        }
+    }
+}
+
+impl<K, V> Copy for HashMapLenLens<K, V> {}
+
+impl<K: 'static, V: 'static> Lens for HashMapLenLens<K, V> {
+    type Source = HashMap<K, V>;
+    type Target = usize;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        map(Some(&source.len()))
+    }
+}
+
+#[derive(Debug)]
+pub struct HashMapNthKeyLens<K, V> {
+    idx: usize,
+    p: PhantomData<(K, V)>,
+}
+
+impl<K, V> HashMapNthKeyLens<K, V> {
+    pub fn new(idx: usize) -> Self {
+        Self {
+            idx,
+            p: PhantomData::default(),
+        }
+    }
+}
+
+impl<K, V> Clone for HashMapNthKeyLens<K, V> {
+    fn clone(&self) -> Self {
+        Self {
+            idx: self.idx,
+            p: PhantomData::default(),
+        }
+    }
+}
+
+impl<K, V> Copy for HashMapNthKeyLens<K, V> {}
+
+impl<K: 'static + Ord, V: 'static> Lens for HashMapNthKeyLens<K, V> {
+    type Source = HashMap<K, V>;
+    type Target = K;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        let mut keys = source.keys().collect::<Vec<_>>();
+        keys.sort();
+        map(keys.get(self.idx).copied())
+    }
+}
