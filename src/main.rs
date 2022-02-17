@@ -47,7 +47,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             VStack::new(cx, move |cx| {
                 HStack::new(cx, move |_| {
                     // menu bar
-                });
+                })
+                .class("menu_bar");
                 build_tab_bar(cx);
                 build_tabs(cx);
 
@@ -66,7 +67,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                         });
                     }
                 })
-            });
+            })
+            .class("main");
         },
     );
 

@@ -1,3 +1,11 @@
+.main {
+    height: 100%;
+}
+
+.menu_bar {
+    height: auto;
+}
+
 button.btn_item {
     border-radius: 0;
     background-color: #ffe4c4;
@@ -45,10 +53,13 @@ palette>list {
     child-left: 3px;
 }
 
+.tab_bar {
+    height: auto;
+    layout-type: row;
+}
+
 .tab {
     background-color: #ffe4c4;
-    border-color: #ffe4c4;
-    border-width: 3px;
     border-radius: 2px;
     color: black;
     child-left: 3px;
@@ -56,10 +67,13 @@ palette>list {
     child-top: 1s;
     child-bottom: 1s;
     height: 30px;
+    border-color: #333333;
+    border-width: 1px;
 }
 
 .tab:checked {
     background-color: #c0c4c4;
+    border-width: 3px;
     border-color: black;
 }
 
@@ -75,6 +89,11 @@ palette>list {
 
 .close_btn:over {
     background-color: #c0c0f0;
+}
+
+.tab_container {
+    height: 1s;
+    width: 1s;
 }
 
 .progress_bar {
@@ -118,9 +137,15 @@ palette>list {
     background-color: #c0c0f0;
 }
 
+tweaker label {
+    left: 3px;
+    right: 3px;
+    top: 1s;
+    bottom: 1s;
+}
+
 tweaker textbox {
     width: 1s;
-    child-space: 1px;
 }
 
 /*

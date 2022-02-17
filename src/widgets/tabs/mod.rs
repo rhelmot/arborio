@@ -21,7 +21,7 @@ pub fn build_tabs(cx: &mut Context) {
                     editor_tab::build_editor(cx);
                 }
             })
-            .height(Units::Stretch(1.0));
+            .class("tab_container");
         }
     });
 }
@@ -43,6 +43,5 @@ pub fn build_tab_bar(cx: &mut Context) {
             handle.checked(current_tab == tab_index);
         });
     })
-    .layout_type(LayoutType::Row)
-    .height(Units::Stretch(0.0));
+    .class("tab_bar");
 }
