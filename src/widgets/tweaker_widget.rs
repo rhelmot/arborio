@@ -1,7 +1,11 @@
 use vizia::*;
 
-use crate::lenses::{CurrentSelectedEntityLens, HashMapLenLens, HashMapNthKeyLens};
-use crate::map_struct::CelesteMapEntity;
+use crate::app_state::{AppEvent, AppSelection, AppState, AppTab};
+use crate::lenses::{
+    CurrentSelectedEntityLens, HashMapIndexWithLens, HashMapLenLens, HashMapNthKeyLens,
+    IsFailedLens,
+};
+use crate::map_struct::{Attribute, CelesteMapEntity};
 
 pub struct EntityTweakerWidget {}
 
@@ -19,6 +23,29 @@ impl EntityTweakerWidget {
                     }
                 });
 
+                Binding::new(cx, IsFailedLens::new(entity_lens), move |cx, failed| {
+                    if !*failed.get(cx) {
+                        HStack::new(cx, move |cx| {
+                            Label::new(cx, "x");
+                            Textbox::new(cx, entity_lens.then(CelesteMapEntity::x)).on_edit(edit_x);
+                        });
+                        HStack::new(cx, move |cx| {
+                            Label::new(cx, "y");
+                            Textbox::new(cx, entity_lens.then(CelesteMapEntity::y)).on_edit(edit_y);
+                        });
+                        HStack::new(cx, move |cx| {
+                            Label::new(cx, "width");
+                            Textbox::new(cx, entity_lens.then(CelesteMapEntity::width))
+                                .on_edit(edit_w);
+                        });
+                        HStack::new(cx, move |cx| {
+                            Label::new(cx, "height");
+                            Textbox::new(cx, entity_lens.then(CelesteMapEntity::height))
+                                .on_edit(edit_h);
+                        });
+                    }
+                });
+
                 let attributes_lens = entity_lens.then(CelesteMapEntity::attributes);
                 Binding::new(
                     cx,
@@ -28,13 +55,80 @@ impl EntityTweakerWidget {
                         for i in 0..len {
                             let key_lens = attributes_lens.then(HashMapNthKeyLens::new(i));
                             HStack::new(cx, move |cx| {
-                                Label::new(cx, "Attribute").bind(
-                                    key_lens,
-                                    move |handle, key_lens| {
-                                        let key_lens = &*key_lens.get(handle.cx);
-                                        handle.text(key_lens);
+                                Label::new(cx, key_lens);
+
+                                let attr_value_lens =
+                                    HashMapIndexWithLens::new(attributes_lens, key_lens);
+                                let s_value_lens = attr_value_lens.then(Attribute::text);
+                                let i_value_lens = attr_value_lens.then(Attribute::int);
+                                let f_value_lens = attr_value_lens.then(Attribute::float);
+                                let b_value_lens = attr_value_lens.then(Attribute::bool);
+                                Binding::new(
+                                    cx,
+                                    IsFailedLens::new(s_value_lens),
+                                    move |cx, failed| {
+                                        if !*failed.get(cx) {
+                                            Textbox::new(cx, s_value_lens).on_edit(
+                                                move |cx, text| {
+                                                    edit_attribute(
+                                                        cx,
+                                                        key_lens.get(cx).to_string(),
+                                                        Attribute::Text(text),
+                                                    );
+                                                },
+                                            );
+                                        }
                                     },
                                 );
+                                Binding::new(
+                                    cx,
+                                    IsFailedLens::new(i_value_lens),
+                                    move |cx, failed| {
+                                        if !*failed.get(cx) {
+                                            Textbox::new(cx, i_value_lens).on_edit(
+                                                move |cx, text| {
+                                                    if let Ok(i) = text.parse() {
+                                                        edit_attribute(
+                                                            cx,
+                                                            key_lens.get(cx).to_string(),
+                                                            Attribute::Int(i),
+                                                        );
+                                                    }
+                                                },
+                                            );
+                                        }
+                                    },
+                                );
+                                Binding::new(
+                                    cx,
+                                    IsFailedLens::new(f_value_lens),
+                                    move |cx, failed| {
+                                        if !*failed.get(cx) {
+                                            Textbox::new(cx, f_value_lens).on_edit(
+                                                move |cx, text| {
+                                                    if let Ok(i) = text.parse() {
+                                                        edit_attribute(
+                                                            cx,
+                                                            key_lens.get(cx).to_string(),
+                                                            Attribute::Float(i),
+                                                        );
+                                                    }
+                                                },
+                                            );
+                                        }
+                                    },
+                                );
+                                Binding::new(cx, b_value_lens, move |cx, b| {
+                                    if let Some(b) = b.get_fallible(cx) {
+                                        Checkbox::new(cx, *b).on_toggle(move |cx| {
+                                            edit_attribute(
+                                                cx,
+                                                key_lens.get(cx).to_string(),
+                                                Attribute::Bool(!*b),
+                                            );
+                                        });
+                                    }
+                                });
                             });
                         }
                     },
@@ -50,111 +144,60 @@ impl View for EntityTweakerWidget {
     }
 }
 
-pub struct TweakerWidgetAttribute {}
+fn edit_entity<F: FnOnce(&mut CelesteMapEntity)>(cx: &mut Context, f: F) {
+    let app_state = cx.data::<AppState>().unwrap();
+    let trigger = matches!(
+        app_state.current_selected,
+        Some(AppSelection::EntityBody(_, true) | AppSelection::EntityNode(_, _, true))
+    );
+    let (current_map, current_room) = match app_state.tabs.get(app_state.current_tab) {
+        Some(AppTab::Map(map_tab)) => (map_tab.id.clone(), map_tab.current_room),
+        _ => panic!("How'd you do that"),
+    };
 
-//impl TweakerWidgetAttribute {
-//    pub fn new<L>(cx: &mut Context, attr: L) -> Handle<'_, Self> {
-//        Self {}.build2(cx, move |cx| {
-//            let app_state = cx.data::<AppState>().unwrap();
-//            let trigger = matches!(
-//                                    app_state.current_selected,
-//                                    Some(
-//                                        AppSelection::EntityBody(_, true)
-//                                            | AppSelection::EntityNode(_, _, true)
-//                                    )
-//                                );
-//            let (current_map, current_room) =
-//                match app_state.tabs.get(app_state.current_tab) {
-//                    Some(AppTab::Map(map_tab)) => {
-//                        (map_tab.id.clone(), map_tab.current_room)
-//                    }
-//                    _ => panic!("How'd you do that"),
-//                };
-//
-//            let entity = selection.get(cx);
-//            let val = &entity.attributes[&attr];
-//            match val {
-//                BinElAttr::Bool(b) => {
-//                    let b = *b;
-//                    Checkbox::new(cx, b).on_toggle(move |cx| {
-//                        let mut entity = selection.get(cx).clone();
-//                        entity
-//                            .attributes
-//                            .insert(attr.to_string(), BinElAttr::Bool(!b));
-//
-//                        cx.emit(AppEvent::EntityUpdate {
-//                            map: current_map.clone(),
-//                            room: current_room,
-//                            entity,
-//                            trigger,
-//                        });
-//                    });
-//                }
-//                BinElAttr::Int(i) => {
-//                    let i = *i;
-//                    IntVal { item: i }.build(cx);
-//                    Textbox::new(cx, IntVal::item).on_edit(move |cx, text| {
-//                        if let Ok(i) = text.parse() {
-//                            let mut entity = selection.get(cx).clone();
-//                            entity
-//                                .attributes
-//                                .insert(attr.to_string(), BinElAttr::Int(i));
-//
-//                            cx.emit(AppEvent::EntityUpdate {
-//                                map: current_map.clone(),
-//                                room: current_room,
-//                                entity,
-//                                trigger,
-//                            });
-//                        }
-//                    });
-//                }
-//                BinElAttr::Float(f) => {
-//                    let f = *f;
-//                    FloatVal { item: f }.build(cx);
-//                    Textbox::new(cx, StringVal::item).on_edit(
-//                        move |cx, text| {
-//                            if let Ok(f) = text.parse() {
-//                                let mut entity = selection.get(cx).clone();
-//                                entity.attributes.insert(
-//                                    attr.to_string(),
-//                                    BinElAttr::Float(f),
-//                                );
-//
-//                                cx.emit(AppEvent::EntityUpdate {
-//                                    map: current_map.clone(),
-//                                    room: current_room,
-//                                    entity,
-//                                    trigger,
-//                                });
-//                            }
-//                        },
-//                    );
-//                }
-//                BinElAttr::Text(s) => {
-//                    StringVal { item: s.clone() }.build(cx);
-//                    Textbox::new(cx, StringVal::item).on_edit(
-//                        move |cx, text| {
-//                            if let Ok(s) = text.parse() {
-//                                let mut entity = selection.get(cx).clone();
-//                                entity.attributes.insert(
-//                                    attr.to_string(),
-//                                    BinElAttr::Text(s),
-//                                );
-//
-//                                cx.emit(AppEvent::EntityUpdate {
-//                                    map: current_map.clone(),
-//                                    room: current_room,
-//                                    entity,
-//                                    trigger,
-//                                });
-//                            }
-//                        },
-//                    );
-//                }
-//            }
-//        })
-//    }
-//}
+    let mut entity = (CurrentSelectedEntityLens {}).get(cx).take();
 
-impl View for TweakerWidgetAttribute {}
+    f(&mut entity);
+
+    cx.emit(AppEvent::EntityUpdate {
+        map: current_map,
+        room: current_room,
+        entity,
+        trigger,
+    });
+}
+
+fn edit_attribute(cx: &mut Context, key: String, value: Attribute) {
+    edit_entity(cx, move |entity| {
+        entity.attributes.insert(key, value);
+    });
+}
+
+fn edit_x(cx: &mut Context, value: String) {
+    if let Ok(value) = value.parse() {
+        edit_entity(cx, move |entity| {
+            entity.x = value;
+        })
+    }
+}
+fn edit_y(cx: &mut Context, value: String) {
+    if let Ok(value) = value.parse() {
+        edit_entity(cx, move |entity| {
+            entity.y = value;
+        })
+    }
+}
+fn edit_w(cx: &mut Context, value: String) {
+    if let Ok(value) = value.parse() {
+        edit_entity(cx, move |entity| {
+            entity.width = value;
+        })
+    }
+}
+fn edit_h(cx: &mut Context, value: String) {
+    if let Ok(value) = value.parse() {
+        edit_entity(cx, move |entity| {
+            entity.height = value;
+        })
+    }
+}

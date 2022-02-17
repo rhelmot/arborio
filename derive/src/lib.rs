@@ -114,7 +114,9 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                     })
                 } else if attributes {
                     Some(quote!{
-                        binel.attributes.extend(self.#ident.clone());
+                        for (k, v) in self.#ident.clone().into_iter() {
+                            binel.attributes.insert(k, v.into());
+                        }
                     })
                 } else if optional {
                     Some(quote! {
@@ -152,7 +154,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                             .attributes
                             .iter()
                             .filter(|kv| !fields_list.contains(&kv.0.as_str()))
-                            .map(|(k, v)| (k.to_owned(), v.clone()))
+                            .map(|(k, v)| (k.to_owned(), v.clone().into()))
                             .collect()
                     }
                 } else if optional {

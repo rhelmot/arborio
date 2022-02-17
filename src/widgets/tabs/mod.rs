@@ -4,12 +4,12 @@ pub mod project_tab;
 
 use crate::app_state::AppState;
 use crate::app_state::AppTab;
-use crate::lenses::IndexWithLens;
+use crate::lenses::VecIndexWithLens;
 use crate::AppEvent;
 use vizia::*;
 
 pub fn build_tabs(cx: &mut Context) {
-    let lens = IndexWithLens::new(AppState::tabs, AppState::current_tab);
+    let lens = VecIndexWithLens::new(AppState::tabs, AppState::current_tab);
     Binding::new(cx, lens, move |cx, current_tab| {
         if let Some(current_tab) = current_tab.get_fallible(cx) {
             VStack::new(cx, move |cx| match *current_tab {

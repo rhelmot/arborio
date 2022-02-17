@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use crate::assets;
 use crate::celeste_mod::entity_expression::{Const, Expression};
+use crate::map_struct::Attribute;
 use crate::units::*;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -317,12 +318,12 @@ impl TriggerConfig {
 }
 
 impl AttributeValue {
-    pub fn to_binel(&self) -> celeste::binel::BinElAttr {
+    pub fn to_binel(&self) -> Attribute {
         match self {
-            AttributeValue::String(s) => celeste::binel::BinElAttr::Text(s.clone()),
-            AttributeValue::Float(f) => celeste::binel::BinElAttr::Float(*f),
-            AttributeValue::Int(i) => celeste::binel::BinElAttr::Int(*i),
-            AttributeValue::Bool(b) => celeste::binel::BinElAttr::Bool(*b),
+            AttributeValue::String(s) => Attribute::Text(s.clone()),
+            AttributeValue::Float(f) => Attribute::Float(*f),
+            AttributeValue::Int(i) => Attribute::Int(*i),
+            AttributeValue::Bool(b) => Attribute::Bool(*b),
         }
     }
 }

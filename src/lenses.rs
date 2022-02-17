@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::Deref;
 use vizia::*;
 
 use crate::app_state::{AppSelection, AppState, AppTab, MapTab};
-use crate::assets::Interned;
 use crate::auto_saver::AutoSaver;
 use crate::map_struct::{CelesteMapEntity, MapID};
 use crate::ModuleAggregate;
@@ -121,31 +121,40 @@ impl<T: 'static + Debug> Lens for AutoSaverLens<T> {
     }
 }
 
-#[derive(Debug)]
-pub struct HashMapStringKeyLens<T> {
-    key: Interned,
-    t: PhantomData<T>,
-}
+// #[derive(Debug)]
+// pub struct HashMapStringKeyLens<T> {
+//     key: Interned,
+//     t: PhantomData<T>,
+// }
 
-impl<T> Clone for HashMapStringKeyLens<T> {
-    fn clone(&self) -> Self {
-        Self {
-            key: self.key,
-            t: PhantomData::default(),
-        }
-    }
-}
+// impl<T> HashMapStringKeyLens<T> {
+//     pub fn new(key: Interned) -> Self {
+//         Self {
+//             key,
+//             t: PhantomData::default(),
+//         }
+//     }
+// }
 
-impl<T> Copy for HashMapStringKeyLens<T> {}
+// impl<T> Clone for HashMapStringKeyLens<T> {
+//     fn clone(&self) -> Self {
+//         Self {
+//             key: self.key,
+//             t: PhantomData::default(),
+//         }
+//     }
+// }
 
-impl<T: Debug + 'static> Lens for HashMapStringKeyLens<T> {
-    type Source = HashMap<String, T>;
-    type Target = T;
+// impl<T> Copy for HashMapStringKeyLens<T> {}
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        map(source.get(*self.key))
-    }
-}
+// impl<T: Debug + 'static> Lens for HashMapStringKeyLens<T> {
+//     type Source = HashMap<&'static str, T>;
+//     type Target = T;
+
+//     fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+//         map(source.get(*self.key))
+//     }
+// }
 
 #[derive(Debug)]
 pub struct VecLenLens<T> {
@@ -241,13 +250,13 @@ impl<K: 'static + Ord, V: 'static> Lens for HashMapNthKeyLens<K, V> {
 }
 
 #[derive(Debug)]
-pub struct IndexWithLens<L1, L2, T> {
+pub struct VecIndexWithLens<L1, L2, T> {
     l1: L1,
     l2: L2,
     t: PhantomData<T>,
 }
 
-impl<L1, L2, T> IndexWithLens<L1, L2, T> {
+impl<L1, L2, T> VecIndexWithLens<L1, L2, T> {
     pub fn new(l1: L1, l2: L2) -> Self {
         Self {
             l1,
@@ -257,15 +266,15 @@ impl<L1, L2, T> IndexWithLens<L1, L2, T> {
     }
 }
 
-impl<L1: Clone, L2: Clone, T> Clone for IndexWithLens<L1, L2, T> {
+impl<L1: Clone, L2: Clone, T> Clone for VecIndexWithLens<L1, L2, T> {
     fn clone(&self) -> Self {
         Self::new(self.l1.clone(), self.l2.clone())
     }
 }
 
-impl<L1: Copy, L2: Copy, T> Copy for IndexWithLens<L1, L2, T> {}
+impl<L1: Copy, L2: Copy, T> Copy for VecIndexWithLens<L1, L2, T> {}
 
-impl<L1, L2, T: 'static + Debug> Lens for IndexWithLens<L1, L2, T>
+impl<L1, L2, T: 'static + Debug> Lens for VecIndexWithLens<L1, L2, T>
 where
     L1: Lens<Target = Vec<T>>,
     L2: Lens<Source = <L1 as Lens>::Source, Target = usize>,
@@ -279,5 +288,71 @@ where
         } else {
             map(None)
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct HashMapIndexWithLens<L1, L2, T> {
+    l1: L1,
+    l2: L2,
+    t: PhantomData<T>,
+}
+
+impl<L1, L2, T> HashMapIndexWithLens<L1, L2, T> {
+    pub fn new(l1: L1, l2: L2) -> Self {
+        Self {
+            l1,
+            l2,
+            t: PhantomData::default(),
+        }
+    }
+}
+
+impl<L1: Clone, L2: Clone, T> Clone for HashMapIndexWithLens<L1, L2, T> {
+    fn clone(&self) -> Self {
+        Self::new(self.l1.clone(), self.l2.clone())
+    }
+}
+
+impl<L1: Copy, L2: Copy, T> Copy for HashMapIndexWithLens<L1, L2, T> {}
+
+impl<L1, L2, T: 'static + Debug> Lens for HashMapIndexWithLens<L1, L2, T>
+where
+    L1: Lens<Target = HashMap<<L2 as Lens>::Target, T>>,
+    L2: Lens<Source = <L1 as Lens>::Source>,
+    <L2 as Lens>::Target: Hash + Eq,
+{
+    type Source = <L1 as Lens>::Source;
+    type Target = T;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        self.l2.view(source, |idx| {
+            self.l1.view(source, |hashmap| {
+                map(match (hashmap, idx) {
+                    (Some(x), Some(y)) => x.get(y),
+                    _ => None,
+                })
+            })
+        })
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct IsFailedLens<L> {
+    lens: L,
+}
+
+impl<L> IsFailedLens<L> {
+    pub fn new(lens: L) -> Self {
+        Self { lens }
+    }
+}
+
+impl<L: 'static + Lens> Lens for IsFailedLens<L> {
+    type Source = L::Source;
+    type Target = bool;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        map(Some(&self.lens.view(source, |opt| opt.is_none())))
     }
 }

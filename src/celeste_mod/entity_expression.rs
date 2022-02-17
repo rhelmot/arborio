@@ -1,4 +1,4 @@
-use celeste::binel::BinElAttr;
+use crate::map_struct::Attribute;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{one_of, space0};
@@ -570,12 +570,12 @@ impl Const {
         Const::Number(Number(i.into()))
     }
 
-    pub fn from_attr(a: &celeste::binel::BinElAttr) -> Const {
+    pub fn from_attr(a: &Attribute) -> Const {
         match a {
-            BinElAttr::Bool(b) => Const::from_num(if *b { 1 } else { 0 }),
-            BinElAttr::Int(i) => Const::from_num(*i),
-            BinElAttr::Float(f) => Const::from_num(*f),
-            BinElAttr::Text(s) => Const::String(s.clone()),
+            Attribute::Bool(b) => Const::from_num(if *b { 1 } else { 0 }),
+            Attribute::Int(i) => Const::from_num(*i),
+            Attribute::Float(f) => Const::from_num(*f),
+            Attribute::Text(s) => Const::String(s.clone()),
         }
     }
 }

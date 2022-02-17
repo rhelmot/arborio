@@ -195,7 +195,7 @@ pub struct CelesteMapEntity {
     #[default]
     pub height: u32,
     #[attributes]
-    pub attributes: HashMap<String, BinElAttr>,
+    pub attributes: HashMap<String, Attribute>,
     #[children]
     pub nodes: Vec<Node>,
 }
@@ -277,6 +277,37 @@ pub enum CelesteMapErrorType {
     MissingAttribute,
     BadAttrType,
     OutOfRange,
+}
+
+#[derive(Debug, PartialEq, Clone, Lens)]
+pub enum Attribute {
+    Bool(bool),
+    Int(i32),
+    Float(f32),
+    Text(String),
+}
+
+impl From<BinElAttr> for Attribute {
+    fn from(s: BinElAttr) -> Self {
+        match s {
+            BinElAttr::Bool(b) => Attribute::Bool(b),
+            BinElAttr::Int(i) => Attribute::Int(i),
+            BinElAttr::Float(f) => Attribute::Float(f),
+            BinElAttr::Text(s) => Attribute::Text(s),
+        }
+    }
+}
+
+#[allow(clippy::from_over_into)]
+impl Into<BinElAttr> for Attribute {
+    fn into(self) -> BinElAttr {
+        match self {
+            Attribute::Bool(b) => BinElAttr::Bool(b),
+            Attribute::Int(i) => BinElAttr::Int(i),
+            Attribute::Float(f) => BinElAttr::Float(f),
+            Attribute::Text(s) => BinElAttr::Text(s),
+        }
+    }
 }
 
 impl vizia::Data for CelesteMapEntity {
