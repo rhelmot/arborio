@@ -96,6 +96,10 @@ palette>list {
     width: 1s;
 }
 
+.progress_bar_container {
+    height: 22px;
+}
+
 .progress_bar {
     color: white;
     background-color: #209020;

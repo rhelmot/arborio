@@ -64,7 +64,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                             Label::new(cx, &status)
                                 .width(Units::Percentage(progress as f32))
                                 .class("progress_bar");
-                        });
+                        })
+                        .class("progress_bar_container");
                     }
                 })
             })
