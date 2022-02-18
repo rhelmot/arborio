@@ -137,6 +137,10 @@ palette>list {
     background-color: #c0c0f0;
 }
 
+tweaker {
+    height: auto;
+}
+
 tweaker label {
     left: 3px;
     right: 3px;
@@ -146,6 +150,13 @@ tweaker label {
 
 tweaker textbox {
     width: 1s;
+    top: 1s;
+    bottom: 1s
+}
+
+tweaker checkbox {
+    top: 5px;
+    bottom: 5px;
 }
 
 /*
