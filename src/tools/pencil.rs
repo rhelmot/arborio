@@ -25,7 +25,7 @@ impl Tool for PencilTool {
     }
 
     fn event(&mut self, event: &WindowEvent, app: &AppState, cx: &Context) -> Vec<AppEvent> {
-        let events = generic_nav(event, app, cx);
+        let events = generic_nav(event, app, cx, true);
         if !events.is_empty() {
             return events;
         }

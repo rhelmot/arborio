@@ -44,7 +44,7 @@ struct ResizingStatus {
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
-enum ResizeSide {
+pub enum ResizeSide {
     None,
     Top,
     Left,
@@ -57,23 +57,23 @@ enum ResizeSide {
 }
 
 impl ResizeSide {
-    fn is_top(&self) -> bool {
+    pub(crate) fn is_top(&self) -> bool {
         matches!(self, Self::Top | Self::TopLeft | Self::TopRight)
     }
 
-    fn is_bottom(&self) -> bool {
+    pub(crate) fn is_bottom(&self) -> bool {
         matches!(self, Self::Bottom | Self::BottomLeft | Self::BottomRight)
     }
 
-    fn is_left(&self) -> bool {
+    pub(crate) fn is_left(&self) -> bool {
         matches!(self, Self::Left | Self::TopLeft | Self::BottomLeft)
     }
 
-    fn is_right(&self) -> bool {
+    pub(crate) fn is_right(&self) -> bool {
         matches!(self, Self::Right | Self::TopRight | Self::BottomRight)
     }
 
-    fn from_sides(at_top: bool, at_bottom: bool, at_left: bool, at_right: bool) -> Self {
+    pub(crate) fn from_sides(at_top: bool, at_bottom: bool, at_left: bool, at_right: bool) -> Self {
         match (at_top, at_bottom, at_left, at_right) {
             (true, false, false, false) => ResizeSide::Top,
             (false, true, false, false) => ResizeSide::Bottom,
@@ -95,7 +95,7 @@ impl ResizeSide {
         Self::from_sides(self.is_top(), self.is_bottom(), false, false)
     }
 
-    fn to_cursor_icon(self) -> CursorIcon {
+    pub(crate) fn to_cursor_icon(self) -> CursorIcon {
         match self {
             ResizeSide::None => CursorIcon::Default,
             ResizeSide::Top => CursorIcon::NResize,
@@ -130,7 +130,7 @@ impl Tool for SelectionTool {
     }
 
     fn event(&mut self, event: &WindowEvent, app: &AppState, cx: &Context) -> Vec<AppEvent> {
-        let nav_events = generic_nav(event, app, cx);
+        let nav_events = generic_nav(event, app, cx, true);
         if !nav_events.is_empty() {
             return nav_events;
         }

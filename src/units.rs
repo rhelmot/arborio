@@ -136,7 +136,7 @@ pub struct TileGrid<T> {
     pub stride: usize,
 }
 
-impl<T> TileGrid<T> {
+impl<T: Sized> TileGrid<T> {
     pub fn empty() -> Self {
         TileGrid {
             tiles: vec![],
@@ -164,8 +164,36 @@ impl<T> TileGrid<T> {
     pub fn size(&self) -> TileSize {
         TileSize::new(self.stride as i32, (self.tiles.len() / self.stride) as i32)
     }
+
+    pub fn resize(&mut self, size: TileSize, fill: T)
+    where
+        T: Clone,
+    {
+        // TODO: pick side to clamp to
+        let old_stride = self.stride;
+        let new_stride = size.width as usize;
+        let min_stride = new_stride.min(self.stride);
+        let old_lines = self.tiles.len() / self.stride;
+        let new_lines = size.height as usize;
+        let min_lines = new_lines.min(old_lines);
+
+        let mut result = vec![fill; new_stride * new_lines];
+
+        for line in (0..min_lines).rev() {
+            for idx in (0..min_stride).rev() {
+                std::mem::swap(
+                    &mut self.tiles[line * old_stride + idx],
+                    &mut result[line * new_stride + idx],
+                );
+            }
+        }
+
+        self.tiles = result;
+        self.stride = new_stride;
+    }
 }
-impl<T: Clone + Default> TileGrid<T> {
+
+impl<T: Clone + Default + Sized> TileGrid<T> {
     pub fn get_or_default(&self, pt: TilePoint) -> T {
         self.get(pt).cloned().unwrap_or_default()
     }

@@ -1,5 +1,6 @@
 pub mod hand;
 pub mod pencil;
+pub mod room;
 pub mod selection;
 
 use lazy_static::lazy_static;
@@ -28,18 +29,24 @@ pub trait Tool: Send {
 }
 
 lazy_static! {
-    pub static ref TOOLS: Mutex<[Box<dyn Tool>; 3]> = {
+    pub static ref TOOLS: Mutex<[Box<dyn Tool>; 4]> = {
         Mutex::new([
             Box::new(hand::HandTool::new()),
             Box::new(selection::SelectionTool::new()),
             Box::new(pencil::PencilTool::new()),
+            Box::new(room::RoomTool::new()),
         ])
     };
 }
 
 pub const SCROLL_SENSITIVITY: f32 = 35.0;
 
-pub fn generic_nav(event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent> {
+pub fn generic_nav(
+    event: &WindowEvent,
+    state: &AppState,
+    cx: &Context,
+    room: bool,
+) -> Vec<AppEvent> {
     let screen_pt = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
     match event {
         WindowEvent::MouseScroll(_, y) if cx.modifiers.contains(Modifiers::CTRL) => {
@@ -73,20 +80,22 @@ pub fn generic_nav(event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<A
             }]
         }
         WindowEvent::MouseDown(btn) if *btn == MouseButton::Left => {
-            if let Some(map) = state.loaded_maps.get(&state.map_tab_unwrap().id) {
-                let map_pt = state
-                    .map_tab_unwrap()
-                    .transform
-                    .inverse()
-                    .unwrap()
-                    .transform_point(screen_pt)
-                    .cast();
-                if let Some(idx) = map.level_at(map_pt) {
-                    if idx != state.map_tab_unwrap().current_room {
-                        return vec![AppEvent::SelectRoom {
-                            tab: state.current_tab,
-                            idx,
-                        }];
+            if room {
+                if let Some(map) = state.loaded_maps.get(&state.map_tab_unwrap().id) {
+                    let map_pt = state
+                        .map_tab_unwrap()
+                        .transform
+                        .inverse()
+                        .unwrap()
+                        .transform_point(screen_pt)
+                        .cast();
+                    if let Some(idx) = map.level_at(map_pt) {
+                        if idx != state.map_tab_unwrap().current_room {
+                            return vec![AppEvent::SelectRoom {
+                                tab: state.current_tab,
+                                idx,
+                            }];
+                        }
                     }
                 }
             }

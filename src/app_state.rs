@@ -194,6 +194,11 @@ pub enum AppEvent {
         tab: usize,
         idx: usize,
     },
+    MoveRoom {
+        map: MapID,
+        room: usize,
+        bounds: MapRectStrict,
+    },
     SelectLayer {
         layer: Layer,
     },
@@ -345,6 +350,14 @@ impl AppState {
         }
     }
 
+    pub fn current_map_ref(&self) -> Option<&CelesteMap> {
+        if let Some(AppTab::Map(maptab)) = self.tabs.get(self.current_tab) {
+            self.loaded_maps.get(&maptab.id)
+        } else {
+            None
+        }
+    }
+
     pub fn current_room_ref(&self) -> Option<&CelesteMapLevel> {
         if let Some(AppTab::Map(maptab)) = self.tabs.get(self.current_tab) {
             self.loaded_maps
@@ -485,6 +498,20 @@ impl AppState {
             }
 
             // room events
+            AppEvent::MoveRoom { map, room, bounds } => {
+                if let Some(map) = self.loaded_maps.get_mut(map) {
+                    if let Some(room) = map.levels.get_mut(*room) {
+                        if room.bounds.size != bounds.size {
+                            room.fg_tiles.resize((bounds.size / 8).cast_unit(), '0');
+                            room.bg_tiles.resize((bounds.size / 8).cast_unit(), '0');
+                            room.object_tiles.resize((bounds.size / 8).cast_unit(), -1);
+                            room.cache.borrow_mut().render_cache = None;
+                            room.cache.borrow_mut().render_cache_valid = false;
+                        }
+                        room.bounds = *bounds;
+                    }
+                }
+            }
             AppEvent::TileUpdate {
                 map,
                 room,
