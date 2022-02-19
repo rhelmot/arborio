@@ -213,7 +213,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                 };
 
                 // let reserialized = struct_.to_binel();
-                // assert!(bin_el_fuzzy_equal(elem, &reserialized), "{:?} != {:?}", elem, &reserialized);
+                // assert!(crate::from_binel::bin_el_fuzzy_equal(elem, &reserialized), "{:?} != {:?}", elem, &reserialized);
 
                 Ok(struct_)
             }

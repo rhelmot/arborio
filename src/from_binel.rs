@@ -126,25 +126,22 @@ pub trait TwoWayConverter<T> {
 }
 
 pub(crate) fn bin_el_fuzzy_equal(first: &BinEl, second: &BinEl) -> bool {
-    dbg!(first, second);
     if first.name != second.name {
         return false;
     }
-    dbg!("");
     if first.attributes.len() != second.attributes.len() {
         return false;
     }
-    dbg!("");
     for (key, value) in &first.attributes {
         if let Some(value2) = second.attributes.get(key) {
-            if !bin_el_attr_fuzzy_equal(value, value2) {
+            if ["solids", "bg"].contains(&first.name.as_str()) && key == "innerText" {
+            } else if !bin_el_attr_fuzzy_equal(value, value2) {
                 return false;
             }
         } else {
             return false;
         }
     }
-    dbg!("");
     let mut first_children = HashMap::new();
     let mut second_children = HashMap::new();
 
@@ -164,12 +161,11 @@ pub(crate) fn bin_el_fuzzy_equal(first: &BinEl, second: &BinEl) -> bool {
     if first_children.len() != second_children.len() {
         return false;
     }
-    dbg!("comparing children");
-
     for (key, value) in first_children {
         if let Some(value2) = second_children.get(&key) {
             for (one, &two) in value.into_iter().zip_eq(value2) {
                 if !bin_el_fuzzy_equal(one, two) {
+                    panic!("{:?} != {:?}", one, two);
                     return false;
                 }
             }

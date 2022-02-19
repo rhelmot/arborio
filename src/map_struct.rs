@@ -2,6 +2,7 @@
 
 use celeste::binel::*;
 use euclid::{Point2D, Size2D};
+use itertools::Itertools;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
@@ -765,8 +766,16 @@ impl TryFromBinEl for CelesteMapLevel {
             &self.ambience_progress,
         );
 
-        // let fg_tiles = parse_fgbg_tiles(get_child(&mut elem, "solids")?, width / 8, height / 8)?;
-        // let bg_tiles = parse_fgbg_tiles(get_child(&mut elem, "bg")?, width / 8, height / 8)?;
+        GetAttrOrChild::nested_apply_attr_or_child(
+            &mut elem,
+            "solids",
+            serialize_fgbg_tiles(&self.fg_tiles),
+        );
+        GetAttrOrChild::nested_apply_attr_or_child(
+            &mut elem,
+            "bg",
+            serialize_fgbg_tiles(&self.bg_tiles),
+        );
         // let object_tiles = match get_optional_child(&mut elem, "objtiles") {
         //     Some(v) => parse_object_tiles(v, width, height),
         //     None => Ok(TileGrid {
@@ -781,16 +790,34 @@ impl TryFromBinEl for CelesteMapLevel {
     }
 }
 
-// fn serialize_fgbg_tiles(tiles: &TileGrid<char>, width: usize, height: usize) -> BinEl {
-//     let mut offset_y = height as usize;
-//     for (index, row) in tiles.tiles.chunks(tiles.stride as usize).enumerate() {
-//         if (row.iter().any(|&c| c != '0')) {
-//             offset_y = index;
-//             break;
-//         }
-//     }
-//     todo!()
-// }
+fn serialize_fgbg_tiles(tiles: &TileGrid<char>) -> BinEl {
+    let mut elem = BinEl::new("");
+    let mut offset_y = None;
+    for (index, row) in tiles.tiles.chunks(tiles.stride as usize).enumerate() {
+        if (row.iter().any(|&c| c != '0')) {
+            offset_y = Some(index);
+            break;
+        }
+    }
+    let offset_y = offset_y.unwrap_or_default();
+    DefaultConverter::set_bin_el_default(&mut elem, "offsetY", &(offset_y as u32));
+    let offset_x = tiles
+        .tiles
+        .chunks(tiles.stride as usize)
+        .filter_map(|row| row.iter().position(|&c| c != '0'))
+        .min()
+        .unwrap_or_default();
+    DefaultConverter::set_bin_el_default(&mut elem, "offsetX", &(offset_x as u32));
+    let text = tiles
+        .tiles
+        .chunks(tiles.stride as usize)
+        .skip(offset_y)
+        .map(|s| &s[offset_x..=s.iter().rposition(|&c| c != '0').unwrap_or_default()])
+        .map(|s| s.iter().collect::<String>())
+        .join("\n");
+    DefaultConverter::set_bin_el(&mut elem, "innerText", &text);
+    elem
+}
 
 fn parse_fgbg_tiles(
     elem: &BinEl,

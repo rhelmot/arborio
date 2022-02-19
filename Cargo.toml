@@ -50,3 +50,7 @@ Inflector = "^0.11"
 opt-level = 2
 [profile.dev.package.femtovg]
 opt-level = 2
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.adler]
+opt-level = 3
