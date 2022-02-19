@@ -5,7 +5,6 @@ use euclid::{Point2D, Size2D};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
-use std::default;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
@@ -212,7 +211,7 @@ impl From<(i32, i32)> for Node {
     }
 }
 
-#[derive(Debug, Clone, TryFromBinEl)]
+#[derive(Debug, Clone, TryFromBinEl, PartialEq)]
 #[name("decal")]
 pub struct CelesteMapDecal {
     #[generate(next_uuid())]
@@ -628,63 +627,170 @@ impl TryFromBinEl for CelesteMapLevel {
         let y = get_attr(elem, "y")?;
         let width = get_attr(elem, "width")?;
         let height = get_attr(elem, "height")?;
-        let object_tiles = get_optional_child(elem, "objtiles");
-        let fg_decals = get_optional_child(elem, "fgdecals");
-        let bg_decals = get_optional_child(elem, "bgdecals");
+        let bounds = MapRectStrict {
+            origin: Point2D::new(x, y),
+            size: Size2D::new(width, height),
+        };
+        let fg_decals =
+            DefaultConverter::from_bin_el_optional(elem, "fgdecals")?.unwrap_or_default();
+        let bg_decals =
+            DefaultConverter::from_bin_el_optional(elem, "bgdecals")?.unwrap_or_default();
+        let name = DefaultConverter::from_bin_el(elem, "name")?;
+        let color = DefaultConverter::from_bin_el_optional(elem, "c")?.unwrap_or_default();
+        let camera_offset_x =
+            DefaultConverter::from_bin_el_optional(elem, "cameraOffsetX")?.unwrap_or_default();
+        let camera_offset_y =
+            DefaultConverter::from_bin_el_optional(elem, "cameraOffsetY")?.unwrap_or_default();
+        let wind_pattern =
+            DefaultConverter::from_bin_el_optional(elem, "windPattern")?.unwrap_or_default();
+        let space = DefaultConverter::from_bin_el_optional(elem, "space")?.unwrap_or_default();
+        let underwater =
+            DefaultConverter::from_bin_el_optional(elem, "underwater")?.unwrap_or_default();
+        let whisper = DefaultConverter::from_bin_el_optional(elem, "whisper")?.unwrap_or_default();
+        let dark = DefaultConverter::from_bin_el_optional(elem, "dark")?.unwrap_or_default();
+        let disable_down_transition =
+            DefaultConverter::from_bin_el_optional(elem, "disableDownTransition")?
+                .unwrap_or_default();
+
+        let music = DefaultConverter::from_bin_el_optional(elem, "music")?.unwrap_or_default();
+        let alt_music =
+            DefaultConverter::from_bin_el_optional(elem, "alt_music")?.unwrap_or_default();
+        let ambience =
+            DefaultConverter::from_bin_el_optional(elem, "ambience")?.unwrap_or_default();
+        let music_layers = [
+            DefaultConverter::from_bin_el_optional(elem, "musicLayer1")?.unwrap_or_default(),
+            DefaultConverter::from_bin_el_optional(elem, "musicLayer2")?.unwrap_or_default(),
+            DefaultConverter::from_bin_el_optional(elem, "musicLayer3")?.unwrap_or_default(),
+            DefaultConverter::from_bin_el_optional(elem, "musicLayer4")?.unwrap_or_default(),
+            DefaultConverter::from_bin_el_optional(elem, "musicLayer5")?.unwrap_or_default(),
+            DefaultConverter::from_bin_el_optional(elem, "musicLayer6")?.unwrap_or_default(),
+        ];
+        let music_progress =
+            DefaultConverter::from_bin_el_optional(elem, "musicProgress")?.unwrap_or_default();
+        let ambience_progress =
+            DefaultConverter::from_bin_el_optional(elem, "ambienceProgress")?.unwrap_or_default();
+
+        let fg_tiles = parse_fgbg_tiles(get_child(elem, "solids")?, width / 8, height / 8)?;
+        let bg_tiles = parse_fgbg_tiles(get_child(elem, "bg")?, width / 8, height / 8)?;
+        let object_tiles = match get_optional_child(elem, "objtiles") {
+            Some(v) => parse_object_tiles(v, width, height),
+            None => Ok(TileGrid {
+                tiles: vec![-1; (width / 8 * height / 8) as usize],
+                stride: (width / 8) as usize,
+            }),
+        }?;
+        let entities = DefaultConverter::from_bin_el(elem, "entities")?;
+        let triggers = TryFromBinEl::try_from_bin_el(get_child(elem, "triggers")?)?;
+
+        let cache = Default::default();
 
         Ok(CelesteMapLevel {
-            bounds: MapRectStrict {
-                origin: Point2D::new(x, y),
-                size: Size2D::new(width, height),
-            },
-            name: get_attr(elem, "name")?,
-            color: get_optional_attr(elem, "c")?.unwrap_or_default(),
-            camera_offset_x: get_optional_attr(elem, "cameraOffsetX")?.unwrap_or_default(),
-            camera_offset_y: get_optional_attr(elem, "cameraOffsetY")?.unwrap_or_default(),
-            wind_pattern: get_optional_attr(elem, "windPattern")?.unwrap_or_default(),
-            space: get_optional_attr(elem, "space")?.unwrap_or_default(),
-            underwater: get_optional_attr(elem, "underwater")?.unwrap_or_default(),
-            whisper: get_optional_attr(elem, "whisper")?.unwrap_or_default(),
-            dark: get_optional_attr(elem, "dark")?.unwrap_or_default(),
-            disable_down_transition: get_optional_attr(elem, "disableDownTransition")?
-                .unwrap_or_default(),
+            bounds,
+            name,
+            color,
+            camera_offset_x,
+            camera_offset_y,
+            wind_pattern,
+            space,
+            underwater,
+            whisper,
+            dark,
+            disable_down_transition,
 
-            music: get_optional_attr(elem, "music")?.unwrap_or_default(),
-            alt_music: get_optional_attr(elem, "alt_music")?.unwrap_or_default(),
-            ambience: get_optional_attr(elem, "ambience")?.unwrap_or_default(),
-            music_layers: [
-                get_optional_attr(elem, "musicLayer1")?.unwrap_or_default(),
-                get_optional_attr(elem, "musicLayer2")?.unwrap_or_default(),
-                get_optional_attr(elem, "musicLayer3")?.unwrap_or_default(),
-                get_optional_attr(elem, "musicLayer4")?.unwrap_or_default(),
-                get_optional_attr(elem, "musicLayer5")?.unwrap_or_default(),
-                get_optional_attr(elem, "musicLayer6")?.unwrap_or_default(),
-            ],
-            music_progress: get_optional_attr(elem, "musicProgress")?.unwrap_or_default(),
-            ambience_progress: get_optional_attr(elem, "ambienceProgress")?.unwrap_or_default(),
+            music,
+            alt_music,
+            ambience,
+            music_layers,
+            music_progress,
+            ambience_progress,
 
-            fg_tiles: parse_fgbg_tiles(get_child(elem, "solids")?, width / 8, height / 8)?,
-            bg_tiles: parse_fgbg_tiles(get_child(elem, "bg")?, width / 8, height / 8)?,
-            object_tiles: match object_tiles {
-                Some(v) => parse_object_tiles(v, width, height),
-                None => Ok(TileGrid {
-                    tiles: vec![-1; (width / 8 * height / 8) as usize],
-                    stride: (width / 8) as usize,
-                }),
-            }?,
-            entities: DefaultConverter::from_bin_el(elem, "entities")?,
-            triggers: TryFromBinEl::try_from_bin_el(get_child(elem, "triggers")?)?,
-            fg_decals: fg_decals.map_or(Ok(Vec::new()), TryFromBinEl::try_from_bin_el)?,
-            bg_decals: bg_decals.map_or(Ok(Vec::new()), TryFromBinEl::try_from_bin_el)?,
+            fg_tiles,
+            bg_tiles,
+            object_tiles,
+            entities,
+            triggers,
+            fg_decals,
+            bg_decals,
 
-            cache: default::Default::default(),
+            cache,
         })
     }
 
     fn to_binel(&self) -> BinEl {
-        todo!()
+        let mut elem = BinEl::new(&self.name);
+
+        let MapRectStrict {
+            origin: Point2D { ref x, ref y, .. },
+            size:
+                Size2D {
+                    ref width,
+                    ref height,
+                    ..
+                },
+        } = &self.bounds;
+        DefaultConverter::set_bin_el(&mut elem, "x", x);
+        DefaultConverter::set_bin_el(&mut elem, "y", y);
+        DefaultConverter::set_bin_el(&mut elem, "width", width);
+        DefaultConverter::set_bin_el(&mut elem, "height", height);
+        DefaultConverter::set_bin_el_default(&mut elem, "fgdecals", &self.fg_decals);
+        DefaultConverter::set_bin_el_default(&mut elem, "bgdecals", &self.bg_decals);
+        // DefaultConverter::set_bin_el(&mut elem, "name", &self.name);
+        DefaultConverter::set_bin_el_default(&mut elem, "c", &self.color);
+        DefaultConverter::set_bin_el_default(&mut elem, "cameraOffsetX", &self.camera_offset_x);
+        DefaultConverter::set_bin_el_default(&mut elem, "cameraOffsetY", &self.camera_offset_y);
+        DefaultConverter::set_bin_el_default(&mut elem, "windPattern", &self.wind_pattern);
+        DefaultConverter::set_bin_el_default(&mut elem, "space", &self.space);
+        DefaultConverter::set_bin_el_default(&mut elem, "underwater", &self.underwater);
+        DefaultConverter::set_bin_el_default(&mut elem, "whisper", &self.whisper);
+        DefaultConverter::set_bin_el_default(&mut elem, "dark", &self.dark);
+        DefaultConverter::set_bin_el_default(
+            &mut elem,
+            "disableDownTransition",
+            &self.disable_down_transition,
+        );
+
+        DefaultConverter::set_bin_el_default(&mut elem, "music", &self.music);
+        DefaultConverter::set_bin_el_default(&mut elem, "alt_music", &self.alt_music);
+        DefaultConverter::set_bin_el_default(&mut elem, "ambience", &self.ambience);
+        DefaultConverter::set_bin_el_default(&mut elem, "musicLayer1", &self.music_layers[0]);
+        DefaultConverter::set_bin_el_default(&mut elem, "musicLayer2", &self.music_layers[1]);
+        DefaultConverter::set_bin_el_default(&mut elem, "musicLayer3", &self.music_layers[2]);
+        DefaultConverter::set_bin_el_default(&mut elem, "musicLayer4", &self.music_layers[3]);
+        DefaultConverter::set_bin_el_default(&mut elem, "musicLayer5", &self.music_layers[4]);
+        DefaultConverter::set_bin_el_default(&mut elem, "musicLayer6", &self.music_layers[5]);
+        DefaultConverter::set_bin_el_default(&mut elem, "musicProgress", &self.music_progress);
+        DefaultConverter::set_bin_el_default(
+            &mut elem,
+            "ambienceProgress",
+            &self.ambience_progress,
+        );
+
+        // let fg_tiles = parse_fgbg_tiles(get_child(&mut elem, "solids")?, width / 8, height / 8)?;
+        // let bg_tiles = parse_fgbg_tiles(get_child(&mut elem, "bg")?, width / 8, height / 8)?;
+        // let object_tiles = match get_optional_child(&mut elem, "objtiles") {
+        //     Some(v) => parse_object_tiles(v, width, height),
+        //     None => Ok(TileGrid {
+        //         tiles: vec![-1; (width / 8 * height / 8) as usize],
+        //         stride: (width / 8) as usize,
+        //     }),
+        // }?;
+        DefaultConverter::set_bin_el(&mut elem, "entities", &self.entities);
+        DefaultConverter::set_bin_el(&mut elem, "triggers", &self.triggers);
+
+        elem
     }
 }
+
+// fn serialize_fgbg_tiles(tiles: &TileGrid<char>, width: usize, height: usize) -> BinEl {
+//     let mut offset_y = height as usize;
+//     for (index, row) in tiles.tiles.chunks(tiles.stride as usize).enumerate() {
+//         if (row.iter().any(|&c| c != '0')) {
+//             offset_y = index;
+//             break;
+//         }
+//     }
+//     todo!()
+// }
 
 fn parse_fgbg_tiles(
     elem: &BinEl,

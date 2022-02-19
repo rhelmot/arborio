@@ -107,6 +107,22 @@ pub trait TwoWayConverter<T> {
         let got = GetAttrOrChild::nested_attr_or_child(elem, key);
         got.map(Self::try_parse).transpose()
     }
+    fn set_bin_el(elem: &mut BinEl, key: &str, value: &T) {
+        GetAttrOrChild::nested_apply_attr_or_child(elem, key, Self::serialize(value));
+    }
+    fn set_bin_el_optional(elem: &mut BinEl, key: &str, value: &Option<T>) {
+        if let Some(value) = value {
+            Self::set_bin_el(elem, key, value);
+        }
+    }
+    fn set_bin_el_default(elem: &mut BinEl, key: &str, value: &T)
+    where
+        T: Default + PartialEq,
+    {
+        if *value == T::default() {
+            Self::set_bin_el(elem, key, value);
+        }
+    }
 }
 
 pub(crate) fn bin_el_fuzzy_equal(first: &BinEl, second: &BinEl) -> bool {
