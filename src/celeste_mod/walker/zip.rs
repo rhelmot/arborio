@@ -6,6 +6,8 @@ use zip::ZipArchive;
 
 use crate::celeste_mod::walker::ConfigSourceTrait;
 
+use super::ReadSeek;
+
 pub struct ZipSource {
     path: PathBuf,
     archive: ZipArchive<File>,
@@ -62,14 +64,14 @@ impl ConfigSourceTrait for ZipSource {
         Box::new(seen.into_iter())
     }
 
-    fn get_file(&mut self, path: &Path) -> Option<Box<dyn Read>> {
+    fn get_file(&mut self, path: &Path) -> Option<Box<dyn ReadSeek>> {
         self.archive
             .by_name(
                 path.to_str()
                     .expect("Fatal error: non-utf8 celeste_mod filepath"),
             )
             .ok()
-            .map(|mut f| -> Box<dyn Read> {
+            .map(|mut f| -> Box<dyn ReadSeek> {
                 let mut buf = vec![];
                 f.read_to_end(&mut buf)
                     .expect("Fatal error: corrupt zip file");

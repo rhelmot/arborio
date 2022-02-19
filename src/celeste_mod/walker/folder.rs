@@ -1,9 +1,11 @@
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use crate::celeste_mod::walker::ConfigSourceTrait;
+
+use super::ReadSeek;
 
 pub struct FolderSource(PathBuf);
 
@@ -49,7 +51,7 @@ impl ConfigSourceTrait for FolderSource {
         )
     }
 
-    fn get_file(&mut self, path: &Path) -> Option<Box<dyn Read>> {
+    fn get_file(&mut self, path: &Path) -> Option<Box<dyn ReadSeek>> {
         Some(Box::new(BufReader::new(
             File::open(self.0.join(path)).ok()?,
         )))

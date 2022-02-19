@@ -1,10 +1,11 @@
 use byteorder::{LittleEndian, ReadBytesExt};
 use femtovg::{Color, ImageId, ImageSource, Paint, Path};
-use image::{DynamicImage, GenericImageView};
+use image::{DynamicImage, GenericImageView, ImageFormat};
 use imgref::Img;
 use rgb::RGBA8;
 use std::borrow::Borrow;
 use std::convert::TryFrom;
+use std::ffi::OsStr;
 use std::io;
 use std::io::Read; // trait method import
 use std::path;
@@ -86,16 +87,20 @@ impl Atlas {
         atlas: &str,
         path: &path::Path,
     ) -> Result<(), io::Error> {
-        let mut reader = if let Some(fp) = config.get_file(path) {
+        let reader = if let Some(fp) = config.get_file(path) {
             fp
         } else {
             return Err(io::ErrorKind::NotFound.into());
         };
 
-        // TODO it would be really nice to get rid of this buffer, but image requires a seekable reader
-        let mut buf = vec![];
-        reader.read_to_end(&mut buf)?;
-        let img = image::load_from_memory(buf.as_ref())
+        let format = match path.extension().and_then(OsStr::to_str) {
+            Some("jpg" | "jpeg") => ImageFormat::Jpeg,
+            Some("png") => ImageFormat::Png,
+            Some("gif") => ImageFormat::Gif,
+            _ => todo!(),
+        };
+
+        let img = image::load(reader, format)
             .map_err(|_| -> io::Error { io::ErrorKind::InvalidData.into() })?;
 
         let (width, height) = img.dimensions();

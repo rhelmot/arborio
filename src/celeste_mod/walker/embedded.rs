@@ -1,8 +1,10 @@
 use include_dir::{include_dir, Dir, DirEntry};
-use std::io::{Cursor, Read};
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 use crate::celeste_mod::walker::ConfigSourceTrait;
+
+use super::ReadSeek;
 
 const EMBEDDED: Dir = include_dir!("conf");
 #[derive(Copy, Clone)]
@@ -36,7 +38,7 @@ impl ConfigSourceTrait for EmbeddedSource {
         )
     }
 
-    fn get_file(&mut self, path: &Path) -> Option<Box<dyn Read>> {
+    fn get_file(&mut self, path: &Path) -> Option<Box<dyn ReadSeek>> {
         Some(Box::new(Cursor::new(EMBEDDED.get_file(path)?.contents())))
     }
 }

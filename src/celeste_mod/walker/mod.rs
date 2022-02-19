@@ -1,5 +1,5 @@
 use enum_dispatch::enum_dispatch;
-use std::io::Read;
+use std::io::{BufRead, Seek};
 use std::path::{Path, PathBuf};
 
 mod embedded;
@@ -16,12 +16,16 @@ pub enum ConfigSource {
     Zip(ZipSource),
 }
 
+pub trait ReadSeek: BufRead + Seek {}
+
+impl<T> ReadSeek for T where T: BufRead + Seek {}
+
 #[enum_dispatch]
 pub trait ConfigSourceTrait {
     fn filesystem_root(&mut self) -> Option<PathBuf>;
     fn list_dirs(&mut self, path: &Path) -> Box<dyn Iterator<Item = PathBuf>>;
     fn list_all_files(&mut self, path: &Path) -> Box<dyn Iterator<Item = PathBuf>>;
-    fn get_file(&mut self, path: &Path) -> Option<Box<dyn Read>>;
+    fn get_file(&mut self, path: &Path) -> Option<Box<dyn ReadSeek>>;
 }
 
 pub fn open_module(path: &Path) -> Option<ConfigSource> {
