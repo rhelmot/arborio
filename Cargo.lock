@@ -71,12 +71,10 @@ version = "0.1.0"
 dependencies = [
  "Inflector",
  "arborio-derive",
- "array-init",
  "byteorder",
  "celeste",
  "confy",
  "dialog",
- "elsa",
  "enum-iterator",
  "enum_dispatch",
  "euclid",
@@ -108,12 +106,6 @@ dependencies = [
  "quote 1.0.14",
  "syn 1.0.84",
 ]
-
-[[package]]
-name = "array-init"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6945cc5422176fc5e602e590c2878d2c2acd9a4fe20a4baa7c28022521698ec6"
 
 [[package]]
 name = "autocfg"
@@ -584,15 +576,6 @@ name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
-
-[[package]]
-name = "elsa"
-version = "1.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "348b451f939db7ec8fb01068d419a2354d76386596d5e4e025ab50bdd9e5c480"
-dependencies = [
- "stable_deref_trait",
-]
 
 [[package]]
 name = "enum-iterator"
