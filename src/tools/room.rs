@@ -71,10 +71,13 @@ impl Tool for RoomTool {
 
         match event {
             WindowEvent::MouseUp(MouseButton::Left) => {
-                let events = if let SelectionStatus::Selecting(_) = self.status {
-                    self.confirm_selection(app)
-                } else {
-                    vec![]
+                let events = match self.status {
+                    SelectionStatus::Selecting(_) => self.confirm_selection(app),
+                    SelectionStatus::Resizing(ResizingStatus {
+                        pointer_reference_point,
+                        ..
+                    }) => self.resize(map, map_pos - pointer_reference_point),
+                    _ => vec![],
                 };
                 self.status = SelectionStatus::None;
                 events
@@ -118,14 +121,10 @@ impl Tool for RoomTool {
                         vec![]
                     }
                     SelectionStatus::Dragging(DraggingStatus {
-                                                  pointer_reference_point,
-                                                  ..
-                                              }) => self.nudge(map, map_pos - pointer_reference_point),
-                    SelectionStatus::Resizing(ResizingStatus {
-                                                  pointer_reference_point,
-                                                  ..
-                        // TODO: don't actually resize until mouseup; only show indicator
-                                              }) => self.resize(map, map_pos - pointer_reference_point),
+                        pointer_reference_point,
+                        ..
+                    }) => self.nudge(map, map_pos - pointer_reference_point),
+                    SelectionStatus::Resizing(_) => vec![],
                 }
             }
             _ => vec![],
@@ -209,6 +208,29 @@ impl Tool for RoomTool {
                     );
                 }
             }
+        }
+
+        if let SelectionStatus::Resizing(ResizingStatus {
+            pointer_reference_point,
+            ..
+        }) = self.status
+        {
+            let mut path = femtovg::Path::new();
+            for fake_event in self.resize(map, map_pos - pointer_reference_point) {
+                if let AppEvent::MoveRoom { bounds, .. } = fake_event {
+                    path.rect(
+                        bounds.min_x() as f32,
+                        bounds.min_y() as f32,
+                        bounds.width() as f32,
+                        bounds.height() as f32,
+                    );
+                }
+            }
+
+            canvas.stroke_path(
+                &mut path,
+                femtovg::Paint::color(femtovg::Color::rgb(0, 0, 0)).with_line_width(1.5),
+            );
         }
 
         canvas.restore();
