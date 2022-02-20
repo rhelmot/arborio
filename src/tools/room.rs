@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use vizia::*;
 
-use crate::map_struct::CelesteMap;
+use crate::map_struct::{CelesteMap, CelesteMapLevel};
 use crate::tools::selection::ResizeSide;
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
@@ -84,7 +84,7 @@ impl Tool for RoomTool {
             }
             WindowEvent::MouseDown(MouseButton::Left) => {
                 if self.status == SelectionStatus::None {
-                    let got = room_at(app, map, map_pos_unsnapped);
+                    let got = room_at(map, map_pos_unsnapped);
                     if got.is_some() && self.current_selection.contains(&got.unwrap()) {
                         self.status =
                             SelectionStatus::CouldStartDragging(map_pos, map_pos_unsnapped);
@@ -114,7 +114,6 @@ impl Tool for RoomTool {
                     SelectionStatus::CouldStartDragging(_, _) => unreachable!(),
                     SelectionStatus::Selecting(ref_pos) => {
                         self.pending_selection = rooms_in(
-                            app,
                             map,
                             MapRectStrict::new(ref_pos, (map_pos - ref_pos).to_size()),
                         );
@@ -127,6 +126,34 @@ impl Tool for RoomTool {
                     SelectionStatus::Resizing(_) => vec![],
                 }
             }
+            WindowEvent::MouseDown(MouseButton::Right) => {
+                let mut result = CelesteMapLevel::default();
+                result.bounds.origin = map_pos;
+                self.current_selection = HashSet::from([map.levels.len()]);
+                vec![AppEvent::AddRoom {
+                    map: map.id.clone(),
+                    idx: None,
+                    room: Box::new(result),
+                }]
+            }
+            WindowEvent::KeyDown(code, _) if self.status == SelectionStatus::None => match code {
+                Code::ArrowDown => self.nudge(map, MapVectorStrict::new(0, 8)),
+                Code::ArrowUp => self.nudge(map, MapVectorStrict::new(0, -8)),
+                Code::ArrowRight => self.nudge(map, MapVectorStrict::new(8, 0)),
+                Code::ArrowLeft => self.nudge(map, MapVectorStrict::new(-8, 0)),
+                Code::KeyA if cx.modifiers.contains(Modifiers::CTRL) => {
+                    self.current_selection = rooms_in(
+                        map,
+                        MapRectStrict::new(
+                            MapPointStrict::new(-1000000, -1000000),
+                            MapSizeStrict::new(2000000, 2000000),
+                        ),
+                    );
+                    vec![]
+                }
+                Code::Backspace | Code::Delete => self.delete_all(map),
+                _ => vec![],
+            },
             _ => vec![],
         }
     }
@@ -190,7 +217,7 @@ impl Tool for RoomTool {
         );
 
         if self.status == SelectionStatus::None {
-            if let Some(room) = room_at(app, map, map_pos_unsnapped) {
+            if let Some(room) = room_at(map, map_pos_unsnapped) {
                 if !self.current_selection.contains(&room) {
                     let mut path = femtovg::Path::new();
                     if let Some(room) = map.levels.get(room) {
@@ -410,16 +437,26 @@ impl RoomTool {
 
         ResizeSide::None
     }
+
+    fn delete_all(&self, map: &CelesteMap) -> Vec<AppEvent> {
+        self.current_selection
+            .iter()
+            .map(|idx| AppEvent::DeleteRoom {
+                map: map.id.clone(),
+                idx: *idx,
+            })
+            .collect()
+    }
 }
 
-fn room_at(app: &AppState, map: &CelesteMap, pos: MapPointStrict) -> Option<usize> {
-    rooms_in(app, map, MapRectStrict::new(pos, MapSizeStrict::new(1, 1)))
+fn room_at(map: &CelesteMap, pos: MapPointStrict) -> Option<usize> {
+    rooms_in(map, MapRectStrict::new(pos, MapSizeStrict::new(1, 1)))
         .iter()
         .next()
         .cloned()
 }
 
-fn rooms_in(_app: &AppState, map: &CelesteMap, rect: MapRectStrict) -> HashSet<usize> {
+fn rooms_in(map: &CelesteMap, rect: MapRectStrict) -> HashSet<usize> {
     let rect = rect_normalize(&rect);
     let mut result = HashSet::new();
     for (idx, room) in map.levels.iter().enumerate() {

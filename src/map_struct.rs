@@ -175,6 +175,72 @@ pub struct CelesteMapLevel {
     pub cache: RefCell<CelesteMapLevelCache>,
 }
 
+// totally normal clone except wipe the cache
+impl Clone for CelesteMapLevel {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            bounds: self.bounds,
+            color: self.color,
+            camera_offset_x: self.camera_offset_x,
+            camera_offset_y: self.camera_offset_y,
+            wind_pattern: self.wind_pattern.clone(),
+            space: self.space,
+            underwater: self.underwater,
+            whisper: self.whisper,
+            dark: self.dark,
+            disable_down_transition: self.disable_down_transition,
+            music: self.music.clone(),
+            alt_music: self.alt_music.clone(),
+            ambience: self.ambience.clone(),
+            music_layers: self.music_layers,
+            music_progress: self.music_progress.clone(),
+            ambience_progress: self.ambience_progress.clone(),
+            fg_tiles: self.fg_tiles.clone(),
+            bg_tiles: self.bg_tiles.clone(),
+            object_tiles: self.object_tiles.clone(),
+            entities: self.entities.clone(),
+            triggers: self.triggers.clone(),
+            fg_decals: self.fg_decals.clone(),
+            bg_decals: self.bg_decals.clone(),
+            cache: RefCell::new(Default::default()),
+        }
+    }
+}
+
+impl Default for CelesteMapLevel {
+    fn default() -> Self {
+        let tile_size = TileSize::new(40, 23);
+        Self {
+            name: "".to_string(),
+            bounds: MapRectStrict::new(MapPointStrict::new(0, 0), MapSizeStrict::new(320, 180)),
+            color: 0,
+            camera_offset_x: 0.0,
+            camera_offset_y: 0.0,
+            wind_pattern: "None".to_string(),
+            space: false,
+            underwater: false,
+            whisper: false,
+            dark: false,
+            disable_down_transition: false,
+            music: "".to_string(),
+            alt_music: "".to_string(),
+            ambience: "".to_string(),
+            music_layers: [true, true, true, true, true, true],
+            music_progress: "".to_string(),
+            ambience_progress: "".to_string(),
+            fg_tiles: TileGrid::new_default(tile_size),
+            bg_tiles: TileGrid::new_default(tile_size),
+            object_tiles: TileGrid::new(tile_size, -1),
+            entities: vec![],
+            triggers: vec![],
+            fg_decals: vec![],
+            bg_decals: vec![],
+            cache: RefCell::new(Default::default()),
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct CelesteMapLevelCache {
     pub render_cache_valid: bool,

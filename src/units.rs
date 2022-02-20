@@ -130,7 +130,7 @@ where
     )
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TileGrid<T> {
     pub tiles: Vec<T>,
     pub stride: usize,
@@ -141,6 +141,16 @@ impl<T: Sized> TileGrid<T> {
         TileGrid {
             tiles: vec![],
             stride: 1,
+        }
+    }
+
+    pub fn new(size: TileSize, fill: T) -> Self
+    where
+        T: Clone,
+    {
+        Self {
+            tiles: vec![fill; (size.width * size.height) as usize],
+            stride: size.width as usize,
         }
     }
 

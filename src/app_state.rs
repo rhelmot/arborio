@@ -199,6 +199,15 @@ pub enum AppEvent {
         room: usize,
         bounds: MapRectStrict,
     },
+    AddRoom {
+        map: MapID,
+        idx: Option<usize>,
+        room: Box<CelesteMapLevel>,
+    },
+    DeleteRoom {
+        map: MapID,
+        idx: usize,
+    },
     SelectLayer {
         layer: Layer,
     },
@@ -498,6 +507,21 @@ impl AppState {
             }
 
             // room events
+            AppEvent::AddRoom { map, idx, room } => {
+                if let Some(map) = self.loaded_maps.get_mut(map) {
+                    let idx = idx.unwrap_or_else(|| map.levels.len());
+                    let mut room = room.as_ref().clone();
+                    if room.name.is_empty() {
+                        room.name = pick_new_name(map);
+                    }
+                    map.levels.insert(idx, room);
+                }
+            }
+            AppEvent::DeleteRoom { map, idx } => {
+                if let Some(map) = self.loaded_maps.get_mut(map) {
+                    map.levels.remove(*idx);
+                }
+            }
             AppEvent::MoveRoom { map, room, bounds } => {
                 if let Some(map) = self.loaded_maps.get_mut(map) {
                     if let Some(room) = map.levels.get_mut(*room) {
@@ -772,5 +796,38 @@ pub fn trigger_palette_update(
 ) {
     for (name, pal) in palettes.iter_mut() {
         *pal = ModuleAggregate::new(modules, name);
+    }
+}
+
+pub fn pick_new_name(map: &CelesteMap) -> String {
+    let all_names = map
+        .levels
+        .iter()
+        .map(|room| &room.name)
+        .collect::<HashSet<_>>();
+    for ch in 'a'..='z' {
+        if !all_names.contains(&format!("{}-00", ch)) {
+            if ch == 'a' {
+                return "a-00".to_string();
+            } else {
+                let ch = (ch as u8 - 1) as char;
+                for num in 0..=99 {
+                    let result = format!("{}-{:02}", ch, num);
+                    if !all_names.contains(&result) {
+                        return result;
+                    }
+                }
+            }
+        }
+    }
+
+    let mut num = 0;
+    loop {
+        let result = num.to_string();
+        if !all_names.contains(&result) {
+            break result;
+        } else {
+            num += 1;
+        }
     }
 }
