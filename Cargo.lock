@@ -1106,8 +1106,8 @@ dependencies = [
 
 [[package]]
 name = "morphorm"
-version = "0.2.0"
-source = "git+https://github.com/geom3trik/morphorm#1243152d4cebea46fd3e5098df26402c73acae91"
+version = "0.3.0"
+source = "git+https://github.com/rhelmot/morphorm#84ebe5016ade905409ad5b1a2fcef95d85987ab2"
 dependencies = [
  "bitflags",
  "smallvec",
@@ -1972,7 +1972,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=d7caf646a3f94ecb39ce196ea069f1e4a8015664#d7caf646a3f94ecb39ce196ea069f1e4a8015664"
+source = "git+https://github.com/rhelmot/VIZIA?rev=054d75ff7ee911deef96aee7bd705d93fb6def83#054d75ff7ee911deef96aee7bd705d93fb6def83"
 dependencies = [
  "vizia_core",
  "vizia_glutin",
@@ -1981,13 +1981,14 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=d7caf646a3f94ecb39ce196ea069f1e4a8015664#d7caf646a3f94ecb39ce196ea069f1e4a8015664"
+source = "git+https://github.com/rhelmot/VIZIA?rev=054d75ff7ee911deef96aee7bd705d93fb6def83#054d75ff7ee911deef96aee7bd705d93fb6def83"
 dependencies = [
  "bitflags",
  "copypasta",
  "cssparser",
  "femtovg",
  "fnv",
+ "image",
  "keyboard-types",
  "morphorm",
  "unicode-segmentation",
@@ -1997,7 +1998,7 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=d7caf646a3f94ecb39ce196ea069f1e4a8015664#d7caf646a3f94ecb39ce196ea069f1e4a8015664"
+source = "git+https://github.com/rhelmot/VIZIA?rev=054d75ff7ee911deef96aee7bd705d93fb6def83#054d75ff7ee911deef96aee7bd705d93fb6def83"
 dependencies = [
  "proc-macro2 1.0.36",
  "quote 1.0.14",
@@ -2007,7 +2008,7 @@ dependencies = [
 [[package]]
 name = "vizia_glutin"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=d7caf646a3f94ecb39ce196ea069f1e4a8015664#d7caf646a3f94ecb39ce196ea069f1e4a8015664"
+source = "git+https://github.com/rhelmot/VIZIA?rev=054d75ff7ee911deef96aee7bd705d93fb6def83#054d75ff7ee911deef96aee7bd705d93fb6def83"
 dependencies = [
  "femtovg",
  "fnv",

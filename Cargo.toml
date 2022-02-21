@@ -34,8 +34,8 @@ zip = "^0.5"
 walkdir = "^2"
 
 # graphics
-#vizia = { path = "../../rust/VIZIA" }
-vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "d7caf646a3f94ecb39ce196ea069f1e4a8015664" }
+# vizia = { path = "../../rust/VIZIA" }
+vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "054d75ff7ee911deef96aee7bd705d93fb6def83" }
 femtovg = { version = "0.3.0", default-features = false, features = ["image-loading"] } # inhert from vizia
 image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
 imgref = "1.6.1"  # inherit from femtovg
