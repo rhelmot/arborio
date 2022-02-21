@@ -15,7 +15,7 @@ use crate::celeste_mod::discovery;
 use crate::celeste_mod::module::CelesteModule;
 use crate::map_struct::{CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, MapID};
 use crate::units::*;
-use crate::widgets::palette_widget::{
+use crate::widgets::list_palette::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
 };
 

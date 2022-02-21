@@ -9,7 +9,7 @@ use crate::atlas_img::MultiAtlas;
 use crate::autotiler::{Autotiler, Tileset};
 use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
 use crate::celeste_mod::module::CelesteModule;
-use crate::widgets::palette_widget::{
+use crate::widgets::list_palette::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
 };
 

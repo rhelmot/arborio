@@ -5,8 +5,8 @@ use crate::celeste_mod::entity_config::PencilBehavior;
 use crate::map_struct::{CelesteMapDecal, CelesteMapEntity, Node};
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
-use crate::widgets::editor_widget;
-use crate::widgets::palette_widget::{EntitySelectable, TriggerSelectable};
+use crate::widgets::editor;
+use crate::widgets::list_palette::{EntitySelectable, TriggerSelectable};
 
 #[derive(Default)]
 pub struct PencilTool {
@@ -102,7 +102,7 @@ impl Tool for PencilTool {
             Layer::Entities => {
                 let tmp_entity = self.get_terminal_entity(app, app.current_entity, room_pos);
                 canvas.set_global_alpha(0.5);
-                editor_widget::draw_entity(
+                editor::draw_entity(
                     app,
                     canvas,
                     &tmp_entity,
@@ -115,7 +115,7 @@ impl Tool for PencilTool {
             Layer::Triggers => {
                 let tmp_trigger = self.get_terminal_trigger(app, app.current_trigger, room_pos);
                 canvas.set_global_alpha(0.5);
-                editor_widget::draw_entity(
+                editor::draw_entity(
                     app,
                     canvas,
                     &tmp_trigger,

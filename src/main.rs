@@ -22,8 +22,8 @@ use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::map_struct::MapID;
 use crate::tools::TOOLS;
 use crate::widgets::tabs::{build_tab_bar, build_tabs};
-use widgets::palette_widget::PaletteWidget;
-use widgets::tweaker_widget::EntityTweakerWidget;
+use widgets::entity_tweaker::EntityTweakerWidget;
+use widgets::list_palette::PaletteWidget;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let icon_img = image::load_from_memory(include_bytes!("../img/icon.png")).unwrap();

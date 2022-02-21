@@ -1,6 +1,6 @@
-pub mod editor_tab;
-pub mod installation_tab;
-pub mod project_tab;
+pub mod editor;
+pub mod installation;
+pub mod project;
 
 use crate::app_state::AppState;
 use crate::app_state::AppTab;
@@ -14,11 +14,11 @@ pub fn build_tabs(cx: &mut Context) {
         if let Some(current_tab) = current_tab.get_fallible(cx) {
             VStack::new(cx, move |cx| match *current_tab {
                 AppTab::CelesteOverview => {
-                    installation_tab::build_installation_tab(cx);
+                    installation::build_installation_tab(cx);
                 }
-                AppTab::ProjectOverview(project) => project_tab::build_project_tab(cx, project),
+                AppTab::ProjectOverview(project) => project::build_project_tab(cx, project),
                 AppTab::Map(_) => {
-                    editor_tab::build_editor(cx);
+                    editor::build_editor(cx);
                 }
             })
             .class("tab_container");

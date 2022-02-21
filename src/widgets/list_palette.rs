@@ -8,7 +8,7 @@ use crate::assets::Interned;
 use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
 use crate::map_struct::{CelesteMapEntity, Node};
 use crate::units::*;
-use crate::widgets::editor_widget;
+use crate::widgets::editor;
 
 pub struct PaletteWidget<T, L> {
     lens: L,
@@ -228,7 +228,7 @@ impl PaletteItem for EntitySelectable {
             self.config(app).minimum_size_y as i32,
             vec![(48, 16).into()],
         );
-        editor_widget::draw_entity(
+        editor::draw_entity(
             app,
             canvas,
             &tmp_entity,

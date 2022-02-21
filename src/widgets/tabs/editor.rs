@@ -3,8 +3,8 @@ use vizia::*;
 
 use crate::app_state::AppState;
 use crate::lenses::{CurrentMapLens, CurrentPaletteLens};
-use crate::widgets::editor_widget::EditorWidget;
-use crate::widgets::tile_palette_widget::TilePaletteWidget;
+use crate::widgets::editor::EditorWidget;
+use crate::widgets::tile_palette::TilePaletteWidget;
 use crate::{AppEvent, EntityTweakerWidget, Layer, ModuleAggregate, PaletteWidget, TOOLS};
 
 pub fn build_editor(cx: &mut Context) {

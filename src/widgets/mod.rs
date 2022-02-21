@@ -1,5 +1,5 @@
-pub mod editor_widget;
-pub mod palette_widget;
+pub mod editor;
+pub mod entity_tweaker;
+pub mod list_palette;
 pub mod tabs;
-pub mod tile_palette_widget;
-pub mod tweaker_widget;
+pub mod tile_palette;

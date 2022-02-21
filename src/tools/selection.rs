@@ -6,7 +6,7 @@ use crate::autotiler::{TextureTile, TileReference};
 use crate::map_struct::{CelesteMapLevel, Node};
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
-use crate::widgets::editor_widget::decal_texture;
+use crate::widgets::editor::decal_texture;
 
 pub struct SelectionTool {
     current_selection: HashSet<AppSelection>,
