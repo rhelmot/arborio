@@ -141,18 +141,18 @@ palette>list {
     background-color: #c0c0f0;
 }
 
-tweaker {
+.tweaker {
     height: auto;
 }
 
-tweaker label {
+.tweaker label {
     left: 3px;
     right: 3px;
     top: 1s;
     bottom: 1s;
 }
 
-tweaker textbox {
+.tweaker textbox {
     width: 1s;
     top: 1s;
     bottom: 1s

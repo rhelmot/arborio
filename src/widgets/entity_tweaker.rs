@@ -11,8 +11,8 @@ pub struct EntityTweakerWidget {}
 
 impl EntityTweakerWidget {
     pub fn new(cx: &mut Context) -> Handle<'_, Self> {
-        Self {}.build2(cx, move |cx| {
-            VStack::new(cx, move |cx| {
+        Self {}
+            .build2(cx, move |cx| {
                 let entity_lens = CurrentSelectedEntityLens {};
                 Binding::new(cx, entity_lens, move |cx, selection| {
                     if let Some(entity) = selection.get_fallible(cx) {
@@ -133,14 +133,14 @@ impl EntityTweakerWidget {
                         }
                     },
                 );
-            });
-        })
+            })
+            .class("tweaker")
     }
 }
 
 impl View for EntityTweakerWidget {
     fn element(&self) -> Option<String> {
-        Some("tweaker".to_owned())
+        Some("entity-tweaker".to_owned())
     }
 }
 

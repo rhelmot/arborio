@@ -143,7 +143,7 @@ pub struct CelesteMapMetaAudioState {
     pub music: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Lens)]
 pub struct CelesteMapLevel {
     pub name: String,
     pub bounds: MapRectStrict,

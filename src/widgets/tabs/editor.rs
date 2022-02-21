@@ -4,6 +4,7 @@ use vizia::*;
 use crate::app_state::AppState;
 use crate::lenses::{CurrentMapLens, CurrentPaletteLens};
 use crate::widgets::editor::EditorWidget;
+use crate::widgets::room_tweaker::RoomTweakerWidget;
 use crate::widgets::tile_palette::TilePaletteWidget;
 use crate::{AppEvent, EntityTweakerWidget, Layer, ModuleAggregate, PaletteWidget, TOOLS};
 
@@ -21,7 +22,7 @@ pub fn build_editor(cx: &mut Context) {
         VStack::new(cx, |cx| {
             build_layer_picker(cx);
             build_palette_widgets(cx);
-            build_tweaker_widget(cx);
+            build_tweaker_widgets(cx);
         })
         .width(Pixels(100.0));
     })
@@ -138,9 +139,10 @@ pub fn build_palette_widgets(cx: &mut Context) {
     });
 }
 
-pub fn build_tweaker_widget(cx: &mut Context) {
+pub fn build_tweaker_widgets(cx: &mut Context) {
     Binding::new(cx, AppState::current_tool, |cx, tool_idx| {
         let tool_idx = *tool_idx.get(cx);
         EntityTweakerWidget::new(cx).display(tool_idx == 1);
+        RoomTweakerWidget::new(cx).display(tool_idx == 3);
     });
 }

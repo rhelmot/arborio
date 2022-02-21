@@ -7,7 +7,7 @@ use vizia::*;
 
 use crate::app_state::{AppSelection, AppState, AppTab, MapTab};
 use crate::auto_saver::AutoSaver;
-use crate::map_struct::{CelesteMapEntity, MapID};
+use crate::map_struct::{CelesteMapEntity, CelesteMapLevel, MapID};
 use crate::ModuleAggregate;
 
 #[derive(Debug, Copy, Clone)]
@@ -24,6 +24,30 @@ impl Lens for CurrentMapLens {
         };
 
         map(data)
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct CurrentRoomLens {}
+
+impl Lens for CurrentRoomLens {
+    type Source = AppState;
+    type Target = CelesteMapLevel;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        let maptab = if let Some(AppTab::Map(maptab)) = source.tabs.get(source.current_tab) {
+            maptab
+        } else {
+            return map(None);
+        };
+
+        let the_map = if let Some(the_map) = source.loaded_maps.get(&maptab.id) {
+            the_map
+        } else {
+            return map(None);
+        };
+
+        map(the_map.levels.get(maptab.current_room))
     }
 }
 
