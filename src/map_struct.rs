@@ -248,6 +248,82 @@ impl Default for CelesteMapLevel {
     }
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct CelesteMapLevelUpdate {
+    pub name: Option<String>,
+    pub color: Option<i32>,
+    pub camera_offset_x: Option<f32>,
+    pub camera_offset_y: Option<f32>,
+    pub wind_pattern: Option<String>,
+    pub space: Option<bool>,
+    pub underwater: Option<bool>,
+    pub whisper: Option<bool>,
+    pub dark: Option<bool>,
+    pub disable_down_transition: Option<bool>,
+
+    pub music: Option<String>,
+    pub alt_music: Option<String>,
+    pub ambience: Option<String>,
+    pub music_layers: [Option<bool>; 6],
+    pub music_progress: Option<String>,
+    pub ambience_progress: Option<String>,
+}
+
+impl CelesteMapLevel {
+    pub fn apply(&mut self, update: &CelesteMapLevelUpdate) {
+        if let Some(x) = &update.name {
+            self.name = x.clone();
+        }
+        if let Some(x) = &update.color {
+            self.color = *x;
+        }
+        if let Some(x) = &update.camera_offset_x {
+            self.camera_offset_x = *x
+        };
+        if let Some(x) = &update.camera_offset_y {
+            self.camera_offset_y = *x
+        };
+        if let Some(x) = &update.wind_pattern {
+            self.wind_pattern = x.clone()
+        };
+        if let Some(x) = &update.space {
+            self.space = *x
+        };
+        if let Some(x) = &update.underwater {
+            self.underwater = *x
+        };
+        if let Some(x) = &update.whisper {
+            self.whisper = *x
+        };
+        if let Some(x) = &update.dark {
+            self.dark = *x
+        };
+        if let Some(x) = &update.disable_down_transition {
+            self.disable_down_transition = *x
+        };
+        if let Some(x) = &update.music {
+            self.music = x.clone()
+        };
+        if let Some(x) = &update.alt_music {
+            self.alt_music = x.clone()
+        };
+        if let Some(x) = &update.ambience {
+            self.ambience = x.clone()
+        };
+        for i in 0..6 {
+            if let Some(x) = &update.music_layers[i] {
+                self.music_layers[i] = *x
+            };
+        }
+        if let Some(x) = &update.music_progress {
+            self.music_progress = x.clone()
+        };
+        if let Some(x) = &update.ambience_progress {
+            self.ambience_progress = x.clone()
+        };
+    }
+}
+
 #[derive(Default)]
 pub struct CelesteMapLevelCache {
     pub render_cache_valid: bool,

@@ -13,7 +13,9 @@ use crate::auto_saver::AutoSaver;
 use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::celeste_mod::discovery;
 use crate::celeste_mod::module::CelesteModule;
-use crate::map_struct::{CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, MapID};
+use crate::map_struct::{
+    CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapLevelUpdate, MapID,
+};
 use crate::units::*;
 use crate::widgets::list_palette::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
@@ -207,6 +209,11 @@ pub enum AppEvent {
     DeleteRoom {
         map: MapID,
         idx: usize,
+    },
+    UpdateRoomMisc {
+        map: MapID,
+        idx: usize,
+        update: CelesteMapLevelUpdate,
     },
     SelectLayer {
         layer: Layer,
@@ -520,6 +527,13 @@ impl AppState {
             AppEvent::DeleteRoom { map, idx } => {
                 if let Some(map) = self.loaded_maps.get_mut(map) {
                     map.levels.remove(*idx);
+                }
+            }
+            AppEvent::UpdateRoomMisc { map, idx, update } => {
+                if let Some(map) = self.loaded_maps.get_mut(map) {
+                    if let Some(room) = map.levels.get_mut(*idx) {
+                        room.apply(update);
+                    }
                 }
             }
             AppEvent::MoveRoom { map, room, bounds } => {
