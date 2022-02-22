@@ -129,8 +129,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                     None
                 } else {
                     Some(quote! {
-                        let serialized_field = <#convert_with>::serialize(&self.#ident);
-                        GetAttrOrChild::nested_apply_attr_or_child(&mut binel, #name, serialized_field);
+                        <#convert_with>::set_bin_el(&mut binel, #name, &self.#ident);
                     })
                 });
 

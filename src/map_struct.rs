@@ -39,6 +39,7 @@ pub struct Rect {
 }
 
 #[derive(Debug, TryFromBinEl)]
+#[name("Map")]
 pub struct CelesteMap {
     #[bin_el_skip]
     pub id: MapID,
@@ -164,13 +165,15 @@ pub struct CelesteMapLevel {
     pub music_progress: String,
     pub ambience_progress: String,
 
-    pub fg_tiles: TileGrid<char>,
-    pub bg_tiles: TileGrid<char>,
+    pub solids: TileGrid<char>,
+    pub bg: TileGrid<char>,
     pub object_tiles: TileGrid<i32>,
     pub entities: Vec<CelesteMapEntity>,
     pub triggers: Vec<CelesteMapEntity>,
     pub fg_decals: Vec<CelesteMapDecal>,
     pub bg_decals: Vec<CelesteMapDecal>,
+    pub fg_tiles: TileGrid<i32>,
+    pub bg_tiles: TileGrid<i32>,
 
     pub cache: RefCell<CelesteMapLevelCache>,
 }
@@ -196,13 +199,15 @@ impl Clone for CelesteMapLevel {
             music_layers: self.music_layers,
             music_progress: self.music_progress.clone(),
             ambience_progress: self.ambience_progress.clone(),
-            fg_tiles: self.fg_tiles.clone(),
-            bg_tiles: self.bg_tiles.clone(),
+            solids: self.solids.clone(),
+            bg: self.bg.clone(),
             object_tiles: self.object_tiles.clone(),
             entities: self.entities.clone(),
             triggers: self.triggers.clone(),
             fg_decals: self.fg_decals.clone(),
             bg_decals: self.bg_decals.clone(),
+            fg_tiles: self.fg_tiles.clone(),
+            bg_tiles: self.bg_tiles.clone(),
             cache: RefCell::new(Default::default()),
         }
     }
@@ -229,13 +234,15 @@ impl Default for CelesteMapLevel {
             music_layers: [true, true, true, true, true, true],
             music_progress: "".to_string(),
             ambience_progress: "".to_string(),
-            fg_tiles: TileGrid::new_default(tile_size),
-            bg_tiles: TileGrid::new_default(tile_size),
+            solids: TileGrid::new_default(tile_size),
+            bg: TileGrid::new_default(tile_size),
             object_tiles: TileGrid::new(tile_size, -1),
             entities: vec![],
             triggers: vec![],
             fg_decals: vec![],
             bg_decals: vec![],
+            fg_tiles: TileGrid::new(tile_size, -1),
+            bg_tiles: TileGrid::new(tile_size, -1),
             cache: RefCell::new(Default::default()),
         }
     }
@@ -328,6 +335,8 @@ pub struct CelesteMapStyleground {
     #[optional]
     #[name("blendmode")]
     pub blend_mode: Option<String>,
+    #[optional]
+    pub exclude: Option<String>,
 }
 
 #[derive(Debug)]
@@ -442,11 +451,7 @@ impl CelesteMapLevel {
         if pt.x < 0 || pt.x >= w {
             return None;
         }
-        let tiles = if foreground {
-            &self.fg_tiles
-        } else {
-            &self.bg_tiles
-        };
+        let tiles = if foreground { &self.solids } else { &self.bg };
 
         tiles.get(pt).copied()
     }
@@ -737,15 +742,35 @@ impl TryFromBinEl for CelesteMapLevel {
         let ambience_progress =
             DefaultConverter::from_bin_el_optional(elem, "ambienceProgress")?.unwrap_or_default();
 
-        let fg_tiles = parse_fgbg_tiles(get_child(elem, "solids")?, width / 8, height / 8)?;
-        let bg_tiles = parse_fgbg_tiles(get_child(elem, "bg")?, width / 8, height / 8)?;
-        let object_tiles = match get_optional_child(elem, "objtiles") {
-            Some(v) => parse_object_tiles(v, width, height),
-            None => Ok(TileGrid {
-                tiles: vec![-1; (width / 8 * height / 8) as usize],
-                stride: (width / 8) as usize,
-            }),
-        }?;
+        let solids = parse_fgbg_tiles(get_child(elem, "solids")?, width / 8, height / 8)?;
+        let bg = parse_fgbg_tiles(get_child(elem, "bg")?, width / 8, height / 8)?;
+        let object_tiles = get_optional_child(elem, "objtiles").map_or_else(
+            || {
+                Ok(TileGrid {
+                    tiles: vec![-1; (width / 8 * height / 8) as usize],
+                    stride: (width / 8) as usize,
+                })
+            },
+            |v| parse_object_tiles(v, width / 8, height / 8),
+        )?;
+        let fg_tiles = get_optional_child(elem, "fgtiles").map_or_else(
+            || {
+                Ok(TileGrid {
+                    tiles: vec![-1; (width / 8 * height / 8) as usize],
+                    stride: (width / 8) as usize,
+                })
+            },
+            |v| parse_object_tiles(v, width / 8, height / 8),
+        )?;
+        let bg_tiles = get_optional_child(elem, "bgtiles").map_or_else(
+            || {
+                Ok(TileGrid {
+                    tiles: vec![-1; (width / 8 * height / 8) as usize],
+                    stride: (width / 8) as usize,
+                })
+            },
+            |v| parse_object_tiles(v, width / 8, height / 8),
+        )?;
         let entities = DefaultConverter::from_bin_el(elem, "entities")?;
         let triggers = TryFromBinEl::try_from_bin_el(get_child(elem, "triggers")?)?;
 
@@ -771,20 +796,22 @@ impl TryFromBinEl for CelesteMapLevel {
             music_progress,
             ambience_progress,
 
-            fg_tiles,
-            bg_tiles,
+            solids,
+            bg,
             object_tiles,
             entities,
             triggers,
             fg_decals,
             bg_decals,
+            fg_tiles,
+            bg_tiles,
 
             cache,
         })
     }
 
     fn to_binel(&self) -> BinEl {
-        let mut elem = BinEl::new(&self.name);
+        let mut elem = BinEl::new("level");
 
         let MapRectStrict {
             origin: Point2D { ref x, ref y, .. },
@@ -801,7 +828,7 @@ impl TryFromBinEl for CelesteMapLevel {
         DefaultConverter::set_bin_el(&mut elem, "height", height);
         DefaultConverter::set_bin_el_default(&mut elem, "fgdecals", &self.fg_decals);
         DefaultConverter::set_bin_el_default(&mut elem, "bgdecals", &self.bg_decals);
-        // DefaultConverter::set_bin_el(&mut elem, "name", &self.name);
+        DefaultConverter::set_bin_el(&mut elem, "name", &self.name);
         DefaultConverter::set_bin_el_default(&mut elem, "c", &self.color);
         DefaultConverter::set_bin_el_default(&mut elem, "cameraOffsetX", &self.camera_offset_x);
         DefaultConverter::set_bin_el_default(&mut elem, "cameraOffsetY", &self.camera_offset_y);
@@ -835,13 +862,9 @@ impl TryFromBinEl for CelesteMapLevel {
         GetAttrOrChild::nested_apply_attr_or_child(
             &mut elem,
             "solids",
-            serialize_fgbg_tiles(&self.fg_tiles),
+            serialize_fgbg_tiles(&self.solids),
         );
-        GetAttrOrChild::nested_apply_attr_or_child(
-            &mut elem,
-            "bg",
-            serialize_fgbg_tiles(&self.bg_tiles),
-        );
+        GetAttrOrChild::nested_apply_attr_or_child(&mut elem, "bg", serialize_fgbg_tiles(&self.bg));
         // let object_tiles = match get_optional_child(&mut elem, "objtiles") {
         //     Some(v) => parse_object_tiles(v, width, height),
         //     None => Ok(TileGrid {
@@ -885,52 +908,33 @@ fn serialize_fgbg_tiles(tiles: &TileGrid<char>) -> BinEl {
     elem
 }
 
+fn fgbg_transform(
+    s: &str,
+) -> impl Iterator<Item = impl Iterator<Item = Result<char, CelesteMapError>> + '_> + '_ {
+    s.lines().map(|line| line.chars().map(Ok))
+}
+
 fn parse_fgbg_tiles(
     elem: &BinEl,
     width: i32,
     height: i32,
 ) -> Result<TileGrid<char>, CelesteMapError> {
-    let offset_x: i32 = get_optional_attr(elem, "offsetX")?.unwrap_or_default();
-    let offset_y: i32 = get_optional_attr(elem, "offsetY")?.unwrap_or_default();
-    let exc = Err(CelesteMapError {
-        kind: CelesteMapErrorType::OutOfRange,
-        description: format!("{} contains out-of-range data", elem.name),
-    });
-    if offset_x < 0 || offset_y < 0 {
-        return exc;
-    }
-
-    let mut data: Vec<char> = vec!['0'; (width * height) as usize];
-    let mut x = offset_x;
-    let mut y = offset_y;
-    for ch in get_optional_attr::<String>(elem, "innerText")?
-        .unwrap_or_default()
-        .chars()
-    {
-        if ch == '\n' {
-            x = offset_x;
-            y += 1;
-        } else if ch == '\r' {
-        } else if x >= width || y >= height {
-            // TODO remove this
-            println!("{:?}", elem);
-        } else {
-            data[(x + y * width) as usize] = ch;
-            x += 1;
-        }
-    }
-
-    Ok(TileGrid {
-        tiles: data,
-        stride: width as usize,
-    })
+    parse_tiles(elem, width, height, fgbg_transform, '0')
 }
 
-fn parse_object_tiles(
-    elem: &BinEl,
+fn parse_tiles<'a, T, F, I>(
+    elem: &'a BinEl,
     width: i32,
     height: i32,
-) -> Result<TileGrid<i32>, CelesteMapError> {
+    transform: F,
+    default: T,
+) -> Result<TileGrid<T>, CelesteMapError>
+where
+    F: Fn(&'a str) -> I,
+    I: Iterator + 'a,
+    I::Item: Iterator<Item = Result<T, CelesteMapError>> + 'a,
+    T: Copy + 'static,
+{
     let offset_x: i32 = get_optional_attr(elem, "offsetX")?.unwrap_or_default();
     let offset_y: i32 = get_optional_attr(elem, "offsetY")?.unwrap_or_default();
     let exc = Err(CelesteMapError {
@@ -941,32 +945,17 @@ fn parse_object_tiles(
         return exc;
     }
 
-    let mut data: Vec<i32> = vec![-1; (width * height) as usize];
+    let mut data: Vec<T> = vec![default; (width * height) as usize];
     let mut y = offset_y;
 
-    for line in get_optional_attr::<String>(elem, "innerText")?
-        .unwrap_or_default()
-        .split('\n')
-    {
+    let text: &str = elem.text().map(|s| s.as_str()).unwrap_or_default();
+    for line in transform(text) {
         let mut x = offset_x;
-        for num in line.split(',') {
-            if num.is_empty() {
-                continue;
-            }
-            let ch: i32 = match num.parse() {
-                Err(_) => {
-                    return Err(CelesteMapError {
-                        kind: CelesteMapErrorType::ParseError,
-                        description: format!("Could not parse {} as int", num),
-                    })
-                }
-                Ok(v) => v,
-            };
-
+        for num in line {
             if x >= width || y >= height {
                 return exc;
             } else {
-                data[(x + y * width) as usize] = ch;
+                data[(x + y * width) as usize] = num?;
                 x += 1;
             }
         }
@@ -977,6 +966,27 @@ fn parse_object_tiles(
         tiles: data,
         stride: width as usize,
     })
+}
+
+fn obj_transform(
+    s: &str,
+) -> impl Iterator<Item = impl Iterator<Item = Result<i32, CelesteMapError>> + '_> + '_ {
+    s.lines().map(|line| {
+        line.split(',').filter(|&s| !s.is_empty()).map(|tile| {
+            tile.parse::<i32>().map_err(|_| CelesteMapError {
+                kind: CelesteMapErrorType::ParseError,
+                description: format!("Could not parse {} as int", tile),
+            })
+        })
+    })
+}
+
+fn parse_object_tiles(
+    elem: &BinEl,
+    width: i32,
+    height: i32,
+) -> Result<TileGrid<i32>, CelesteMapError> {
+    parse_tiles(elem, width, height, obj_transform, -1)
 }
 
 struct DefaultConverter;
@@ -1030,7 +1040,13 @@ impl TryFromBinEl for MapRectStrict {
     }
 
     fn to_binel(&self) -> BinEl {
-        todo!()
+        let mut elem = BinEl::new("rect");
+
+        <MapComponentConverter>::set_bin_el(&mut elem, "x", &self.origin.x);
+        <MapComponentConverter>::set_bin_el(&mut elem, "y", &self.origin.y);
+        <MapComponentConverter>::set_bin_el(&mut elem, "w", &self.size.width);
+        <MapComponentConverter>::set_bin_el(&mut elem, "h", &self.size.height);
+        elem
     }
 }
 

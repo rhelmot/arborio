@@ -239,12 +239,12 @@ pub fn decal_texture(decal: &CelesteMapDecal) -> String {
 fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
     let (tiles, tiles_asset) = if fg {
         (
-            &room.fg_tiles,
+            &room.solids,
             app.current_palette_unwrap().autotilers.get("fg").unwrap(),
         )
     } else {
         (
-            &room.bg_tiles,
+            &room.bg,
             app.current_palette_unwrap().autotilers.get("bg").unwrap(),
         )
     };

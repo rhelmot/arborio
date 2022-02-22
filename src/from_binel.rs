@@ -77,7 +77,10 @@ impl GetAttrOrChild for BinEl {
         }
     }
 
-    fn apply_attr_or_child(elem: &mut BinEl, key: &str, value: Self) {
+    fn apply_attr_or_child(elem: &mut BinEl, key: &str, mut value: Self) {
+        if value.name.is_empty() {
+            value.name = key.to_owned();
+        }
         *elem.get_mut(key) = vec![value];
     }
 }
@@ -119,7 +122,7 @@ pub trait TwoWayConverter<T> {
     where
         T: Default + PartialEq,
     {
-        if *value == T::default() {
+        if *value != T::default() {
             Self::set_bin_el(elem, key, value);
         }
     }
@@ -127,9 +130,15 @@ pub trait TwoWayConverter<T> {
 
 pub(crate) fn bin_el_fuzzy_equal(first: &BinEl, second: &BinEl) -> bool {
     if first.name != second.name {
+        eprintln!("{} != {}", first.name, second.name);
         return false;
     }
     if first.attributes.len() != second.attributes.len() {
+        eprintln!(
+            "{:?} != {:?}",
+            first.attributes.keys().collect_vec(),
+            second.attributes.keys().collect_vec()
+        );
         return false;
     }
     for (key, value) in &first.attributes {
@@ -164,7 +173,7 @@ pub(crate) fn bin_el_fuzzy_equal(first: &BinEl, second: &BinEl) -> bool {
     for (key, value) in first_children {
         if let Some(value2) = second_children.get(&key) {
             for (one, &two) in value.into_iter().zip_eq(value2) {
-                if !bin_el_fuzzy_equal(one, two) {
+                if !["solids", "bg"].contains(&key.as_str()) && !bin_el_fuzzy_equal(one, two) {
                     panic!("{:?} != {:?}", one, two);
                     return false;
                 }

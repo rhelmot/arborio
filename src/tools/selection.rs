@@ -967,7 +967,7 @@ impl SelectionTool {
         for sel in self.current_selection.iter().cloned().collect::<Vec<_>>() {
             match sel {
                 AppSelection::FgTile(pt) => {
-                    add_to_float(&mut self.fg_float, pt, &room.fg_tiles, '\0');
+                    add_to_float(&mut self.fg_float, pt, &room.solids, '\0');
                     events.push(AppEvent::TileUpdate {
                         map: app.map_tab_unwrap().id.clone(),
                         room: app.map_tab_unwrap().current_room,
@@ -982,7 +982,7 @@ impl SelectionTool {
                     continue;
                 }
                 AppSelection::BgTile(pt) => {
-                    add_to_float(&mut self.bg_float, pt, &room.bg_tiles, '\0');
+                    add_to_float(&mut self.bg_float, pt, &room.bg, '\0');
                     events.push(AppEvent::TileUpdate {
                         map: app.map_tab_unwrap().id.clone(),
                         room: app.map_tab_unwrap().current_room,

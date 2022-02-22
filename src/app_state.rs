@@ -526,8 +526,8 @@ impl AppState {
                 if let Some(map) = self.loaded_maps.get_mut(map) {
                     if let Some(room) = map.levels.get_mut(*room) {
                         if room.bounds.size != bounds.size {
-                            room.fg_tiles.resize((bounds.size / 8).cast_unit(), '0');
-                            room.bg_tiles.resize((bounds.size / 8).cast_unit(), '0');
+                            room.solids.resize((bounds.size / 8).cast_unit(), '0');
+                            room.bg.resize((bounds.size / 8).cast_unit(), '0');
                             room.object_tiles.resize((bounds.size / 8).cast_unit(), -1);
                             room.cache.borrow_mut().render_cache = None;
                             room.cache.borrow_mut().render_cache_valid = false;
@@ -545,11 +545,7 @@ impl AppState {
             } => {
                 if let Some(map) = self.loaded_maps.get_mut(map) {
                     if let Some(room) = map.levels.get_mut(*room) {
-                        let target = if *fg {
-                            &mut room.fg_tiles
-                        } else {
-                            &mut room.bg_tiles
-                        };
+                        let target = if *fg { &mut room.solids } else { &mut room.bg };
                         let dirty = apply_tiles(offset, data, target, '\0');
                         if dirty {
                             room.cache.borrow_mut().render_cache_valid = false;
