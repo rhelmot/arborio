@@ -17,8 +17,9 @@ mod widgets;
 use std::error::Error;
 use vizia::*;
 
-use crate::app_state::{AppEvent, AppState, Layer};
+use crate::app_state::{AppEvent, AppState, AppTab, Layer};
 use crate::celeste_mod::aggregate::ModuleAggregate;
+use crate::lenses::VecIndexWithLens;
 use crate::map_struct::MapID;
 use crate::tools::TOOLS;
 use crate::widgets::tabs::{build_tab_bar, build_tabs};
@@ -45,8 +46,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .expect("Could not load stylesheet. Are you running me in the right directory?");
 
             VStack::new(cx, move |cx| {
-                HStack::new(cx, move |_| {
-                    // menu bar
+                HStack::new(cx, move |cx| {
+                    build_menu_bar(cx);
                 })
                 .class("menu_bar");
                 build_tab_bar(cx);
@@ -75,4 +76,22 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     app.run();
     Ok(())
+}
+
+fn build_menu_bar(cx: &mut Context) {
+    let lens = VecIndexWithLens::new(AppState::tabs, AppState::current_tab);
+    Button::new(
+        cx,
+        move |_cx| {
+            println!("TODO");
+        },
+        move |cx| Label::new(cx, "Save"),
+    )
+    .bind(lens, move |handle, lens| {
+        if let Some(tab) = lens.get_fallible(handle.cx) {
+            handle.display(matches!(*tab, AppTab::Map(_)));
+        } else {
+            handle.display(false);
+        }
+    });
 }
