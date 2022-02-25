@@ -156,7 +156,7 @@ impl View for EditorWidget {
                     canvas,
                     room,
                     if idx == app.map_tab_unwrap().current_room {
-                        app.current_selected
+                        app.map_tab_unwrap().current_selected
                     } else {
                         None
                     },
@@ -166,7 +166,7 @@ impl View for EditorWidget {
                     canvas,
                     room,
                     if idx == app.map_tab_unwrap().current_room {
-                        app.current_selected
+                        app.map_tab_unwrap().current_selected
                     } else {
                         None
                     },

@@ -67,13 +67,14 @@ impl Lens for CurrentSelectedEntityLens {
         let MapTab {
             id: map_id,
             current_room,
+            current_selected,
             ..
         } = if let AppTab::Map(t) = tab {
             t
         } else {
             return map(None);
         };
-        let (entity_id, trigger) = match source.current_selected {
+        let (entity_id, trigger) = match current_selected {
             Some(AppSelection::EntityBody(id, trigger)) => (id, trigger),
             Some(AppSelection::EntityNode(id, _, trigger)) => (id, trigger),
             _ => return map(None),
@@ -86,7 +87,7 @@ impl Lens for CurrentSelectedEntityLens {
         let data = cmap
             .levels
             .get(*current_room)
-            .and_then(|room| room.entity(entity_id, trigger));
+            .and_then(|room| room.entity(*entity_id, *trigger));
         map(data)
     }
 }

@@ -160,7 +160,7 @@ impl Tool for SelectionTool {
         match event {
             WindowEvent::MouseUp(MouseButton::Left) => {
                 let events = if let SelectionStatus::Selecting(_) = self.status {
-                    self.confirm_selection()
+                    self.confirm_selection(app)
                 } else {
                     vec![]
                 };
@@ -445,22 +445,26 @@ impl Tool for SelectionTool {
 
 impl SelectionTool {
     #[must_use]
-    fn notify_selection(&self) -> Vec<AppEvent> {
+    fn notify_selection(&self, app: &AppState) -> Vec<AppEvent> {
         if self.current_selection.len() == 1 {
             vec![AppEvent::SelectObject {
+                tab: app.current_tab,
                 selection: Some(*self.current_selection.iter().next().unwrap()),
             }]
         } else {
-            vec![AppEvent::SelectObject { selection: None }]
+            vec![AppEvent::SelectObject {
+                selection: None,
+                tab: app.current_tab,
+            }]
         }
     }
 
     #[must_use]
-    fn confirm_selection(&mut self) -> Vec<AppEvent> {
+    fn confirm_selection(&mut self, app: &AppState) -> Vec<AppEvent> {
         self.current_selection
             .extend(self.pending_selection.drain());
 
-        self.notify_selection()
+        self.notify_selection(app)
     }
 
     fn touches_float(&self, room_pos: RoomPoint) -> bool {
@@ -692,7 +696,7 @@ impl SelectionTool {
     #[must_use]
     fn clear_selection(&mut self, app: &AppState) -> Vec<AppEvent> {
         self.current_selection.clear();
-        let mut result = self.notify_selection();
+        let mut result = self.notify_selection(app);
         if let Some((offset, data)) = self.fg_float.take() {
             result.push(AppEvent::TileUpdate {
                 map: app.map_tab_unwrap().id.clone(),
@@ -1278,7 +1282,7 @@ impl SelectionTool {
         }
 
         self.current_selection.clear();
-        result.extend(self.notify_selection());
+        result.extend(self.notify_selection(app));
 
         result
     }

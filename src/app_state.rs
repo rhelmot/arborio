@@ -40,7 +40,6 @@ pub struct AppState {
     pub current_entity: EntitySelectable,
     pub current_trigger: TriggerSelectable,
     pub current_decal: DecalSelectable,
-    pub current_selected: Option<AppSelection>, // awkward. should be part of editor state
     pub current_objtile: u32,
     pub objtiles_transform: MapToScreen,
 
@@ -68,6 +67,7 @@ pub struct MapTab {
     pub id: MapID,
     pub nonce: u32,
     pub current_room: usize,
+    pub current_selected: Option<AppSelection>,
     pub transform: MapToScreen,
 }
 
@@ -235,7 +235,7 @@ pub enum AppEvent {
         decal: DecalSelectable,
     },
     SelectObject {
-        // TODO uhhhhhhhhhhhhhhhh
+        tab: usize,
         selection: Option<AppSelection>,
     },
     TileUpdate {
@@ -324,7 +324,6 @@ impl AppState {
             current_entity: EntitySelectable::default(),
             current_trigger: TriggerSelectable::default(),
             current_decal: DecalSelectable::default(),
-            current_selected: None,
             draw_interval: 4.0,
             snap: true,
             last_draw: RefCell::new(time::Instant::now()),
@@ -390,12 +389,6 @@ impl AppState {
             AppEvent::Progress { progress } => {
                 self.progress = progress.clone();
             }
-            AppEvent::SelectObject { selection } => {
-                self.current_selected = *selection;
-                if let Some(room) = self.current_room_ref() {
-                    room.cache.borrow_mut().render_cache_valid = false;
-                }
-            }
             AppEvent::OpenModuleOverview { module } => {
                 for (i, tab) in self.tabs.iter().enumerate() {
                     if matches!(tab, AppTab::ProjectOverview(m) if m == module) {
@@ -416,6 +409,7 @@ impl AppState {
                             nonce: next_uuid(),
                             id: map.id.clone(),
                             current_room: 0,
+                            current_selected: None,
                             transform: MapToScreen::identity(),
                         }));
                     }
@@ -507,6 +501,14 @@ impl AppState {
             AppEvent::SelectRoom { tab, idx } => {
                 if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(*tab) {
                     map_tab.current_room = *idx;
+                    if let Some(room) = self.current_room_ref() {
+                        room.cache.borrow_mut().render_cache_valid = false;
+                    }
+                }
+            }
+            AppEvent::SelectObject { tab, selection } => {
+                if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(*tab) {
+                    map_tab.current_selected = *selection;
                     if let Some(room) = self.current_room_ref() {
                         room.cache.borrow_mut().render_cache_valid = false;
                     }
