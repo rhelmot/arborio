@@ -3,40 +3,59 @@ pub mod pencil;
 pub mod room;
 pub mod selection;
 
-use lazy_static::lazy_static;
-use std::sync::Mutex;
+use enum_iterator::IntoEnumIterator;
 use vizia::*;
 
 use crate::app_state::{AppEvent, AppState};
 use crate::units::*;
 
-pub trait Tool: Send {
-    fn name(&self) -> &'static str;
+#[derive(Copy, Clone, Debug, PartialEq, Eq, IntoEnumIterator)]
+pub enum ToolSpec {
+    Hand,
+    Selection,
+    Pencil,
+    Room,
+}
 
-    fn new() -> Self
-    where
-        Self: Sized;
-
-    fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent>;
-
-    fn switch_on(&mut self) {}
-
-    fn draw(&mut self, _canvas: &mut Canvas, _state: &AppState, _cx: &Context) {}
-
-    fn cursor(&self, _cx: &Context, _state: &AppState) -> CursorIcon {
-        CursorIcon::Default
+impl Data for ToolSpec {
+    fn same(&self, other: &Self) -> bool {
+        self == other
     }
 }
 
-lazy_static! {
-    pub static ref TOOLS: Mutex<[Box<dyn Tool>; 4]> = {
-        Mutex::new([
-            Box::new(hand::HandTool::new()),
-            Box::new(selection::SelectionTool::new()),
-            Box::new(pencil::PencilTool::new()),
-            Box::new(room::RoomTool::new()),
-        ])
-    };
+impl ToolSpec {
+    pub fn name(&self) -> &'static str {
+        match self {
+            ToolSpec::Hand => "Hand",
+            ToolSpec::Selection => "Select",
+            ToolSpec::Pencil => "Pencil",
+            ToolSpec::Room => "Rooms",
+        }
+    }
+
+    pub fn switch_on(&self, app: &AppState) -> Box<dyn Tool> {
+        match self {
+            ToolSpec::Hand => Box::new(hand::HandTool::new()),
+            ToolSpec::Selection => Box::new(selection::SelectionTool::new(app)),
+            ToolSpec::Pencil => Box::new(pencil::PencilTool::new()),
+            ToolSpec::Room => Box::new(room::RoomTool::new(app)),
+        }
+    }
+}
+
+#[allow(unused_variables)]
+pub trait Tool {
+    fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent>;
+
+    fn switch_off(&mut self, app: &AppState, cx: &Context) -> Vec<AppEvent> {
+        vec![]
+    }
+
+    fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &Context) {}
+
+    fn cursor(&self, cx: &Context, state: &AppState) -> CursorIcon {
+        CursorIcon::Default
+    }
 }
 
 pub const SCROLL_SENSITIVITY: f32 = 35.0;

@@ -110,17 +110,16 @@ impl ResizeSide {
     }
 }
 
-impl Tool for SelectionTool {
-    fn name(&self) -> &'static str {
-        "Select"
-    }
-
-    fn new() -> Self
-    where
-        Self: Sized,
-    {
+impl SelectionTool {
+    pub fn new(app: &AppState) -> Self {
+        let selection = app
+            .map_tab_unwrap()
+            .current_selected
+            .iter()
+            .cloned()
+            .collect();
         Self {
-            current_selection: HashSet::new(),
+            current_selection: selection,
             pending_selection: HashSet::new(),
             fg_float: None,
             bg_float: None,
@@ -128,7 +127,9 @@ impl Tool for SelectionTool {
             status: SelectionStatus::None,
         }
     }
+}
 
+impl Tool for SelectionTool {
     fn event(&mut self, event: &WindowEvent, app: &AppState, cx: &Context) -> Vec<AppEvent> {
         let nav_events = generic_nav(event, app, cx, true);
         if !nav_events.is_empty() {
@@ -245,6 +246,10 @@ impl Tool for SelectionTool {
             },
             _ => vec![],
         }
+    }
+
+    fn switch_off(&mut self, app: &AppState, _cx: &Context) -> Vec<AppEvent> {
+        self.clear_selection(app)
     }
 
     fn draw(&mut self, canvas: &mut Canvas, app: &AppState, cx: &Context) {

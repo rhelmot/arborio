@@ -35,22 +35,17 @@ struct ResizingStatus {
     side: ResizeSide,
 }
 
-impl Tool for RoomTool {
-    fn name(&self) -> &'static str {
-        "Rooms"
-    }
-
-    fn new() -> Self
-    where
-        Self: Sized,
-    {
+impl RoomTool {
+    pub fn new(app: &AppState) -> Self {
         RoomTool {
-            current_selection: HashSet::new(),
+            current_selection: HashSet::from([app.map_tab_unwrap().current_room]),
             pending_selection: HashSet::new(),
             status: SelectionStatus::None,
         }
     }
+}
 
+impl Tool for RoomTool {
     fn event(&mut self, event: &WindowEvent, app: &AppState, cx: &Context) -> Vec<AppEvent> {
         let events = generic_nav(event, app, cx, false);
         if !events.is_empty() {

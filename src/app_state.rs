@@ -16,6 +16,7 @@ use crate::celeste_mod::module::CelesteModule;
 use crate::map_struct::{
     CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapLevelUpdate, MapID,
 };
+use crate::tools::{Tool, ToolSpec};
 use crate::units::*;
 use crate::widgets::list_palette::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
@@ -33,7 +34,8 @@ pub struct AppState {
     pub current_tab: usize,
     pub tabs: Vec<AppTab>,
 
-    pub current_tool: usize,
+    pub current_toolspec: ToolSpec,
+    pub current_tool: Option<RefCell<Box<dyn Tool>>>,
     pub current_layer: Layer,
     pub current_fg_tile: TileSelectable,
     pub current_bg_tile: TileSelectable,
@@ -190,7 +192,7 @@ pub enum AppEvent {
         focus: MapPointPrecise,
     },
     SelectTool {
-        idx: usize,
+        spec: ToolSpec,
     },
     SelectRoom {
         tab: usize,
@@ -318,7 +320,8 @@ impl AppState {
             current_tab: 0,
             tabs: vec![AppTab::CelesteOverview],
             loaded_maps: HashMap::new(),
-            current_tool: 2,
+            current_toolspec: ToolSpec::Selection,
+            current_tool: None,
             current_fg_tile: TileSelectable::default(),
             current_bg_tile: TileSelectable::default(),
             current_entity: EntitySelectable::default(),
@@ -404,7 +407,6 @@ impl AppState {
             AppEvent::Load { map } => {
                 if let Some(map) = map.borrow_mut().take() {
                     if !self.loaded_maps.contains_key(&map.id) {
-                        self.current_tab = self.tabs.len();
                         self.tabs.push(AppTab::Map(MapTab {
                             nonce: next_uuid(),
                             id: map.id.clone(),
@@ -412,6 +414,9 @@ impl AppState {
                             current_selected: None,
                             transform: MapToScreen::identity(),
                         }));
+                        cx.emit(AppEvent::SelectTab {
+                            idx: self.tabs.len() - 1,
+                        });
                     }
 
                     if let Entry::Vacant(e) = self.palettes.entry(map.id.module) {
@@ -431,8 +436,14 @@ impl AppState {
                 self.modules_version += 1;
                 trigger_palette_update(&mut self.palettes, &self.modules);
             }
-            AppEvent::SelectTool { idx } => {
-                self.current_tool = *idx;
+            AppEvent::SelectTool { spec } => {
+                if let Some(tool) = self.current_tool.take() {
+                    for event in tool.borrow_mut().switch_off(self, cx) {
+                        cx.emit(event);
+                    }
+                }
+                self.current_toolspec = *spec;
+                self.current_tool = Some(RefCell::new(spec.switch_on(self)));
             }
             AppEvent::SelectLayer { layer } => {
                 self.current_layer = *layer;
@@ -471,17 +482,29 @@ impl AppState {
             // tab events
             AppEvent::SelectTab { idx } => {
                 if *idx < self.tabs.len() {
+                    if let Some(tool) = self.current_tool.take() {
+                        for event in tool.borrow_mut().switch_off(self, cx) {
+                            cx.emit(event);
+                        }
+                    }
                     self.current_tab = *idx;
+                    if let Some(AppTab::Map(_)) = self.tabs.get(*idx) {
+                        self.current_tool =
+                            Some(RefCell::new(self.current_toolspec.switch_on(self)));
+                    }
                 }
             }
             AppEvent::CloseTab { idx } => {
                 self.tabs.remove(*idx);
-                if (self.current_tab > *idx || self.current_tab >= self.tabs.len())
+                let new_tab = if (self.current_tab > *idx || self.current_tab >= self.tabs.len())
                     && self.current_tab > 0
                 {
-                    self.current_tab -= 1;
-                }
+                    self.current_tab - 1
+                } else {
+                    self.current_tab
+                };
                 self.garbage_collect();
+                cx.emit(AppEvent::SelectTab { idx: new_tab });
             }
             AppEvent::Pan { tab, delta } => {
                 if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(*tab) {

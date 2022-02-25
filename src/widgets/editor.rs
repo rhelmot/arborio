@@ -11,7 +11,6 @@ use crate::autotiler::{TextureTile, TileReference};
 use crate::celeste_mod::entity_config::DrawElement;
 use crate::celeste_mod::entity_expression::{Const, Number};
 use crate::map_struct::{CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, FieldEntry};
-use crate::tools::{Tool, TOOLS};
 use crate::units::*;
 
 lazy_static! {
@@ -67,9 +66,12 @@ impl View for EditorWidget {
             let app = cx
                 .data::<AppState>()
                 .expect("EditorWidget must have an AppState in its ancestry");
-            let tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[app.current_tool];
-            let events = tool.event(window_event, app, cx);
-            let cursor = tool.cursor(cx, app);
+            let (events, cursor) = if let Some(tool) = &app.current_tool {
+                let mut tool = tool.borrow_mut();
+                (tool.event(window_event, app, cx), tool.cursor(cx, app))
+            } else {
+                (vec![], CursorIcon::Default)
+            };
             for event in events {
                 cx.emit(event);
             }
@@ -202,8 +204,9 @@ impl View for EditorWidget {
             canvas.restore();
         }
 
-        let tool: &mut Box<dyn Tool> = &mut TOOLS.lock().unwrap()[app.current_tool];
-        tool.draw(canvas, app, cx);
+        if let Some(tool) = &app.current_tool {
+            tool.borrow_mut().draw(canvas, app, cx);
+        }
     }
 }
 

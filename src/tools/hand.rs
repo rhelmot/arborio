@@ -9,15 +9,13 @@ pub struct HandTool {
     last_pos: Option<ScreenPoint>,
 }
 
-impl Tool for HandTool {
-    fn name(&self) -> &'static str {
-        "Hand"
-    }
-
-    fn new() -> Self {
+impl HandTool {
+    pub fn new() -> Self {
         Self { last_pos: None }
     }
+}
 
+impl Tool for HandTool {
     fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent> {
         let scroll_events = generic_nav(event, state, cx, true);
         if !scroll_events.is_empty() {

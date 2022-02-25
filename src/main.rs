@@ -21,7 +21,6 @@ use crate::app_state::{AppEvent, AppState, AppTab, Layer};
 use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::lenses::VecIndexWithLens;
 use crate::map_struct::MapID;
-use crate::tools::TOOLS;
 use crate::widgets::tabs::{build_tab_bar, build_tabs};
 use widgets::entity_tweaker::EntityTweakerWidget;
 use widgets::list_palette::PaletteWidget;

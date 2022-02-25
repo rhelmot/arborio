@@ -13,17 +13,15 @@ pub struct PencilTool {
     reference_point: Option<RoomPoint>,
 }
 
-impl Tool for PencilTool {
-    fn name(&self) -> &'static str {
-        "Pencil"
-    }
-
-    fn new() -> Self {
+impl PencilTool {
+    pub fn new() -> Self {
         Self {
             reference_point: None,
         }
     }
+}
 
+impl Tool for PencilTool {
     fn event(&mut self, event: &WindowEvent, app: &AppState, cx: &Context) -> Vec<AppEvent> {
         let events = generic_nav(event, app, cx, true);
         if !events.is_empty() {
@@ -55,6 +53,25 @@ impl Tool for PencilTool {
             WindowEvent::MouseUp(MouseButton::Left) => self.do_draw_finish(app, room_pos),
             _ => vec![],
         }
+    }
+
+    fn switch_off(&mut self, app: &AppState, cx: &Context) -> Vec<AppEvent> {
+        let room = if let Some(room) = app.current_room_ref() {
+            room
+        } else {
+            return vec![];
+        };
+        let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
+        let map_pos = app
+            .map_tab_unwrap()
+            .transform
+            .inverse()
+            .unwrap()
+            .transform_point(screen_pos)
+            .cast();
+        let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
+
+        self.do_draw_finish(app, room_pos)
     }
 
     fn draw(&mut self, canvas: &mut Canvas, app: &AppState, cx: &Context) {
