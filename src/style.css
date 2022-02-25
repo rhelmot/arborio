@@ -163,6 +163,11 @@ tweaker checkbox {
     bottom: 5px;
 }
 
+.validation_error {
+    background-color: #ffc0c0;
+    border-color: red;
+}
+
 /*
 * {
     border-color: red;

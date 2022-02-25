@@ -380,3 +380,21 @@ impl<L: 'static + Lens> Lens for IsFailedLens<L> {
         map(Some(&self.lens.view(source, |opt| opt.is_none())))
     }
 }
+
+#[derive(Debug, Copy, Clone)]
+pub struct RoomTweakerScopeLens {}
+
+impl Lens for RoomTweakerScopeLens {
+    type Source = AppState;
+    type Target = (MapID, usize);
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        let maptab = if let Some(AppTab::Map(maptab)) = source.tabs.get(source.current_tab) {
+            maptab
+        } else {
+            return map(None);
+        };
+
+        map(Some(&(maptab.id.clone(), maptab.current_room)))
+    }
+}

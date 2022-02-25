@@ -1107,7 +1107,7 @@ dependencies = [
 [[package]]
 name = "morphorm"
 version = "0.3.0"
-source = "git+https://github.com/rhelmot/morphorm#84ebe5016ade905409ad5b1a2fcef95d85987ab2"
+source = "git+https://github.com/geom3trik/morphorm#8d955d2f1d5b698e4fd1dbdfe36b3f3d9adbd19a"
 dependencies = [
  "bitflags",
  "smallvec",
@@ -1972,7 +1972,6 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=72a58ae8d2e24ac625221174e07d2f1c8fbba158#72a58ae8d2e24ac625221174e07d2f1c8fbba158"
 dependencies = [
  "vizia_core",
  "vizia_glutin",
@@ -1981,7 +1980,6 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=72a58ae8d2e24ac625221174e07d2f1c8fbba158#72a58ae8d2e24ac625221174e07d2f1c8fbba158"
 dependencies = [
  "bitflags",
  "copypasta",
@@ -1998,7 +1996,6 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=72a58ae8d2e24ac625221174e07d2f1c8fbba158#72a58ae8d2e24ac625221174e07d2f1c8fbba158"
 dependencies = [
  "proc-macro2 1.0.36",
  "quote 1.0.14",
@@ -2008,7 +2005,6 @@ dependencies = [
 [[package]]
 name = "vizia_glutin"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=72a58ae8d2e24ac625221174e07d2f1c8fbba158#72a58ae8d2e24ac625221174e07d2f1c8fbba158"
 dependencies = [
  "femtovg",
  "fnv",
