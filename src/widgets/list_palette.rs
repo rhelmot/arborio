@@ -146,8 +146,8 @@ impl PaletteItem for TileSelectable {
 
     fn draw(&self, app: &AppState, canvas: &mut Canvas) {
         if let Some(texture) = self.texture {
-            if app.map_tab_check() {
-                println!("SOMETHING IS WRONG");
+            if !app.map_tab_check() {
+                println!("SOMETHING IS WRONG (list)");
                 return;
             }
 

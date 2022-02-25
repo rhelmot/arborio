@@ -97,7 +97,7 @@ impl View for EditorWidget {
             // for a single frame. if this is the case, I'd like to be able to see that via a single
             // debug print vs many debug prints.
             dbg!(&app.tabs, app.current_tab);
-            println!("SOMETHING IS WRONG");
+            println!("SOMETHING IS WRONG (editor)");
             return;
         }
         let t = &app.map_tab_unwrap().transform;
