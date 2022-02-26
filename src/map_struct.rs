@@ -415,13 +415,13 @@ pub struct CelesteMapStyleground {
     pub exclude: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CelesteMapError {
     pub kind: CelesteMapErrorType,
     pub description: String,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum CelesteMapErrorType {
     ParseError,
     MissingChild,
@@ -957,36 +957,15 @@ impl TryFromBinEl for CelesteMapLevel {
 
 fn serialize_fgbg_tiles(tiles: &TileGrid<char>) -> BinEl {
     let mut elem = BinEl::new("");
-    let mut offset_y = None;
-    for (index, row) in tiles.tiles.chunks(tiles.stride as usize).enumerate() {
-        if (row.iter().any(|&c| c != '0')) {
-            offset_y = Some(index);
-            break;
-        }
-    }
-    let offset_y = offset_y.unwrap_or_default();
-    DefaultConverter::set_bin_el_default(&mut elem, "offsetY", &(offset_y as u32));
-    let offset_x = tiles
-        .tiles
-        .chunks(tiles.stride as usize)
-        .filter_map(|row| row.iter().position(|&c| c != '0'))
-        .min()
-        .unwrap_or_default();
-    DefaultConverter::set_bin_el_default(&mut elem, "offsetX", &(offset_x as u32));
     let text = tiles
         .tiles
         .chunks(tiles.stride as usize)
-        .skip(offset_y)
         .map(|s| {
             let last_present = s.iter().rposition(|&c| c != '0');
             if let Some(last_present) = last_present {
-                if offset_x <= last_present {
-                    &s[offset_x..=last_present]
-                } else {
-                    &s[offset_x..]
-                }
+                &s[..=last_present]
             } else {
-                &s[offset_x..]
+                &s[..0]
             }
         })
         .map(|s| s.iter().collect::<String>())
@@ -1022,31 +1001,22 @@ where
     I::Item: Iterator<Item = Result<T, CelesteMapError>> + 'a,
     T: Copy + 'static,
 {
-    let offset_x: i32 = get_optional_attr(elem, "offsetX")?.unwrap_or_default();
-    let offset_y: i32 = get_optional_attr(elem, "offsetY")?.unwrap_or_default();
-    let exc = Err(CelesteMapError {
+    let exc = CelesteMapError {
         kind: CelesteMapErrorType::OutOfRange,
         description: format!("{} contains out-of-range data", elem.name),
-    });
-    if offset_x < 0 || offset_y < 0 {
-        return exc;
-    }
-
-    let mut data: Vec<T> = vec![default; (width * height) as usize];
-    let mut y = offset_y;
+    };
+    let width: usize = width.try_into().map_err(|_| exc.clone())?;
+    let height: usize = height.try_into().map_err(|_| exc)?;
+    let mut data: Vec<T> = vec![default; width * height];
 
     let text: &str = elem.text().map(|s| s.as_str()).unwrap_or_default();
-    for line in transform(text) {
-        let mut x = offset_x;
-        for num in line {
-            if x >= width || y >= height {
-                return exc;
-            } else {
-                data[(x + y * width) as usize] = num?;
-                x += 1;
+    for (y, line) in transform(text).enumerate() {
+        for (x, num) in line.enumerate() {
+            let num = num?;
+            if x < width && y < height {
+                data[x + y * width] = num;
             }
         }
-        y += 1;
     }
 
     Ok(TileGrid {
