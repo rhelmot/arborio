@@ -977,7 +977,18 @@ fn serialize_fgbg_tiles(tiles: &TileGrid<char>) -> BinEl {
         .tiles
         .chunks(tiles.stride as usize)
         .skip(offset_y)
-        .map(|s| &s[offset_x..=s.iter().rposition(|&c| c != '0').unwrap_or_default()])
+        .map(|s| {
+            let last_present = s.iter().rposition(|&c| c != '0');
+            if let Some(last_present) = last_present {
+                if offset_x <= last_present {
+                    &s[offset_x..=last_present]
+                } else {
+                    &s[offset_x..]
+                }
+            } else {
+                &s[offset_x..]
+            }
+        })
         .map(|s| s.iter().collect::<String>())
         .join("\n");
     DefaultConverter::set_bin_el(&mut elem, "innerText", &text);

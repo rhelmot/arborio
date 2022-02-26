@@ -11,7 +11,7 @@ edition = "2021"
 arborio-derive = { path = "./derive" }
 celeste = "^2"
 
-# language feature and data structures
+# language features and data structures
 lazy_static = "^1.4"
 byteorder = "^1.4"
 include_dir = "^0.7"

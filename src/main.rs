@@ -14,13 +14,18 @@ mod tools;
 mod units;
 mod widgets;
 
+use celeste::binel::{BinEl, BinFile};
+use dialog::DialogBox;
 use std::error::Error;
+use std::path::Path;
+use std::{fs, io};
 use vizia::*;
 
 use crate::app_state::{AppEvent, AppState, AppTab, Layer};
 use crate::celeste_mod::aggregate::ModuleAggregate;
+use crate::from_binel::TryFromBinEl;
 use crate::lenses::VecIndexWithLens;
-use crate::map_struct::MapID;
+use crate::map_struct::{CelesteMap, MapID};
 use crate::widgets::tabs::{build_tab_bar, build_tabs};
 use widgets::entity_tweaker::EntityTweakerWidget;
 use widgets::list_palette::PaletteWidget;
@@ -81,8 +86,15 @@ fn build_menu_bar(cx: &mut Context) {
     let lens = VecIndexWithLens::new(AppState::tabs, AppState::current_tab);
     Button::new(
         cx,
-        move |_cx| {
-            println!("TODO");
+        move |cx| {
+            let app = cx.data::<AppState>().unwrap();
+            let map = app.current_map_ref().unwrap();
+            save(app, map).unwrap_or_else(|err| {
+                dialog::Message::new(err.to_string())
+                    .title("Failed to save")
+                    .show()
+                    .unwrap()
+            });
         },
         move |cx| Label::new(cx, "Save"),
     )
@@ -93,4 +105,42 @@ fn build_menu_bar(cx: &mut Context) {
             handle.display(false);
         }
     });
+}
+
+fn save(app: &AppState, map: &CelesteMap) -> Result<(), io::Error> {
+    let module = app.modules.get(&map.id.module).unwrap();
+    if *module.everest_metadata.name == "Celeste" {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Cannot overwrite Celeste files",
+        ));
+    }
+
+    if let Some(root) = &module.filesystem_root {
+        if root.is_dir() {
+            return save_as(
+                map,
+                &root.join("Maps").join(*map.id.sid).with_extension("bin"),
+            );
+        }
+    }
+
+    Err(io::Error::new(
+        io::ErrorKind::Other,
+        "Can only save to mods loaded from directories",
+    ))
+}
+
+fn save_as(map: &CelesteMap, path: &Path) -> Result<(), io::Error> {
+    save_to(map, &mut io::BufWriter::new(fs::File::create(path)?))
+}
+
+fn save_to<W: io::Write>(map: &CelesteMap, writer: &mut W) -> Result<(), io::Error> {
+    let binel: BinEl = map.to_binel();
+    let file = BinFile {
+        root: binel,
+        package: map.id.sid.to_string(),
+    };
+
+    celeste::binel::writer::put_file(writer, &file)
 }

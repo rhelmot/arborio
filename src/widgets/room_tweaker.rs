@@ -59,13 +59,14 @@ impl RoomTweakerWidget {
         tweak_attr_text(
             cx,
             "Name",
-            CurrentRoomLens {}
-                .then(CelesteMapLevel::name.map(|n| n.strip_prefix("lvl_").unwrap().to_owned())),
+            CurrentRoomLens {}.then(
+                CelesteMapLevel::name.map(|n| n.strip_prefix("lvl_").unwrap_or(n).to_owned()),
+            ),
             |cx, name| {
                 emit(
                     cx,
                     CelesteMapLevelUpdate {
-                        name: Some(format!("lvl_{}", name)),
+                        name: Some(name),
                         ..CelesteMapLevelUpdate::default()
                     },
                 )
