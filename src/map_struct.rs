@@ -677,7 +677,7 @@ impl CelesteMapLevel {
             }
         }
         for pt in rect_point_iter(rect_room_to_tile(&self.room_bounds()), 1) {
-            if let Some('0') | None = self.tile(pt, true) {
+            if !matches!(self.tile(pt, true), Some('0') | None) {
                 *result.get_mut(pt).unwrap() = FieldEntry::Fg;
             }
         }
