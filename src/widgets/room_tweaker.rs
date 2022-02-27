@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::lenses::{CurrentRoomLens, RoomTweakerScopeLens};
 use crate::map_struct::{CelesteMapLevel, CelesteMapLevelUpdate};
-use crate::{AppEvent, AppState};
+use crate::{AppEvent, AppState, AppTab};
 use vizia::*;
 
 pub struct RoomTweakerWidget {}
@@ -21,6 +21,7 @@ macro_rules! edit_text {
                         ..CelesteMapLevelUpdate::default()
                     },
                 );
+                true
             },
         );
     };
@@ -63,13 +64,30 @@ impl RoomTweakerWidget {
                 CelesteMapLevel::name.map(|n| n.strip_prefix("lvl_").unwrap_or(n).to_owned()),
             ),
             |cx, name| {
+                let app = cx.data::<AppState>().unwrap();
+                let maptab = if let Some(AppTab::Map(maptab)) = app.tabs.get(app.current_tab) {
+                    maptab
+                } else {
+                    panic!()
+                };
+                let map = app.loaded_maps.get(&maptab.id).unwrap();
+                if map
+                    .levels
+                    .iter()
+                    .enumerate()
+                    .any(|(i, lvl)| i != maptab.current_room && lvl.name == name)
+                {
+                    return false;
+                }
+
                 emit(
                     cx,
                     CelesteMapLevelUpdate {
                         name: Some(name),
                         ..CelesteMapLevelUpdate::default()
                     },
-                )
+                );
+                true
             },
         );
 
@@ -132,14 +150,17 @@ fn tweak_attr_text<L, F>(cx: &mut Context, name: &'static str, lens: L, setter: 
 where
     L: Lens,
     <L as Lens>::Target: ToString + FromStr + Data,
-    F: 'static + Send + Sync + Fn(&mut Context, <L as Lens>::Target),
+    F: 'static + Send + Sync + Fn(&mut Context, <L as Lens>::Target) -> bool,
 {
     HStack::new(cx, move |cx| {
         Label::new(cx, name);
         Textbox::new(cx, lens).on_edit(move |cx, value| {
             if let Ok(parsed) = value.parse() {
-                setter(cx, parsed);
-                cx.current.toggle_class(cx, "validation_error", false);
+                if setter(cx, parsed) {
+                    cx.current.toggle_class(cx, "validation_error", false);
+                } else {
+                    cx.current.toggle_class(cx, "validation_error", true);
+                }
             } else {
                 cx.current.toggle_class(cx, "validation_error", true);
             }
