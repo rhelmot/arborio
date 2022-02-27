@@ -1,11 +1,11 @@
 use crate::app_state::{AppEvent, AppState, AppTab};
 use crate::assets::Interned;
 use crate::celeste_mod::walker::{open_module, ConfigSourceTrait};
-use crate::map_struct::CelesteMap;
-use crate::{map_struct, MapID};
+use crate::map_struct::{from_reader, CelesteMap};
+use crate::MapID;
 use dialog::DialogBox;
 use std::cell::RefCell;
-use std::io::Read;
+use std::io;
 use std::path::PathBuf;
 use vizia::*;
 
@@ -49,53 +49,47 @@ pub fn build_project_tab(cx: &mut Context, project: Interned) {
 }
 
 fn load_map(module_root: PathBuf, project: Interned, map: Interned) -> Option<CelesteMap> {
+    match load_map_inner(module_root, project, map) {
+        Ok(m) => Some(m),
+        Err(e) => {
+            dialog::Message::new(e.to_string())
+                .title("Failed to load map")
+                .show()
+                .unwrap();
+            None
+        }
+    }
+}
+
+pub fn load_map_inner(
+    module_root: PathBuf,
+    project: Interned,
+    map: Interned,
+) -> Result<CelesteMap, io::Error> {
     let mut config = if let Some(config) = open_module(&module_root) {
         config
     } else {
-        dialog::Message::new("Module has disappeared!")
-            .show()
-            .unwrap();
-        return None;
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "Module has disappeared!",
+        ));
     };
-    let mut reader = if let Some(reader) =
+    let reader = if let Some(reader) =
         config.get_file(&PathBuf::from("Maps").join(map.to_string() + ".bin"))
     {
         reader
     } else {
-        dialog::Message::new("Map file has disappeared!")
-            .show()
-            .unwrap();
-        return None;
-    };
-    let mut file = vec![];
-    if let Err(e) = reader.read_to_end(&mut file) {
-        dialog::Message::new(format!("Could not read file: {}", e))
-            .show()
-            .unwrap();
-        return None;
-    };
-    let (_, binfile) = match celeste::binel::parser::take_file(file.as_slice()) {
-        Ok(binel) => binel,
-        _ => {
-            dialog::Message::new("Not a Celeste map").show().unwrap();
-            return None;
-        }
-    };
-    let map = match map_struct::from_binfile(
-        MapID {
-            module: project,
-            sid: map,
-        },
-        binfile,
-    ) {
-        Ok(map) => map,
-        Err(e) => {
-            dialog::Message::new(format!("Data validation error: {}", e))
-                .show()
-                .unwrap();
-            return None;
-        }
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "Map file has disappeared!",
+        ));
     };
 
-    Some(map)
+    from_reader(
+        MapID {
+            sid: map,
+            module: project,
+        },
+        reader,
+    )
 }

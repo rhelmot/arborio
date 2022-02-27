@@ -59,6 +59,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
     }
     let mut fields = Vec::new();
     let mut field_values = Vec::new();
+    let mut field_names = Vec::new();
     let mut into_values = Vec::new();
     let mut name_field = None;
 
@@ -92,6 +93,8 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                 
                 if name.is_empty() {
                     name_field = Some(ident);
+                } else {
+                    field_names.push(name.clone());
                 }
 
                 into_values.push(if skip {
@@ -152,7 +155,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                         elem
                             .attributes
                             .iter()
-                            .filter(|kv| !fields_list.contains(&kv.0.as_str()))
+                            .filter(|kv| !names_list.contains(&kv.0.as_str()))
                             .map(|(k, v)| (k.to_owned(), v.clone().into()))
                             .collect()
                     }
@@ -204,7 +207,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
         impl crate::from_binel::TryFromBinEl for #ident {
             fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
                 #assertion
-                let fields_list = [#(stringify!(#fields)),*];
+                let names_list = [#(stringify!(#field_names)),*];
                 #(let #fields = #field_values;)*
 
                 let struct_ = Self {

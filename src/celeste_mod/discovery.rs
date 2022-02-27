@@ -8,37 +8,42 @@ use crate::celeste_mod::walker::{
     open_module, ConfigSource, ConfigSourceTrait, EmbeddedSource, FolderSource,
 };
 
-pub fn load_all<F>(root: &Path, modules: &mut InternedMap<CelesteModule>, mut progress: F)
-where
-    F: FnMut(f32, String),
-{
+pub fn for_each_mod<F: FnMut(usize, usize, &str, ConfigSource)>(root: &Path, mut callback: F) {
     let to_load = WalkDir::new(root.join("Mods"))
         .min_depth(1)
         .max_depth(1)
         .into_iter()
         .filter_map(|e| e.ok())
         .collect::<Vec<_>>();
-    let total = (to_load.len() + 2) as f32;
+    let total = to_load.len();
+
     for (i, entry) in to_load.iter().enumerate() {
-        let i = i as f32;
-        progress(
-            i / total,
-            format!(
-                "Loading {}",
-                entry
-                    .path()
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap_or("<bad unicode>")
-            ),
-        );
         if let Some(config) = open_module(entry.path()) {
-            load_into(config, modules);
+            let name = entry
+                .path()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap_or("<bad unicode>");
+            callback(i, total, name, config);
         }
     }
+}
 
-    progress((total - 2.0) / total, "Loading Celeste".to_owned());
+pub fn load_all<F>(root: &Path, modules: &mut InternedMap<CelesteModule>, mut progress: F)
+where
+    F: FnMut(f32, String),
+{
+    let mut total = 0.0;
+    for_each_mod(root, |i, n, name, config| {
+        let i = i as f32;
+        let n = n as f32 + 2.0;
+        total = n;
+        progress(i / n, format!("Loading {}", name));
+        load_into(config, modules);
+    });
+
+    progress(total / (total + 2.0), "Loading Celeste".to_owned());
     modules.insert("Celeste".into(), {
         let path = root.join("Content");
         let source = FolderSource::new(&path).unwrap();
@@ -46,7 +51,10 @@ where
         r.load(&mut source.into());
         r
     });
-    progress((total - 1.0) / total, "Loading built-in config".to_owned());
+    progress(
+        (total + 1.0) / (total + 2.0),
+        "Loading built-in config".to_owned(),
+    );
     modules.insert("Arborio".into(), {
         let source = EmbeddedSource();
         let mut r = CelesteModule::new(None, arborio_module_yaml());

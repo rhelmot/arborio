@@ -50,18 +50,22 @@ pub struct CelesteMap {
 
     #[name("Filler")]
     pub filler: Vec<MapRectStrict>,
+    #[optional]
+    #[name("Style/color")]
+    pub background_color: Option<String>,
     #[name("Style/Foregrounds")]
     pub foregrounds: Vec<CelesteMapStyleground>,
     #[name("Style/Backgrounds")]
     pub backgrounds: Vec<CelesteMapStyleground>,
     pub levels: Vec<CelesteMapLevel>,
-    #[name("meta")]
     #[optional]
+    #[name("meta")]
     pub meta: Option<CelesteMapMeta>,
 }
 
 // this is a fucking mess.
 #[derive(Debug, TryFromBinEl)]
+#[name("meta")]
 pub struct CelesteMapMeta {
     #[name("OverrideASideMeta")]
     #[optional]
@@ -78,18 +82,30 @@ pub struct CelesteMapMeta {
     #[name("BackgroundTiles")]
     #[optional]
     pub bg_tiles: Option<String>,
+    #[name("AnimatedTiles")]
+    #[optional]
+    pub animated_tiles: Option<String>,
+    #[name("Sprites")]
+    #[optional]
+    pub sprites: Option<String>,
+    #[name("Portraits")]
+    #[optional]
+    pub portraits: Option<String>,
     #[name("IntroType")]
     #[optional]
     pub intro_type: Option<String>, // TODO I think this is an enum
+    #[name("CassetteNoteColor")]
+    #[optional]
+    pub cassette_note_color: Option<String>,
     #[name("TitleTextColor")]
     #[optional]
-    pub title_text_color: Option<String>, // this too
+    pub title_text_color: Option<String>,
     #[name("TitleBaseColor")]
     #[optional]
-    pub title_base_color: Option<String>, // this too
+    pub title_base_color: Option<String>,
     #[name("TitleAccentColor")]
     #[optional]
-    pub title_accent_color: Option<String>, // this too
+    pub title_accent_color: Option<String>,
     #[name("Icon")]
     #[optional]
     pub icon: Option<String>,
@@ -105,6 +121,18 @@ pub struct CelesteMapMeta {
     #[name("BloomStrength")]
     #[optional]
     pub bloom_strength: Option<f32>,
+    #[name("DarknessAlpha")]
+    #[optional]
+    pub darkness_alpha: Option<f32>,
+    #[name("CassetteSong")]
+    #[optional]
+    pub cassette_song: Option<String>,
+    #[name("CoreMode")]
+    #[optional]
+    pub core_mode: Option<String>,
+    #[name("PostcardSoundID")]
+    #[optional]
+    pub postcard_sound_id: Option<String>,
     // TODO more fields that ahorn doesn't let you change but everest will read from map.meta.yaml
     #[children]
     pub modes: Vec<CelesteMapMetaMode>, // [Option<_>; 3] perhaps?
@@ -137,6 +165,7 @@ pub struct CelesteMapMetaMode {
 }
 
 #[derive(Debug, TryFromBinEl)]
+#[name("audiostate")]
 pub struct CelesteMapMetaAudioState {
     #[name("Ambience")]
     pub ambience: String,
@@ -157,6 +186,7 @@ pub struct CelesteMapLevel {
     pub whisper: bool,
     pub dark: bool,
     pub disable_down_transition: bool,
+    pub enforce_dash_number: i32,
 
     pub music: String,
     pub alt_music: String,
@@ -164,6 +194,7 @@ pub struct CelesteMapLevel {
     pub music_layers: [bool; 6],
     pub music_progress: String,
     pub ambience_progress: String,
+    pub delay_alt_music_fade: bool,
 
     pub solids: TileGrid<char>,
     pub bg: TileGrid<char>,
@@ -193,12 +224,14 @@ impl Clone for CelesteMapLevel {
             whisper: self.whisper,
             dark: self.dark,
             disable_down_transition: self.disable_down_transition,
+            enforce_dash_number: self.enforce_dash_number,
             music: self.music.clone(),
             alt_music: self.alt_music.clone(),
             ambience: self.ambience.clone(),
             music_layers: self.music_layers,
             music_progress: self.music_progress.clone(),
             ambience_progress: self.ambience_progress.clone(),
+            delay_alt_music_fade: self.delay_alt_music_fade,
             solids: self.solids.clone(),
             bg: self.bg.clone(),
             object_tiles: self.object_tiles.clone(),
@@ -228,12 +261,14 @@ impl Default for CelesteMapLevel {
             whisper: false,
             dark: false,
             disable_down_transition: false,
+            enforce_dash_number: 0,
             music: "".to_string(),
             alt_music: "".to_string(),
             ambience: "".to_string(),
             music_layers: [true, true, true, true, true, true],
             music_progress: "".to_string(),
             ambience_progress: "".to_string(),
+            delay_alt_music_fade: false,
             solids: TileGrid::new_default(tile_size),
             bg: TileGrid::new_default(tile_size),
             object_tiles: TileGrid::new(tile_size, -1),
@@ -378,41 +413,12 @@ pub struct CelesteMapDecal {
 
 #[derive(Debug, TryFromBinEl)]
 pub struct CelesteMapStyleground {
-    #[optional]
-    pub alpha: Option<f32>,
     #[name]
     pub name: String,
-    #[optional]
-    pub texture: Option<String>,
-    #[optional]
-    pub x: Option<i32>,
-    #[optional]
-    pub y: Option<i32>,
-    #[optional]
-    #[name("loopx")]
-    pub loop_x: Option<bool>,
-    #[optional]
-    #[name("loopy")]
-    pub loop_y: Option<bool>,
-    #[optional]
-    #[name("scrollx")]
-    pub scroll_x: Option<f32>,
-    #[optional]
-    #[name("scrolly")]
-    pub scroll_y: Option<f32>,
-    #[optional]
-    #[name("speedx")]
-    pub speed_x: Option<f32>,
-    #[optional]
-    #[name("speedy")]
-    pub speed_y: Option<f32>,
-    #[optional]
-    pub color: Option<String>,
-    #[optional]
-    #[name("blendmode")]
-    pub blend_mode: Option<String>,
-    #[optional]
-    pub exclude: Option<String>,
+    #[attributes]
+    pub attributes: HashMap<String, Attribute>,
+    #[children]
+    pub children: Vec<BinEl>,
 }
 
 #[derive(Debug, Clone)]
@@ -509,15 +515,13 @@ impl TwoWayConverter<String> for ParenFlipper {
     type BinType = BinElAttr;
 
     fn try_parse(elem: &Self::BinType) -> Result<String, CelesteMapError> {
-        DefaultConverter::try_parse(elem).map(|s: String| {
-            //assert!(!s.contains('/'));  // this fails on custom maps
-            s.replace('\\', "/")
-        })
+        DefaultConverter::try_parse(elem)
     }
 
     fn serialize(val: &String) -> Self::BinType {
-        assert!(!val.contains('\\'));
-        BinElAttr::Text(val.replace('/', "\\"))
+        //assert!(!val.contains('\\'));
+        //BinElAttr::Text(val.replace('/', "\\"))
+        BinElAttr::Text(val.clone())
     }
 }
 
@@ -757,6 +761,24 @@ impl CelesteMapEntity {
     }
 }
 
+pub fn from_reader(
+    id: MapID,
+    mut reader: impl std::io::Read,
+) -> Result<CelesteMap, std::io::Error> {
+    let mut file = vec![];
+    reader.read_to_end(&mut file)?;
+    let (_, binfile) = celeste::binel::parser::take_file(file.as_slice())
+        .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "Not a Celeste map"))?;
+    let map = from_binfile(id, binfile).map_err(|e| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("Data validation error: {}", e),
+        )
+    })?;
+
+    Ok(map)
+}
+
 pub fn from_binfile(id: MapID, binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
     expect_elem!(binfile.root, "Map");
 
@@ -799,6 +821,8 @@ impl TryFromBinEl for CelesteMapLevel {
         let disable_down_transition =
             DefaultConverter::from_bin_el_optional(elem, "disableDownTransition")?
                 .unwrap_or_default();
+        let enforce_dash_number =
+            DefaultConverter::from_bin_el_optional(elem, "enforceDashNumber")?.unwrap_or_default();
 
         let music = DefaultConverter::from_bin_el_optional(elem, "music")?.unwrap_or_default();
         let alt_music =
@@ -817,6 +841,8 @@ impl TryFromBinEl for CelesteMapLevel {
             DefaultConverter::from_bin_el_optional(elem, "musicProgress")?.unwrap_or_default();
         let ambience_progress =
             DefaultConverter::from_bin_el_optional(elem, "ambienceProgress")?.unwrap_or_default();
+        let delay_alt_music_fade =
+            DefaultConverter::from_bin_el_optional(elem, "delayAltMusicFade")?.unwrap_or_default();
 
         let solids = parse_fgbg_tiles(get_child(elem, "solids")?, width / 8, height / 8)?;
         let bg = parse_fgbg_tiles(get_child(elem, "bg")?, width / 8, height / 8)?;
@@ -864,6 +890,7 @@ impl TryFromBinEl for CelesteMapLevel {
             whisper,
             dark,
             disable_down_transition,
+            enforce_dash_number,
 
             music,
             alt_music,
@@ -871,6 +898,7 @@ impl TryFromBinEl for CelesteMapLevel {
             music_layers,
             music_progress,
             ambience_progress,
+            delay_alt_music_fade,
 
             solids,
             bg,
@@ -902,10 +930,10 @@ impl TryFromBinEl for CelesteMapLevel {
         DefaultConverter::set_bin_el(&mut elem, "y", y);
         DefaultConverter::set_bin_el(&mut elem, "width", width);
         DefaultConverter::set_bin_el(&mut elem, "height", height);
-        DefaultConverter::set_bin_el_default(&mut elem, "fgdecals", &self.fg_decals);
-        DefaultConverter::set_bin_el_default(&mut elem, "bgdecals", &self.bg_decals);
+        DefaultConverter::set_bin_el(&mut elem, "fgdecals", &self.fg_decals);
+        DefaultConverter::set_bin_el(&mut elem, "bgdecals", &self.bg_decals);
         DefaultConverter::set_bin_el(&mut elem, "name", &self.name);
-        DefaultConverter::set_bin_el_default(&mut elem, "c", &self.color);
+        DefaultConverter::set_bin_el(&mut elem, "c", &self.color);
         DefaultConverter::set_bin_el_default(&mut elem, "cameraOffsetX", &self.camera_offset_x);
         DefaultConverter::set_bin_el_default(&mut elem, "cameraOffsetY", &self.camera_offset_y);
         DefaultConverter::set_bin_el_default(&mut elem, "windPattern", &self.wind_pattern);
@@ -913,41 +941,64 @@ impl TryFromBinEl for CelesteMapLevel {
         DefaultConverter::set_bin_el_default(&mut elem, "underwater", &self.underwater);
         DefaultConverter::set_bin_el_default(&mut elem, "whisper", &self.whisper);
         DefaultConverter::set_bin_el_default(&mut elem, "dark", &self.dark);
+        DefaultConverter::set_bin_el_default(&mut elem, "space", &self.space);
         DefaultConverter::set_bin_el_default(
             &mut elem,
             "disableDownTransition",
             &self.disable_down_transition,
         );
+        DefaultConverter::set_bin_el_default(
+            &mut elem,
+            "enforceDashNumber",
+            &self.enforce_dash_number,
+        );
 
         DefaultConverter::set_bin_el_default(&mut elem, "music", &self.music);
         DefaultConverter::set_bin_el_default(&mut elem, "alt_music", &self.alt_music);
         DefaultConverter::set_bin_el_default(&mut elem, "ambience", &self.ambience);
-        DefaultConverter::set_bin_el_default(&mut elem, "musicLayer1", &self.music_layers[0]);
-        DefaultConverter::set_bin_el_default(&mut elem, "musicLayer2", &self.music_layers[1]);
-        DefaultConverter::set_bin_el_default(&mut elem, "musicLayer3", &self.music_layers[2]);
-        DefaultConverter::set_bin_el_default(&mut elem, "musicLayer4", &self.music_layers[3]);
-        DefaultConverter::set_bin_el_default(&mut elem, "musicLayer5", &self.music_layers[4]);
-        DefaultConverter::set_bin_el_default(&mut elem, "musicLayer6", &self.music_layers[5]);
+        DefaultConverter::set_bin_el(&mut elem, "musicLayer1", &self.music_layers[0]);
+        DefaultConverter::set_bin_el(&mut elem, "musicLayer2", &self.music_layers[1]);
+        DefaultConverter::set_bin_el(&mut elem, "musicLayer3", &self.music_layers[2]);
+        DefaultConverter::set_bin_el(&mut elem, "musicLayer4", &self.music_layers[3]);
+        //DefaultConverter::set_bin_el(&mut elem, "musicLayer5", &self.music_layers[4]);
+        //DefaultConverter::set_bin_el(&mut elem, "musicLayer6", &self.music_layers[5]);
         DefaultConverter::set_bin_el_default(&mut elem, "musicProgress", &self.music_progress);
         DefaultConverter::set_bin_el_default(
             &mut elem,
             "ambienceProgress",
             &self.ambience_progress,
         );
+        DefaultConverter::set_bin_el_default(
+            &mut elem,
+            "delayAltMusicFade",
+            &self.delay_alt_music_fade,
+        );
 
         GetAttrOrChild::nested_apply_attr_or_child(
             &mut elem,
             "solids",
-            serialize_fgbg_tiles(&self.solids),
+            serialize_tiles(&self.solids, '0', ""),
         );
-        GetAttrOrChild::nested_apply_attr_or_child(&mut elem, "bg", serialize_fgbg_tiles(&self.bg));
-        // let object_tiles = match get_optional_child(&mut elem, "objtiles") {
-        //     Some(v) => parse_object_tiles(v, width, height),
-        //     None => Ok(TileGrid {
-        //         tiles: vec![-1; (width / 8 * height / 8) as usize],
-        //         stride: (width / 8) as usize,
-        //     }),
-        // }?;
+        GetAttrOrChild::nested_apply_attr_or_child(
+            &mut elem,
+            "bg",
+            serialize_tiles(&self.bg, '0', ""),
+        );
+        GetAttrOrChild::nested_apply_attr_or_child(
+            &mut elem,
+            "objtiles",
+            serialize_tiles(&self.object_tiles, -1, ","),
+        );
+        GetAttrOrChild::nested_apply_attr_or_child(
+            &mut elem,
+            "fgtiles",
+            serialize_tiles(&self.fg_tiles, -1, ","),
+        );
+        GetAttrOrChild::nested_apply_attr_or_child(
+            &mut elem,
+            "bgtiles",
+            serialize_tiles(&self.bg_tiles, -1, ","),
+        );
         DefaultConverter::set_bin_el(&mut elem, "entities", &self.entities);
         DefaultConverter::set_bin_el(&mut elem, "triggers", &self.triggers);
 
@@ -955,22 +1006,28 @@ impl TryFromBinEl for CelesteMapLevel {
     }
 }
 
-fn serialize_fgbg_tiles(tiles: &TileGrid<char>) -> BinEl {
+fn serialize_tiles<T: Copy + PartialEq + ToString>(
+    tiles: &TileGrid<T>,
+    default: T,
+    separator: &str,
+) -> BinEl {
     let mut elem = BinEl::new("");
     let text = tiles
         .tiles
         .chunks(tiles.stride as usize)
         .map(|s| {
-            let last_present = s.iter().rposition(|&c| c != '0');
+            let last_present = s.iter().rposition(|&c| c != default);
             if let Some(last_present) = last_present {
                 &s[..=last_present]
             } else {
                 &s[..0]
             }
         })
-        .map(|s| s.iter().collect::<String>())
-        .join("\n");
-    DefaultConverter::set_bin_el(&mut elem, "innerText", &text);
+        .map(|s| s.iter().map(|x| x.to_string()).join(separator))
+        .join("\n")
+        .trim_end_matches('\n')
+        .to_owned();
+    DefaultConverter::set_bin_el_default(&mut elem, "innerText", &text);
     elem
 }
 
