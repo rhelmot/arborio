@@ -28,7 +28,7 @@ pub struct AppState {
 
     pub modules: InternedMap<CelesteModule>,
     pub modules_version: u32,
-    pub palettes: InternedMap<ModuleAggregate>,
+    pub palettes: HashMap<MapID, ModuleAggregate>,
     pub loaded_maps: HashMap<MapID, CelesteMap>,
 
     pub current_tab: usize,
@@ -336,7 +336,7 @@ impl AppState {
 
             modules: InternedMap::new(),
             modules_version: 0,
-            palettes: InternedMap::new(),
+            palettes: HashMap::new(),
             progress: Progress {
                 progress: 100,
                 status: "".to_owned(),
@@ -360,9 +360,7 @@ impl AppState {
 
     pub fn current_palette_unwrap(&self) -> &ModuleAggregate {
         if let Some(AppTab::Map(result)) = self.tabs.get(self.current_tab) {
-            self.palettes
-                .get(&result.id.module)
-                .expect("stale reference")
+            self.palettes.get(&result.id).expect("stale reference")
         } else {
             panic!("misuse of current_palette_unwrap");
         }
@@ -418,9 +416,8 @@ impl AppState {
                             idx: self.tabs.len() - 1,
                         });
                     }
-
-                    if let Entry::Vacant(e) = self.palettes.entry(map.id.module) {
-                        e.insert(ModuleAggregate::new(&self.modules, *map.id.module));
+                    if let Entry::Vacant(e) = self.palettes.entry(map.id.clone()) {
+                        e.insert(ModuleAggregate::new(&self.modules, &map));
                     }
 
                     self.loaded_maps.insert(map.id.clone(), *map);
@@ -434,7 +431,7 @@ impl AppState {
                 let mut r = modules.lock().unwrap();
                 std::mem::swap(r.deref_mut(), &mut self.modules);
                 self.modules_version += 1;
-                trigger_palette_update(&mut self.palettes, &self.modules);
+                trigger_palette_update(&mut self.palettes, &self.modules, &self.loaded_maps);
             }
             AppEvent::SelectTool { spec } => {
                 if let Some(tool) = self.current_tool.take() {
@@ -765,9 +762,8 @@ impl AppState {
                 _ => {}
             }
         }
-        let open_palettes = open_maps.iter().map(|id| id.module).collect::<HashSet<_>>();
         self.loaded_maps.retain(|id, _| open_maps.contains(id));
-        self.palettes.retain(|name, _| open_palettes.contains(name));
+        self.palettes.retain(|id, _| open_maps.contains(id));
     }
 }
 
@@ -826,11 +822,12 @@ pub fn trigger_module_load(cx: &mut Context, path: PathBuf) {
 }
 
 pub fn trigger_palette_update(
-    palettes: &mut InternedMap<ModuleAggregate>,
+    palettes: &mut HashMap<MapID, ModuleAggregate>,
     modules: &InternedMap<CelesteModule>,
+    maps: &HashMap<MapID, CelesteMap>,
 ) {
     for (name, pal) in palettes.iter_mut() {
-        *pal = ModuleAggregate::new(modules, name);
+        *pal = ModuleAggregate::new(modules, maps.get(name).unwrap());
     }
 }
 

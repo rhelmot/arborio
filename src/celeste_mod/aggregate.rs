@@ -1,6 +1,7 @@
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::iter;
+use std::path::Path;
 use std::sync::Arc;
 use vizia::*;
 
@@ -9,9 +10,11 @@ use crate::atlas_img::MultiAtlas;
 use crate::autotiler::{Autotiler, Tileset};
 use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
 use crate::celeste_mod::module::CelesteModule;
+use crate::celeste_mod::walker::{open_module, ConfigSourceTrait};
 use crate::widgets::list_palette::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
 };
+use crate::CelesteMap;
 
 #[derive(Lens)]
 pub struct ModuleAggregate {
@@ -30,27 +33,28 @@ pub struct ModuleAggregate {
 impl Model for ModuleAggregate {}
 
 impl ModuleAggregate {
-    pub fn new(modules: &InternedMap<CelesteModule>, current_module: &str) -> Self {
+    pub fn new(modules: &InternedMap<CelesteModule>, map: &CelesteMap) -> Self {
+        let current_module = map.id.module;
         // TODO: warning on missing dependencies
         let dep_mods = || {
             modules
-                .get(current_module)
+                .get(&current_module)
                 .unwrap()
                 .everest_metadata
                 .dependencies
                 .iter()
                 .filter_map(|dep| modules.get(&dep.name).map(|module| (*dep.name, module)))
                 .chain(iter::once((
-                    current_module,
+                    *current_module,
                     modules.get("Arborio").unwrap(),
                 )))
                 .chain(iter::once((
-                    current_module,
+                    *current_module,
                     modules.get("Celeste").unwrap(),
                 )))
                 .chain(iter::once((
-                    current_module,
-                    modules.get(current_module).unwrap(),
+                    *current_module,
+                    modules.get(&current_module).unwrap(),
                 )))
         };
         let gameplay_atlas = {
@@ -64,34 +68,41 @@ impl ModuleAggregate {
             .flat_map(|(_, module)| module.tilers.iter())
             .map(|(name, tiler)| (*name, tiler.clone()))
             .collect();
-        autotilers.insert(
-            "fg".into(),
-            if let Some(fg) = modules.get(current_module).unwrap().tilers.get("fg") {
-                fg.clone()
-            } else {
-                modules
-                    .get("Celeste")
-                    .unwrap()
-                    .tilers
-                    .get("fg")
-                    .unwrap()
-                    .clone()
-            },
-        );
-        autotilers.insert(
-            "bg".into(),
-            if let Some(fg) = modules.get(current_module).unwrap().tilers.get("bg") {
-                fg.clone()
-            } else {
-                modules
-                    .get("Celeste")
-                    .unwrap()
-                    .tilers
-                    .get("bg")
-                    .unwrap()
-                    .clone()
-            },
-        );
+        let fg_xml = map
+            .meta
+            .as_ref()
+            .and_then(|meta| meta.fg_tiles.as_ref())
+            .map(|s| s.as_str())
+            .unwrap_or("Graphics/ForegroundTiles.xml");
+        let bg_xml = map
+            .meta
+            .as_ref()
+            .and_then(|meta| meta.bg_tiles.as_ref())
+            .map(|s| s.as_str())
+            .unwrap_or("Graphics/BackgroundTiles.xml");
+        for (_, dep) in dep_mods() {
+            if let Some(root) = &dep.filesystem_root {
+                let mut config = open_module(root).unwrap();
+                if let Some(fp) = config.get_file(Path::new(fg_xml)) {
+                    autotilers.insert(
+                        "fg".into(),
+                        Arc::new(
+                            Tileset::new(fp, "tilesets/")
+                                .expect("Could not parse ForegroundTiles.xml"),
+                        ),
+                    );
+                }
+                if let Some(fp) = config.get_file(Path::new(bg_xml)) {
+                    autotilers.insert(
+                        "bg".into(),
+                        Arc::new(
+                            Tileset::new(fp, "tilesets/")
+                                .expect("Could not parse BackgroundTiles.xml"),
+                        ),
+                    );
+                }
+            }
+        }
 
         let entity_config: InternedMap<Arc<EntityConfig>> = dep_mods()
             .flat_map(|(_, module)| module.entity_config.iter())

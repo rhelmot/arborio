@@ -111,7 +111,7 @@ impl Lens for CurrentPaletteLens {
             return map(None);
         };
 
-        let data = source.palettes.get(&map_id.module);
+        let data = source.palettes.get(map_id);
         map(data)
     }
 }

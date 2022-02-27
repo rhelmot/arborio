@@ -39,22 +39,6 @@ impl CelesteModule {
         // TODO: return a list of errors
         self.gameplay_atlas.load(source, "Gameplay");
 
-        if let Some(fp) = source.get_file(&PathBuf::from("Graphics/ForegroundTiles.xml")) {
-            self.tilers.insert(
-                "fg".into(),
-                Arc::new(
-                    Tileset::new(fp, "tilesets/").expect("Could not parse ForegroundTiles.xml"),
-                ),
-            );
-        }
-        if let Some(fp) = source.get_file(&PathBuf::from("Graphics/BackgroundTiles.xml")) {
-            self.tilers.insert(
-                "bg".into(),
-                Arc::new(
-                    Tileset::new(fp, "tilesets/").expect("Could not parse BackgroundTiles.xml"),
-                ),
-            );
-        }
         for path in source.list_all_files(&PathBuf::from("Arborio/tilers")) {
             if let Some(fp) = source.get_file(&path) {
                 self.tilers.insert(
