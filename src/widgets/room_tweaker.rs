@@ -90,12 +90,12 @@ impl RoomTweakerWidget {
 
         HStack::new(cx, move |cx| {
             Label::new(cx, "Music Layers");
-            for i in 0..6 {
+            for i in 0..4 {
                 let lens =
                     CurrentRoomLens {}.then(CelesteMapLevel::music_layers.map(move |x| x[i]));
                 Binding::new(cx, lens, move |cx, lens| {
                     Checkbox::new(cx, lens.clone()).on_toggle(move |cx| {
-                        let mut layers = [None; 6];
+                        let mut layers = [None; 4];
                         layers[i] = Some(!*lens.get(cx));
                         emit(
                             cx,

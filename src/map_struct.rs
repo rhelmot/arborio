@@ -191,7 +191,7 @@ pub struct CelesteMapLevel {
     pub music: String,
     pub alt_music: String,
     pub ambience: String,
-    pub music_layers: [bool; 6],
+    pub music_layers: [bool; 4],
     pub music_progress: String,
     pub ambience_progress: String,
     pub delay_alt_music_fade: bool,
@@ -265,7 +265,7 @@ impl Default for CelesteMapLevel {
             music: "".to_string(),
             alt_music: "".to_string(),
             ambience: "".to_string(),
-            music_layers: [true, true, true, true, true, true],
+            music_layers: [true, true, true, true],
             music_progress: "".to_string(),
             ambience_progress: "".to_string(),
             delay_alt_music_fade: false,
@@ -295,13 +295,15 @@ pub struct CelesteMapLevelUpdate {
     pub whisper: Option<bool>,
     pub dark: Option<bool>,
     pub disable_down_transition: Option<bool>,
+    pub enforce_dash_number: Option<i32>,
 
     pub music: Option<String>,
     pub alt_music: Option<String>,
     pub ambience: Option<String>,
-    pub music_layers: [Option<bool>; 6],
+    pub music_layers: [Option<bool>; 4],
     pub music_progress: Option<String>,
     pub ambience_progress: Option<String>,
+    pub delay_alt_music_fade: Option<bool>,
 }
 
 impl CelesteMapLevel {
@@ -336,6 +338,9 @@ impl CelesteMapLevel {
         if let Some(x) = &update.disable_down_transition {
             self.disable_down_transition = *x
         };
+        if let Some(x) = &update.enforce_dash_number {
+            self.enforce_dash_number = *x
+        };
         if let Some(x) = &update.music {
             self.music = x.clone()
         };
@@ -345,7 +350,7 @@ impl CelesteMapLevel {
         if let Some(x) = &update.ambience {
             self.ambience = x.clone()
         };
-        for i in 0..6 {
+        for i in 0..4 {
             if let Some(x) = &update.music_layers[i] {
                 self.music_layers[i] = *x
             };
@@ -355,6 +360,9 @@ impl CelesteMapLevel {
         };
         if let Some(x) = &update.ambience_progress {
             self.ambience_progress = x.clone()
+        };
+        if let Some(x) = &update.enforce_dash_number {
+            self.enforce_dash_number = *x;
         };
     }
 }
@@ -834,8 +842,6 @@ impl TryFromBinEl for CelesteMapLevel {
             DefaultConverter::from_bin_el_optional(elem, "musicLayer2")?.unwrap_or_default(),
             DefaultConverter::from_bin_el_optional(elem, "musicLayer3")?.unwrap_or_default(),
             DefaultConverter::from_bin_el_optional(elem, "musicLayer4")?.unwrap_or_default(),
-            DefaultConverter::from_bin_el_optional(elem, "musicLayer5")?.unwrap_or_default(),
-            DefaultConverter::from_bin_el_optional(elem, "musicLayer6")?.unwrap_or_default(),
         ];
         let music_progress =
             DefaultConverter::from_bin_el_optional(elem, "musicProgress")?.unwrap_or_default();
