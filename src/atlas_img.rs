@@ -256,7 +256,9 @@ impl MultiAtlas {
     }
 
     pub fn sprite_dimensions(&self, sprite_path: &str) -> Option<Size2D<u16, UnknownUnit>> {
-        self.sprites_map.get(sprite_path).map(|s| s.untrimmed_size)
+        self.sprites_map
+            .get(sprite_path.replace('\\', "/").as_str())
+            .map(|s| s.untrimmed_size)
     }
 
     pub fn draw_sprite(
@@ -270,7 +272,9 @@ impl MultiAtlas {
         color: Option<Color>,
         rot: f32,
     ) -> Option<()> {
-        let sprite = self.sprites_map.get(sprite_path)?;
+        let sprite = self
+            .sprites_map
+            .get(sprite_path.replace('\\', "/").as_str())?;
         let color = color.unwrap_or_else(Color::white);
 
         let justify = justify.unwrap_or_else(|| Vector2D::new(0.5, 0.5));
