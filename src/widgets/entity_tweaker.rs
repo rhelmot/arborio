@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use vizia::*;
 
 use crate::app_state::{AppEvent, AppSelection, AppState, AppTab};
@@ -23,129 +24,92 @@ impl EntityTweakerWidget {
                     }
                 });
 
-                ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
-                    Binding::new(cx, IsFailedLens::new(entity_lens), move |cx, failed| {
-                        if !*failed.get(cx) {
-                            HStack::new(cx, move |cx| {
-                                Label::new(cx, "x");
-                                Textbox::new(cx, entity_lens.then(CelesteMapEntity::x))
-                                    .on_edit(edit_x);
-                            });
-                            HStack::new(cx, move |cx| {
-                                Label::new(cx, "y");
-                                Textbox::new(cx, entity_lens.then(CelesteMapEntity::y))
-                                    .on_edit(edit_y);
-                            });
-                            HStack::new(cx, move |cx| {
-                                Label::new(cx, "width");
-                                Textbox::new(cx, entity_lens.then(CelesteMapEntity::width))
-                                    .on_edit(edit_w);
-                            });
-                            HStack::new(cx, move |cx| {
-                                Label::new(cx, "height");
-                                Textbox::new(cx, entity_lens.then(CelesteMapEntity::height))
-                                    .on_edit(edit_h);
-                            });
-                        }
-                    });
+                ScrollView::new(cx, 0.0, 0.0, false, true, Self::members);
+            })
+            .class("tweaker")
+    }
 
-                    let attributes_lens = entity_lens.then(CelesteMapEntity::attributes);
-                    Binding::new(
-                        cx,
-                        attributes_lens.then(HashMapLenLens::new()),
-                        move |cx, len| {
-                            let len = len.get_fallible(cx).map(|x| *x).unwrap_or(0);
-                            for i in 0..len {
-                                let key_lens = attributes_lens.then(HashMapNthKeyLens::new(i));
-                                HStack::new(cx, move |cx| {
-                                    Label::new(cx, key_lens);
+    fn members(cx: &mut Context) {
+        let entity_lens = CurrentSelectedEntityLens {};
+        Binding::new(cx, IsFailedLens::new(entity_lens), move |cx, failed| {
+            if !*failed.get(cx) {
+                HStack::new(cx, move |cx| {
+                    Label::new(cx, "x");
+                    Textbox::new(cx, entity_lens.then(CelesteMapEntity::x)).on_edit(edit_x);
+                });
+                HStack::new(cx, move |cx| {
+                    Label::new(cx, "y");
+                    Textbox::new(cx, entity_lens.then(CelesteMapEntity::y)).on_edit(edit_y);
+                });
+                HStack::new(cx, move |cx| {
+                    Label::new(cx, "width");
+                    Textbox::new(cx, entity_lens.then(CelesteMapEntity::width)).on_edit(edit_w);
+                });
+                HStack::new(cx, move |cx| {
+                    Label::new(cx, "height");
+                    Textbox::new(cx, entity_lens.then(CelesteMapEntity::height)).on_edit(edit_h);
+                });
+            }
+        });
 
-                                    let attr_value_lens =
-                                        HashMapIndexWithLens::new(attributes_lens, key_lens);
-                                    let s_value_lens = attr_value_lens.then(Attribute::text);
-                                    let i_value_lens = attr_value_lens.then(Attribute::int);
-                                    let f_value_lens = attr_value_lens.then(Attribute::float);
-                                    let b_value_lens = attr_value_lens.then(Attribute::bool);
-                                    Binding::new(
+        let attributes_lens = entity_lens.then(CelesteMapEntity::attributes);
+        Binding::new(
+            cx,
+            attributes_lens.then(HashMapLenLens::new()),
+            move |cx, len| {
+                let len = len.get_fallible(cx).map(|x| *x).unwrap_or(0);
+                for i in 0..len {
+                    let key_lens = attributes_lens.then(HashMapNthKeyLens::new(i));
+                    HStack::new(cx, move |cx| {
+                        Label::new(cx, key_lens);
+
+                        let attr_value_lens = HashMapIndexWithLens::new(attributes_lens, key_lens);
+                        let s_value_lens = attr_value_lens.then(Attribute::text);
+                        let i_value_lens = attr_value_lens.then(Attribute::int);
+                        let f_value_lens = attr_value_lens.then(Attribute::float);
+                        let b_value_lens = attr_value_lens.then(Attribute::bool);
+
+                        attr_editor(cx, s_value_lens, key_lens, Attribute::Text);
+                        attr_editor(cx, i_value_lens, key_lens, Attribute::Int);
+                        attr_editor(cx, f_value_lens, key_lens, Attribute::Float);
+                        Binding::new(cx, IsFailedLens::new(b_value_lens), move |cx, failed| {
+                            if !*failed.get(cx) {
+                                Checkbox::new(cx, b_value_lens).on_toggle(move |cx| {
+                                    let b = *b_value_lens.get(cx);
+                                    edit_attribute(
                                         cx,
-                                        IsFailedLens::new(s_value_lens),
-                                        move |cx, failed| {
-                                            if !*failed.get(cx) {
-                                                Textbox::new(cx, s_value_lens).on_edit(
-                                                    move |cx, text| {
-                                                        edit_attribute(
-                                                            cx,
-                                                            key_lens.get(cx).to_string(),
-                                                            Attribute::Text(text),
-                                                        );
-                                                    },
-                                                );
-                                            }
-                                        },
-                                    );
-                                    Binding::new(
-                                        cx,
-                                        IsFailedLens::new(i_value_lens),
-                                        move |cx, failed| {
-                                            if !*failed.get(cx) {
-                                                Textbox::new(cx, i_value_lens).on_edit(
-                                                    move |cx, text| {
-                                                        if let Ok(i) = text.parse() {
-                                                            edit_attribute(
-                                                                cx,
-                                                                key_lens.get(cx).to_string(),
-                                                                Attribute::Int(i),
-                                                            );
-                                                        }
-                                                    },
-                                                );
-                                            }
-                                        },
-                                    );
-                                    Binding::new(
-                                        cx,
-                                        IsFailedLens::new(f_value_lens),
-                                        move |cx, failed| {
-                                            if !*failed.get(cx) {
-                                                Textbox::new(cx, f_value_lens).on_edit(
-                                                    move |cx, text| {
-                                                        if let Ok(i) = text.parse() {
-                                                            edit_attribute(
-                                                                cx,
-                                                                key_lens.get(cx).to_string(),
-                                                                Attribute::Float(i),
-                                                            );
-                                                        }
-                                                    },
-                                                );
-                                            }
-                                        },
-                                    );
-                                    Binding::new(
-                                        cx,
-                                        IsFailedLens::new(b_value_lens),
-                                        move |cx, failed| {
-                                            if !*failed.get(cx) {
-                                                Checkbox::new(cx, b_value_lens).on_toggle(
-                                                    move |cx| {
-                                                        let b = *b_value_lens.get(cx);
-                                                        edit_attribute(
-                                                            cx,
-                                                            key_lens.get(cx).to_string(),
-                                                            Attribute::Bool(!b),
-                                                        );
-                                                    },
-                                                );
-                                            }
-                                        },
+                                        key_lens.get(cx).to_string(),
+                                        Attribute::Bool(!b),
                                     );
                                 });
                             }
-                        },
-                    );
-                });
-            })
-            .class("tweaker")
+                        });
+                    });
+                }
+            },
+        );
+
+        Binding::new(cx, IsFailedLens::new(entity_lens), move |cx, failed| {
+            if !*failed.get(cx) {
+                Label::new(cx, "Nodes");
+                List::new(
+                    cx,
+                    entity_lens.then(CelesteMapEntity::nodes),
+                    move |cx, idx, item| {
+                        HStack::new(cx, move |cx| {
+                            Label::new(cx, "x");
+                            Textbox::new(cx, item.map(|pair| pair.x)).on_edit(move |cx, text| {
+                                edit_node_x(cx, idx, text);
+                            });
+                            Label::new(cx, "y");
+                            Textbox::new(cx, item.map(|pair| pair.y)).on_edit(move |cx, text| {
+                                edit_node_y(cx, idx, text);
+                            });
+                        });
+                    },
+                );
+            }
+        });
     }
 }
 
@@ -153,6 +117,28 @@ impl View for EntityTweakerWidget {
     fn element(&self) -> Option<String> {
         Some("entity-tweaker".to_owned())
     }
+}
+
+fn attr_editor<T: ToString + FromStr + Data>(
+    cx: &mut Context,
+    lens: impl Lens<Target = T>,
+    key: impl Send + Sync + Lens<Target = String>,
+    translator: impl 'static + Clone + Send + Sync + Fn(T) -> Attribute,
+) {
+    Binding::new(cx, IsFailedLens::new(lens.clone()), move |cx, failed| {
+        if !*failed.get(cx) {
+            let key = key.clone();
+            let translator = translator.clone();
+            Textbox::new(cx, lens.clone()).on_edit(move |cx, text| {
+                if let Ok(value) = text.parse() {
+                    edit_attribute(cx, key.get(cx).to_string(), translator(value));
+                    cx.current.toggle_class(cx, "validation_error", false);
+                } else {
+                    cx.current.toggle_class(cx, "validation_error", true);
+                }
+            });
+        }
+    });
 }
 
 fn edit_entity<F: FnOnce(&mut CelesteMapEntity)>(cx: &mut Context, f: F) {
@@ -193,27 +179,61 @@ fn edit_x(cx: &mut Context, value: String) {
     if let Ok(value) = value.parse() {
         edit_entity(cx, move |entity| {
             entity.x = value;
-        })
+        });
+        cx.current.toggle_class(cx, "validation_error", false);
+    } else {
+        cx.current.toggle_class(cx, "validation_error", true);
     }
 }
 fn edit_y(cx: &mut Context, value: String) {
     if let Ok(value) = value.parse() {
         edit_entity(cx, move |entity| {
             entity.y = value;
-        })
+        });
+        cx.current.toggle_class(cx, "validation_error", false);
+    } else {
+        cx.current.toggle_class(cx, "validation_error", true);
     }
 }
 fn edit_w(cx: &mut Context, value: String) {
     if let Ok(value) = value.parse() {
         edit_entity(cx, move |entity| {
             entity.width = value;
-        })
+        });
+        cx.current.toggle_class(cx, "validation_error", false);
+    } else {
+        cx.current.toggle_class(cx, "validation_error", true);
     }
 }
 fn edit_h(cx: &mut Context, value: String) {
     if let Ok(value) = value.parse() {
         edit_entity(cx, move |entity| {
             entity.height = value;
-        })
+        });
+        cx.current.toggle_class(cx, "validation_error", false);
+    } else {
+        cx.current.toggle_class(cx, "validation_error", true);
+    }
+}
+
+fn edit_node_x(cx: &mut Context, idx: usize, value: String) {
+    if let Ok(x) = value.parse() {
+        edit_entity(cx, move |entity| {
+            entity.nodes[idx] = (x, entity.nodes[idx].y).into();
+        });
+        cx.current.toggle_class(cx, "validation_error", false);
+    } else {
+        cx.current.toggle_class(cx, "validation_error", true);
+    }
+}
+
+fn edit_node_y(cx: &mut Context, idx: usize, value: String) {
+    if let Ok(y) = value.parse() {
+        edit_entity(cx, move |entity| {
+            entity.nodes[idx] = (entity.nodes[idx].x, y).into();
+        });
+        cx.current.toggle_class(cx, "validation_error", false);
+    } else {
+        cx.current.toggle_class(cx, "validation_error", true);
     }
 }

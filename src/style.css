@@ -170,6 +170,10 @@ palette list {
     height: auto;
 }
 
+.tweaker list {
+    width: 1s;
+}
+
 .tweaker label {
     left: 3px;
     right: 3px;

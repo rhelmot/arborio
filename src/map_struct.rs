@@ -392,7 +392,7 @@ pub struct CelesteMapEntity {
     pub nodes: Vec<Node>,
 }
 
-#[derive(Debug, Clone, PartialEq, TryFromBinEl)]
+#[derive(Debug, Clone, PartialEq, TryFromBinEl, Data)]
 #[name("node")]
 pub struct Node {
     pub x: i32,
