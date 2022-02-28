@@ -10,42 +10,44 @@ use std::path::PathBuf;
 use vizia::*;
 
 pub fn build_project_tab(cx: &mut Context, project: Interned) {
-    let module = cx
-        .data::<AppState>()
-        .unwrap()
-        .modules
-        .get(*project)
-        .unwrap();
-    let module_root = module.filesystem_root.clone();
-    let mut maps = module.maps.to_vec();
-    maps.sort();
-    for map in maps.into_iter() {
-        let module_root = module_root.clone();
-        VStack::new(cx, move |cx| {
-            Label::new(cx, *map).class("map_title");
-        })
-        .class("map_overview_card")
-        .on_press(move |cx| {
-            for (idx, tab) in cx.data::<AppState>().unwrap().tabs.iter().enumerate() {
-                if matches!(tab, AppTab::Map(maptab) if maptab.id.sid == map) {
-                    cx.emit(AppEvent::SelectTab { idx });
-                    return;
-                }
-            }
-            if let Some(module_root) = module_root.clone() {
-                cx.spawn(move |cx| {
-                    let project = project;
-                    let map = map;
-                    if let Some(map_struct) = load_map(module_root.clone(), project, map) {
-                        cx.emit(AppEvent::Load {
-                            map: RefCell::new(Some(Box::new(map_struct))),
-                        })
-                        .unwrap();
+    ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
+        let module = cx
+            .data::<AppState>()
+            .unwrap()
+            .modules
+            .get(*project)
+            .unwrap();
+        let module_root = module.filesystem_root.clone();
+        let mut maps = module.maps.to_vec();
+        maps.sort();
+        for map in maps.into_iter() {
+            let module_root = module_root.clone();
+            VStack::new(cx, move |cx| {
+                Label::new(cx, *map).class("map_title");
+            })
+            .class("map_overview_card")
+            .on_press(move |cx| {
+                for (idx, tab) in cx.data::<AppState>().unwrap().tabs.iter().enumerate() {
+                    if matches!(tab, AppTab::Map(maptab) if maptab.id.sid == map) {
+                        cx.emit(AppEvent::SelectTab { idx });
+                        return;
                     }
-                })
-            }
-        });
-    }
+                }
+                if let Some(module_root) = module_root.clone() {
+                    cx.spawn(move |cx| {
+                        let project = project;
+                        let map = map;
+                        if let Some(map_struct) = load_map(module_root.clone(), project, map) {
+                            cx.emit(AppEvent::Load {
+                                map: RefCell::new(Some(Box::new(map_struct))),
+                            })
+                            .unwrap();
+                        }
+                    })
+                }
+            });
+        }
+    });
 }
 
 fn load_map(module_root: PathBuf, project: Interned, map: Interned) -> Option<CelesteMap> {

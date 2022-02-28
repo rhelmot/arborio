@@ -2,7 +2,7 @@ use enum_iterator::IntoEnumIterator;
 use vizia::*;
 
 use crate::app_state::AppState;
-use crate::lenses::{CurrentMapLens, CurrentPaletteLens};
+use crate::lenses::{AnotherLens, CurrentMapLens, CurrentPaletteLens};
 use crate::tools::ToolSpec;
 use crate::widgets::editor::EditorWidget;
 use crate::widgets::room_tweaker::RoomTweakerWidget;
@@ -54,92 +54,109 @@ pub fn build_tool_picker(cx: &mut Context) {
 }
 
 pub fn build_layer_picker(cx: &mut Context) {
-    Binding::new(cx, AppState::current_toolspec, move |cx, tool_idx| {
-        let tool_idx = *tool_idx.get(cx);
-        Picker::new(cx, AppState::current_layer, move |cx, layer_field| {
-            let selected = *layer_field.get(cx);
-            for layer in Layer::into_enum_iter() {
-                Button::new(
-                    cx,
-                    move |cx| {
-                        cx.emit(AppEvent::SelectLayer { layer });
-                    },
-                    move |cx| {
-                        RadioButton::new(cx, layer == selected);
-                        Label::new(cx, layer.name())
-                    },
-                )
-                .checked(layer == selected)
-                .class("btn_item")
-                .layout_type(LayoutType::Row)
-                .display(
-                    if layer == Layer::All && tool_idx != ToolSpec::Selection {
-                        Display::None
-                    } else {
-                        Display::Flex
+    for layer in Layer::into_enum_iter() {
+        Button::new(
+            cx,
+            move |cx| {
+                cx.emit(AppEvent::SelectLayer { layer });
+            },
+            move |cx| {
+                RadioButton::new(cx, false).bind(
+                    AppState::current_layer,
+                    move |handle, selected| {
+                        let selected = *selected.get(handle.cx);
+                        handle.checked(selected == layer);
                     },
                 );
-            }
+                Label::new(cx, layer.name())
+            },
+        )
+        .bind(AppState::current_layer, move |handle, selected| {
+            let selected = *selected.get(handle.cx);
+            handle.checked(selected == layer);
+        })
+        .class("btn_item")
+        .layout_type(LayoutType::Row)
+        .bind(AppState::current_toolspec, move |handle, toolspec| {
+            let toolspec = *toolspec.get(handle.cx);
+            handle.display(layer != Layer::All || toolspec == ToolSpec::Selection);
         });
-    });
+    }
 }
 
 pub fn build_palette_widgets(cx: &mut Context) {
-    Binding::new(cx, AppState::current_toolspec, move |cx, tool_idx| {
-        let tool_idx = *tool_idx.get(cx);
-        Binding::new(cx, AppState::current_layer, move |cx, layer_field| {
-            let layer = *layer_field.get(cx);
-            PaletteWidget::new(
-                cx,
-                CurrentPaletteLens {}.then(ModuleAggregate::fg_tiles_palette),
-                AppState::current_fg_tile,
-                |cx, tile| {
-                    cx.emit(AppEvent::SelectPaletteTile { fg: true, tile });
-                },
-            )
-            .display(layer == Layer::FgTiles && tool_idx == ToolSpec::Pencil);
-            PaletteWidget::new(
-                cx,
-                CurrentPaletteLens {}.then(ModuleAggregate::bg_tiles_palette),
-                AppState::current_bg_tile,
-                |cx, tile| cx.emit(AppEvent::SelectPaletteTile { fg: false, tile }),
-            )
-            .display(layer == Layer::BgTiles && tool_idx == ToolSpec::Pencil);
-            PaletteWidget::new(
-                cx,
-                CurrentPaletteLens {}.then(ModuleAggregate::entities_palette),
-                AppState::current_entity,
-                |cx, entity| cx.emit(AppEvent::SelectPaletteEntity { entity }),
-            )
-            .display(layer == Layer::Entities && tool_idx == ToolSpec::Pencil);
-            PaletteWidget::new(
-                cx,
-                CurrentPaletteLens {}.then(ModuleAggregate::triggers_palette),
-                AppState::current_trigger,
-                |cx, trigger| cx.emit(AppEvent::SelectPaletteTrigger { trigger }),
-            )
-            .display(layer == Layer::Triggers && tool_idx == ToolSpec::Pencil);
-            PaletteWidget::new(
-                cx,
-                CurrentPaletteLens {}.then(ModuleAggregate::decals_palette),
-                AppState::current_decal,
-                |cx, decal| cx.emit(AppEvent::SelectPaletteDecal { decal }),
-            )
-            .display(
-                (layer == Layer::FgDecals || layer == Layer::BgDecals)
-                    && tool_idx == ToolSpec::Pencil,
-            );
-            Binding::new(cx, AppState::current_objtile, move |cx, objtile| {
-                TilePaletteWidget::new(cx, *objtile.get(cx), |cx, tile| {
-                    cx.emit(AppEvent::SelectPaletteObjectTile { tile })
-                })
-                .display(layer == Layer::ObjectTiles && tool_idx == ToolSpec::Pencil)
-                .min_height(Units::Pixels(100.0))
-                .min_width(Units::Pixels(100.0))
-                .height(Units::Stretch(1.0))
-                .width(Units::Stretch(1.0));
-            });
-        });
+    let pair = AnotherLens::new(AppState::current_toolspec, AppState::current_layer);
+    PaletteWidget::new(
+        cx,
+        CurrentPaletteLens {}.then(ModuleAggregate::fg_tiles_palette),
+        AppState::current_fg_tile,
+        |cx, tile| {
+            cx.emit(AppEvent::SelectPaletteTile { fg: true, tile });
+        },
+    )
+    .bind(pair, |handle, pair| {
+        let (toolspec, layer) = *pair.get(handle.cx);
+        handle.display(layer == Layer::FgTiles && toolspec == ToolSpec::Pencil);
+    });
+
+    PaletteWidget::new(
+        cx,
+        CurrentPaletteLens {}.then(ModuleAggregate::bg_tiles_palette),
+        AppState::current_bg_tile,
+        |cx, tile| cx.emit(AppEvent::SelectPaletteTile { fg: false, tile }),
+    )
+    .bind(pair, |handle, pair| {
+        let (toolspec, layer) = *pair.get(handle.cx);
+        handle.display(layer == Layer::BgTiles && toolspec == ToolSpec::Pencil);
+    });
+
+    PaletteWidget::new(
+        cx,
+        CurrentPaletteLens {}.then(ModuleAggregate::entities_palette),
+        AppState::current_entity,
+        |cx, entity| cx.emit(AppEvent::SelectPaletteEntity { entity }),
+    )
+    .bind(pair, |handle, pair| {
+        let (toolspec, layer) = *pair.get(handle.cx);
+        handle.display(layer == Layer::Entities && toolspec == ToolSpec::Pencil);
+    });
+
+    PaletteWidget::new(
+        cx,
+        CurrentPaletteLens {}.then(ModuleAggregate::triggers_palette),
+        AppState::current_trigger,
+        |cx, trigger| cx.emit(AppEvent::SelectPaletteTrigger { trigger }),
+    )
+    .bind(pair, |handle, pair| {
+        let (toolspec, layer) = *pair.get(handle.cx);
+        handle.display(layer == Layer::Triggers && toolspec == ToolSpec::Pencil);
+    });
+
+    PaletteWidget::new(
+        cx,
+        CurrentPaletteLens {}.then(ModuleAggregate::decals_palette),
+        AppState::current_decal,
+        |cx, decal| cx.emit(AppEvent::SelectPaletteDecal { decal }),
+    )
+    .bind(pair, |handle, pair| {
+        let (toolspec, layer) = *pair.get(handle.cx);
+        handle.display(
+            (layer == Layer::FgDecals || layer == Layer::BgDecals) && toolspec == ToolSpec::Pencil,
+        );
+    });
+
+    Binding::new(cx, AppState::current_objtile, move |cx, objtile| {
+        TilePaletteWidget::new(cx, *objtile.get(cx), |cx, tile| {
+            cx.emit(AppEvent::SelectPaletteObjectTile { tile })
+        })
+        .bind(pair, |handle, pair| {
+            let (toolspec, layer) = *pair.get(handle.cx);
+            handle.display(layer == Layer::ObjectTiles && toolspec == ToolSpec::Pencil);
+        })
+        .min_height(Units::Pixels(100.0))
+        .min_width(Units::Pixels(100.0))
+        .height(Units::Stretch(1.0))
+        .width(Units::Stretch(1.0));
     });
 }
 

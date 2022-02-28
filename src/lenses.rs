@@ -399,3 +399,42 @@ impl Lens for RoomTweakerScopeLens {
         map(Some(&(maptab.id.clone(), maptab.current_room)))
     }
 }
+
+#[derive(Copy, Clone, Debug)]
+pub struct AnotherLens<L1, L2> {
+    one: L1,
+    two: L2,
+}
+
+impl<L1, L2> AnotherLens<L1, L2> {
+    pub fn new(one: L1, two: L2) -> Self {
+        Self { one, two }
+    }
+}
+
+impl<L1, L2> Lens for AnotherLens<L1, L2>
+where
+    L1: 'static + Lens,
+    L2: 'static + Lens<Source = <L1 as Lens>::Source>,
+    <L1 as Lens>::Target: Clone,
+    <L2 as Lens>::Target: Clone,
+{
+    type Source = L1::Source;
+    type Target = (L1::Target, L2::Target);
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        self.one.view(source, |one| {
+            if let Some(one) = one {
+                self.two.view(source, |two| {
+                    if let Some(two) = two {
+                        map(Some(&(one.clone(), two.clone())))
+                    } else {
+                        map(None)
+                    }
+                })
+            } else {
+                map(None)
+            }
+        })
+    }
+}
