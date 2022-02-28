@@ -175,6 +175,8 @@ lazy_static::lazy_static! {
         ("level", "enforceDashNumber"),
         ("entities", "width"),
         ("entities", "height"),
+        ("triggers", "width"),
+        ("triggers", "height"),
         ("bgtiles", "exportMode"),
         ("bgtiles", "offsetX"),
         ("bgtiles", "offsetY"),
@@ -204,7 +206,8 @@ lazy_static::lazy_static! {
     // entries in this list have arbitrary child names and should thusly be looked up by their
     // parent name
     static ref PARENT_OVERRIDES: HashSet<&'static str> = HashSet::from([
-        "entities"
+        "entities",
+        "triggers",
     ]);
 }
 

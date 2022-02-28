@@ -207,7 +207,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
         impl crate::from_binel::TryFromBinEl for #ident {
             fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
                 #assertion
-                let names_list = [#(stringify!(#field_names)),*];
+                let names_list = [#(#field_names),*];
                 #(let #fields = #field_values;)*
 
                 let struct_ = Self {
