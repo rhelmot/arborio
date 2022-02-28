@@ -159,14 +159,22 @@ palette list {
 }
 
 .tweaker {
+    height: 1s;
+}
+
+.tweaker>scrollview {
+    height: 1s;
+}
+
+.tweaker hstack {
     height: auto;
 }
 
 .tweaker label {
     left: 3px;
     right: 3px;
-    top: 1s;
-    bottom: 1s;
+    top: 4px;
+    bottom: 4px;
 }
 
 .tweaker textbox {
@@ -175,7 +183,7 @@ palette list {
     bottom: 1s
 }
 
-tweaker checkbox {
+.tweaker checkbox {
     top: 5px;
     bottom: 5px;
 }
