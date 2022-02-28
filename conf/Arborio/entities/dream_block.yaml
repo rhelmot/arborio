@@ -7,6 +7,13 @@ hitboxes:
       size:
         x: width
         y: height
+  node_rects:
+    - topleft:
+        x: nodex
+        y: nodey
+      size:
+        x: width
+        y: height
 standard_draw:
   initial_draw:
     - DrawRect:

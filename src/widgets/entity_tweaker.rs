@@ -105,9 +105,13 @@ impl EntityTweakerWidget {
                             Textbox::new(cx, item.map(|pair| pair.y)).on_edit(move |cx, text| {
                                 edit_node_y(cx, idx, text);
                             });
+                            Label::new(cx, "-").class("remove_btn").on_press(move |cx| {
+                                remove_node(cx, idx);
+                            });
                         });
                     },
                 );
+                Button::new(cx, add_node, |cx| Label::new(cx, "+ Node"));
             }
         });
     }
@@ -235,5 +239,38 @@ fn edit_node_y(cx: &mut Context, idx: usize, value: String) {
         cx.current.toggle_class(cx, "validation_error", false);
     } else {
         cx.current.toggle_class(cx, "validation_error", true);
+    }
+}
+
+fn remove_node(cx: &mut Context, idx: usize) {
+    edit_entity(cx, move |entity| {
+        entity.nodes.remove(idx);
+    })
+}
+
+fn add_node(cx: &mut Context) {
+    let mut select = None;
+    let mut id = None;
+    edit_entity(cx, |entity| {
+        select = Some(entity.nodes.len());
+        id = Some(entity.id);
+        entity.nodes.push((entity.x, entity.y).into());
+    });
+
+    if let (Some(id), Some(select)) = (id, select) {
+        let app_state = cx.data::<AppState>().unwrap();
+        let current_tab = app_state.current_tab;
+        let current_selected = match app_state.tabs.get(app_state.current_tab) {
+            Some(AppTab::Map(map_tab)) => map_tab.current_selected,
+            _ => panic!("How'd you do that"),
+        };
+        let trigger = matches!(
+            current_selected,
+            Some(AppSelection::EntityBody(_, true) | AppSelection::EntityNode(_, _, true))
+        );
+        cx.emit(AppEvent::SelectObject {
+            tab: current_tab,
+            selection: Some(AppSelection::EntityNode(id, select, trigger)),
+        });
     }
 }

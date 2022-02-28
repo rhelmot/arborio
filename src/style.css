@@ -42,10 +42,6 @@ scrollbar {
     background-color: #c0c0c0c0;
 }
 
-scrollbar>.thumb {
-    backgrond-color: #808080ff;
-}
-
 scrollbar:over {
     opacity: 90%;
 }
@@ -192,9 +188,25 @@ palette list {
     bottom: 5px;
 }
 
+.tweaker hstack {
+    right: 14px;
+}
+
 .validation_error {
     background-color: #ffc0c0;
     border-color: red;
+}
+
+.remove_btn {
+    border-radius: 4px;
+    width: 14px;
+    height: 14px;
+    background-color: #c0a0a0;
+
+}
+
+.remove_btn:over {
+    background-color: #a08040;
 }
 
 /*
