@@ -33,8 +33,25 @@ vstack {
     child-space: 0;
 }
 
-palette>list {
-    width: 1s;
+palette {
+    width: 100%;
+}
+
+scrollbar {
+    opacity: 50%;
+    background-color: #c0c0c0c0;
+}
+
+scrollbar>.thumb {
+    backgrond-color: #808080ff;
+}
+
+scrollbar:over {
+    opacity: 90%;
+}
+
+palette list {
+    min-width: 100%;
 }
 
 .palette_item {
@@ -48,7 +65,7 @@ palette>list {
 
 .palette_item label {
     height: 20px;
-    width: 1s;
+    min-width: 100%;
     font-size: 15px;
     child-left: 3px;
 }

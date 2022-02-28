@@ -31,24 +31,26 @@ where
             marker: PhantomData {},
         }
         .build2(cx, move |cx| {
-            List::new(cx, items, move |cx, _, item| {
-                let item2 = item.clone();
-                let item3 = item.clone();
-                HStack::new(cx, move |cx| {
-                    Label::new(cx, "").bind(item2, |handle, item| {
-                        let app = handle.cx.data().unwrap();
-                        let text = item.get(handle.cx).display_name(app);
-                        handle.text(&text);
+            ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
+                List::new(cx, items, move |cx, _, item| {
+                    let item2 = item.clone();
+                    let item3 = item.clone();
+                    HStack::new(cx, move |cx| {
+                        Label::new(cx, "").bind(item2, |handle, item| {
+                            let app = handle.cx.data().unwrap();
+                            let text = item.get(handle.cx).display_name(app);
+                            handle.text(&text);
+                        });
+                    })
+                    .class("palette_item")
+                    .bind(selected.clone(), move |handle, selected| {
+                        let mine = *item3.get(handle.cx);
+                        let selected = selected.get(handle.cx);
+                        handle.checked(selected.same(&mine));
+                    })
+                    .on_press(move |cx| {
+                        (callback)(cx, *item.get(cx));
                     });
-                })
-                .class("palette_item")
-                .bind(selected.clone(), move |handle, selected| {
-                    let mine = *item3.get(handle.cx);
-                    let selected = selected.get(handle.cx);
-                    handle.checked(selected.same(&mine));
-                })
-                .on_press(move |cx| {
-                    (callback)(cx, *item.get(cx));
                 });
             });
         });
