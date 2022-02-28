@@ -118,17 +118,22 @@ impl EntityTweakerWidget {
                                         }
                                     },
                                 );
-                                Binding::new(cx, b_value_lens, move |cx, b| {
-                                    if let Some(b) = b.get_fallible(cx) {
-                                        Checkbox::new(cx, *b).on_toggle(move |cx| {
-                                            edit_attribute(
-                                                cx,
-                                                key_lens.get(cx).to_string(),
-                                                Attribute::Bool(!*b),
-                                            );
-                                        });
-                                    }
-                                });
+                                Binding::new(
+                                    cx,
+                                    IsFailedLens::new(b_value_lens),
+                                    move |cx, failed| {
+                                        if !*failed.get(cx) {
+                                            Checkbox::new(cx, b_value_lens).on_toggle(move |cx| {
+                                                let b = *b_value_lens.get(cx);
+                                                edit_attribute(
+                                                    cx,
+                                                    key_lens.get(cx).to_string(),
+                                                    Attribute::Bool(!b),
+                                                );
+                                            });
+                                        }
+                                    },
+                                );
                             });
                         }
                     },

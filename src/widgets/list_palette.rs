@@ -32,20 +32,23 @@ where
         }
         .build2(cx, move |cx| {
             List::new(cx, items, move |cx, _, item| {
-                Binding::new(cx, selected.clone(), move |cx, selected_field| {
-                    let selected = *selected_field.get(cx);
-                    let item = *item.get(cx);
-                    let checked = item.same(&selected);
-                    HStack::new(cx, move |cx| {
-                        let app = cx.data().unwrap();
-                        let display_name = &item.display_name(app);
-                        Label::new(cx, display_name);
-                    })
-                    .class("palette_item")
-                    .checked(checked)
-                    .on_press(move |cx| {
-                        (callback)(cx, item);
+                let item2 = item.clone();
+                let item3 = item.clone();
+                HStack::new(cx, move |cx| {
+                    Label::new(cx, "").bind(item2, |handle, item| {
+                        let app = handle.cx.data().unwrap();
+                        let text = item.get(handle.cx).display_name(app);
+                        handle.text(&text);
                     });
+                })
+                .class("palette_item")
+                .bind(selected.clone(), move |handle, selected| {
+                    let mine = *item3.get(handle.cx);
+                    let selected = selected.get(handle.cx);
+                    handle.checked(selected.same(&mine));
+                })
+                .on_press(move |cx| {
+                    (callback)(cx, *item.get(cx));
                 });
             });
         });
