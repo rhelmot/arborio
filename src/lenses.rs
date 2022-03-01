@@ -438,3 +438,131 @@ where
         })
     }
 }
+
+#[derive(Debug)]
+pub struct RectXLens<T, U> {
+    p: PhantomData<T>,
+    u: PhantomData<U>,
+}
+
+impl<T, U> RectXLens<T, U> {
+    pub fn new() -> Self {
+        Self {
+            p: PhantomData::default(),
+            u: PhantomData::default(),
+        }
+    }
+}
+
+impl<T, U> Clone for RectXLens<T, U> {
+    fn clone(&self) -> Self {
+        Self::new()
+    }
+}
+
+impl<T, U> Copy for RectXLens<T, U> {}
+
+impl<T: 'static, U: 'static> Lens for RectXLens<T, U> {
+    type Source = euclid::Rect<T, U>;
+    type Target = T;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        map(Some(&source.origin.x))
+    }
+}
+
+#[derive(Debug)]
+pub struct RectYLens<T, U> {
+    p: PhantomData<T>,
+    u: PhantomData<U>,
+}
+
+impl<T, U> RectYLens<T, U> {
+    pub fn new() -> Self {
+        Self {
+            p: PhantomData::default(),
+            u: PhantomData::default(),
+        }
+    }
+}
+
+impl<T, U> Clone for RectYLens<T, U> {
+    fn clone(&self) -> Self {
+        Self::new()
+    }
+}
+
+impl<T, U> Copy for RectYLens<T, U> {}
+
+impl<T: 'static, U: 'static> Lens for RectYLens<T, U> {
+    type Source = euclid::Rect<T, U>;
+    type Target = T;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        map(Some(&source.origin.y))
+    }
+}
+
+#[derive(Debug)]
+pub struct RectWLens<T, U> {
+    p: PhantomData<T>,
+    u: PhantomData<U>,
+}
+
+impl<T, U> RectWLens<T, U> {
+    pub fn new() -> Self {
+        Self {
+            p: PhantomData::default(),
+            u: PhantomData::default(),
+        }
+    }
+}
+
+impl<T, U> Clone for RectWLens<T, U> {
+    fn clone(&self) -> Self {
+        Self::new()
+    }
+}
+
+impl<T, U> Copy for RectWLens<T, U> {}
+
+impl<T: 'static, U: 'static> Lens for RectWLens<T, U> {
+    type Source = euclid::Rect<T, U>;
+    type Target = T;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        map(Some(&source.size.width))
+    }
+}
+
+#[derive(Debug)]
+pub struct RectHLens<T, U> {
+    p: PhantomData<T>,
+    u: PhantomData<U>,
+}
+
+impl<T, U> RectHLens<T, U> {
+    pub fn new() -> Self {
+        Self {
+            p: PhantomData::default(),
+            u: PhantomData::default(),
+        }
+    }
+}
+
+impl<T, U> Clone for RectHLens<T, U> {
+    fn clone(&self) -> Self {
+        Self::new()
+    }
+}
+
+impl<T, U> Copy for RectHLens<T, U> {}
+
+impl<T: 'static, U: 'static> Lens for RectHLens<T, U> {
+    type Source = euclid::Rect<T, U>;
+    type Target = T;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        map(Some(&source.size.height))
+    }
+}

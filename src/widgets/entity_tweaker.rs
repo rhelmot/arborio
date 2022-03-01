@@ -38,17 +38,17 @@ impl EntityTweakerWidget {
         Self {}
             .build2(cx, move |cx| {
                 let entity_lens = CurrentSelectedEntityLens {};
-                Binding::new(cx, IsFailedLens::new(entity_lens), move |cx, failed| {
-                    if !*failed.get(cx) {
-                        Binding::new(cx, entity_lens, |cx, entity| {
-                            let entity = entity.get(cx);
-                            let msg = format!("{} - {}", entity.name, entity.id);
-                            Label::new(cx, &msg);
-                        });
-
-                        ScrollView::new(cx, 0.0, 0.0, false, true, Self::members);
+                Binding::new(cx, entity_lens, move |cx, entity| {
+                    if let Some(entity) = entity.get_fallible(cx) {
+                        let msg = format!("{} - {}", entity.name, entity.id);
+                        Label::new(cx, &msg);
                     } else {
                         Label::new(cx, "No entity selected");
+                    }
+                });
+                Binding::new(cx, IsFailedLens::new(entity_lens), move |cx, failed| {
+                    if !*failed.get(cx) {
+                        ScrollView::new(cx, 0.0, 0.0, false, true, Self::members);
                     }
                 });
             })

@@ -251,7 +251,7 @@ impl Default for CelesteMapLevel {
         let tile_size = TileSize::new(40, 23);
         Self {
             name: "".to_string(),
-            bounds: MapRectStrict::new(MapPointStrict::new(0, 0), MapSizeStrict::new(320, 180)),
+            bounds: MapRectStrict::new(MapPointStrict::new(0, 0), MapSizeStrict::new(320, 184)),
             color: 0,
             camera_offset_x: 0.0,
             camera_offset_y: 0.0,

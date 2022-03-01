@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
-use crate::lenses::{CurrentRoomLens, RoomTweakerScopeLens};
+use crate::lenses::{
+    CurrentRoomLens, RectHLens, RectWLens, RectXLens, RectYLens, RoomTweakerScopeLens,
+};
 use crate::map_struct::{CelesteMapLevel, CelesteMapLevelUpdate};
 use crate::{AppEvent, AppState, AppTab};
 use vizia::*;
@@ -90,6 +92,74 @@ impl RoomTweakerWidget {
                 true
             },
         );
+        HStack::new(cx, move |cx| {
+            Label::new(cx, "X");
+            Textbox::new(
+                cx,
+                CurrentRoomLens {}
+                    .then(CelesteMapLevel::bounds)
+                    .then(RectXLens::new()),
+            )
+            .on_edit(move |cx, value| {
+                if let Ok(parsed) = value.parse() {
+                    emit_bounds(cx, Some(parsed), None, None, None);
+                    cx.current.toggle_class(cx, "validation_error", false);
+                } else {
+                    cx.current.toggle_class(cx, "validation_error", true);
+                }
+            });
+        });
+        HStack::new(cx, move |cx| {
+            Label::new(cx, "Y");
+            Textbox::new(
+                cx,
+                CurrentRoomLens {}
+                    .then(CelesteMapLevel::bounds)
+                    .then(RectYLens::new()),
+            )
+            .on_edit(move |cx, value| {
+                if let Ok(parsed) = value.parse() {
+                    emit_bounds(cx, None, Some(parsed), None, None);
+                    cx.current.toggle_class(cx, "validation_error", false);
+                } else {
+                    cx.current.toggle_class(cx, "validation_error", true);
+                }
+            });
+        });
+        HStack::new(cx, move |cx| {
+            Label::new(cx, "Width");
+            Textbox::new(
+                cx,
+                CurrentRoomLens {}
+                    .then(CelesteMapLevel::bounds)
+                    .then(RectWLens::new()),
+            )
+            .on_edit(move |cx, value| {
+                if let Ok(parsed) = value.parse() {
+                    emit_bounds(cx, None, None, Some(parsed), None);
+                    cx.current.toggle_class(cx, "validation_error", false);
+                } else {
+                    cx.current.toggle_class(cx, "validation_error", true);
+                }
+            });
+        });
+        HStack::new(cx, move |cx| {
+            Label::new(cx, "Height");
+            Textbox::new(
+                cx,
+                CurrentRoomLens {}
+                    .then(CelesteMapLevel::bounds)
+                    .then(RectHLens::new()),
+            )
+            .on_edit(move |cx, value| {
+                if let Ok(parsed) = value.parse() {
+                    emit_bounds(cx, None, None, None, Some(parsed));
+                    cx.current.toggle_class(cx, "validation_error", false);
+                } else {
+                    cx.current.toggle_class(cx, "validation_error", true);
+                }
+            });
+        });
 
         edit_text!(cx, "Color", color);
         edit_text!(cx, "Camera Offset X", camera_offset_x);
@@ -100,11 +170,13 @@ impl RoomTweakerWidget {
         edit_check!(cx, "Whisper", whisper);
         edit_check!(cx, "Dark", dark);
         edit_check!(cx, "Disable Down Transition", disable_down_transition);
+        edit_text!(cx, "Enforce Dash Number", enforce_dash_number);
         edit_text!(cx, "Music", music);
         edit_text!(cx, "Alt Music", alt_music);
         edit_text!(cx, "Ambience", ambience);
         edit_text!(cx, "Music Progress", music_progress);
         edit_text!(cx, "Ambience Progress", ambience_progress);
+        edit_text!(cx, "Delay Alt Music Fade", delay_alt_music_fade);
 
         HStack::new(cx, move |cx| {
             Label::new(cx, "Music Layers");
@@ -142,6 +214,36 @@ fn emit(cx: &mut Context, update: CelesteMapLevelUpdate) {
         map: tab.id.clone(),
         idx: tab.current_room,
         update,
+    };
+    cx.emit(event);
+}
+
+fn emit_bounds(
+    cx: &mut Context,
+    update_x: Option<i32>,
+    update_y: Option<i32>,
+    update_w: Option<i32>,
+    update_h: Option<i32>,
+) {
+    let app = cx.data::<AppState>().unwrap();
+    let tab = app.map_tab_unwrap();
+    let mut bounds = app.loaded_maps.get(&tab.id).unwrap().levels[tab.current_room].bounds;
+    if let Some(x) = update_x {
+        bounds.origin.x = x;
+    }
+    if let Some(y) = update_y {
+        bounds.origin.y = y;
+    }
+    if let Some(w) = update_w {
+        bounds.size.width = w;
+    }
+    if let Some(h) = update_h {
+        bounds.size.height = h;
+    }
+    let event = AppEvent::MoveRoom {
+        map: tab.id.clone(),
+        room: tab.current_room,
+        bounds,
     };
     cx.emit(event);
 }
