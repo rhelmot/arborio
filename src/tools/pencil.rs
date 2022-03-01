@@ -75,12 +75,12 @@ impl Tool for PencilTool {
     }
 
     fn draw(&mut self, canvas: &mut Canvas, app: &AppState, cx: &Context) {
-        canvas.save();
         let room = if let Some(room) = app.current_room_ref() {
             room
         } else {
             return;
         };
+        canvas.save();
         canvas.translate(room.bounds.origin.x as f32, room.bounds.origin.y as f32);
         canvas.intersect_scissor(
             0.0,

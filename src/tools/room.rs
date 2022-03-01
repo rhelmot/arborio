@@ -65,7 +65,7 @@ impl Tool for RoomTool {
         let map = app.current_map_ref().unwrap();
 
         match event {
-            WindowEvent::MouseUp(MouseButton::Left) => {
+            WindowEvent::MouseUp(_) => {
                 let events = match self.status {
                     SelectionStatus::Selecting(_) => self.confirm_selection(app),
                     SelectionStatus::Resizing(ResizingStatus {
@@ -122,14 +122,24 @@ impl Tool for RoomTool {
                 }
             }
             WindowEvent::MouseDown(MouseButton::Right) => {
-                let mut result = CelesteMapLevel::default();
-                result.bounds.origin = map_pos;
-                self.current_selection = HashSet::from([map.levels.len()]);
-                vec![AppEvent::AddRoom {
-                    map: map.id.clone(),
-                    idx: None,
-                    room: Box::new(result),
-                }]
+                if self.status == SelectionStatus::None {
+                    let mut result = CelesteMapLevel::default();
+                    result.bounds.origin = map_pos;
+                    self.current_selection = HashSet::from([map.levels.len()]);
+                    self.status = SelectionStatus::Dragging(DraggingStatus {
+                        pointer_reference_point: map_pos,
+                        selection_reference_points: HashMap::from([(map.levels.len(), map_pos)]),
+                    });
+                    let mut events = self.notify_selection(app);
+                    events.push(AppEvent::AddRoom {
+                        map: map.id.clone(),
+                        idx: None,
+                        room: Box::new(result),
+                    });
+                    events
+                } else {
+                    vec![]
+                }
             }
             WindowEvent::KeyDown(code, _) if self.status == SelectionStatus::None => match code {
                 Code::ArrowDown => self.nudge(map, MapVectorStrict::new(0, 8)),
@@ -154,7 +164,6 @@ impl Tool for RoomTool {
     }
 
     fn draw(&mut self, canvas: &mut Canvas, app: &AppState, cx: &Context) {
-        canvas.save();
         let map = if let Some(map) = app.current_map_ref() {
             map
         } else {
@@ -171,6 +180,7 @@ impl Tool for RoomTool {
         let map_pos_unsnapped = point_lose_precision(&map_pos_precise);
         let map_pos = (map_pos_unsnapped / 8) * 8;
 
+        canvas.save();
         if let SelectionStatus::Selecting(ref_pos) = &self.status {
             let selection = rect_normalize(&MapRectStrict::new(
                 *ref_pos,

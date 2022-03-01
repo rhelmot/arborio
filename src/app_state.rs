@@ -838,13 +838,13 @@ pub fn pick_new_name(map: &CelesteMap) -> String {
         .map(|room| &room.name)
         .collect::<HashSet<_>>();
     for ch in 'a'..='z' {
-        if !all_names.contains(&format!("lvl_{}-00", ch)) {
+        if !all_names.contains(&format!("{}-00", ch)) {
             if ch == 'a' {
-                return "lvl_a-00".to_string();
+                return "a-00".to_string();
             } else {
                 let ch = (ch as u8 - 1) as char;
                 for num in 0..=99 {
-                    let result = format!("lvl_{}-{:02}", ch, num);
+                    let result = format!("{}-{:02}", ch, num);
                     if !all_names.contains(&result) {
                         return result;
                     }
