@@ -202,11 +202,35 @@ palette list {
     width: 14px;
     height: 14px;
     background-color: #c0a0a0;
-
 }
 
 .remove_btn:over {
     background-color: #a08040;
+}
+
+.add_btn {
+    border-radius: 4px;
+    width: 14px;
+    height: 14px;
+    background-color: #a0c0a0;
+}
+
+.add_btn:over {
+    background-color: #40a080;
+}
+
+dropdown {
+    font-size: 15px;
+}
+
+.dropdown_element {
+    width: 1s;
+    child-left: 3px;
+}
+
+.dropdown_element:over {
+    background-color: #101040;
+    color: white;
 }
 
 /*

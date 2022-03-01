@@ -2,11 +2,34 @@ use std::str::FromStr;
 use vizia::*;
 
 use crate::app_state::{AppEvent, AppSelection, AppState, AppTab};
+use crate::celeste_mod::entity_config::AttributeType;
 use crate::lenses::{
     CurrentSelectedEntityLens, HashMapIndexWithLens, HashMapLenLens, HashMapNthKeyLens,
     IsFailedLens,
 };
 use crate::map_struct::{Attribute, CelesteMapEntity};
+
+#[derive(Lens)]
+pub struct NewAttributeData {
+    name: String,
+    ty: AttributeType,
+}
+
+impl Model for NewAttributeData {
+    fn event(&mut self, _cx: &mut Context, event: &mut Event) {
+        if let Some(msg) = event.message.downcast() {
+            match msg {
+                NewAttributeDataEvent::SetName(name) => self.name = name.clone(),
+                NewAttributeDataEvent::SetTy(ty) => self.ty = *ty,
+            }
+        }
+    }
+}
+
+enum NewAttributeDataEvent {
+    SetName(String),
+    SetTy(AttributeType),
+}
 
 pub struct EntityTweakerWidget {}
 
@@ -15,41 +38,40 @@ impl EntityTweakerWidget {
         Self {}
             .build2(cx, move |cx| {
                 let entity_lens = CurrentSelectedEntityLens {};
-                Binding::new(cx, entity_lens, move |cx, selection| {
-                    if let Some(entity) = selection.get_fallible(cx) {
-                        let msg = format!("{} - {}", entity.name, entity.id);
-                        Label::new(cx, &msg);
+                Binding::new(cx, IsFailedLens::new(entity_lens), move |cx, failed| {
+                    if !*failed.get(cx) {
+                        Binding::new(cx, entity_lens, |cx, entity| {
+                            let entity = entity.get(cx);
+                            let msg = format!("{} - {}", entity.name, entity.id);
+                            Label::new(cx, &msg);
+                        });
+
+                        ScrollView::new(cx, 0.0, 0.0, false, true, Self::members);
                     } else {
                         Label::new(cx, "No entity selected");
                     }
                 });
-
-                ScrollView::new(cx, 0.0, 0.0, false, true, Self::members);
             })
             .class("tweaker")
     }
 
     fn members(cx: &mut Context) {
         let entity_lens = CurrentSelectedEntityLens {};
-        Binding::new(cx, IsFailedLens::new(entity_lens), move |cx, failed| {
-            if !*failed.get(cx) {
-                HStack::new(cx, move |cx| {
-                    Label::new(cx, "x");
-                    Textbox::new(cx, entity_lens.then(CelesteMapEntity::x)).on_edit(edit_x);
-                });
-                HStack::new(cx, move |cx| {
-                    Label::new(cx, "y");
-                    Textbox::new(cx, entity_lens.then(CelesteMapEntity::y)).on_edit(edit_y);
-                });
-                HStack::new(cx, move |cx| {
-                    Label::new(cx, "width");
-                    Textbox::new(cx, entity_lens.then(CelesteMapEntity::width)).on_edit(edit_w);
-                });
-                HStack::new(cx, move |cx| {
-                    Label::new(cx, "height");
-                    Textbox::new(cx, entity_lens.then(CelesteMapEntity::height)).on_edit(edit_h);
-                });
-            }
+        HStack::new(cx, move |cx| {
+            Label::new(cx, "x");
+            Textbox::new(cx, entity_lens.then(CelesteMapEntity::x)).on_edit(edit_x);
+        });
+        HStack::new(cx, move |cx| {
+            Label::new(cx, "y");
+            Textbox::new(cx, entity_lens.then(CelesteMapEntity::y)).on_edit(edit_y);
+        });
+        HStack::new(cx, move |cx| {
+            Label::new(cx, "width");
+            Textbox::new(cx, entity_lens.then(CelesteMapEntity::width)).on_edit(edit_w);
+        });
+        HStack::new(cx, move |cx| {
+            Label::new(cx, "height");
+            Textbox::new(cx, entity_lens.then(CelesteMapEntity::height)).on_edit(edit_h);
         });
 
         let attributes_lens = entity_lens.then(CelesteMapEntity::attributes);
@@ -84,36 +106,85 @@ impl EntityTweakerWidget {
                                 });
                             }
                         });
+
+                        Label::new(cx, "-").class("remove_btn").on_press(move |cx| {
+                            remove_attribute(cx, key_lens.get(cx).take());
+                        });
                     });
                 }
             },
         );
-
-        Binding::new(cx, IsFailedLens::new(entity_lens), move |cx, failed| {
-            if !*failed.get(cx) {
-                Label::new(cx, "Nodes");
-                List::new(
-                    cx,
-                    entity_lens.then(CelesteMapEntity::nodes),
-                    move |cx, idx, item| {
-                        HStack::new(cx, move |cx| {
-                            Label::new(cx, "x");
-                            Textbox::new(cx, item.map(|pair| pair.x)).on_edit(move |cx, text| {
-                                edit_node_x(cx, idx, text);
-                            });
-                            Label::new(cx, "y");
-                            Textbox::new(cx, item.map(|pair| pair.y)).on_edit(move |cx, text| {
-                                edit_node_y(cx, idx, text);
-                            });
-                            Label::new(cx, "-").class("remove_btn").on_press(move |cx| {
-                                remove_node(cx, idx);
-                            });
-                        });
-                    },
-                );
-                Button::new(cx, add_node, |cx| Label::new(cx, "+ Node"));
+        HStack::new(cx, move |cx| {
+            NewAttributeData {
+                name: "".to_string(),
+                ty: AttributeType::String,
             }
+            .build(cx);
+            Textbox::new(cx, NewAttributeData::name).on_edit(|cx, text| {
+                cx.emit(NewAttributeDataEvent::SetName(text));
+            });
+            Dropdown::new(
+                cx,
+                |cx| {
+                    HStack::new(cx, |cx| {
+                        Label::new(cx, "").bind(NewAttributeData::ty, |handle, ty| {
+                            let text = format!("{:?}", ty.get(handle.cx));
+                            handle.text(&text);
+                        });
+                        Label::new(cx, ICON_DOWN_OPEN)
+                            .font("icons")
+                            .left(Stretch(1.0))
+                            .right(Pixels(5.0));
+                    })
+                },
+                |cx| {
+                    VStack::new(cx, |cx| {
+                        for ty in [
+                            AttributeType::String,
+                            AttributeType::Int,
+                            AttributeType::Bool,
+                            AttributeType::Float,
+                        ] {
+                            Label::new(cx, &format!("{:?}", ty))
+                                .class("dropdown_element")
+                                .on_press(move |cx| {
+                                    cx.emit(PopupEvent::Close);
+                                    cx.emit(NewAttributeDataEvent::SetTy(ty));
+                                });
+                        }
+                    });
+                },
+            );
+            Label::new(cx, "+").class("add_btn").on_press(|cx| {
+                let name = NewAttributeData::name.get(cx).take();
+                if !name.is_empty() {
+                    add_default_attribute(cx, name, *NewAttributeData::ty.get(cx));
+                    cx.emit(NewAttributeDataEvent::SetName("".to_owned()));
+                }
+            });
         });
+
+        Label::new(cx, "Nodes");
+        List::new(
+            cx,
+            entity_lens.then(CelesteMapEntity::nodes),
+            move |cx, idx, item| {
+                HStack::new(cx, move |cx| {
+                    Label::new(cx, "x");
+                    Textbox::new(cx, item.map(|pair| pair.x)).on_edit(move |cx, text| {
+                        edit_node_x(cx, idx, text);
+                    });
+                    Label::new(cx, "y");
+                    Textbox::new(cx, item.map(|pair| pair.y)).on_edit(move |cx, text| {
+                        edit_node_y(cx, idx, text);
+                    });
+                    Label::new(cx, "-").class("remove_btn").on_press(move |cx| {
+                        remove_node(cx, idx);
+                    });
+                });
+            },
+        );
+        Button::new(cx, add_node, |cx| Label::new(cx, "+ Node"));
     }
 }
 
@@ -176,6 +247,26 @@ fn edit_entity<F: FnOnce(&mut CelesteMapEntity)>(cx: &mut Context, f: F) {
 fn edit_attribute(cx: &mut Context, key: String, value: Attribute) {
     edit_entity(cx, move |entity| {
         entity.attributes.insert(key, value);
+    });
+}
+
+fn remove_attribute(cx: &mut Context, key: String) {
+    edit_entity(cx, move |entity| {
+        entity.attributes.remove(&key);
+    });
+}
+
+fn add_default_attribute(cx: &mut Context, key: String, ty: AttributeType) {
+    edit_entity(cx, move |entity| {
+        entity.attributes.insert(
+            key,
+            match ty {
+                AttributeType::String => Attribute::Text("".to_owned()),
+                AttributeType::Float => Attribute::Float(0.0),
+                AttributeType::Int => Attribute::Int(0),
+                AttributeType::Bool => Attribute::Bool(false),
+            },
+        );
     });
 }
 

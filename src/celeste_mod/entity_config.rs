@@ -1,6 +1,7 @@
 use serde;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use vizia::*;
 
 use crate::assets;
 use crate::celeste_mod::entity_expression::{Const, Expression};
@@ -76,7 +77,7 @@ pub struct AttributeOption {
     pub value: AttributeValue,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Data)]
 pub enum AttributeType {
     String,
     Float,
