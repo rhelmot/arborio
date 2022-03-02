@@ -4,7 +4,7 @@ use celeste::binel::*;
 use euclid::{Point2D, Size2D};
 use itertools::Itertools;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 use std::fmt;
@@ -423,6 +423,68 @@ pub struct CelesteMapDecal {
 pub struct CelesteMapStyleground {
     #[name]
     pub name: String,
+    #[default]
+    pub tag: String,
+    #[default]
+    pub x: f32,
+    #[default]
+    pub y: f32,
+    #[default]
+    #[name("scrollx")]
+    pub scroll_x: f32,
+    #[default]
+    #[name("scrolly")]
+    pub scroll_y: f32,
+    #[default]
+    #[name("speedx")]
+    pub speed_x: f32,
+    #[default]
+    #[name("speedy")]
+    pub speed_y: f32,
+    #[default]
+    pub color: String,
+    #[default(1.0)]
+    pub alpha: f32,
+    #[default]
+    #[name("flipx")]
+    pub flip_x: bool,
+    #[default]
+    #[name("flipy")]
+    pub flip_y: bool,
+    #[default]
+    #[name("loopx")]
+    pub loop_x: bool,
+    #[default]
+    #[name("loopy")]
+    pub loop_y: bool,
+    #[default]
+    pub wind: f32,
+    #[optional]
+    pub exclude: Option<RoomGlob>,
+    #[optional]
+    pub only: Option<RoomGlob>,
+    #[optional]
+    pub flag: Option<String>,
+    #[optional]
+    #[name("notflag")]
+    pub not_flag: Option<String>,
+    #[optional]
+    pub always: Option<String>,
+    #[optional]
+    pub dreaming: Option<bool>,
+    #[name("instantIn")]
+    #[default]
+    pub instant_in: bool,
+    #[name("instantOut")]
+    #[default]
+    pub instant_out: bool,
+    #[name("fadex")]
+    #[optional]
+    pub fade_x: Option<String>,
+    #[name("fadey")]
+    #[optional]
+    pub fade_y: Option<String>,
+
     #[attributes]
     pub attributes: HashMap<String, Attribute>,
     #[children]
@@ -515,6 +577,37 @@ impl CelesteMapError {
             kind: CelesteMapErrorType::MissingAttribute,
             description: format!("Expected attribute of {}: {} not found", parent, attr),
         }
+    }
+}
+
+impl CelesteMapStyleground {
+    pub fn visible(&self, room: &str, flags: &HashSet<String>, dreaming: bool) -> bool {
+        /*
+        this.ForceVisible
+        || ((string.IsNullOrEmpty(this.OnlyIfNotFlag) || !level.Session.GetFlag(this.OnlyIfNotFlag))
+            && ((!string.IsNullOrEmpty(this.AlsoIfFlag) && level.Session.GetFlag(this.AlsoIfFlag))
+                || (!this.Dreaming.HasValue || this.Dreaming.Value == level.Session.Dreaming)
+                    && (string.IsNullOrEmpty(this.OnlyIfFlag) || level.Session.GetFlag(this.OnlyIfFlag))
+                    && (this.ExcludeFrom == null || !this.ExcludeFrom.Contains(level.Session.Level))
+                    && (this.OnlyIn == null || this.OnlyIn.Contains(level.Session.Level))
+            ));
+         */
+        self.not_flag.as_ref().map_or(true, |not_flag| {
+            not_flag.is_empty() || !flags.contains(not_flag)
+        }) && ((self
+            .always
+            .as_ref()
+            .map_or(false, |always| flags.contains(always)))
+            || (self.dreaming.map_or(true, |dream| dream == dreaming)
+                && self
+                    .flag
+                    .as_ref()
+                    .map_or(true, |flag| flag.is_empty() || flags.contains(flag))
+                && self
+                    .exclude
+                    .as_ref()
+                    .map_or(true, |exclude| !exclude.matches(room))
+                && self.only.as_ref().map_or(true, |only| only.matches(room))))
     }
 }
 
@@ -1109,6 +1202,38 @@ fn parse_object_tiles(
     parse_tiles(elem, width, height, obj_transform, -1)
 }
 
+#[derive(Debug)]
+pub struct RoomGlob {
+    text: String,
+    regex: regex::RegexSet,
+}
+
+impl RoomGlob {
+    pub fn new(text: String) -> Self {
+        let exprs = text
+            .split(',')
+            .map(|spec| format!("^{}$", spec.split('*').map(regex::escape).join(".*")));
+        let regex = regex::RegexSet::new(exprs).unwrap();
+        Self { text, regex }
+    }
+
+    pub fn matches(&self, text: &str) -> bool {
+        self.regex.is_match(text)
+    }
+}
+
+impl AttrCoercion for RoomGlob {
+    const NICE_NAME: &'static str = "room glob";
+
+    fn try_coerce(attr: &BinElAttr) -> Option<Self> {
+        String::try_coerce(attr).map(RoomGlob::new)
+    }
+
+    fn serialize(&self) -> BinElAttr {
+        self.text.serialize()
+    }
+}
+
 struct DefaultConverter;
 impl<T: TryFromBinEl> TwoWayConverter<T> for DefaultConverter {
     type BinType = BinEl;
@@ -1142,7 +1267,7 @@ macro_rules! attr_converter_impl {
         })+
     }
 }
-attr_converter_impl!(i32, u32, String, f32, bool);
+attr_converter_impl!(i32, u32, String, f32, bool, RoomGlob);
 
 impl TryFromBinEl for MapRectStrict {
     fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {

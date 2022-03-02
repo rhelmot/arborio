@@ -71,6 +71,7 @@ pub struct MapTab {
     pub current_room: usize,
     pub current_selected: Option<AppSelection>,
     pub transform: MapToScreen,
+    pub preview_pos: MapPointStrict,
 }
 
 impl PartialEq for MapTab {
@@ -174,6 +175,10 @@ pub enum AppEvent {
     },
     CloseTab {
         idx: usize,
+    },
+    MovePreview {
+        tab: usize,
+        pos: MapPointStrict,
     },
     Pan {
         tab: usize,
@@ -411,6 +416,7 @@ impl AppState {
                             current_room: 0,
                             current_selected: None,
                             transform: MapToScreen::identity(),
+                            preview_pos: MapPointStrict::zero(),
                         }));
                         cx.emit(AppEvent::SelectTab {
                             idx: self.tabs.len() - 1,
@@ -516,6 +522,11 @@ impl AppState {
                         .pre_translate(focus.to_vector())
                         .pre_scale(*delta, *delta)
                         .pre_translate(-focus.to_vector());
+                }
+            }
+            AppEvent::MovePreview { tab, pos } => {
+                if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(*tab) {
+                    map_tab.preview_pos = *pos;
                 }
             }
             AppEvent::SelectRoom { tab, idx } => {

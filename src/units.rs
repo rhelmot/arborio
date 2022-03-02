@@ -65,7 +65,7 @@ pub fn point_lose_precision(pt: &MapPointPrecise) -> MapPointStrict {
 
 pub struct RectPointIter<T, U> {
     rect: Rect<T, U>,
-    step: T,
+    step: Vector2D<T, U>,
     next_pt: Option<Point2D<T, U>>,
 }
 
@@ -78,10 +78,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let cur = self.next_pt;
         if let Some(mut next) = cur {
-            next.x = next.x + self.step;
+            next.x = next.x + self.step.x;
             if next.x >= self.rect.max_x() {
                 next.x = self.rect.min_x();
-                next.y = next.y + self.step;
+                next.y = next.y + self.step.y;
                 if next.y >= self.rect.max_y() {
                     self.next_pt = None;
                 } else {
@@ -97,6 +97,17 @@ where
 }
 
 pub fn rect_point_iter<T, U>(rect: Rect<T, U>, step: T) -> RectPointIter<T, U>
+where
+    T: core::ops::Add<T> + Copy + PartialOrd,
+{
+    RectPointIter {
+        rect,
+        step: Vector2D::new(step, step),
+        next_pt: Some(rect.origin),
+    }
+}
+
+pub fn rect_point_iter2<T, U>(rect: Rect<T, U>, step: Vector2D<T, U>) -> RectPointIter<T, U>
 where
     T: core::ops::Add<T> + Copy + PartialOrd,
 {

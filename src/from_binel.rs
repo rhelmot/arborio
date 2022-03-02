@@ -201,6 +201,38 @@ lazy_static::lazy_static! {
         ("objtiles", "innerText"),
         ("fgtiles", "innerText"),
         ("bgtiles", "innerText"),
+        ("Foregrounds", "tag"),
+        ("Foregrounds", "x"),
+        ("Foregrounds", "y"),
+        ("Foregrounds", "scrollx"),
+        ("Foregrounds", "scrolly"),
+        ("Foregrounds", "speedx"),
+        ("Foregrounds", "speedy"),
+        ("Foregrounds", "color"),
+        ("Foregrounds", "alpha"),
+        ("Foregrounds", "flipx"),
+        ("Foregrounds", "flipy"),
+        ("Foregrounds", "loopx"),
+        ("Foregrounds", "loopy"),
+        ("Foregrounds", "wind"),
+        ("Foregrounds", "instantIn"),
+        ("Foregrounds", "instantOut"),
+        ("Backgrounds", "tag"),
+        ("Backgrounds", "x"),
+        ("Backgrounds", "y"),
+        ("Backgrounds", "scrollx"),
+        ("Backgrounds", "scrolly"),
+        ("Backgrounds", "speedx"),
+        ("Backgrounds", "speedy"),
+        ("Backgrounds", "color"),
+        ("Backgrounds", "alpha"),
+        ("Backgrounds", "flipx"),
+        ("Backgrounds", "flipy"),
+        ("Backgrounds", "loopx"),
+        ("Backgrounds", "loopy"),
+        ("Backgrounds", "wind"),
+        ("Backgrounds", "instantIn"),
+        ("Backgrounds", "instantOut"),
     ]);
 
     // entries in this list have arbitrary child names and should thusly be looked up by their
@@ -208,6 +240,8 @@ lazy_static::lazy_static! {
     static ref PARENT_OVERRIDES: HashSet<&'static str> = HashSet::from([
         "entities",
         "triggers",
+        "Backgrounds",
+        "Foregrounds",
     ]);
 }
 
@@ -230,6 +264,9 @@ fn get_attr_comparator(
     }
     if ["bgtiles", "fgtiles", "objtiles"].contains(&elem_name) && attr_name == "innerText" {
         return compare_int_tiles;
+    }
+    if ["Foregrounds", "Backgrounds"].contains(&elem_name) && attr_name == "alpha" {
+        return compare_alpha;
     }
     if ATTRS_IGNORE.contains(&(elem_name, attr_name)) {
         return fuzzy_ignore;
@@ -419,6 +456,13 @@ fn bin_el_attr_fuzzy_equal_optional(first: Option<&BinElAttr>, second: Option<&B
     } else {
         bin_el_attr_fuzzy_equal_required(first, second)
     }
+}
+
+fn compare_alpha(first: Option<&BinElAttr>, second: Option<&BinElAttr>) -> bool {
+    let one = BinElAttr::Int(1);
+    let first = first.unwrap_or(&one);
+    let second = second.unwrap_or(&one);
+    bin_el_attr_fuzzy_equal_required(Some(first), Some(second))
 }
 
 fn make_like_default(like: &BinElAttr) -> BinElAttr {

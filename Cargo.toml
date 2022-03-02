@@ -32,6 +32,7 @@ serde_yaml = "^0.8"
 nom = "^7.1"
 zip = "^0.5"
 walkdir = "^2"
+regex = "^1.5"
 
 # graphics
 # vizia = { path = "../../rust/VIZIA" }

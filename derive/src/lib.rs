@@ -16,7 +16,7 @@ enum BinElAttribute {
     Children,
     ConvertWith(TokenStream),
     Generate(TokenStream),
-    Default,
+    Default(TokenStream),
     Name(TokenStream),
     Optional,
     Skip,
@@ -32,7 +32,7 @@ impl BinElAttribute {
                 "bin_el_skip" => Some(BinElAttribute::Skip),
                 "children" => Some(BinElAttribute::Children),
                 "convert_with" => Some(BinElAttribute::ConvertWith(attr.tokens.clone())),
-                "default" => Some(BinElAttribute::Default),
+                "default" => Some(BinElAttribute::Default(attr.tokens.clone())),
                 "generate" => Some(BinElAttribute::Generate(attr.tokens.clone())),
                 "name" => Some(BinElAttribute::Name(attr.tokens.clone())),
                 "optional" => Some(BinElAttribute::Optional),
@@ -71,7 +71,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                 let type_ = &field.ty;
                 let mut name = quote! {#name};
                 let mut skip = false;
-                let mut default = false;
+                let mut default = None;
                 let mut children = false;
                 let mut generate = TokenStream::new();
                 let mut optional = false;
@@ -82,7 +82,13 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                         BinElAttribute::Skip => skip = true,
                         BinElAttribute::Name(n) => name = n,
                         BinElAttribute::ConvertWith(c) => convert_with = c,
-                        BinElAttribute::Default => default = true,
+                        BinElAttribute::Default(d) => {
+                            default = Some(if d.is_empty() {
+                                quote! { <#type_>::default() }
+                            } else {
+                                d
+                            });
+                        },
                         BinElAttribute::Optional => optional = true,
                         BinElAttribute::Children => children = true,
                         BinElAttribute::Attributes => attributes = true,
@@ -108,9 +114,9 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                             binel.insert(child);
                         }
                     })
-                } else if default {
+                } else if let Some(default) = &default {
                     Some(quote! {
-                        if self.#ident != <#type_>::default() {
+                        if self.#ident != #default {
                             let serialized_field = <#convert_with>::serialize(&self.#ident);
                             GetAttrOrChild::nested_apply_attr_or_child(&mut binel, #name, serialized_field);
                         }
@@ -146,9 +152,10 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                     quote! {
                         Vec::try_from_bin_el(elem)?
                     }
-                } else if default {
+                } else if let Some(default) = &default {
                     quote! {
-                        <#convert_with>::from_bin_el_optional(elem, #name)?.unwrap_or_default()
+                        <#convert_with>::from_bin_el_optional(elem, #name)?
+                            .unwrap_or_else(|| #default)
                     }
                 } else if attributes {
                     quote! {

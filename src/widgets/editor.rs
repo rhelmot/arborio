@@ -1,7 +1,7 @@
 use euclid::{Angle, Point2D, Rect, Size2D, Transform2D, UnknownUnit, Vector2D};
 use femtovg::{Color, ImageFlags, Paint, Path, PixelFormat, RenderTarget};
 use lazy_static::lazy_static;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::time;
 use vizia::*;
@@ -10,7 +10,10 @@ use crate::app_state::{AppSelection, AppState};
 use crate::autotiler::{TextureTile, TileReference};
 use crate::celeste_mod::entity_config::DrawElement;
 use crate::celeste_mod::entity_expression::{Const, Number};
-use crate::map_struct::{CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, FieldEntry};
+use crate::map_struct::{
+    Attribute, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapStyleground,
+    FieldEntry,
+};
 use crate::units::*;
 
 lazy_static! {
@@ -110,6 +113,39 @@ impl View for EditorWidget {
             *app.last_draw.borrow_mut() = now;
         }
 
+        let current_room = app.map_tab_unwrap().current_room;
+        let preview = app.map_tab_unwrap().preview_pos;
+
+        let mut path = Path::new();
+        for room in &map.levels {
+            path.rect(
+                room.bounds.origin.x as f32,
+                room.bounds.origin.y as f32,
+                room.bounds.width() as f32,
+                room.bounds.height() as f32,
+            );
+        }
+        canvas.fill_path(&mut path, Paint::color(ROOM_EMPTY_COLOR));
+
+        let mut path = Path::new();
+        path.rect(preview.x as f32, preview.y as f32, 320.0, 180.0);
+        canvas.stroke_path(&mut path, Paint::color(Color::black()).with_line_width(2.0));
+
+        canvas.save();
+        canvas.intersect_scissor(preview.x as f32, preview.y as f32, 320.0, 180.0);
+        draw_stylegrounds(
+            app,
+            canvas,
+            preview,
+            map.backgrounds.as_slice(),
+            map.levels
+                .get(current_room)
+                .map_or("", |lvl| lvl.name.as_str()),
+            &HashSet::new(),
+            false,
+        );
+        canvas.restore();
+
         let mut path = Path::new();
         for filler in &map.filler {
             path.rect(
@@ -149,7 +185,7 @@ impl View for EditorWidget {
                     0,
                     room.bounds.width() as u32,
                     room.bounds.height() as u32,
-                    ROOM_EMPTY_COLOR,
+                    Color::rgba(0, 0, 0, 0),
                 );
                 draw_tiles(app, canvas, room, false);
                 draw_decals(app, canvas, room, false);
@@ -198,11 +234,26 @@ impl View for EditorWidget {
                 1.0,
             );
             canvas.fill_path(&mut path, paint);
-            if idx != app.map_tab_unwrap().current_room {
-                canvas.fill_path(&mut path, Paint::color(ROOM_DESELECTED_COLOR));
+            if idx != current_room {
+                canvas.fill_path(&mut path, femtovg::Paint::color(ROOM_DESELECTED_COLOR));
             }
             canvas.restore();
         }
+
+        canvas.save();
+        canvas.intersect_scissor(preview.x as f32, preview.y as f32, 320.0, 180.0);
+        draw_stylegrounds(
+            app,
+            canvas,
+            preview,
+            map.foregrounds.as_slice(),
+            map.levels
+                .get(current_room)
+                .map_or("", |lvl| lvl.name.as_str()),
+            &HashSet::new(),
+            false,
+        );
+        canvas.restore();
 
         if let Some(tool) = &app.current_tool {
             tool.borrow_mut().draw(canvas, app, cx);
@@ -790,6 +841,75 @@ where
                 .intersection(bounds)
                 .unwrap(),
             );
+        }
+    }
+}
+
+fn draw_stylegrounds(
+    app: &AppState,
+    canvas: &mut Canvas,
+    preview: MapPointStrict,
+    styles: &[CelesteMapStyleground],
+    current_room: &str,
+    flags: &HashSet<String>,
+    dreaming: bool,
+) {
+    for bg in styles {
+        #[allow(clippy::collapsible_if)] // TODO draw other types of thing
+        if bg.visible(current_room, flags, dreaming) {
+            if bg.name == "parallax" {
+                let posx = bg.x + preview.x as f32 * (1.0 - bg.scroll_x);
+                let posy = bg.y + preview.y as f32 * (1.0 - bg.scroll_y);
+                let texture = bg
+                    .attributes
+                    .get("texture")
+                    .map_or("".to_owned(), |t| match t {
+                        Attribute::Bool(b) => b.to_string(),
+                        Attribute::Int(i) => i.to_string(),
+                        Attribute::Float(f) => f.to_string(),
+                        Attribute::Text(s) => s.to_owned(),
+                    });
+
+                let atlas = &app.current_palette_unwrap().gameplay_atlas;
+                if let Some(dim) = atlas.sprite_dimensions(&texture) {
+                    let dim = dim.cast().cast_unit();
+                    let matters = MapRectPrecise::new(
+                        MapPointPrecise::new(preview.x as f32, preview.y as f32),
+                        MapSizePrecise::new(320.0, 180.0),
+                    );
+                    let mut available = MapRectPrecise::new(MapPointPrecise::new(posx, posy), dim);
+                    if bg.loop_x {
+                        available.origin.x = f32::MIN / 2.0;
+                        available.size.width = f32::MAX;
+                    }
+                    if bg.loop_y {
+                        available.origin.y = f32::MIN / 2.0;
+                        available.size.height = f32::MAX;
+                    }
+                    if let Some(intersection) = matters.intersection(&available) {
+                        let offset_from_base =
+                            intersection.origin - MapPointPrecise::new(posx, posy);
+                        let chunk_id = offset_from_base.component_div(dim.to_vector()).floor();
+                        let chunk_offset_from_base = chunk_id.component_mul(dim.to_vector());
+                        let aligned_intersection = MapRectPrecise::new(
+                            MapPointPrecise::new(posx, posy) + chunk_offset_from_base,
+                            intersection.size + dim,
+                        );
+                        for point in rect_point_iter2(aligned_intersection, dim.to_vector()) {
+                            atlas.draw_sprite(
+                                canvas,
+                                &texture,
+                                point.cast_unit(),
+                                None,
+                                Some(Vector2D::zero()),
+                                None,
+                                None,
+                                0.0,
+                            );
+                        }
+                    }
+                }
+            }
         }
     }
 }

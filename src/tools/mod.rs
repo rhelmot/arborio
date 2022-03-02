@@ -2,6 +2,7 @@ pub mod hand;
 pub mod pencil;
 pub mod room;
 pub mod selection;
+pub mod style;
 
 use enum_iterator::IntoEnumIterator;
 use vizia::*;
@@ -15,6 +16,7 @@ pub enum ToolSpec {
     Selection,
     Pencil,
     Room,
+    Style,
 }
 
 impl Data for ToolSpec {
@@ -30,6 +32,7 @@ impl ToolSpec {
             ToolSpec::Selection => "Select",
             ToolSpec::Pencil => "Pencil",
             ToolSpec::Room => "Rooms",
+            ToolSpec::Style => "Style",
         }
     }
 
@@ -39,6 +42,7 @@ impl ToolSpec {
             ToolSpec::Selection => Box::new(selection::SelectionTool::new(app)),
             ToolSpec::Pencil => Box::new(pencil::PencilTool::new()),
             ToolSpec::Room => Box::new(room::RoomTool::new(app)),
+            ToolSpec::Style => Box::new(style::StyleTool::new(app)),
         }
     }
 }
