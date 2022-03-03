@@ -631,9 +631,8 @@ dependencies = [
 
 [[package]]
 name = "femtovg"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8adbd34e37b365324ab17e3886b74e4eb3b9416d80660a09be510812895435bb"
+version = "0.3.3"
+source = "git+https://github.com/rhelmot/femtovg?rev=1a24194e9177f5481066981e1f2325aa0f60c6b1#1a24194e9177f5481066981e1f2325aa0f60c6b1"
 dependencies = [
  "bitflags",
  "fnv",
@@ -646,7 +645,7 @@ dependencies = [
  "ouroboros",
  "rgb",
  "rustybuzz",
- "ttf-parser 0.14.0",
+ "ttf-parser",
  "unicode-bidi",
  "unicode-segmentation",
  "wasm-bindgen",
@@ -663,6 +662,40 @@ dependencies = [
  "crc32fast",
  "libc",
  "miniz_oxide 0.4.4",
+]
+
+[[package]]
+name = "fluent-bundle"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e242c601dec9711505f6d5bbff5bedd4b61b2469f2e8bb8e57ee7c9747a87ffd"
+dependencies = [
+ "fluent-langneg",
+ "fluent-syntax",
+ "intl-memoizer",
+ "intl_pluralrules",
+ "rustc-hash",
+ "self_cell",
+ "smallvec",
+ "unic-langid",
+]
+
+[[package]]
+name = "fluent-langneg"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c4ad0989667548f06ccd0e306ed56b61bd4d35458d54df5ec7587c0e8ed5e94"
+dependencies = [
+ "unic-langid",
+]
+
+[[package]]
+name = "fluent-syntax"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0abed97648395c902868fee9026de96483933faa54ea3b40d652f7dfe61ca78"
+dependencies = [
+ "thiserror",
 ]
 
 [[package]]
@@ -895,6 +928,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "intl-memoizer"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c310433e4a310918d6ed9243542a6b83ec1183df95dff8f23f87bb88a264a66f"
+dependencies = [
+ "type-map",
+ "unic-langid",
+]
+
+[[package]]
+name = "intl_pluralrules"
+version = "7.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b18f988384267d7066cc2be425e6faf352900652c046b6971d2e228d3b1c5ecf"
+dependencies = [
+ "tinystr",
+ "unic-langid",
+]
+
+[[package]]
 name = "itertools"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -991,6 +1044,19 @@ name = "linked-hash-map"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
+
+[[package]]
+name = "locale_config"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08d2c35b16f4483f6c26f0e4e9550717a2f6575bcd6f12a53ff0c490a94a6934"
+dependencies = [
+ "lazy_static",
+ "objc",
+ "objc-foundation",
+ "regex",
+ "winapi 0.3.9",
+]
 
 [[package]]
 name = "lock_api"
@@ -1108,7 +1174,7 @@ dependencies = [
 [[package]]
 name = "morphorm"
 version = "0.3.0"
-source = "git+https://github.com/vizia/morphorm?rev=8d955d2f1d5b698e4fd1dbdfe36b3f3d9adbd19a#8d955d2f1d5b698e4fd1dbdfe36b3f3d9adbd19a"
+source = "git+https://github.com/rhelmot/morphorm?rev=78c362a6c9b0665936f36730487e55e89f60c2a4#78c362a6c9b0665936f36730487e55e89f60c2a4"
 dependencies = [
  "bitflags",
  "smallvec",
@@ -1679,15 +1745,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e3bad0ee36814ca07d7968269dd4b7ec89ec2da10c4bb613928d3077083c232"
 
 [[package]]
-name = "rustybuzz"
-version = "0.4.0"
+name = "rustc-hash"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44561062e583c4873162861261f16fd1d85fe927c4904d71329a4fe43dc355ef"
+checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
+
+[[package]]
+name = "rustybuzz"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25ff94f20221325d000e552781713e53b0d85c1d9551b6f420d12daf5a08eace"
 dependencies = [
  "bitflags",
  "bytemuck",
  "smallvec",
- "ttf-parser 0.12.3",
+ "ttf-parser",
  "unicode-bidi-mirroring",
  "unicode-ccc",
  "unicode-general-category",
@@ -1714,6 +1786,12 @@ name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
+
+[[package]]
+name = "self_cell"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ef965a420fe14fdac7dd018862966a4c14094f900e1650bbc71ddd7d580c8af"
 
 [[package]]
 name = "serde"
@@ -1884,6 +1962,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "tinystr"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29738eedb4388d9ea620eeab9384884fc3f06f586a2eddb56bedc5885126c7c1"
+
+[[package]]
 name = "toml"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1894,15 +1978,36 @@ dependencies = [
 
 [[package]]
 name = "ttf-parser"
-version = "0.12.3"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ae2f58a822f08abdaf668897e96a5656fe72f5a9ce66422423e8849384872e6"
+checksum = "c74c96594835e10fa545e2a51e8709f30b173a092bfd6036ef2cec53376244f3"
 
 [[package]]
-name = "ttf-parser"
-version = "0.14.0"
+name = "type-map"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ccbe8381883510b6a2d8f1e32905bddd178c11caef8083086d0c0c9ab0ac281"
+checksum = "b6d3364c5e96cb2ad1603037ab253ddd34d7fb72a58bdddf4b7350760fc69a46"
+dependencies = [
+ "rustc-hash",
+]
+
+[[package]]
+name = "unic-langid"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73328fcd730a030bdb19ddf23e192187a6b01cd98be6d3140622a89129459ce5"
+dependencies = [
+ "unic-langid-impl",
+]
+
+[[package]]
+name = "unic-langid-impl"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a4a8eeaf0494862c1404c95ec2f4c33a2acff5076f64314b465e3ddae1b934d"
+dependencies = [
+ "tinystr",
+]
 
 [[package]]
 name = "unicode-bidi"
@@ -1973,7 +2078,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=f5488d3528e46b16451d5b5b38e3214812709781#f5488d3528e46b16451d5b5b38e3214812709781"
+source = "git+https://github.com/rhelmot/VIZIA?rev=29dca7e87b69ec580d475859175ef6284335c046#29dca7e87b69ec580d475859175ef6284335c046"
 dependencies = [
  "vizia_core",
  "vizia_glutin",
@@ -1982,16 +2087,21 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=f5488d3528e46b16451d5b5b38e3214812709781#f5488d3528e46b16451d5b5b38e3214812709781"
+source = "git+https://github.com/rhelmot/VIZIA?rev=29dca7e87b69ec580d475859175ef6284335c046#29dca7e87b69ec580d475859175ef6284335c046"
 dependencies = [
  "bitflags",
  "copypasta",
  "cssparser",
  "femtovg",
+ "fluent-bundle",
+ "fluent-langneg",
+ "fluent-syntax",
  "fnv",
  "image",
  "keyboard-types",
+ "locale_config",
  "morphorm",
+ "unic-langid",
  "unicode-segmentation",
  "vizia_derive",
 ]
@@ -1999,7 +2109,7 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=f5488d3528e46b16451d5b5b38e3214812709781#f5488d3528e46b16451d5b5b38e3214812709781"
+source = "git+https://github.com/rhelmot/VIZIA?rev=29dca7e87b69ec580d475859175ef6284335c046#29dca7e87b69ec580d475859175ef6284335c046"
 dependencies = [
  "proc-macro2 1.0.36",
  "quote 1.0.14",
@@ -2009,7 +2119,7 @@ dependencies = [
 [[package]]
 name = "vizia_glutin"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=f5488d3528e46b16451d5b5b38e3214812709781#f5488d3528e46b16451d5b5b38e3214812709781"
+source = "git+https://github.com/rhelmot/VIZIA?rev=29dca7e87b69ec580d475859175ef6284335c046#29dca7e87b69ec580d475859175ef6284335c046"
 dependencies = [
  "femtovg",
  "fnv",

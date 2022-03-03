@@ -49,6 +49,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             cx.add_stylesheet("src/style.css")
                 .expect("Could not load stylesheet. Are you running me in the right directory?");
 
+            cx.text_context.resize_shaping_run_cache(10000);
+
             VStack::new(cx, move |cx| {
                 HStack::new(cx, move |cx| {
                     build_menu_bar(cx);

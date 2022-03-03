@@ -119,6 +119,7 @@ palette list {
     overflow: hidden;
     left: 0;
     child-left: 10px;
+    min-width: 0;
 }
 
 .progress_bar_bg {
