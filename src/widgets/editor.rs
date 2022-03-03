@@ -857,6 +857,7 @@ fn draw_stylegrounds(
     for bg in styles {
         #[allow(clippy::collapsible_if)] // TODO draw other types of thing
         if bg.visible(current_room, flags, dreaming) {
+            let color = parse_color(&bg.color).unwrap_or_else(Color::white);
             if bg.name == "parallax" {
                 let posx = bg.x + preview.x as f32 * (1.0 - bg.scroll_x);
                 let posy = bg.y + preview.y as f32 * (1.0 - bg.scroll_y);
@@ -895,15 +896,19 @@ fn draw_stylegrounds(
                             MapPointPrecise::new(posx, posy) + chunk_offset_from_base,
                             intersection.size + dim,
                         );
+                        let scale = Point2D::new(
+                            if bg.flip_x { -1.0 } else { 1.0 },
+                            if bg.flip_y { -1.0 } else { 1.0 },
+                        );
                         for point in rect_point_iter2(aligned_intersection, dim.to_vector()) {
                             atlas.draw_sprite(
                                 canvas,
                                 &texture,
-                                point.cast_unit(),
-                                None,
-                                Some(Vector2D::zero()),
+                                point.cast_unit() + dim.to_vector().cast_unit() / 2.0,
                                 None,
                                 None,
+                                Some(scale),
+                                Some(color),
                                 0.0,
                             );
                         }
@@ -911,5 +916,17 @@ fn draw_stylegrounds(
                 }
             }
         }
+    }
+}
+
+fn parse_color(color: &str) -> Option<Color> {
+    let trimmed = color.trim_start_matches('#');
+    if trimmed.len() == 6 {
+        let r = u8::from_str_radix(&trimmed[0..2], 16).ok()?;
+        let g = u8::from_str_radix(&trimmed[2..4], 16).ok()?;
+        let b = u8::from_str_radix(&trimmed[4..6], 16).ok()?;
+        Some(Color::rgb(r, g, b))
+    } else {
+        None
     }
 }
