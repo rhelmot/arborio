@@ -217,6 +217,8 @@ lazy_static::lazy_static! {
         ("Foregrounds", "wind"),
         ("Foregrounds", "instantIn"),
         ("Foregrounds", "instantOut"),
+        ("Foregrounds", "fadex"),
+        ("Foregrounds", "fadey"),
         ("Backgrounds", "tag"),
         ("Backgrounds", "x"),
         ("Backgrounds", "y"),
@@ -233,6 +235,8 @@ lazy_static::lazy_static! {
         ("Backgrounds", "wind"),
         ("Backgrounds", "instantIn"),
         ("Backgrounds", "instantOut"),
+        ("Backgrounds", "fadex"),
+        ("Backgrounds", "fadey"),
     ]);
 
     // entries in this list have arbitrary child names and should thusly be looked up by their

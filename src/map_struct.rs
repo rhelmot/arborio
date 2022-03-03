@@ -479,11 +479,11 @@ pub struct CelesteMapStyleground {
     #[default]
     pub instant_out: bool,
     #[name("fadex")]
-    #[optional]
-    pub fade_x: Option<String>,
+    #[default]
+    pub fade_x: FadeDirectives,
     #[name("fadey")]
-    #[optional]
-    pub fade_y: Option<String>,
+    #[default]
+    pub fade_y: FadeDirectives,
 
     #[attributes]
     pub attributes: HashMap<String, Attribute>,
@@ -1234,6 +1234,99 @@ impl AttrCoercion for RoomGlob {
     }
 }
 
+#[derive(Debug, Default, PartialEq)]
+pub struct FadeDirectives(pub Vec<FadeDirective>);
+
+#[derive(Debug, PartialEq)]
+pub struct FadeDirective {
+    pub pos_from: f32,
+    pub pos_to: f32,
+    pub fade_from: f32,
+    pub fade_to: f32,
+}
+
+impl FadeDirective {
+    pub fn new(text: &str) -> Option<Self> {
+        let (pos, fade) = text.split_once(',')?;
+        let (pos_from, pos_to) = pos.split_once('-')?;
+        let (fade_from, fade_to) = fade.split_once('-')?;
+        let pos_from = parse_n_number(pos_from)?;
+        let pos_to = parse_n_number(pos_to)?;
+        let fade_from = fade_from.parse().ok()?;
+        let fade_to = fade_to.parse().ok()?;
+
+        Some(Self {
+            pos_from,
+            pos_to,
+            fade_from,
+            fade_to,
+        })
+    }
+}
+
+impl ToString for FadeDirective {
+    fn to_string(&self) -> String {
+        format!(
+            "{}-{},{}-{}",
+            format_n_number(self.pos_from),
+            format_n_number(self.pos_to),
+            self.fade_from,
+            self.fade_to,
+        )
+    }
+}
+
+impl FadeDirectives {
+    pub fn new(text: &str) -> Option<Self> {
+        if text.is_empty() {
+            return Some(Self(vec![]));
+        }
+        Some(Self(
+            text.split(':')
+                .map(FadeDirective::new)
+                .collect::<Option<Vec<_>>>()?,
+        ))
+    }
+}
+
+impl ToString for FadeDirectives {
+    fn to_string(&self) -> String {
+        self.0.iter().map(|f| f.to_string()).join(":")
+    }
+}
+
+impl AttrCoercion for FadeDirectives {
+    const NICE_NAME: &'static str = "fade directive";
+
+    fn try_coerce(attr: &BinElAttr) -> Option<Self> {
+        String::try_coerce(attr).and_then(|s| FadeDirectives::new(s.as_str()))
+    }
+
+    fn serialize(&self) -> BinElAttr {
+        BinElAttr::Text(self.to_string())
+    }
+}
+
+fn parse_n_number(text: &str) -> Option<f32> {
+    if let Some(first) = text.chars().next() {
+        if first == 'n' {
+            text[1..].parse().ok().map(|x: f32| -x)
+        } else {
+            text.parse().ok()
+        }
+    } else {
+        None
+    }
+}
+
+fn format_n_number(f: f32) -> String {
+    if f < 0.0 {
+        format!("n{}", f.abs())
+    } else {
+        f.to_string()
+    }
+}
+
 struct DefaultConverter;
 impl<T: TryFromBinEl> TwoWayConverter<T> for DefaultConverter {
     type BinType = BinEl;
@@ -1267,7 +1360,7 @@ macro_rules! attr_converter_impl {
         })+
     }
 }
-attr_converter_impl!(i32, u32, String, f32, bool, RoomGlob);
+attr_converter_impl!(i32, u32, String, f32, bool, RoomGlob, FadeDirectives);
 
 impl TryFromBinEl for MapRectStrict {
     fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {

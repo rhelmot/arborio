@@ -857,7 +857,9 @@ fn draw_stylegrounds(
     for bg in styles {
         #[allow(clippy::collapsible_if)] // TODO draw other types of thing
         if bg.visible(current_room, flags, dreaming) {
-            let color = parse_color(&bg.color).unwrap_or_else(Color::white);
+            let mut color = parse_color(&bg.color).unwrap_or_else(Color::white);
+            color.a = bg.alpha;
+
             if bg.name == "parallax" {
                 let posx = bg.x + preview.x as f32 * (1.0 - bg.scroll_x);
                 let posy = bg.y + preview.y as f32 * (1.0 - bg.scroll_y);
