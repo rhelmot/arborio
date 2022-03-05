@@ -69,6 +69,8 @@ palette list {
 .tab_bar {
     height: auto;
     layout-type: row;
+    width: 100%;
+    min-width: 0;
 }
 
 .tab {
@@ -80,6 +82,7 @@ palette list {
     child-top: 1s;
     child-bottom: 1s;
     height: 30px;
+    width: auto;
     border-color: #333333;
     border-width: 1px;
 }
