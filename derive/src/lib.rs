@@ -44,7 +44,16 @@ impl BinElAttribute {
 
 #[proc_macro_derive(
     TryFromBinEl,
-    attributes(attributes, bin_el_skip, children, convert_with, default, generate, name, optional)
+    attributes(
+        attributes,
+        bin_el_skip,
+        children,
+        convert_with,
+        default,
+        generate,
+        name,
+        optional
+    )
 )]
 pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(item as ItemStruct);
@@ -88,7 +97,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                             } else {
                                 d
                             });
-                        },
+                        }
                         BinElAttribute::Optional => optional = true,
                         BinElAttribute::Children => children = true,
                         BinElAttribute::Attributes => attributes = true,
@@ -96,16 +105,14 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                     }
                 }
                 fields.push(ident);
-                
+
                 if name.is_empty() {
                     name_field = Some(ident);
                 } else {
                     field_names.push(name.clone());
                 }
 
-                into_values.push(if skip {
-                    None
-                } else if !generate.is_empty() {
+                into_values.push(if skip || !generate.is_empty() {
                     None
                 } else if children {
                     Some(quote! {
@@ -179,7 +186,6 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
                         <#convert_with>::from_bin_el(elem, #name)?
                     }
                 });
-
             }
         }
         _ => todo!(),
@@ -200,14 +206,14 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
 
     <syn::Ident as quote::ToTokens>::to_token_stream(&ident);
 
-    let ident = proc_macro2::TokenStream::from(TokenStream::from(ident.into_token_stream()));
-    
+    let ident = ident.into_token_stream();
+
     let name = if let Some(name_field) = name_field {
-        quote!{&self.#name_field}
+        quote! {&self.#name_field}
     } else if let Some(name) = struct_name {
         name
     } else {
-        quote!{stringify!(#ident)}
+        quote! {stringify!(#ident)}
     };
 
     let impl_ = quote! {
