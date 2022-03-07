@@ -6,6 +6,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[workspace]
+members = ["run-wasm", "derive"]
+
 [dependencies]
 # celeste deps
 arborio-derive = { path = "./derive" }
@@ -35,10 +38,10 @@ walkdir = "^2"
 regex = "^1.5"
 
 # graphics
-# vizia = { path = "../../rust/VIZIA" }
+# vizia = { path = "../../rust/VIZIA", default-features = false, features = ["winit", "clipboard"] }
 vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "29dca7e87b69ec580d475859175ef6284335c046" }
 # femtovg = { version = "0.3.0", default-features = false, features = ["image-loading"] } # inherit from vizia
-femtovg = { git = "https://github.com/rhelmot/femtovg", rev = "1a24194e9177f5481066981e1f2325aa0f60c6b1" }
+femtovg = { git = "https://github.com/rhelmot/femtovg", rev = "1a24194e9177f5481066981e1f2325aa0f60c6b1", default-features = false, features = ["image-loading"] }
 # femtovg = { path = "../../rust/femtovg", features = ["image-loading"] }
 image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
 imgref = "1.6.1"  # inherit from femtovg
