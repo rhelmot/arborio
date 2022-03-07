@@ -41,7 +41,7 @@ pub fn build_installation_tab(cx: &mut Context) {
                                 let (sid, num_maps, name, _) = modules_list.remove(idx);
                                 if first {
                                     first = false;
-                                    Label::new(cx, "My Mods");
+                                    Label::new(cx, "My Mods").class("map_category");
                                 }
                                 build_project_overview_card(cx, sid, name, num_maps);
                             } else {
@@ -56,7 +56,7 @@ pub fn build_installation_tab(cx: &mut Context) {
                                 let (sid, num_maps, name, _) = modules_list.remove(idx);
                                 if first {
                                     first = false;
-                                    Label::new(cx, "Builtin Modules");
+                                    Label::new(cx, "Builtin Modules").class("map_category");
                                 }
                                 build_project_overview_card(cx, sid, name, num_maps);
                             } else {
@@ -71,7 +71,7 @@ pub fn build_installation_tab(cx: &mut Context) {
                                 let (sid, num_maps, name, _) = modules_list.remove(idx);
                                 if first {
                                     first = false;
-                                    Label::new(cx, "Downloaded Mods");
+                                    Label::new(cx, "Downloaded Mods").class("map_category");
                                 }
                                 build_project_overview_card(cx, sid, name, num_maps);
                             } else {

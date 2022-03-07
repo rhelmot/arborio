@@ -132,6 +132,10 @@ palette list {
     child-left: 10px;
 }
 
+.map_category {
+    top: 20px;
+}
+
 .map_overview_card {
     width: 100%;
     child-space: 10px;
