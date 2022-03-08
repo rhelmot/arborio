@@ -9,6 +9,7 @@ use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
+use std::str::FromStr;
 use vizia::{Data, Lens};
 
 use crate::assets::{next_uuid, Interned};
@@ -1252,23 +1253,52 @@ fn parse_object_tiles(
     parse_tiles(elem, width, height, obj_transform, -1)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Lens)]
 pub struct RoomGlob {
     text: String,
     regex: regex::RegexSet,
 }
 
-impl RoomGlob {
-    pub fn new(text: String) -> Self {
+impl FromStr for RoomGlob {
+    type Err = ();
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
         let exprs = text
             .split(',')
             .map(|spec| format!("^{}$", spec.split('*').map(regex::escape).join(".*")));
         let regex = regex::RegexSet::new(exprs).unwrap();
-        Self { text, regex }
+        Ok(Self {
+            text: text.to_owned(),
+            regex,
+        })
     }
+}
 
+impl ToString for RoomGlob {
+    fn to_string(&self) -> String {
+        self.text.clone()
+    }
+}
+
+impl RoomGlob {
     pub fn matches(&self, text: &str) -> bool {
         self.regex.is_match(text)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.text.is_empty()
+    }
+}
+
+impl PartialEq for RoomGlob {
+    fn eq(&self, other: &Self) -> bool {
+        self.text == other.text
+    }
+}
+
+impl Data for RoomGlob {
+    fn same(&self, other: &Self) -> bool {
+        self == other
     }
 }
 
@@ -1276,7 +1306,7 @@ impl AttrCoercion for RoomGlob {
     const NICE_NAME: &'static str = "room glob";
 
     fn try_coerce(attr: &BinElAttr) -> Option<Self> {
-        String::try_coerce(attr).map(RoomGlob::new)
+        String::try_coerce(attr).map(|s| s.parse().unwrap())
     }
 
     fn serialize(&self) -> BinElAttr {
@@ -1284,10 +1314,10 @@ impl AttrCoercion for RoomGlob {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Clone, Data)]
 pub struct FadeDirectives(pub Vec<FadeDirective>);
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Data)]
 pub struct FadeDirective {
     pub pos_from: f32,
     pub pos_to: f32,
@@ -1295,17 +1325,19 @@ pub struct FadeDirective {
     pub fade_to: f32,
 }
 
-impl FadeDirective {
-    pub fn new(text: &str) -> Option<Self> {
-        let (pos, fade) = text.split_once(',')?;
-        let (pos_from, pos_to) = pos.split_once('-')?;
-        let (fade_from, fade_to) = fade.split_once('-')?;
-        let pos_from = parse_n_number(pos_from)?;
-        let pos_to = parse_n_number(pos_to)?;
-        let fade_from = fade_from.parse().ok()?;
-        let fade_to = fade_to.parse().ok()?;
+impl FromStr for FadeDirective {
+    type Err = ();
 
-        Some(Self {
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let (pos, fade) = text.split_once(',').ok_or(())?;
+        let (pos_from, pos_to) = pos.split_once('-').ok_or(())?;
+        let (fade_from, fade_to) = fade.split_once('-').ok_or(())?;
+        let pos_from = parse_n_number(pos_from).ok_or(())?;
+        let pos_to = parse_n_number(pos_to).ok_or(())?;
+        let fade_from = fade_from.parse().map_err(|_| ())?;
+        let fade_to = fade_to.parse().map_err(|_| ())?;
+
+        Ok(Self {
             pos_from,
             pos_to,
             fade_from,
@@ -1326,15 +1358,17 @@ impl ToString for FadeDirective {
     }
 }
 
-impl FadeDirectives {
-    pub fn new(text: &str) -> Option<Self> {
+impl FromStr for FadeDirectives {
+    type Err = ();
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
         if text.is_empty() {
-            return Some(Self(vec![]));
+            return Ok(Self(vec![]));
         }
-        Some(Self(
+        Ok(Self(
             text.split(':')
-                .map(FadeDirective::new)
-                .collect::<Option<Vec<_>>>()?,
+                .map(|s| s.parse())
+                .collect::<Result<Vec<_>, Self::Err>>()?,
         ))
     }
 }
@@ -1349,7 +1383,7 @@ impl AttrCoercion for FadeDirectives {
     const NICE_NAME: &'static str = "fade directive";
 
     fn try_coerce(attr: &BinElAttr) -> Option<Self> {
-        String::try_coerce(attr).and_then(|s| FadeDirectives::new(s.as_str()))
+        String::try_coerce(attr).and_then(|s| s.as_str().parse().ok())
     }
 
     fn serialize(&self) -> BinElAttr {

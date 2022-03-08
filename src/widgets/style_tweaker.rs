@@ -4,8 +4,9 @@ use crate::lenses::{
     CurrentMapImplLens, CurrentMapLens, CurrentStylegroundImplLens, CurrentStylegroundLens,
     IsFailedLens, StylegroundNameLens,
 };
-use crate::map_struct::CelesteMapStyleground;
-use crate::{AppEvent, AppState, CelesteMap};
+use crate::map_struct::{CelesteMap, CelesteMapStyleground};
+use crate::{AppEvent, AppState};
+use std::rc::Rc;
 use vizia::*;
 
 macro_rules! edit_text {
@@ -33,6 +34,23 @@ macro_rules! edit_check {
                 let mut style = CurrentStylegroundImplLens {}.get(cx).take();
                 style.$attr = x;
                 emit(cx, style);
+            },
+        );
+    };
+}
+macro_rules! edit_optional_text {
+    ($cx: expr, $label:expr, $attr:ident) => {
+        tweak_attr_text(
+            $cx,
+            $label,
+            CurrentStylegroundImplLens {}
+                .then(CelesteMapStyleground::$attr)
+                .then(UnwrapLens::new()),
+            |cx, x| {
+                let mut style = CurrentStylegroundImplLens {}.get(cx).take();
+                style.$attr = if x.is_empty() { None } else { Some(x) };
+                emit(cx, style);
+                true
             },
         );
     };
@@ -222,6 +240,33 @@ impl StyleTweakerWidget {
         edit_text!(cx, "Wind", wind);
         edit_check!(cx, "Instant In", instant_in);
         edit_check!(cx, "Instant out", instant_out);
+        edit_optional_text!(cx, "Show If Flag", flag);
+        edit_optional_text!(cx, "Hide If Flag", not_flag);
+        edit_optional_text!(cx, "Override If Flag", always);
+        tweak_attr_picker(
+            cx,
+            "Dreaming Status",
+            CurrentStylegroundImplLens {}.then(CelesteMapStyleground::dreaming),
+            [None, Some(true), Some(false)],
+            |_, item| {
+                match item {
+                    // clion has a false-positive error here
+                    None => "Both",
+                    Some(true) => "Dreaming",
+                    Some(false) => "Awake",
+                }
+                .to_owned()
+            },
+            |cx, item| {
+                let mut style = CurrentStylegroundImplLens {}.get(cx).take();
+                style.dreaming = item;
+                emit(cx, style);
+            },
+        );
+        edit_optional_text!(cx, "Exclude Rooms", exclude);
+        edit_optional_text!(cx, "Only Rooms", only);
+        edit_text!(cx, "Fade X", fade_x);
+        edit_text!(cx, "Fade Y", fade_y);
     }
 }
 
@@ -238,4 +283,45 @@ fn emit(cx: &mut Context, style: CelesteMapStyleground) {
         style,
     };
     cx.emit(event);
+}
+
+fn tweak_attr_picker<T: Data>(
+    // TODO move to common when mature
+    cx: &mut Context,
+    name: &'static str,
+    lens: impl Lens<Target = T>,
+    items: impl 'static + IntoIterator<Item = T> + Clone,
+    labels: impl 'static + Fn(&mut Context, &T) -> String,
+    setter: impl 'static + Fn(&mut Context, T),
+) {
+    let labels = Rc::new(labels);
+    let labels2 = labels.clone();
+    let setter = Rc::new(setter);
+    HStack::new(cx, move |cx| {
+        Label::new(cx, name);
+        Dropdown::new(
+            cx,
+            move |cx| {
+                Label::new(cx, "").bind(lens.clone(), move |handle, item| {
+                    if let Some(item) = item.get_fallible(handle.cx) {
+                        let label = (labels2)(handle.cx, &item.take());
+                        handle.text(&label);
+                    }
+                })
+            },
+            move |cx| {
+                let items = items.clone();
+                for item in items.into_iter() {
+                    let setter = setter.clone();
+                    let label = labels(cx, &item);
+                    Label::new(cx, &label)
+                        .class("dropdown_element")
+                        .on_press(move |cx| {
+                            cx.emit(PopupEvent::Close);
+                            setter(cx, item.clone());
+                        });
+                }
+            },
+        );
+    });
 }

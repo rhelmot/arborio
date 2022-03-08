@@ -6,6 +6,14 @@
     height: auto;
 }
 
+.left_bar {
+    width: 0s;
+}
+
+.right_bar {
+    width: 200px;
+}
+
 button.btn_item {
     border-radius: 0;
     background-color: #ffe4c4;

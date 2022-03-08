@@ -15,7 +15,7 @@ pub fn build_editor(cx: &mut Context) {
         VStack::new(cx, |cx| {
             build_tool_picker(cx);
         })
-        .width(Stretch(0.0));
+        .class("left_bar");
 
         EditorWidget::new(cx)
             .width(Stretch(1.0))
@@ -26,7 +26,7 @@ pub fn build_editor(cx: &mut Context) {
             build_palette_widgets(cx);
             build_tweaker_widgets(cx);
         })
-        .width(Pixels(100.0));
+        .class("right_bar");
     })
     .height(Stretch(1.0));
 }
