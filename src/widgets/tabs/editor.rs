@@ -6,6 +6,7 @@ use crate::lenses::{AnotherLens, CurrentMapLens, CurrentPaletteLens};
 use crate::tools::ToolSpec;
 use crate::widgets::editor::EditorWidget;
 use crate::widgets::room_tweaker::RoomTweakerWidget;
+use crate::widgets::style_tweaker::{StyleListWidget, StyleTweakerWidget};
 use crate::widgets::tile_palette::TilePaletteWidget;
 use crate::{AppEvent, EntityTweakerWidget, Layer, ModuleAggregate, PaletteWidget};
 
@@ -54,34 +55,40 @@ pub fn build_tool_picker(cx: &mut Context) {
 }
 
 pub fn build_layer_picker(cx: &mut Context) {
-    for layer in Layer::into_enum_iter() {
-        Button::new(
-            cx,
-            move |cx| {
-                cx.emit(AppEvent::SelectLayer { layer });
-            },
-            move |cx| {
-                RadioButton::new(cx, false).bind(
-                    AppState::current_layer,
-                    move |handle, selected| {
-                        let selected = *selected.get(handle.cx);
-                        handle.checked(selected == layer);
-                    },
-                );
-                Label::new(cx, layer.name())
-            },
-        )
-        .bind(AppState::current_layer, move |handle, selected| {
-            let selected = *selected.get(handle.cx);
-            handle.checked(selected == layer);
-        })
-        .class("btn_item")
-        .layout_type(LayoutType::Row)
-        .bind(AppState::current_toolspec, move |handle, toolspec| {
-            let toolspec = *toolspec.get(handle.cx);
-            handle.display(layer != Layer::All || toolspec == ToolSpec::Selection);
-        });
-    }
+    VStack::new(cx, move |cx| {
+        for layer in Layer::into_enum_iter() {
+            Button::new(
+                cx,
+                move |cx| {
+                    cx.emit(AppEvent::SelectLayer { layer });
+                },
+                move |cx| {
+                    RadioButton::new(cx, false).bind(
+                        AppState::current_layer,
+                        move |handle, selected| {
+                            let selected = *selected.get(handle.cx);
+                            handle.checked(selected == layer);
+                        },
+                    );
+                    Label::new(cx, layer.name())
+                },
+            )
+            .bind(AppState::current_layer, move |handle, selected| {
+                let selected = *selected.get(handle.cx);
+                handle.checked(selected == layer);
+            })
+            .class("btn_item")
+            .layout_type(LayoutType::Row)
+            .bind(AppState::current_toolspec, move |handle, toolspec| {
+                let toolspec = *toolspec.get(handle.cx);
+                handle.display(layer != Layer::All || toolspec == ToolSpec::Selection);
+            });
+        }
+    })
+    .bind(AppState::current_toolspec, move |handle, toolspec| {
+        let toolspec = *toolspec.get(handle.cx);
+        handle.display(toolspec != ToolSpec::Style);
+    });
 }
 
 pub fn build_palette_widgets(cx: &mut Context) {
@@ -165,5 +172,7 @@ pub fn build_tweaker_widgets(cx: &mut Context) {
         let tool_idx = *tool_idx.get(cx);
         EntityTweakerWidget::new(cx).display(tool_idx == ToolSpec::Selection);
         RoomTweakerWidget::new(cx).display(tool_idx == ToolSpec::Room);
+        StyleListWidget::new(cx).display(tool_idx == ToolSpec::Style);
+        StyleTweakerWidget::new(cx).display(tool_idx == ToolSpec::Style);
     });
 }

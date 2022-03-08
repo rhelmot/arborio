@@ -5,10 +5,12 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use vizia::*;
 
-use crate::app_state::{AppSelection, AppState, AppTab, MapTab};
+use crate::app_state::{AppSelection, AppState, AppTab, MapTab, StylegroundSelection};
 use crate::auto_saver::AutoSaver;
-use crate::map_struct::{CelesteMapEntity, CelesteMapLevel, MapID};
-use crate::ModuleAggregate;
+use crate::map_struct::{
+    Attribute, CelesteMapEntity, CelesteMapLevel, CelesteMapStyleground, MapID,
+};
+use crate::{CelesteMap, ModuleAggregate};
 
 #[derive(Debug, Copy, Clone)]
 pub struct CurrentMapLens {}
@@ -24,6 +26,23 @@ impl Lens for CurrentMapLens {
         };
 
         map(data)
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct CurrentMapImplLens {}
+
+impl Lens for CurrentMapImplLens {
+    type Source = AppState;
+    type Target = CelesteMap;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        let data = match source.tabs.get(source.current_tab) {
+            Some(AppTab::Map(maptab)) => Some(&maptab.id),
+            _ => None,
+        };
+
+        map(data.and_then(|id| source.loaded_maps.get(id)))
     }
 }
 
@@ -564,5 +583,75 @@ impl<T: 'static, U: 'static> Lens for RectHLens<T, U> {
 
     fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
         map(Some(&source.size.height))
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct StylegroundNameLens {}
+
+impl Lens for StylegroundNameLens {
+    type Source = CelesteMapStyleground;
+    type Target = String;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        if source.name == "parallax" {
+            map(Some(&source.attributes.get("texture").map_or(
+                "".to_owned(),
+                |t| match t {
+                    Attribute::Bool(b) => b.to_string(),
+                    Attribute::Int(i) => i.to_string(),
+                    Attribute::Float(f) => f.to_string(),
+                    Attribute::Text(s) => s.to_owned(),
+                },
+            )))
+        } else {
+            map(Some(&source.name))
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct CurrentStylegroundLens {}
+
+impl Lens for CurrentStylegroundLens {
+    type Source = AppState;
+    type Target = StylegroundSelection;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        let data = match source.tabs.get(source.current_tab) {
+            Some(AppTab::Map(maptab)) => maptab.styleground_selected.as_ref(),
+            _ => None,
+        };
+
+        map(data)
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct CurrentStylegroundImplLens {}
+
+impl Lens for CurrentStylegroundImplLens {
+    type Source = AppState;
+    type Target = CelesteMapStyleground;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        let maptab = match source.tabs.get(source.current_tab) {
+            Some(AppTab::Map(maptab)) => maptab,
+            _ => return map(None),
+        };
+        let stysel = match &maptab.styleground_selected {
+            Some(stysel) => stysel,
+            None => return map(None),
+        };
+        let cmap = match source.loaded_maps.get(&maptab.id) {
+            Some(map) => map,
+            None => return map(None),
+        };
+        let styles = if stysel.fg {
+            &cmap.foregrounds
+        } else {
+            &cmap.backgrounds
+        };
+        map(styles.get(stysel.idx))
     }
 }

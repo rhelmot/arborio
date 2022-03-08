@@ -330,6 +330,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "console_error_panic_hook"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc"
+dependencies = [
+ "cfg-if 1.0.0",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "copypasta"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -654,7 +664,7 @@ dependencies = [
 [[package]]
 name = "femtovg"
 version = "0.3.3"
-source = "git+https://github.com/rhelmot/femtovg?rev=1a24194e9177f5481066981e1f2325aa0f60c6b1#1a24194e9177f5481066981e1f2325aa0f60c6b1"
+source = "git+https://github.com/femtovg/femtovg?rev=604f35e52f403b2ad98774bcdc56c09dcedf32e6#604f35e52f403b2ad98774bcdc56c09dcedf32e6"
 dependencies = [
  "bitflags",
  "fnv",
@@ -1214,7 +1224,7 @@ dependencies = [
 [[package]]
 name = "morphorm"
 version = "0.3.0"
-source = "git+https://github.com/rhelmot/morphorm?rev=78c362a6c9b0665936f36730487e55e89f60c2a4#78c362a6c9b0665936f36730487e55e89f60c2a4"
+source = "git+https://github.com/vizia/morphorm?rev=6059f6418817589f2efb9d3a0b27b33f4957e1f9#6059f6418817589f2efb9d3a0b27b33f4957e1f9"
 dependencies = [
  "bitflags",
  "smallvec",
@@ -2213,16 +2223,16 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=29dca7e87b69ec580d475859175ef6284335c046#29dca7e87b69ec580d475859175ef6284335c046"
+source = "git+https://github.com/rhelmot/VIZIA?rev=6c5264f730b6c4614da7dc611d1ec76146fae270#6c5264f730b6c4614da7dc611d1ec76146fae270"
 dependencies = [
  "vizia_core",
- "vizia_glutin",
+ "vizia_winit",
 ]
 
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=29dca7e87b69ec580d475859175ef6284335c046#29dca7e87b69ec580d475859175ef6284335c046"
+source = "git+https://github.com/rhelmot/VIZIA?rev=6c5264f730b6c4614da7dc611d1ec76146fae270#6c5264f730b6c4614da7dc611d1ec76146fae270"
 dependencies = [
  "bitflags",
  "copypasta",
@@ -2233,6 +2243,7 @@ dependencies = [
  "fluent-syntax",
  "fnv",
  "image",
+ "instant",
  "keyboard-types",
  "locale_config",
  "morphorm",
@@ -2244,7 +2255,7 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=29dca7e87b69ec580d475859175ef6284335c046#29dca7e87b69ec580d475859175ef6284335c046"
+source = "git+https://github.com/rhelmot/VIZIA?rev=6c5264f730b6c4614da7dc611d1ec76146fae270#6c5264f730b6c4614da7dc611d1ec76146fae270"
 dependencies = [
  "proc-macro2 1.0.36",
  "quote 1.0.14",
@@ -2252,15 +2263,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "vizia_glutin"
+name = "vizia_winit"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/VIZIA?rev=29dca7e87b69ec580d475859175ef6284335c046#29dca7e87b69ec580d475859175ef6284335c046"
+source = "git+https://github.com/rhelmot/VIZIA?rev=6c5264f730b6c4614da7dc611d1ec76146fae270#6c5264f730b6c4614da7dc611d1ec76146fae270"
 dependencies = [
+ "console_error_panic_hook",
  "femtovg",
- "fnv",
  "glutin",
  "keyboard-types",
  "vizia_core",
+ "wasm-bindgen",
+ "web-sys",
+ "winit",
 ]
 
 [[package]]

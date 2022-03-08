@@ -200,6 +200,14 @@ palette list {
     right: 14px;
 }
 
+style_list {
+    height: 150px;
+}
+
+style_list list {
+    min-width: 100%;
+}
+
 .validation_error {
     background-color: #ffc0c0;
     border-color: red;

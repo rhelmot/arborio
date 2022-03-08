@@ -38,7 +38,7 @@ pub struct Rect {
     pub height: u32,
 }
 
-#[derive(Debug, TryFromBinEl)]
+#[derive(Debug, TryFromBinEl, Lens)]
 #[name("Map")]
 pub struct CelesteMap {
     #[bin_el_skip]
@@ -419,7 +419,7 @@ pub struct CelesteMapDecal {
     pub texture: String,
 }
 
-#[derive(Debug, TryFromBinEl)]
+#[derive(Debug, TryFromBinEl, Lens, Clone)]
 pub struct CelesteMapStyleground {
     #[name]
     pub name: String,
@@ -512,6 +512,40 @@ pub enum Attribute {
     Int(i32),
     Float(f32),
     Text(String),
+}
+
+impl Default for CelesteMapStyleground {
+    fn default() -> Self {
+        Self {
+            name: "parallax".to_string(),
+            tag: "".to_string(),
+            x: 0.0,
+            y: 0.0,
+            scroll_x: 0.0,
+            scroll_y: 0.0,
+            speed_x: 0.0,
+            speed_y: 0.0,
+            color: "".to_string(),
+            alpha: 0.0,
+            flip_x: false,
+            flip_y: false,
+            loop_x: false,
+            loop_y: false,
+            wind: 0.0,
+            exclude: None,
+            only: None,
+            flag: None,
+            not_flag: None,
+            always: None,
+            dreaming: None,
+            instant_in: false,
+            instant_out: false,
+            fade_x: Default::default(),
+            fade_y: Default::default(),
+            attributes: Default::default(),
+            children: vec![],
+        }
+    }
 }
 
 impl From<BinElAttr> for Attribute {
@@ -796,6 +830,22 @@ impl Default for FieldEntry<'_> {
 }
 
 impl CelesteMap {
+    pub fn styles(&self, fg: bool) -> &Vec<CelesteMapStyleground> {
+        if fg {
+            &self.foregrounds
+        } else {
+            &self.backgrounds
+        }
+    }
+
+    pub fn styles_mut(&mut self, fg: bool) -> &mut Vec<CelesteMapStyleground> {
+        if fg {
+            &mut self.foregrounds
+        } else {
+            &mut self.backgrounds
+        }
+    }
+
     pub fn level_at(&self, pt: MapPointStrict) -> Option<usize> {
         for (idx, room) in self.levels.iter().enumerate() {
             if room.bounds.contains(pt) {
@@ -1202,7 +1252,7 @@ fn parse_object_tiles(
     parse_tiles(elem, width, height, obj_transform, -1)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RoomGlob {
     text: String,
     regex: regex::RegexSet,
@@ -1234,10 +1284,10 @@ impl AttrCoercion for RoomGlob {
     }
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub struct FadeDirectives(pub Vec<FadeDirective>);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct FadeDirective {
     pub pos_from: f32,
     pub pos_to: f32,

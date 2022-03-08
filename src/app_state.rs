@@ -14,7 +14,8 @@ use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::celeste_mod::discovery;
 use crate::celeste_mod::module::CelesteModule;
 use crate::map_struct::{
-    CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapLevelUpdate, MapID,
+    CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapLevelUpdate,
+    CelesteMapStyleground, MapID,
 };
 use crate::tools::{Tool, ToolSpec};
 use crate::units::*;
@@ -57,19 +58,20 @@ pub struct AppConfig {
     pub celeste_root: Option<PathBuf>,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Lens)]
 pub enum AppTab {
     CelesteOverview,
     ProjectOverview(Interned),
     Map(MapTab),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Lens)]
 pub struct MapTab {
     pub id: MapID,
     pub nonce: u32,
     pub current_room: usize,
     pub current_selected: Option<AppSelection>,
+    pub styleground_selected: Option<StylegroundSelection>,
     pub transform: MapToScreen,
     pub preview_pos: MapPointStrict,
 }
@@ -141,6 +143,12 @@ pub enum AppSelection {
     Decal(u32, bool),
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Data)]
+pub struct StylegroundSelection {
+    pub fg: bool,
+    pub idx: usize,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Progress {
     pub progress: i32,
@@ -198,6 +206,29 @@ pub enum AppEvent {
     },
     SelectTool {
         spec: ToolSpec,
+    },
+    SelectStyleground {
+        tab: usize,
+        styleground: Option<StylegroundSelection>,
+    },
+    AddStyleground {
+        map: MapID,
+        loc: StylegroundSelection,
+        style: CelesteMapStyleground,
+    },
+    UpdateStyleground {
+        map: MapID,
+        loc: StylegroundSelection,
+        style: CelesteMapStyleground,
+    },
+    RemoveStyleground {
+        map: MapID,
+        loc: StylegroundSelection,
+    },
+    MoveStyleground {
+        map: MapID,
+        loc: StylegroundSelection,
+        target: StylegroundSelection,
     },
     SelectRoom {
         tab: usize,
@@ -415,6 +446,7 @@ impl AppState {
                             id: map.id.clone(),
                             current_room: 0,
                             current_selected: None,
+                            styleground_selected: None,
                             transform: MapToScreen::identity(),
                             preview_pos: MapPointStrict::zero(),
                         }));
@@ -545,8 +577,48 @@ impl AppState {
                     }
                 }
             }
+            AppEvent::SelectStyleground { tab, styleground } => {
+                if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(*tab) {
+                    map_tab.styleground_selected = *styleground;
+                }
+            }
 
-            // room events
+            // map events
+            AppEvent::AddStyleground { map, loc, style } => {
+                if let Some(map) = self.loaded_maps.get_mut(map) {
+                    let vec = map.styles_mut(loc.fg);
+                    if loc.idx <= vec.len() {
+                        vec.insert(loc.idx, style.clone());
+                    }
+                }
+            }
+            AppEvent::UpdateStyleground { map, loc, style } => {
+                if let Some(map) = self.loaded_maps.get_mut(map) {
+                    if let Some(style_ref) = map.styles_mut(loc.fg).get_mut(loc.idx) {
+                        *style_ref = style.clone();
+                    }
+                }
+            }
+            AppEvent::RemoveStyleground { map, loc } => {
+                if let Some(map) = self.loaded_maps.get_mut(map) {
+                    let vec = map.styles_mut(loc.fg);
+                    if loc.idx < vec.len() {
+                        vec.remove(loc.idx);
+                    }
+                }
+            }
+            AppEvent::MoveStyleground { map, loc, target } => {
+                if let Some(map) = self.loaded_maps.get_mut(map) {
+                    let vec = map.styles_mut(loc.fg);
+                    if loc.idx < vec.len() {
+                        let style = vec.remove(loc.idx);
+                        let vec = map.styles_mut(target.fg);
+                        let real_target = if target.idx <= vec.len() { target } else { loc };
+                        let vec = map.styles_mut(real_target.fg);
+                        vec.insert(real_target.idx, style);
+                    }
+                }
+            }
             AppEvent::AddRoom { map, idx, room } => {
                 if let Some(map) = self.loaded_maps.get_mut(map) {
                     let idx = idx.unwrap_or_else(|| map.levels.len());
