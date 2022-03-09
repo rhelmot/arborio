@@ -115,5 +115,5 @@ fn build_project_overview_card(cx: &mut Context, sid: Interned, name: Interned, 
         );
     })
     .class("module_overview_card")
-    .on_press(move |cx| cx.emit(AppEvent::OpenModuleOverview { module: sid }));
+    .on_press(move |cx| cx.emit(AppEvent::OpenModuleOverviewTab { module: sid }));
 }

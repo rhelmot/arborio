@@ -1,3 +1,4 @@
+pub mod config_editor;
 pub mod editor;
 pub mod installation;
 pub mod project;
@@ -19,6 +20,9 @@ pub fn build_tabs(cx: &mut Context) {
                 AppTab::ProjectOverview(project) => project::build_project_tab(cx, project),
                 AppTab::Map(_) => {
                     editor::build_editor(cx);
+                }
+                AppTab::ConfigEditor(_) => {
+                    config_editor::build_config_editor(cx);
                 }
             })
             .class("tab_container");

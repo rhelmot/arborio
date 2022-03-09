@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
+use std::fmt::Formatter;
 use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -58,11 +59,94 @@ pub struct AppConfig {
     pub celeste_root: Option<PathBuf>,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Lens)]
+#[derive(PartialEq, Eq, Debug, Lens, Clone)]
 pub enum AppTab {
     CelesteOverview,
     ProjectOverview(Interned),
     Map(MapTab),
+    ConfigEditor(ConfigEditorTab),
+}
+
+#[derive(Debug, Lens, Clone)]
+pub struct ConfigEditorTab {
+    pub nonce: u32,
+    pub search_scope: SearchScope,
+    pub search_type: ConfigSearchType,
+    pub search_filter: ConfigSearchFilter,
+}
+
+impl Default for ConfigEditorTab {
+    fn default() -> Self {
+        Self {
+            nonce: next_uuid(),
+            search_scope: SearchScope::AllOpenMods,
+            search_type: ConfigSearchType::Entities,
+            search_filter: ConfigSearchFilter::All,
+        }
+    }
+}
+
+impl PartialEq for ConfigEditorTab {
+    fn eq(&self, other: &Self) -> bool {
+        self.nonce == other.nonce
+    }
+}
+
+impl Eq for ConfigEditorTab {}
+
+#[derive(Debug, PartialEq, Data, Clone)]
+pub enum SearchScope {
+    AllMods,
+    AllOpenMods,
+    AllOpenMaps,
+    Mod(Interned),
+    Map(MapID),
+}
+
+impl std::fmt::Display for SearchScope {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SearchScope::AllMods => write!(f, "All Installed Mods"),
+            SearchScope::AllOpenMods => write!(f, "All Open Mods"),
+            SearchScope::AllOpenMaps => write!(f, "All Open Maps"),
+            SearchScope::Mod(s) => write!(f, "{}", s),
+            SearchScope::Map(s) => write!(f, "{}", s.sid),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Data)]
+pub enum ConfigSearchType {
+    Entities,
+    Triggers,
+    Stylegrounds,
+}
+
+impl std::fmt::Display for ConfigSearchType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[derive(Debug, Lens, Clone, PartialEq, Data)]
+pub enum ConfigSearchFilter {
+    All,
+    NoConfig,
+    NoDrawConfig,
+    NoAttrConfig,
+    Matches(String),
+}
+
+impl std::fmt::Display for ConfigSearchFilter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConfigSearchFilter::All => write!(f, "All"),
+            ConfigSearchFilter::NoConfig => write!(f, "Unconfigured"),
+            ConfigSearchFilter::NoDrawConfig => write!(f, "No draw config"),
+            ConfigSearchFilter::NoAttrConfig => write!(f, "No attribute config"),
+            ConfigSearchFilter::Matches(_) => write!(f, "Search by name..."),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Lens)]
@@ -96,6 +180,7 @@ impl ToString for AppTab {
             AppTab::CelesteOverview => "All Mods".to_owned(),
             AppTab::ProjectOverview(s) => format!("{} - Overview", s),
             AppTab::Map(m) => m.id.sid.to_string(),
+            AppTab::ConfigEditor(_) => "Config Editor".to_owned(),
         }
     }
 }
@@ -172,12 +257,14 @@ pub enum AppEvent {
     SetModules {
         modules: Mutex<InternedMap<CelesteModule>>,
     },
-    OpenModuleOverview {
+    OpenModuleOverviewTab {
         module: Interned,
     },
     Load {
         map: RefCell<Option<Box<CelesteMap>>>,
     },
+    OpenInstallationTab,
+    OpenConfigEditorTab,
     SelectTab {
         idx: usize,
     },
@@ -206,6 +293,18 @@ pub enum AppEvent {
     },
     SelectTool {
         spec: ToolSpec,
+    },
+    SelectSearchScope {
+        tab: usize,
+        scope: SearchScope,
+    },
+    SelectSearchType {
+        tab: usize,
+        ty: ConfigSearchType,
+    },
+    SelectSearchFilter {
+        tab: usize,
+        filter: ConfigSearchFilter,
     },
     SelectStyleground {
         tab: usize,
@@ -426,7 +525,7 @@ impl AppState {
             AppEvent::Progress { progress } => {
                 self.progress = progress.clone();
             }
-            AppEvent::OpenModuleOverview { module } => {
+            AppEvent::OpenModuleOverviewTab { module } => {
                 for (i, tab) in self.tabs.iter().enumerate() {
                     if matches!(tab, AppTab::ProjectOverview(m) if m == module) {
                         cx.emit(AppEvent::SelectTab { idx: i });
@@ -434,6 +533,25 @@ impl AppState {
                     }
                 }
                 self.tabs.push(AppTab::ProjectOverview(*module));
+                cx.emit(AppEvent::SelectTab {
+                    idx: self.tabs.len() - 1,
+                });
+            }
+            AppEvent::OpenInstallationTab => {
+                for (i, tab) in self.tabs.iter().enumerate() {
+                    if matches!(tab, AppTab::CelesteOverview) {
+                        cx.emit(AppEvent::SelectTab { idx: i });
+                        return;
+                    }
+                }
+                self.tabs.push(AppTab::CelesteOverview);
+                cx.emit(AppEvent::SelectTab {
+                    idx: self.tabs.len() - 1,
+                });
+            }
+            AppEvent::OpenConfigEditorTab => {
+                self.tabs
+                    .push(AppTab::ConfigEditor(ConfigEditorTab::default()));
                 cx.emit(AppEvent::SelectTab {
                     idx: self.tabs.len() - 1,
                 });
@@ -580,6 +698,21 @@ impl AppState {
             AppEvent::SelectStyleground { tab, styleground } => {
                 if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(*tab) {
                     map_tab.styleground_selected = *styleground;
+                }
+            }
+            AppEvent::SelectSearchScope { tab, scope } => {
+                if let Some(AppTab::ConfigEditor(ctab)) = self.tabs.get_mut(*tab) {
+                    ctab.search_scope = scope.clone();
+                }
+            }
+            AppEvent::SelectSearchFilter { tab, filter } => {
+                if let Some(AppTab::ConfigEditor(ctab)) = self.tabs.get_mut(*tab) {
+                    ctab.search_filter = filter.clone();
+                }
+            }
+            AppEvent::SelectSearchType { tab, ty } => {
+                if let Some(AppTab::ConfigEditor(ctab)) = self.tabs.get_mut(*tab) {
+                    ctab.search_type = *ty;
                 }
             }
 

@@ -655,3 +655,15 @@ impl Lens for CurrentStylegroundImplLens {
         map(styles.get(stysel.idx))
     }
 }
+
+#[derive(Copy, Clone, Debug)]
+pub struct CurrentTabImplLens {}
+
+impl Lens for CurrentTabImplLens {
+    type Source = AppState;
+    type Target = AppTab;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        map(source.tabs.get(source.current_tab))
+    }
+}

@@ -24,7 +24,7 @@ use vizia::*;
 use crate::app_state::{AppEvent, AppState, AppTab, Layer};
 use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::from_binel::TryFromBinEl;
-use crate::lenses::VecIndexWithLens;
+use crate::lenses::{CurrentTabImplLens, IsFailedLens};
 use crate::map_struct::{CelesteMap, MapID};
 use crate::widgets::tabs::{build_tab_bar, build_tabs};
 use widgets::entity_tweaker::EntityTweakerWidget;
@@ -52,10 +52,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             cx.text_context.resize_shaping_run_cache(10000);
 
             VStack::new(cx, move |cx| {
-                HStack::new(cx, move |cx| {
-                    build_menu_bar(cx);
-                })
-                .class("menu_bar");
+                MenuController::new(cx, false, |cx| {
+                    MenuStack::new_horizontal(cx, build_menu_bar).class("menu_bar");
+                });
                 build_tab_bar(cx);
                 build_tabs(cx);
 
@@ -85,28 +84,54 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn build_menu_bar(cx: &mut Context) {
-    let lens = VecIndexWithLens::new(AppState::tabs, AppState::current_tab);
-    Button::new(
+    let lens = CurrentTabImplLens {};
+    Menu::new(
         cx,
+        |cx| Label::new(cx, "File"),
         move |cx| {
-            let app = cx.data::<AppState>().unwrap();
-            let map = app.current_map_ref().unwrap();
-            save(app, map).unwrap_or_else(|err| {
-                dialog::Message::new(err.to_string())
-                    .title("Failed to save")
-                    .show()
-                    .unwrap()
-            });
+            MenuButton::new(
+                cx,
+                move |cx| {
+                    Label::new(cx, "Save");
+                },
+                move |cx| {
+                    let app = cx.data::<AppState>().unwrap();
+                    let map = app.current_map_ref().unwrap();
+                    save(app, map).unwrap_or_else(|err| {
+                        dialog::Message::new(err.to_string())
+                            .title("Failed to save")
+                            .show()
+                            .unwrap()
+                    });
+                },
+            )
+            .display(IsFailedLens::new(lens.then(AppTab::map)).map(|b| !b));
         },
-        move |cx| Label::new(cx, "Save"),
-    )
-    .bind(lens, move |handle, lens| {
-        if let Some(tab) = lens.get_fallible(handle.cx) {
-            handle.display(matches!(*tab, AppTab::Map(_)));
-        } else {
-            handle.display(false);
-        }
-    });
+    );
+    Menu::new(
+        cx,
+        |cx| Label::new(cx, "View"),
+        |cx| {
+            MenuButton::new(
+                cx,
+                move |cx| {
+                    Label::new(cx, "Celeste Installation");
+                },
+                move |cx| {
+                    cx.emit(AppEvent::OpenInstallationTab);
+                },
+            );
+            MenuButton::new(
+                cx,
+                move |cx| {
+                    Label::new(cx, "Config Editor");
+                },
+                move |cx| {
+                    cx.emit(AppEvent::OpenConfigEditorTab);
+                },
+            );
+        },
+    );
 }
 
 fn save(app: &AppState, map: &CelesteMap) -> Result<(), io::Error> {

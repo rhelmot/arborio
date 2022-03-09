@@ -204,6 +204,10 @@ palette list {
     bottom: 5px;
 }
 
+.tweaker dropdown {
+    font-size: 15px;
+}
+
 .tweaker hstack {
     right: 14px;
 }
@@ -243,10 +247,6 @@ style_list list {
     background-color: #40a080;
 }
 
-dropdown {
-    font-size: 15px;
-}
-
 .dropdown_element {
     width: 1s;
     child-left: 3px;
@@ -255,6 +255,10 @@ dropdown {
 .dropdown_element:over {
     background-color: #101040;
     color: white;
+}
+
+menu>menustack { /* TODO remove this */
+    z-index: 1000;
 }
 
 /*

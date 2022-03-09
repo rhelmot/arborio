@@ -1,20 +1,20 @@
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-//use stable_deref_trait::StableDeref;
 use std::borrow::{Borrow, Cow};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicU32, Ordering};
+use vizia::*;
 
 pub fn next_uuid() -> u32 {
     static UUID: AtomicU32 = AtomicU32::new(0);
     UUID.fetch_add(1, Ordering::Relaxed)
 }
 
-#[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, PartialOrd, Ord)]
+#[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, PartialOrd, Ord, Data)]
 pub struct Interned(&'static str);
 
 pub type InternedMap<T> = HashMap<Interned, T>;
