@@ -39,7 +39,7 @@ regex = "^1.5"
 
 # graphics
 # vizia = { path = "../../rust/VIZIA", default-features = false, features = ["winit", "clipboard"] }
-vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "6a38654ff00163a5f0051d08b8c3be4c2a179117" }
+vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "7938c854a6a1d42e998fe8529005bafff20df8dd" }
 # femtovg = { version = "0.3.0", default-features = false, features = ["image-loading"] } # inherit from vizia
 femtovg = { git = "https://github.com/femtovg/femtovg", rev = "604f35e52f403b2ad98774bcdc56c09dcedf32e6", default-features = false, features = ["image-loading"] }
 # femtovg = { path = "../../rust/femtovg", features = ["image-loading"] }
