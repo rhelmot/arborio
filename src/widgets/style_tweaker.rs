@@ -1,10 +1,11 @@
 use super::common::*;
 use crate::app_state::StylegroundSelection;
+use crate::celeste_mod::entity_config::AttributeType;
 use crate::lenses::{
     CurrentMapImplLens, CurrentMapLens, CurrentStylegroundImplLens, CurrentStylegroundLens,
     IsFailedLens, StylegroundNameLens,
 };
-use crate::map_struct::{CelesteMap, CelesteMapStyleground};
+use crate::map_struct::{Attribute, CelesteMap, CelesteMapStyleground};
 use crate::{AppEvent, AppState};
 use std::rc::Rc;
 use vizia::*;
@@ -267,6 +268,34 @@ impl StyleTweakerWidget {
         edit_optional_text!(cx, "Only Rooms", only);
         edit_text!(cx, "Fade X", fade_x);
         edit_text!(cx, "Fade Y", fade_y);
+
+        advanced_attrs_editor(
+            cx,
+            CurrentStylegroundImplLens {}.then(CelesteMapStyleground::attributes),
+            |cx, key, value| {
+                let mut current = CurrentStylegroundImplLens {}.get(cx).take();
+                current.attributes.insert(key, value);
+                emit(cx, current);
+            },
+            |cx, key, ty| {
+                let mut current = CurrentStylegroundImplLens {}.get(cx).take();
+                current.attributes.insert(
+                    key,
+                    match ty {
+                        AttributeType::String => Attribute::Text("".to_owned()),
+                        AttributeType::Float => Attribute::Float(0.0),
+                        AttributeType::Int => Attribute::Int(0),
+                        AttributeType::Bool => Attribute::Bool(false),
+                    },
+                );
+                emit(cx, current);
+            },
+            |cx, key| {
+                let mut current = CurrentStylegroundImplLens {}.get(cx).take();
+                current.attributes.remove(&key);
+                emit(cx, current);
+            },
+        );
     }
 }
 
