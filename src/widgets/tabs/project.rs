@@ -6,7 +6,7 @@ use crate::MapID;
 use dialog::DialogBox;
 use std::cell::RefCell;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use vizia::*;
 
 pub fn build_project_tab(cx: &mut Context, project: Interned) {
@@ -51,7 +51,7 @@ pub fn build_project_tab(cx: &mut Context, project: Interned) {
 }
 
 fn load_map(module_root: PathBuf, project: Interned, map: Interned) -> Option<CelesteMap> {
-    match load_map_inner(module_root, project, map) {
+    match load_map_inner(&module_root, project, map) {
         Ok(m) => Some(m),
         Err(e) => {
             dialog::Message::new(e.to_string())
@@ -64,11 +64,11 @@ fn load_map(module_root: PathBuf, project: Interned, map: Interned) -> Option<Ce
 }
 
 pub fn load_map_inner(
-    module_root: PathBuf,
+    module_root: &Path,
     project: Interned,
     map: Interned,
 ) -> Result<CelesteMap, io::Error> {
-    let mut config = if let Some(config) = open_module(&module_root) {
+    let mut config = if let Some(config) = open_module(module_root) {
         config
     } else {
         return Err(io::Error::new(

@@ -64,40 +64,8 @@ where
 }
 
 pub fn load_into(mut source: ConfigSource, modules: &mut InternedMap<CelesteModule>) {
-    if let Some(mut reader) = source.get_file(Path::new("everest.yaml")) {
-        let mut data = String::new();
-        reader.read_to_string(&mut data).unwrap();
-        let everest_yaml: Vec<EverestYaml> =
-            match serde_yaml::from_str(data.trim_start_matches('\u{FEFF}')) {
-                Ok(e) => e,
-                Err(e) => {
-                    println!(
-                        "Error parsing {}/everest.yaml: {:?}",
-                        source
-                            .filesystem_root()
-                            .unwrap()
-                            .to_str()
-                            .unwrap_or("<invalid unicode>"),
-                        e
-                    );
-                    return;
-                }
-            };
-        if everest_yaml.len() != 1 {
-            println!(
-                "Error parsing {}/everest.yaml: {} entries",
-                source
-                    .filesystem_root()
-                    .unwrap()
-                    .to_str()
-                    .unwrap_or("<invalid unicode>"),
-                everest_yaml.len()
-            );
-        }
-        let mut module = CelesteModule::new(
-            source.filesystem_root(),
-            everest_yaml.into_iter().next().unwrap(),
-        );
+    if let Some(yaml) = EverestYaml::from_config(&mut source) {
+        let mut module = CelesteModule::new(source.filesystem_root(), yaml);
         module.load(&mut source);
         modules.insert(module.everest_metadata.name, module);
     }

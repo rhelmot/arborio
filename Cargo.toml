@@ -23,6 +23,7 @@ enum-iterator = "^0.7"
 parking_lot = "^0.12"
 lru = "^0.7"
 enum_dispatch = "^0.3"
+rand = "0.8.5"
 
 # system interaction
 confy = "^0.4"

@@ -1,7 +1,10 @@
-use crate::assets::Interned;
 use itertools::Itertools;
 use serde::de::{Error, Unexpected};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::path::Path;
+
+use crate::assets::Interned;
+use crate::celeste_mod::walker::{ConfigSource, ConfigSourceTrait};
 
 pub fn celeste_module_yaml() -> EverestYaml {
     EverestYaml {
@@ -69,5 +72,46 @@ impl Serialize for EverestModuleVersion {
         S: Serializer,
     {
         self.0.iter().map(|x| x.to_string()).join(".").serialize(s)
+    }
+}
+
+impl EverestYaml {
+    // TODO: use Result<Self, E>
+    pub fn from_config(source: &mut ConfigSource) -> Option<Self> {
+        if let Some(mut reader) = source.get_file(Path::new("everest.yaml")) {
+            let mut data = String::new();
+            reader.read_to_string(&mut data).unwrap();
+            let everest_yaml: Vec<EverestYaml> =
+                match serde_yaml::from_str(data.trim_start_matches('\u{FEFF}')) {
+                    Ok(e) => e,
+                    Err(e) => {
+                        println!(
+                            "Error parsing {}/everest.yaml: {:?}",
+                            source
+                                .filesystem_root()
+                                .unwrap()
+                                .to_str()
+                                .unwrap_or("<invalid unicode>"),
+                            e
+                        );
+                        return None;
+                    }
+                };
+            if everest_yaml.len() != 1 {
+                println!(
+                    "Error parsing {}/everest.yaml: {} entries",
+                    source
+                        .filesystem_root()
+                        .unwrap()
+                        .to_str()
+                        .unwrap_or("<invalid unicode>"),
+                    everest_yaml.len()
+                );
+                return None;
+            }
+            everest_yaml.into_iter().next()
+        } else {
+            None
+        }
     }
 }

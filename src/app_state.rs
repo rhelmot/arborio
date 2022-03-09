@@ -23,6 +23,7 @@ use crate::units::*;
 use crate::widgets::list_palette::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
 };
+use crate::widgets::tabs::config_editor::ConfigSearchResult;
 
 #[derive(Lens)]
 pub struct AppState {
@@ -73,6 +74,8 @@ pub struct ConfigEditorTab {
     pub search_scope: SearchScope,
     pub search_type: ConfigSearchType,
     pub search_filter: ConfigSearchFilter,
+    pub search_results: Vec<ConfigSearchResult>,
+    pub selected_result: usize,
 }
 
 impl Default for ConfigEditorTab {
@@ -82,6 +85,8 @@ impl Default for ConfigEditorTab {
             search_scope: SearchScope::AllOpenMods,
             search_type: ConfigSearchType::Entities,
             search_filter: ConfigSearchFilter::All,
+            search_results: vec![],
+            selected_result: 0,
         }
     }
 }
@@ -111,6 +116,18 @@ impl std::fmt::Display for SearchScope {
             SearchScope::AllOpenMaps => write!(f, "All Open Maps"),
             SearchScope::Mod(s) => write!(f, "{}", s),
             SearchScope::Map(s) => write!(f, "{}", s.sid),
+        }
+    }
+}
+
+impl SearchScope {
+    pub fn filter_map(&self, id: &MapID, collected_targets: &[SearchScope]) -> bool {
+        match self {
+            SearchScope::AllMods => true,
+            SearchScope::AllOpenMods => collected_targets.contains(&SearchScope::Mod(id.module)),
+            SearchScope::AllOpenMaps => collected_targets.contains(&SearchScope::Map(id.clone())),
+            SearchScope::Mod(m) => id.module == *m,
+            SearchScope::Map(m) => id == m,
         }
     }
 }
@@ -305,6 +322,14 @@ pub enum AppEvent {
     SelectSearchFilter {
         tab: usize,
         filter: ConfigSearchFilter,
+    },
+    PopulateConfigSearchResults {
+        tab: usize,
+        results: Vec<ConfigSearchResult>,
+    },
+    SelectConfigSearchResult {
+        tab: usize,
+        idx: usize,
     },
     SelectStyleground {
         tab: usize,
@@ -713,6 +738,17 @@ impl AppState {
             AppEvent::SelectSearchType { tab, ty } => {
                 if let Some(AppTab::ConfigEditor(ctab)) = self.tabs.get_mut(*tab) {
                     ctab.search_type = *ty;
+                }
+            }
+            AppEvent::PopulateConfigSearchResults { tab, results } => {
+                if let Some(AppTab::ConfigEditor(ctab)) = self.tabs.get_mut(*tab) {
+                    ctab.search_results = results.clone();
+                    ctab.selected_result = 0;
+                }
+            }
+            AppEvent::SelectConfigSearchResult { tab, idx } => {
+                if let Some(AppTab::ConfigEditor(ctab)) = self.tabs.get_mut(*tab) {
+                    ctab.selected_result = *idx;
                 }
             }
 
