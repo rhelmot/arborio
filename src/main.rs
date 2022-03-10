@@ -31,7 +31,7 @@ use widgets::entity_tweaker::EntityTweakerWidget;
 use widgets::list_palette::PaletteWidget;
 
 macro_rules! log {
-    ($cx:expr, $level:ident, $message:expr, $($context:expr),*) => {
+    ($cx:expr, $level:ident, $message:expr $(,$context:expr)* $(,)?) => {
         $cx.emit($crate::app_state::AppEvent::Log {
             message: ::std::sync::Mutex::new(Some($crate::app_state::LogMessage {
                 level: $crate::app_state::LogLevel::$level,
@@ -67,7 +67,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ),
         |cx| {
             app_state::AppState::new().build(cx);
-            log!(cx, Info, "Hello world!",);
+            log!(cx, Info, "Hello world!");
             if let Some(path) = &cx.data::<AppState>().unwrap().config.celeste_root {
                 let path = path.clone();
                 cx.emit(AppEvent::SetConfigPath { path });
