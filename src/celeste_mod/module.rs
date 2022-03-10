@@ -10,6 +10,7 @@ use crate::celeste_mod::entity_config::{EntityConfig, StylegroundConfig, Trigger
 use crate::celeste_mod::everest_yaml::EverestYaml;
 use crate::celeste_mod::walker::ConfigSource;
 use crate::celeste_mod::walker::ConfigSourceTrait;
+use crate::logging::*;
 
 #[derive(Debug)]
 pub struct CelesteModule {
@@ -37,55 +38,94 @@ impl CelesteModule {
         }
     }
 
-    pub fn load(&mut self, source: &mut ConfigSource) {
-        // TODO: return a list of errors
-        self.gameplay_atlas.load(source, "Gameplay");
+    pub fn load(&mut self, source: &mut ConfigSource) -> LogResult<()> {
+        let mut log = LogBuf::new();
+        self.gameplay_atlas
+            .load(source, "Gameplay")
+            .offload(&mut log);
 
         for path in source.list_all_files(&PathBuf::from("Arborio/tilers")) {
-            if let Some(fp) = source.get_file(&path) {
-                self.tilers.insert(
-                    intern_str(
-                        path.file_stem()
-                            .unwrap()
-                            .to_str()
-                            .expect("Fatal error: non-utf8 celeste_mod filepath"),
-                    ),
-                    Arc::new(Tileset::new(fp, "").expect("Could not parse custom tileset")),
-                );
+            if path.to_str().is_some() {
+                if let Some(fp) = source.get_file(&path) {
+                    if let Some(tiler) = Tileset::new(fp, "").offload(LogLevel::Error, &mut log) {
+                        self.tilers.insert(
+                            intern_str(
+                                path.file_stem()
+                                    .unwrap_or(path.as_os_str())
+                                    .to_str()
+                                    .unwrap(),
+                            ),
+                            Arc::new(tiler),
+                        );
+                    }
+                } else {
+                    log.push(log!(
+                        Critical,
+                        "Path disappeared from {}: {:?}",
+                        source,
+                        path
+                    ))
+                }
+            } else {
+                log.push(log!(Error, "Invalid unicode in {}: {:?}", source, path));
             }
         }
 
         for path in source.list_all_files(&PathBuf::from("Arborio/entities")) {
             if let Some(f) = source.get_file(&path) {
-                let mut config: EntityConfig =
-                    serde_yaml::from_reader(f).expect("Failed to parse entity celeste_mod");
-                if config.templates.is_empty() {
-                    config.templates.push(config.default_template());
+                if let Some(mut config) =
+                    serde_yaml::from_reader::<_, EntityConfig>(f).offload(LogLevel::Error, &mut log)
+                {
+                    if config.templates.is_empty() {
+                        config.templates.push(config.default_template());
+                    }
+                    self.entity_config
+                        .insert(config.entity_name, Arc::new(config));
                 }
-                self.entity_config
-                    .insert(config.entity_name, Arc::new(config));
             } else {
+                log.push(log!(
+                    Critical,
+                    "Path disappeared from {}: {:?}",
+                    source,
+                    path
+                ))
             }
         }
         for path in source.list_all_files(&PathBuf::from("Arborio/triggers")) {
             if let Some(f) = source.get_file(&path) {
-                let mut config: TriggerConfig =
-                    serde_yaml::from_reader(f).expect("Failed to parse trigger celeste_mod");
-                if config.templates.is_empty() {
-                    config.templates.push(config.default_template());
+                if let Some(mut config) = serde_yaml::from_reader::<_, TriggerConfig>(f)
+                    .offload(LogLevel::Error, &mut log)
+                {
+                    if config.templates.is_empty() {
+                        config.templates.push(config.default_template());
+                    }
+                    self.trigger_config
+                        .insert(config.trigger_name, Arc::new(config));
                 }
-                self.trigger_config
-                    .insert(config.trigger_name, Arc::new(config));
             } else {
+                log.push(log!(
+                    Critical,
+                    "Path disappeared from {}: {:?}",
+                    source,
+                    path
+                ))
             }
         }
         for path in source.list_all_files(&PathBuf::from("Arborio/stylegrounds")) {
             if let Some(f) = source.get_file(&path) {
-                let config: StylegroundConfig =
-                    serde_yaml::from_reader(f).expect("Failed to parse styleground celeste_mod");
-                self.styleground_config
-                    .insert(config.styleground_name, Arc::new(config));
+                if let Some(config) = serde_yaml::from_reader::<_, StylegroundConfig>(f)
+                    .offload(LogLevel::Error, &mut log)
+                {
+                    self.styleground_config
+                        .insert(config.styleground_name, Arc::new(config));
+                }
             } else {
+                log.push(log!(
+                    Critical,
+                    "Path disappeared from {}: {:?}",
+                    source,
+                    path
+                ))
             }
         }
 
@@ -101,6 +141,8 @@ impl CelesteModule {
                 }
             }
         }
+
+        log.done(())
     }
 
     pub fn module_kind(&self) -> CelesteModuleKind {

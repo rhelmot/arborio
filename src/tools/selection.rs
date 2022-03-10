@@ -3,6 +3,8 @@ use vizia::*;
 
 use crate::app_state::{AppEvent, AppSelection, AppState, Layer};
 use crate::autotiler::{TextureTile, TileReference};
+use crate::logging::LogResult;
+use crate::logging::*;
 use crate::map_struct::{CelesteMapLevel, Node};
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
@@ -252,18 +254,19 @@ impl Tool for SelectionTool {
         self.clear_selection(app)
     }
 
-    fn draw(&mut self, canvas: &mut Canvas, app: &AppState, cx: &Context) {
-        let room = if let Some(room) = app.current_room_ref() {
+    fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &Context) -> LogResult<()> {
+        let mut log = LogBuf::new();
+        let room = if let Some(room) = state.current_room_ref() {
             room
         } else {
-            return;
+            return log.done(());
         };
         canvas.save();
         canvas.translate(room.bounds.origin.x as f32, room.bounds.origin.y as f32);
         // no scissor!
 
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
-        let map_pos_precise = app
+        let map_pos_precise = state
             .map_tab_unwrap()
             .transform
             .inverse()
@@ -274,7 +277,11 @@ impl Tool for SelectionTool {
         let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
-        let room_pos = if app.snap { room_pos_snapped } else { room_pos };
+        let room_pos = if state.snap {
+            room_pos_snapped
+        } else {
+            room_pos
+        };
 
         if let SelectionStatus::Selecting(ref_pos) = &self.status {
             let selection =
@@ -298,7 +305,7 @@ impl Tool for SelectionTool {
             .iter()
             .chain(self.current_selection.iter())
         {
-            for rect in self.rects_of(app, room, *selectable) {
+            for rect in self.rects_of(state, room, *selectable) {
                 path.rect(
                     rect.min_x() as f32,
                     rect.min_y() as f32,
@@ -315,7 +322,7 @@ impl Tool for SelectionTool {
                 let float_pt = pt - float_pos.to_vector();
                 let ch = float_dat.get_or_default(float_pt);
                 if ch != '\0' {
-                    if let Some(tile) = app
+                    if let Some(tile) = state
                         .current_palette_unwrap()
                         .autotilers
                         .get("bg")
@@ -324,13 +331,17 @@ impl Tool for SelectionTool {
                         .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
                     {
                         let room_pos = point_tile_to_room(&pt);
-                        app.current_palette_unwrap().gameplay_atlas.draw_tile(
-                            canvas,
-                            tile,
-                            room_pos.x as f32,
-                            room_pos.y as f32,
-                            Color::white().into(),
-                        );
+                        state
+                            .current_palette_unwrap()
+                            .gameplay_atlas
+                            .draw_tile(
+                                canvas,
+                                tile,
+                                room_pos.x as f32,
+                                room_pos.y as f32,
+                                Color::white().into(),
+                            )
+                            .offload(LogLevel::Error, &mut log);
                         path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
                     }
                 }
@@ -343,7 +354,7 @@ impl Tool for SelectionTool {
                 let float_pt = pt - float_pos.to_vector();
                 let ch = float_dat.get_or_default(float_pt);
                 if ch != '\0' {
-                    if let Some(tile) = app
+                    if let Some(tile) = state
                         .current_palette_unwrap()
                         .autotilers
                         .get("fg")
@@ -352,13 +363,17 @@ impl Tool for SelectionTool {
                         .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
                     {
                         let room_pos = point_tile_to_room(&pt);
-                        app.current_palette_unwrap().gameplay_atlas.draw_tile(
-                            canvas,
-                            tile,
-                            room_pos.x as f32,
-                            room_pos.y as f32,
-                            Color::white().into(),
-                        );
+                        state
+                            .current_palette_unwrap()
+                            .gameplay_atlas
+                            .draw_tile(
+                                canvas,
+                                tile,
+                                room_pos.x as f32,
+                                room_pos.y as f32,
+                                Color::white().into(),
+                            )
+                            .offload(LogLevel::Error, &mut log);
                         path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
                     }
                 }
@@ -378,13 +393,17 @@ impl Tool for SelectionTool {
                         texture: "tilesets/scenery".into(), // TODO we shouldn't be doing this lookup during draw. cache this string statically?
                     };
                     let room_pos = point_tile_to_room(&pt);
-                    app.current_palette_unwrap().gameplay_atlas.draw_tile(
-                        canvas,
-                        tile,
-                        room_pos.x as f32,
-                        room_pos.y as f32,
-                        Color::white().into(),
-                    );
+                    state
+                        .current_palette_unwrap()
+                        .gameplay_atlas
+                        .draw_tile(
+                            canvas,
+                            tile,
+                            room_pos.x as f32,
+                            room_pos.y as f32,
+                            Color::white().into(),
+                        )
+                        .offload(LogLevel::Error, &mut log);
                     path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
                 }
             }
@@ -396,10 +415,10 @@ impl Tool for SelectionTool {
         );
 
         if self.status == SelectionStatus::None {
-            if let Some(sel) = self.selectable_at(app, room, app.current_layer, room_pos) {
+            if let Some(sel) = self.selectable_at(state, room, state.current_layer, room_pos) {
                 if !self.current_selection.contains(&sel) {
                     let mut path = femtovg::Path::new();
-                    for rect in self.rects_of(app, room, sel) {
+                    for rect in self.rects_of(state, room, sel) {
                         path.rect(
                             rect.min_x() as f32,
                             rect.min_y() as f32,
@@ -416,6 +435,8 @@ impl Tool for SelectionTool {
         }
 
         canvas.restore();
+
+        log.done(())
     }
 
     fn cursor(&self, cx: &Context, app: &AppState) -> CursorIcon {
@@ -523,8 +544,8 @@ impl SelectionTool {
                         .iter()
                         .filter_map(|r| match r.evaluate_int(&env) {
                             Ok(r) => Some(r),
-                            Err(s) => {
-                                println!("{}", s);
+                            Err(_) => {
+                                //println!("{}", s);
                                 None
                             }
                         })
@@ -545,8 +566,8 @@ impl SelectionTool {
                         .iter()
                         .filter_map(|r| match r.evaluate_int(&env) {
                             Ok(r) => Some(r),
-                            Err(s) => {
-                                println!("{}", s);
+                            Err(_) => {
+                                //println!("{}", s);
                                 None
                             }
                         })
@@ -893,7 +914,7 @@ impl SelectionTool {
                 | AppSelection::BgTile(_)
                 | AppSelection::ObjectTile(_)
                 | AppSelection::EntityNode(_, _, _) => {
-                    println!("uh oh!");
+                    unreachable!()
                 }
                 AppSelection::EntityBody(id, trigger) => {
                     let mut e = room.entity(*id, *trigger).unwrap().clone();

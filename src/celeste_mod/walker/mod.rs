@@ -1,4 +1,5 @@
 use enum_dispatch::enum_dispatch;
+use std::fmt::{Display, Formatter};
 use std::io::{BufRead, Seek};
 use std::path::{Path, PathBuf};
 
@@ -14,6 +15,16 @@ pub enum ConfigSource {
     Embedded(EmbeddedSource),
     Dir(FolderSource),
     Zip(ZipSource),
+}
+
+impl Display for ConfigSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConfigSource::Embedded(s) => s.fmt(f),
+            ConfigSource::Dir(s) => s.fmt(f),
+            ConfigSource::Zip(s) => s.fmt(f),
+        }
+    }
 }
 
 pub trait ReadSeek: BufRead + Seek {}

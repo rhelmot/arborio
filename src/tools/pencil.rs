@@ -2,6 +2,7 @@ use vizia::*;
 
 use crate::app_state::{AppEvent, AppState, Layer};
 use crate::celeste_mod::entity_config::PencilBehavior;
+use crate::logging::*;
 use crate::map_struct::{CelesteMapDecal, CelesteMapEntity, Node};
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
@@ -74,11 +75,12 @@ impl Tool for PencilTool {
         self.do_draw_finish(app, room_pos)
     }
 
-    fn draw(&mut self, canvas: &mut Canvas, app: &AppState, cx: &Context) {
-        let room = if let Some(room) = app.current_room_ref() {
+    fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &Context) -> LogResult<()> {
+        let mut log = LogBuf::new();
+        let room = if let Some(room) = state.current_room_ref() {
             room
         } else {
-            return;
+            return LogResult::new((), log);
         };
         canvas.save();
         canvas.translate(room.bounds.origin.x as f32, room.bounds.origin.y as f32);
@@ -90,7 +92,7 @@ impl Tool for PencilTool {
         );
 
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
-        let map_pos = app
+        let map_pos = state
             .map_tab_unwrap()
             .transform
             .inverse()
@@ -100,9 +102,13 @@ impl Tool for PencilTool {
         let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
-        let room_pos = if app.snap { room_pos_snapped } else { room_pos };
+        let room_pos = if state.snap {
+            room_pos_snapped
+        } else {
+            room_pos
+        };
 
-        match app.current_layer {
+        match state.current_layer {
             Layer::FgTiles | Layer::BgTiles | Layer::ObjectTiles => {
                 let mut path = femtovg::Path::new();
                 path.rect(
@@ -117,51 +123,59 @@ impl Tool for PencilTool {
                 );
             }
             Layer::Entities => {
-                let tmp_entity = self.get_terminal_entity(app, app.current_entity, room_pos);
+                let tmp_entity = self.get_terminal_entity(state, state.current_entity, room_pos);
                 canvas.set_global_alpha(0.5);
                 editor::draw_entity(
-                    app,
+                    state,
                     canvas,
                     &tmp_entity,
                     &TileGrid::empty(),
                     false,
                     false,
                     &room.object_tiles,
-                );
+                )
+                .offload(&mut log);
             }
             Layer::Triggers => {
-                let tmp_trigger = self.get_terminal_trigger(app, app.current_trigger, room_pos);
+                let tmp_trigger = self.get_terminal_trigger(state, state.current_trigger, room_pos);
                 canvas.set_global_alpha(0.5);
                 editor::draw_entity(
-                    app,
+                    state,
                     canvas,
                     &tmp_trigger,
                     &TileGrid::empty(),
                     false,
                     true,
                     &TileGrid::empty(),
-                );
+                )
+                .offload(&mut log);
             }
             Layer::FgDecals | Layer::BgDecals => {
-                let texture = format!("decals/{}", app.current_decal.0);
+                let texture = format!("decals/{}", state.current_decal.0);
                 if cx.mouse.left.state == MouseButtonState::Released {
                     canvas.set_global_alpha(0.5);
                 }
-                app.current_palette_unwrap().gameplay_atlas.draw_sprite(
-                    canvas,
-                    &texture,
-                    room_pos.cast().cast_unit(),
-                    None,
-                    None,
-                    None,
-                    None,
-                    0.0,
-                );
+                state
+                    .current_palette_unwrap()
+                    .gameplay_atlas
+                    .draw_sprite(
+                        canvas,
+                        &texture,
+                        room_pos.cast().cast_unit(),
+                        None,
+                        None,
+                        None,
+                        None,
+                        0.0,
+                    )
+                    .offload(LogLevel::Error, &mut log);
             }
             _ => {}
         }
 
         canvas.restore();
+
+        LogResult::new((), log)
     }
 }
 

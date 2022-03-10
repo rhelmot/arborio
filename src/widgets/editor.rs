@@ -10,6 +10,7 @@ use crate::app_state::{AppSelection, AppState};
 use crate::autotiler::{TextureTile, TileReference};
 use crate::celeste_mod::entity_config::DrawElement;
 use crate::celeste_mod::entity_expression::{Const, Number};
+use crate::logging::*;
 use crate::map_struct::{
     Attribute, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapStyleground,
     FieldEntry,
@@ -83,6 +84,7 @@ impl View for EditorWidget {
     }
 
     fn draw(&self, cx: &mut Context, canvas: &mut Canvas) {
+        let mut log = LogBuf::new();
         let app = cx
             .data::<AppState>()
             .expect("EditorWidget must have an AppState in its ancestry");
@@ -143,7 +145,8 @@ impl View for EditorWidget {
                 .map_or("", |lvl| lvl.name.as_str()),
             &HashSet::new(),
             false,
-        );
+        )
+        .offload(&mut log);
         canvas.restore();
 
         let mut path = Path::new();
@@ -187,8 +190,8 @@ impl View for EditorWidget {
                     room.bounds.height() as u32,
                     Color::rgba(0, 0, 0, 0),
                 );
-                draw_tiles(app, canvas, room, false);
-                draw_decals(app, canvas, room, false);
+                draw_tiles(app, canvas, room, false).offload(&mut log);
+                draw_decals(app, canvas, room, false).offload(&mut log);
                 draw_triggers(
                     app,
                     canvas,
@@ -198,7 +201,8 @@ impl View for EditorWidget {
                     } else {
                         None
                     },
-                );
+                )
+                .offload(&mut log);
                 draw_entities(
                     app,
                     canvas,
@@ -208,9 +212,10 @@ impl View for EditorWidget {
                     } else {
                         None
                     },
-                );
-                draw_tiles(app, canvas, room, true);
-                draw_decals(app, canvas, room, true);
+                )
+                .offload(&mut log);
+                draw_tiles(app, canvas, room, true).offload(&mut log);
+                draw_decals(app, canvas, room, true).offload(&mut log);
 
                 canvas.restore();
                 canvas.set_render_target(RenderTarget::Screen);
@@ -252,16 +257,25 @@ impl View for EditorWidget {
                 .map_or("", |lvl| lvl.name.as_str()),
             &HashSet::new(),
             false,
-        );
+        )
+        .offload(&mut log);
         canvas.restore();
 
         if let Some(tool) = &app.current_tool {
-            tool.borrow_mut().draw(canvas, app, cx);
+            tool.borrow_mut().draw(canvas, app, cx).offload(&mut log);
         }
+
+        log.done(()).emit(cx);
     }
 }
 
-fn draw_decals(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
+fn draw_decals(
+    app: &AppState,
+    canvas: &mut Canvas,
+    room: &CelesteMapLevel,
+    fg: bool,
+) -> LogResult<()> {
+    let mut log = LogBuf::new();
     let decals = if fg { &room.fg_decals } else { &room.bg_decals };
     for decal in decals {
         let texture = decal_texture(decal);
@@ -278,10 +292,9 @@ fn draw_decals(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: 
                 None,
                 0.0,
             )
-            .unwrap_or_else(|| {
-                dbg!(&decal);
-            });
+            .offload(LogLevel::Error, &mut log);
     }
+    log.done(())
 }
 
 pub fn decal_texture(decal: &CelesteMapDecal) -> String {
@@ -290,7 +303,13 @@ pub fn decal_texture(decal: &CelesteMapDecal) -> String {
     path.to_str().unwrap().to_owned()
 }
 
-fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
+fn draw_tiles(
+    app: &AppState,
+    canvas: &mut Canvas,
+    room: &CelesteMapLevel,
+    fg: bool,
+) -> LogResult<()> {
+    let mut log = LogBuf::new();
     let (tiles, tiles_asset) = if fg {
         (
             &room.solids,
@@ -314,16 +333,15 @@ fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: b
                 .get(tile)
                 .and_then(|tileset| tileset.tile(pt, &mut |pt| room.tile(pt, fg)))
             {
-                app.current_palette_unwrap().gameplay_atlas.draw_tile(
-                    canvas,
-                    tile,
-                    rx,
-                    ry,
-                    Color::white(),
-                );
+                app.current_palette_unwrap()
+                    .gameplay_atlas
+                    .draw_tile(canvas, tile, rx, ry, Color::white())
+                    .offload(LogLevel::Error, &mut log);
             }
         }
     }
+
+    log.done(())
 }
 
 fn draw_entities(
@@ -331,7 +349,9 @@ fn draw_entities(
     canvas: &mut Canvas,
     room: &CelesteMapLevel,
     selection: Option<AppSelection>,
-) {
+) -> LogResult<()> {
+    let mut log = LogBuf::new();
+
     let field = room.occupancy_field();
     for entity in &room.entities {
         let selected = matches!(selection, Some(AppSelection::EntityBody(id, false)) | Some(AppSelection::EntityNode(id, _, false)) if id == entity.id);
@@ -343,8 +363,11 @@ fn draw_entities(
             selected,
             false,
             &room.object_tiles,
-        );
+        )
+        .offload(&mut log);
     }
+
+    log.done(())
 }
 
 fn draw_triggers(
@@ -352,7 +375,9 @@ fn draw_triggers(
     canvas: &mut Canvas,
     room: &CelesteMapLevel,
     selection: Option<AppSelection>,
-) {
+) -> LogResult<()> {
+    let mut log = LogBuf::new();
+
     for trigger in &room.triggers {
         let selected = matches!(selection, Some(AppSelection::EntityBody(id, true)) | Some(AppSelection::EntityNode(id, _, true)) if id == trigger.id);
         draw_entity(
@@ -363,8 +388,11 @@ fn draw_triggers(
             selected,
             true,
             &TileGrid::empty(),
-        );
+        )
+        .offload(&mut log);
     }
+
+    log.done(())
 }
 
 pub fn draw_entity(
@@ -375,7 +403,8 @@ pub fn draw_entity(
     selected: bool,
     trigger: bool,
     object_tiles: &TileGrid<i32>,
-) {
+) -> LogResult<()> {
+    let mut log = LogBuf::new();
     let config = app
         .current_palette_unwrap()
         .get_entity_config(&entity.name, trigger);
@@ -384,15 +413,15 @@ pub fn draw_entity(
     for node_idx in 0..entity.nodes.len() {
         for draw in &config.standard_draw.node_draw {
             let env = entity.make_node_env(env.clone(), node_idx);
-            if let Err(s) = draw_entity_directive(app, canvas, draw, &env, field, object_tiles) {
-                println!("{}", s);
+            if let Err(e) = draw_entity_directive(app, canvas, draw, &env, field, object_tiles) {
+                log.push(log!(Warning, "Error drawing {}: {}", &entity.name, e));
             }
         }
     }
 
     for draw in &config.standard_draw.initial_draw {
-        if let Err(s) = draw_entity_directive(app, canvas, draw, &env, field, object_tiles) {
-            println!("{}", s);
+        if let Err(e) = draw_entity_directive(app, canvas, draw, &env, field, object_tiles) {
+            log.push(log!(Warning, "Error drawing {}: {}", &entity.name, e));
         }
     }
 
@@ -400,19 +429,21 @@ pub fn draw_entity(
         for node_idx in 0..entity.nodes.len() {
             for draw in &config.selected_draw.node_draw {
                 let env = entity.make_node_env(env.clone(), node_idx);
-                if let Err(s) = draw_entity_directive(app, canvas, draw, &env, field, object_tiles)
+                if let Err(e) = draw_entity_directive(app, canvas, draw, &env, field, object_tiles)
                 {
-                    println!("{}", s);
+                    log.push(log!(Warning, "Error drawing {}: {}", &entity.name, e));
                 }
             }
         }
 
         for draw in &config.selected_draw.initial_draw {
-            if let Err(s) = draw_entity_directive(app, canvas, draw, &env, field, object_tiles) {
-                println!("{}", s);
+            if let Err(e) = draw_entity_directive(app, canvas, draw, &env, field, object_tiles) {
+                log.push(log!(Warning, "Error drawing {}: {}", &entity.name, e));
             }
         }
     }
+
+    log.done(())
 }
 
 fn draw_entity_directive(
@@ -565,23 +596,16 @@ fn draw_entity_directive(
             let color = color.evaluate(env)?;
             let scale = scale.evaluate_float(env)?.to_point().cast_unit();
             let rot = rot.evaluate(env)?.as_number()?.to_float();
-            if app
-                .current_palette_unwrap()
-                .gameplay_atlas
-                .draw_sprite(
-                    canvas,
-                    &texture,
-                    point,
-                    None,
-                    Some(justify),
-                    Some(scale),
-                    Some(color),
-                    rot,
-                )
-                .is_none()
-            {
-                return Err(format!("No such gameplay texture: {}", texture));
-            }
+            return app.current_palette_unwrap().gameplay_atlas.draw_sprite(
+                canvas,
+                &texture,
+                point,
+                None,
+                Some(justify),
+                Some(scale),
+                Some(color),
+                rot,
+            );
         }
         DrawElement::DrawRectImage {
             texture,
@@ -634,7 +658,7 @@ fn draw_entity_directive(
                             size: Size2D::new(slice_w, slice_h),
                         }
                     };
-                    draw_tiled(app, canvas, &texture, &bounds, &slice, color);
+                    draw_tiled(app, canvas, &texture, &bounds, &slice, color)?;
                 }
                 "9slice" => {
                     let dim: Size2D<f32, UnknownUnit> = if let Some(dim) = app
@@ -679,7 +703,7 @@ fn draw_entity_directive(
                                     Size2D::new(slice_sizes_x[x], slice_sizes_y[y]),
                                 ),
                                 color,
-                            );
+                            )?;
                         }
                     }
                 }
@@ -763,14 +787,14 @@ fn draw_entity_directive(
                                     fp_pt.x,
                                     fp_pt.y,
                                     color,
-                                );
+                                )?;
                                 continue;
                             }
                         }
                         if let Some(tile) = tileset.tile(pt, &mut tiler) {
                             app.current_palette_unwrap()
                                 .gameplay_atlas
-                                .draw_tile(canvas, tile, fp_pt.x, fp_pt.y, color);
+                                .draw_tile(canvas, tile, fp_pt.x, fp_pt.y, color)?;
                         }
                     }
                 }
@@ -803,7 +827,7 @@ fn draw_tiled(
     bounds: &Rect<f32, UnknownUnit>,
     slice: &Rect<f32, UnknownUnit>,
     color: femtovg::Color,
-) {
+) -> Result<(), String> {
     tile(bounds, slice.width(), slice.height(), |piece| {
         app.current_palette_unwrap().gameplay_atlas.draw_sprite(
             canvas,
@@ -814,16 +838,21 @@ fn draw_tiled(
             None,
             Some(color),
             0.0,
-        );
-    });
+        )
+    })
 }
 
-pub fn tile<F>(bounds: &Rect<f32, UnknownUnit>, width: f32, height: f32, mut func: F)
+pub fn tile<F>(
+    bounds: &Rect<f32, UnknownUnit>,
+    width: f32,
+    height: f32,
+    mut func: F,
+) -> Result<(), String>
 where
-    F: FnMut(Rect<f32, UnknownUnit>),
+    F: FnMut(Rect<f32, UnknownUnit>) -> Result<(), String>,
 {
     if width == 0.0 || height == 0.0 || bounds.width() == 0.0 || bounds.height() == 0.0 {
-        return;
+        return Ok(());
     }
 
     let whole_count_x = (bounds.width() / width).ceil() as i32;
@@ -840,9 +869,11 @@ where
                 }
                 .intersection(bounds)
                 .unwrap(),
-            );
+            )?;
         }
     }
+
+    Ok(())
 }
 
 fn draw_stylegrounds(
@@ -853,7 +884,8 @@ fn draw_stylegrounds(
     current_room: &str,
     flags: &HashSet<String>,
     dreaming: bool,
-) {
+) -> LogResult<()> {
+    let mut log = LogBuf::new();
     for bg in styles {
         #[allow(clippy::collapsible_if)] // TODO draw other types of thing
         if bg.visible(current_room, flags, dreaming) {
@@ -903,22 +935,26 @@ fn draw_stylegrounds(
                             if bg.flip_y { -1.0 } else { 1.0 },
                         );
                         for point in rect_point_iter2(aligned_intersection, dim.to_vector()) {
-                            atlas.draw_sprite(
-                                canvas,
-                                &texture,
-                                point.cast_unit() + dim.to_vector().cast_unit() / 2.0,
-                                None,
-                                None,
-                                Some(scale),
-                                Some(color),
-                                0.0,
-                            );
+                            atlas
+                                .draw_sprite(
+                                    canvas,
+                                    &texture,
+                                    point.cast_unit() + dim.to_vector().cast_unit() / 2.0,
+                                    None,
+                                    None,
+                                    Some(scale),
+                                    Some(color),
+                                    0.0,
+                                )
+                                .offload(LogLevel::Error, &mut log);
                         }
                     }
                 }
             }
         }
     }
+
+    log.done(())
 }
 
 fn parse_color(color: &str) -> Option<Color> {

@@ -76,8 +76,7 @@ impl Serialize for EverestModuleVersion {
 }
 
 impl EverestYaml {
-    // TODO: use Result<Self, E>
-    pub fn from_config(source: &mut ConfigSource) -> Option<Self> {
+    pub fn from_config(source: &mut ConfigSource) -> Result<Self, String> {
         if let Some(mut reader) = source.get_file(Path::new("everest.yaml")) {
             let mut data = String::new();
             reader.read_to_string(&mut data).unwrap();
@@ -85,7 +84,7 @@ impl EverestYaml {
                 match serde_yaml::from_str(data.trim_start_matches('\u{FEFF}')) {
                     Ok(e) => e,
                     Err(e) => {
-                        println!(
+                        return Err(format!(
                             "Error parsing {}/everest.yaml: {:?}",
                             source
                                 .filesystem_root()
@@ -93,12 +92,11 @@ impl EverestYaml {
                                 .to_str()
                                 .unwrap_or("<invalid unicode>"),
                             e
-                        );
-                        return None;
+                        ));
                     }
                 };
             if everest_yaml.len() != 1 {
-                println!(
+                return Err(format!(
                     "Error parsing {}/everest.yaml: {} entries",
                     source
                         .filesystem_root()
@@ -106,12 +104,18 @@ impl EverestYaml {
                         .to_str()
                         .unwrap_or("<invalid unicode>"),
                     everest_yaml.len()
-                );
-                return None;
+                ));
             }
-            everest_yaml.into_iter().next()
+            Ok(everest_yaml.into_iter().next().unwrap())
         } else {
-            None
+            Err(format!(
+                "No everest.yaml in {}",
+                source
+                    .filesystem_root()
+                    .unwrap()
+                    .to_str()
+                    .unwrap_or("<invalid unicode>")
+            ))
         }
     }
 }

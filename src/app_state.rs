@@ -14,6 +14,8 @@ use crate::auto_saver::AutoSaver;
 use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::celeste_mod::discovery;
 use crate::celeste_mod::module::CelesteModule;
+use crate::logging::LogMessage;
+use crate::logging::*;
 use crate::map_struct::{
     CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapLevelUpdate,
     CelesteMapStyleground, MapID,
@@ -264,24 +266,6 @@ impl Data for Progress {
     fn same(&self, other: &Self) -> bool {
         self == other
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct LogMessage {
-    pub level: LogLevel,
-    pub source: String,
-    pub message: String,
-    pub context: String,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd)]
-#[allow(unused)]
-pub enum LogLevel {
-    Debug,
-    Info,
-    Warning,
-    Error,
-    Critical,
 }
 
 #[derive(Debug)]
@@ -641,7 +625,7 @@ impl AppState {
                         });
                     }
                     if let Entry::Vacant(e) = self.palettes.entry(map.id.clone()) {
-                        e.insert(ModuleAggregate::new(&self.modules, &map));
+                        e.insert(ModuleAggregate::new(&self.modules, &map).emit(cx));
                     }
 
                     self.loaded_maps.insert(map.id.clone(), *map);
@@ -655,7 +639,8 @@ impl AppState {
                 let mut r = modules.lock().unwrap();
                 std::mem::swap(r.deref_mut(), &mut self.modules);
                 self.modules_version += 1;
-                trigger_palette_update(&mut self.palettes, &self.modules, &self.loaded_maps);
+                trigger_palette_update(&mut self.palettes, &self.modules, &self.loaded_maps)
+                    .emit(cx);
             }
             AppEvent::SelectTool { spec } => {
                 if let Some(tool) = self.current_tool.take() {
@@ -1101,7 +1086,8 @@ pub fn trigger_module_load(cx: &mut Context, path: PathBuf) {
                 },
             })
             .unwrap();
-        });
+        })
+        .emit_p(cx);
         cx.emit(AppEvent::Progress {
             progress: Progress {
                 progress: 100,
@@ -1120,10 +1106,12 @@ pub fn trigger_palette_update(
     palettes: &mut HashMap<MapID, ModuleAggregate>,
     modules: &InternedMap<CelesteModule>,
     maps: &HashMap<MapID, CelesteMap>,
-) {
+) -> LogResult<()> {
+    let mut log = LogBuf::new();
     for (name, pal) in palettes.iter_mut() {
-        *pal = ModuleAggregate::new(modules, maps.get(name).unwrap());
+        *pal = ModuleAggregate::new(modules, maps.get(name).unwrap()).offload(&mut log);
     }
+    LogResult::new((), log)
 }
 
 pub fn pick_new_name(map: &CelesteMap) -> String {

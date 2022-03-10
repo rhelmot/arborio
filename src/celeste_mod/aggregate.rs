@@ -11,6 +11,7 @@ use crate::autotiler::{Autotiler, Tileset};
 use crate::celeste_mod::entity_config::{EntityConfig, StylegroundConfig, TriggerConfig};
 use crate::celeste_mod::module::CelesteModule;
 use crate::celeste_mod::walker::{open_module, ConfigSourceTrait};
+use crate::logging::*;
 use crate::widgets::list_palette::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
 };
@@ -34,9 +35,25 @@ pub struct ModuleAggregate {
 impl Model for ModuleAggregate {}
 
 impl ModuleAggregate {
-    pub fn new(modules: &InternedMap<CelesteModule>, map: &CelesteMap) -> Self {
+    pub fn new(modules: &InternedMap<CelesteModule>, map: &CelesteMap) -> LogResult<Self> {
+        let mut log = LogBuf::new();
         let current_module = map.id.module;
-        // TODO: warning on missing dependencies
+        for dep in modules
+            .get(&current_module)
+            .unwrap()
+            .everest_metadata
+            .dependencies
+            .iter()
+        {
+            if modules.get(&dep.name).is_none() {
+                log.push(log!(
+                    Warning,
+                    "{} missing dependency {}",
+                    current_module,
+                    &dep.name
+                ));
+            }
+        }
         let dep_mods = || {
             modules
                 .get(&current_module)
@@ -143,7 +160,7 @@ impl ModuleAggregate {
             decals_palette,
         };
         result.sanity_check();
-        result
+        LogResult::new(result, log)
     }
 
     pub fn sanity_check(&self) {

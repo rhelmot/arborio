@@ -1,4 +1,5 @@
 use include_dir::{include_dir, Dir, DirEntry};
+use std::fmt::Formatter;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
@@ -9,6 +10,12 @@ use super::ReadSeek;
 const EMBEDDED: Dir = include_dir!("conf");
 #[derive(Copy, Clone)]
 pub struct EmbeddedSource();
+
+impl std::fmt::Display for EmbeddedSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Embedded Config")
+    }
+}
 
 impl ConfigSourceTrait for EmbeddedSource {
     fn filesystem_root(&mut self) -> Option<PathBuf> {

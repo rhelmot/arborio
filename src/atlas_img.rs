@@ -5,7 +5,9 @@ use imgref::Img;
 use rgb::RGBA8;
 use std::borrow::Borrow;
 use std::convert::TryFrom;
+use std::error::Error;
 use std::ffi::OsStr;
+use std::fmt::Formatter;
 use std::io;
 use std::io::Read; // trait method import
 use std::path;
@@ -14,7 +16,29 @@ use std::sync::{Arc, Mutex};
 use crate::assets::{intern_owned, Interned, InternedMap};
 use crate::autotiler::TileReference;
 use crate::celeste_mod::walker::{ConfigSource, ConfigSourceTrait};
+use crate::logging::LogLevel;
+use crate::logging::*;
 use crate::units::*;
+
+#[derive(Debug)]
+pub struct AtlasImgError {
+    pub source: String,
+    pub inner: Box<dyn Error>,
+}
+
+impl std::fmt::Display for AtlasImgError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Error parsing {}: {}", self.source, self.inner)
+    }
+}
+
+impl Error for AtlasImgError {}
+
+impl AtlasImgError {
+    pub fn new(source: String, inner: Box<dyn Error>) -> Self {
+        Self { source, inner }
+    }
+}
 
 #[derive(Debug)]
 enum BlobData {
@@ -69,16 +93,35 @@ impl Atlas {
             sprites_map: InternedMap::new(),
         }
     }
-    pub fn load(&mut self, config: &mut ConfigSource, atlas: &str) {
+    pub fn load(&mut self, config: &mut ConfigSource, atlas: &str) -> LogResult<()> {
+        let mut log = LogBuf::new();
         self.load_crunched(config, atlas)
-            .expect("Fatal error parsing packed atlas");
+            .map_err(|e| {
+                AtlasImgError::new(
+                    format!("crunched atlas {} of {}", atlas, config),
+                    Box::new(e),
+                )
+            })
+            .offload(LogLevel::Critical, &mut log);
 
         for path in config.list_all_files(&path::PathBuf::from("Graphics/Atlases").join(atlas)) {
             if path.extension().and_then(|ext| ext.to_str()) == Some("png") {
                 self.load_loose(config, atlas, &path)
-                    .unwrap_or_else(|_| panic!("Fatal error parsing image file {:?}", path));
+                    .map_err(|e| {
+                        AtlasImgError::new(
+                            format!(
+                                "{} of {}",
+                                path.to_str().unwrap_or("<invalid unicode>"),
+                                config
+                            ),
+                            Box::new(e),
+                        )
+                    })
+                    .offload(LogLevel::Error, &mut log);
             }
         }
+
+        log.done(())
     }
 
     fn load_loose(
@@ -271,10 +314,16 @@ impl MultiAtlas {
         scale: Option<Point2D<f32, UnknownUnit>>,
         color: Option<Color>,
         rot: f32,
-    ) -> Option<()> {
-        let sprite = self
+    ) -> Result<(), String> {
+        let sprite = match self
             .sprites_map
-            .get(sprite_path.replace('\\', "/").as_str())?;
+            .get(sprite_path.replace('\\', "/").as_str())
+        {
+            None => {
+                return Err(format!("No such texture: {}", sprite_path));
+            }
+            Some(sprite) => sprite,
+        };
         let color = color.unwrap_or_else(Color::white);
 
         let justify = justify.unwrap_or_else(|| Vector2D::new(0.5, 0.5));
@@ -298,7 +347,7 @@ impl MultiAtlas {
         let slice_visible = if let Some(slice_visible) = slice_visible {
             slice_visible
         } else {
-            return Some(());
+            return Ok(());
         };
         let canvas_rect = slice_visible
             .translate(-justify_offset)
@@ -332,7 +381,7 @@ impl MultiAtlas {
         canvas.fill_path(&mut path, paint);
         canvas.restore();
 
-        Some(())
+        Ok(())
     }
 
     pub fn draw_tile(
@@ -342,7 +391,7 @@ impl MultiAtlas {
         ox: f32,
         oy: f32,
         color: femtovg::Color,
-    ) -> Option<()> {
+    ) -> Result<(), String> {
         self.draw_sprite(
             canvas,
             *tile_ref.texture,

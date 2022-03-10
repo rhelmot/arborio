@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::fmt::Formatter;
 use std::fs::File;
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
@@ -22,6 +23,18 @@ impl ZipSource {
                 path: path.to_path_buf(),
                 archive: a,
             })
+    }
+}
+
+impl std::fmt::Display for ZipSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.path
+                .to_str()
+                .unwrap_or("<invalid unicode in mod zip name>")
+        )
     }
 }
 

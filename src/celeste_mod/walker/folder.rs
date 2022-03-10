@@ -1,3 +1,4 @@
+use std::fmt::Formatter;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -16,6 +17,18 @@ impl FolderSource {
         } else {
             None
         }
+    }
+}
+
+impl std::fmt::Display for FolderSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.0
+                .to_str()
+                .unwrap_or("<invalid unicode in mod folder name>")
+        )
     }
 }
 

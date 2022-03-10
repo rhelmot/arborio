@@ -1,5 +1,6 @@
 use vizia::*;
 
+use crate::logging::*;
 use crate::tools::SCROLL_SENSITIVITY;
 use crate::units::*;
 use crate::{AppEvent, AppState};
@@ -103,16 +104,19 @@ impl View for TilePaletteWidget {
         canvas.set_transform(t.m11, t.m12, t.m21, t.m22, t.m31.round(), t.m32.round());
 
         let palette = app.current_palette_unwrap();
-        palette.gameplay_atlas.draw_sprite(
-            canvas,
-            "tilesets/scenery",
-            Point2D::new(0.0, 0.0),
-            None,
-            Some(Vector2D::new(0.0, 0.0)),
-            None,
-            None,
-            0.0,
-        );
+        palette
+            .gameplay_atlas
+            .draw_sprite(
+                canvas,
+                "tilesets/scenery",
+                Point2D::new(0.0, 0.0),
+                None,
+                Some(Vector2D::new(0.0, 0.0)),
+                None,
+                None,
+                0.0,
+            )
+            .emit(LogLevel::Error, cx);
 
         let screen_hovered = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let screen_hovered = screen_hovered - ScreenVector::new(bounds.x, bounds.y);
