@@ -53,6 +53,7 @@ pub struct AppState {
 
     pub last_draw: RefCell<time::Instant>, // mutable to draw
     pub progress: Progress,
+    pub logs: Vec<LogMessage>,
 }
 
 #[derive(Serialize, Deserialize, Default, Lens, Debug)]
@@ -66,6 +67,7 @@ pub enum AppTab {
     ProjectOverview(Interned),
     Map(MapTab),
     ConfigEditor(ConfigEditorTab),
+    Logs,
 }
 
 #[derive(Debug, Lens, Clone)]
@@ -198,6 +200,7 @@ impl ToString for AppTab {
             AppTab::ProjectOverview(s) => format!("{} - Overview", s),
             AppTab::Map(m) => m.id.sid.to_string(),
             AppTab::ConfigEditor(_) => "Config Editor".to_owned(),
+            AppTab::Logs => "Logs".to_owned(),
         }
     }
 }
@@ -263,8 +266,29 @@ impl Data for Progress {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct LogMessage {
+    pub level: LogLevel,
+    pub source: String,
+    pub message: String,
+    pub context: String,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd)]
+#[allow(unused)]
+pub enum LogLevel {
+    Debug,
+    Info,
+    Warning,
+    Error,
+    Critical,
+}
+
 #[derive(Debug)]
 pub enum AppEvent {
+    Log {
+        message: Mutex<Option<LogMessage>>,
+    },
     Progress {
         progress: Progress,
     },
@@ -282,6 +306,7 @@ pub enum AppEvent {
     },
     OpenInstallationTab,
     OpenConfigEditorTab,
+    OpenLogsTab,
     SelectTab {
         idx: usize,
     },
@@ -501,6 +526,7 @@ impl AppState {
                 progress: 100,
                 status: "".to_owned(),
             },
+            logs: vec![],
         }
     }
 
@@ -547,6 +573,11 @@ impl AppState {
     pub fn apply(&mut self, cx: &mut Context, event: &AppEvent) {
         match event {
             // global events
+            AppEvent::Log { message } => {
+                if let Some(msg) = message.lock().unwrap().take() {
+                    self.logs.push(msg);
+                }
+            }
             AppEvent::Progress { progress } => {
                 self.progress = progress.clone();
             }
@@ -570,6 +601,18 @@ impl AppState {
                     }
                 }
                 self.tabs.push(AppTab::CelesteOverview);
+                cx.emit(AppEvent::SelectTab {
+                    idx: self.tabs.len() - 1,
+                });
+            }
+            AppEvent::OpenLogsTab => {
+                for (i, tab) in self.tabs.iter().enumerate() {
+                    if matches!(tab, AppTab::Logs) {
+                        cx.emit(AppEvent::SelectTab { idx: i });
+                        return;
+                    }
+                }
+                self.tabs.push(AppTab::Logs);
                 cx.emit(AppEvent::SelectTab {
                     idx: self.tabs.len() - 1,
                 });

@@ -1,6 +1,7 @@
 pub mod config_editor;
 pub mod editor;
 pub mod installation;
+pub mod logs;
 pub mod project;
 
 use crate::app_state::AppState;
@@ -23,6 +24,9 @@ pub fn build_tabs(cx: &mut Context) {
                 }
                 AppTab::ConfigEditor(_) => {
                     config_editor::build_config_editor(cx);
+                }
+                AppTab::Logs => {
+                    logs::build_logs(cx);
                 }
             })
             .class("tab_container");

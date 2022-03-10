@@ -30,6 +30,32 @@ use crate::widgets::tabs::{build_tab_bar, build_tabs};
 use widgets::entity_tweaker::EntityTweakerWidget;
 use widgets::list_palette::PaletteWidget;
 
+macro_rules! log {
+    ($cx:expr, $level:ident, $message:expr, $($context:expr),*) => {
+        $cx.emit($crate::app_state::AppEvent::Log {
+            message: ::std::sync::Mutex::new(Some($crate::app_state::LogMessage {
+                level: $crate::app_state::LogLevel::$level,
+                source: format!("{}:{}", file!(), line!()),
+                message: $message.to_string(),
+                context: {
+                    let result = "".to_owned();
+                    #[allow(unused)]
+                    let first = false;
+                    $(
+                        let result = if first {
+                            format!("{} = {:#?}", stringify!($context), $context)
+                        } else {
+                            format!("{}\n\n{} = {:#?}", result, stringify!($context), $context)
+                        };
+                        let first = false;
+                    )*
+                    result
+                },
+            }))
+        });
+    }
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let icon_img = image::load_from_memory(include_bytes!("../img/icon.png")).unwrap();
     let (width, height) = (icon_img.width(), icon_img.height());
@@ -41,6 +67,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ),
         |cx| {
             app_state::AppState::new().build(cx);
+            log!(cx, Info, "Hello world!",);
             if let Some(path) = &cx.data::<AppState>().unwrap().config.celeste_root {
                 let path = path.clone();
                 cx.emit(AppEvent::SetConfigPath { path });
@@ -128,6 +155,15 @@ fn build_menu_bar(cx: &mut Context) {
                 },
                 move |cx| {
                     cx.emit(AppEvent::OpenConfigEditorTab);
+                },
+            );
+            MenuButton::new(
+                cx,
+                move |cx| {
+                    Label::new(cx, "Logs");
+                },
+                move |cx| {
+                    cx.emit(AppEvent::OpenLogsTab);
                 },
             );
         },
