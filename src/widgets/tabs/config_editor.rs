@@ -1,4 +1,3 @@
-#![allow(unused_variables, dead_code)] // TODO: remove this first thing tomorrow
 use parking_lot::Mutex;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
@@ -372,7 +371,14 @@ fn scan_entities(
                 ConfigSearchFilter::NoConfig => {
                     !palette.entity_config.contains_key(entity.name.as_str())
                 }
-                ConfigSearchFilter::NoDrawConfig => todo!(),
+                ConfigSearchFilter::NoDrawConfig => palette
+                    .entity_config
+                    .get(entity.name.as_str())
+                    .map_or(true, |config| {
+                        let default = palette.entity_config.get("default").unwrap();
+                        config.selected_draw == default.selected_draw
+                            && config.standard_draw == default.standard_draw
+                    }),
                 ConfigSearchFilter::NoAttrConfig => palette
                     .entity_config
                     .get(entity.name.as_str())
@@ -414,7 +420,47 @@ fn scan_triggers(
     map: &CelesteMap,
     palette: &ModuleAggregate,
 ) {
-    todo!()
+    for room in &map.levels {
+        for entity in &room.entities {
+            let included = match filter {
+                ConfigSearchFilter::All => true,
+                ConfigSearchFilter::NoConfig => {
+                    !palette.trigger_config.contains_key(entity.name.as_str())
+                }
+                ConfigSearchFilter::NoDrawConfig => false,
+                ConfigSearchFilter::NoAttrConfig => palette
+                    .trigger_config
+                    .get(entity.name.as_str())
+                    .map_or(true, |config| {
+                        entity
+                            .attributes
+                            .iter()
+                            .any(|(key, _)| config.attribute_info.contains_key(key.as_str()))
+                    }),
+                ConfigSearchFilter::Matches(s) => entity
+                    .name
+                    .to_ascii_lowercase()
+                    .contains(&s.to_ascii_lowercase()),
+            };
+            if included {
+                let tcsr = TriggerConfigSearchResult::new(&entity.name);
+                let tcsr = if let Some(trigger_result) = results.get(&tcsr) {
+                    trigger_result
+                } else {
+                    results.insert(tcsr);
+                    results
+                        .get(&TriggerConfigSearchResult::new(&entity.name))
+                        .unwrap()
+                };
+                let mut vec = tcsr.examples.lock();
+                if vec.len() == 100 {
+                    vec[rand::random::<usize>() % 100] = entity.clone();
+                } else {
+                    vec.push(entity.clone());
+                }
+            }
+        }
+    }
 }
 
 fn scan_stylegrounds(
@@ -423,7 +469,50 @@ fn scan_stylegrounds(
     map: &CelesteMap,
     palette: &ModuleAggregate,
 ) {
-    todo!()
+    for g in [&map.foregrounds, &map.backgrounds] {
+        for style in g {
+            let included = match filter {
+                ConfigSearchFilter::All => true,
+                ConfigSearchFilter::NoConfig => {
+                    !palette.styleground_config.contains_key(style.name.as_str())
+                }
+                ConfigSearchFilter::NoDrawConfig => palette
+                    .styleground_config
+                    .get(style.name.as_str())
+                    .map_or(false, |c| c.preview.is_none()),
+                ConfigSearchFilter::NoAttrConfig => palette
+                    .styleground_config
+                    .get(style.name.as_str())
+                    .map_or(true, |config| {
+                        style
+                            .attributes
+                            .iter()
+                            .any(|(key, _)| config.attribute_info.contains_key(key.as_str()))
+                    }),
+                ConfigSearchFilter::Matches(s) => style
+                    .name
+                    .to_ascii_lowercase()
+                    .contains(&s.to_ascii_lowercase()),
+            };
+            if included {
+                let scsr = StylegroundConfigSearchResult::new(&style.name);
+                let scsr = if let Some(style_result) = results.get(&scsr) {
+                    style_result
+                } else {
+                    results.insert(scsr);
+                    results
+                        .get(&StylegroundConfigSearchResult::new(&style.name))
+                        .unwrap()
+                };
+                let mut vec = scsr.examples.lock();
+                if vec.len() == 100 {
+                    vec[rand::random::<usize>() % 100] = style.clone();
+                } else {
+                    vec.push(style.clone());
+                }
+            }
+        }
+    }
 }
 
 fn build_search_results(cx: &mut Context) {

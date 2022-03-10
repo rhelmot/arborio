@@ -6,7 +6,7 @@ use std::sync::Arc;
 use crate::atlas_img::Atlas;
 use crate::autotiler;
 use crate::autotiler::Tileset;
-use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
+use crate::celeste_mod::entity_config::{EntityConfig, StylegroundConfig, TriggerConfig};
 use crate::celeste_mod::everest_yaml::EverestYaml;
 use crate::celeste_mod::walker::ConfigSource;
 use crate::celeste_mod::walker::ConfigSourceTrait;
@@ -19,6 +19,7 @@ pub struct CelesteModule {
     pub tilers: InternedMap<Arc<autotiler::Autotiler>>,
     pub entity_config: InternedMap<Arc<EntityConfig>>,
     pub trigger_config: InternedMap<Arc<TriggerConfig>>,
+    pub styleground_config: InternedMap<Arc<StylegroundConfig>>,
     pub maps: Vec<Interned>,
 }
 
@@ -31,6 +32,7 @@ impl CelesteModule {
             tilers: InternedMap::new(),
             entity_config: InternedMap::new(),
             trigger_config: InternedMap::new(),
+            styleground_config: InternedMap::new(),
             maps: vec![],
         }
     }
@@ -74,6 +76,15 @@ impl CelesteModule {
                 }
                 self.trigger_config
                     .insert(config.trigger_name, Arc::new(config));
+            } else {
+            }
+        }
+        for path in source.list_all_files(&PathBuf::from("Arborio/stylegrounds")) {
+            if let Some(f) = source.get_file(&path) {
+                let config: StylegroundConfig =
+                    serde_yaml::from_reader(f).expect("Failed to parse styleground celeste_mod");
+                self.styleground_config
+                    .insert(config.styleground_name, Arc::new(config));
             } else {
             }
         }

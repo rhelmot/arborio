@@ -45,6 +45,15 @@ pub struct TriggerConfig {
     pub templates: Vec<EntityTemplate>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StylegroundConfig {
+    pub styleground_name: assets::Interned,
+    #[serde(default)]
+    pub preview: Option<Expression>,
+    #[serde(default)]
+    pub attribute_info: assets::InternedMap<AttributeInfo>,
+}
+
 fn eight() -> u32 {
     8
 }
@@ -66,9 +75,9 @@ impl Default for PencilBehavior {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AttributeInfo {
     pub ty: AttributeType,
+    pub default: AttributeValue,
     #[serde(default)]
     pub options: Vec<AttributeOption>,
-    pub default: AttributeValue,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -85,7 +94,7 @@ pub enum AttributeType {
     Bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum AttributeValue {
     String(String),
     Float(f32),
@@ -93,13 +102,13 @@ pub enum AttributeValue {
     Bool(bool),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct EntityTemplate {
     pub name: assets::Interned,
     pub attributes: HashMap<assets::Interned, AttributeValue>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct EntityRects {
     #[serde(default)]
     pub initial_rects: Vec<Rect>,
@@ -107,7 +116,7 @@ pub struct EntityRects {
     pub node_rects: Vec<Rect>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, PartialEq)]
 pub struct EntityDraw {
     #[serde(default)]
     pub initial_draw: Vec<DrawElement>,
@@ -116,7 +125,7 @@ pub struct EntityDraw {
 }
 
 #[allow(clippy::large_enum_variant, clippy::enum_variant_names)]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum DrawElement {
     DrawRect {
         rect: Rect,
@@ -225,19 +234,19 @@ fn expr_zero() -> Expression {
     Expression::mk_const(0)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Rect {
     pub topleft: Vec2,
     pub size: Vec2,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Vec2 {
     pub x: Expression,
     pub y: Expression,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Color {
     pub r: Expression,
     pub g: Expression,

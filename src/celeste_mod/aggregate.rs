@@ -8,7 +8,7 @@ use vizia::*;
 use crate::assets::{intern_str, InternedMap};
 use crate::atlas_img::MultiAtlas;
 use crate::autotiler::{Autotiler, Tileset};
-use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
+use crate::celeste_mod::entity_config::{EntityConfig, StylegroundConfig, TriggerConfig};
 use crate::celeste_mod::module::CelesteModule;
 use crate::celeste_mod::walker::{open_module, ConfigSourceTrait};
 use crate::widgets::list_palette::{
@@ -22,6 +22,7 @@ pub struct ModuleAggregate {
     pub autotilers: InternedMap<Arc<Autotiler>>,
     pub entity_config: InternedMap<Arc<EntityConfig>>,
     pub trigger_config: InternedMap<Arc<TriggerConfig>>,
+    pub styleground_config: InternedMap<Arc<StylegroundConfig>>,
 
     pub fg_tiles_palette: Vec<TileSelectable>,
     pub bg_tiles_palette: Vec<TileSelectable>,
@@ -112,6 +113,10 @@ impl ModuleAggregate {
             .flat_map(|(_, module)| module.trigger_config.iter())
             .map(|(name, config)| (*name, config.clone()))
             .collect();
+        let styleground_config: InternedMap<Arc<StylegroundConfig>> = dep_mods()
+            .flat_map(|(_, module)| module.styleground_config.iter())
+            .map(|(name, config)| (*name, config.clone()))
+            .collect();
 
         let fg_tiles_palette = extract_tiles_palette(autotilers.get("fg").unwrap());
         let bg_tiles_palette = extract_tiles_palette(autotilers.get("bg").unwrap());
@@ -129,6 +134,7 @@ impl ModuleAggregate {
             autotilers,
             entity_config,
             trigger_config,
+            styleground_config,
 
             fg_tiles_palette,
             bg_tiles_palette,
