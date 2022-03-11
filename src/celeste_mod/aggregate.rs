@@ -17,7 +17,7 @@ use crate::widgets::list_palette::{
 };
 use crate::CelesteMap;
 
-#[derive(Lens)]
+#[derive(Lens, Clone)]
 pub struct ModuleAggregate {
     pub gameplay_atlas: MultiAtlas,
     pub autotilers: InternedMap<Arc<Autotiler>>,

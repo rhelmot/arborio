@@ -80,6 +80,7 @@ pub struct ConfigEditorTab {
     pub search_filter: ConfigSearchFilter,
     pub search_results: Vec<ConfigSearchResult>,
     pub selected_result: usize,
+    pub attribute_filter: String,
 }
 
 impl Default for ConfigEditorTab {
@@ -91,6 +92,7 @@ impl Default for ConfigEditorTab {
             search_filter: ConfigSearchFilter::All,
             search_results: vec![],
             selected_result: 0,
+            attribute_filter: "originX,originY".to_owned(),
         }
     }
 }
@@ -164,7 +166,7 @@ impl std::fmt::Display for ConfigSearchFilter {
             ConfigSearchFilter::All => write!(f, "All"),
             ConfigSearchFilter::NoConfig => write!(f, "Unconfigured"),
             ConfigSearchFilter::NoDrawConfig => write!(f, "No draw config"),
-            ConfigSearchFilter::NoAttrConfig => write!(f, "No attribute config"),
+            ConfigSearchFilter::NoAttrConfig => write!(f, "Missing attribute config"),
             ConfigSearchFilter::Matches(_) => write!(f, "Search by name..."),
         }
     }
@@ -331,6 +333,10 @@ pub enum AppEvent {
     SelectSearchFilter {
         tab: usize,
         filter: ConfigSearchFilter,
+    },
+    SelectSearchFilterAttributes {
+        tab: usize,
+        filter: String,
     },
     PopulateConfigSearchResults {
         tab: usize,
@@ -761,6 +767,11 @@ impl AppState {
             AppEvent::SelectSearchFilter { tab, filter } => {
                 if let Some(AppTab::ConfigEditor(ctab)) = self.tabs.get_mut(*tab) {
                     ctab.search_filter = filter.clone();
+                }
+            }
+            AppEvent::SelectSearchFilterAttributes { tab, filter } => {
+                if let Some(AppTab::ConfigEditor(ctab)) = self.tabs.get_mut(*tab) {
+                    ctab.attribute_filter = filter.clone();
                 }
             }
             AppEvent::SelectSearchType { tab, ty } => {

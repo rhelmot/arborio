@@ -12,7 +12,7 @@ use crate::celeste_mod::walker::ConfigSource;
 use crate::celeste_mod::walker::ConfigSourceTrait;
 use crate::logging::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)] // Clone should just increase the refcount on each arc, right?
 pub struct CelesteModule {
     pub filesystem_root: Option<PathBuf>,
     pub everest_metadata: EverestYaml,

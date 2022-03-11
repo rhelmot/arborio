@@ -72,7 +72,7 @@ impl BlobData {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Atlas {
     blobs: Vec<Arc<Mutex<BlobData>>>, // TODO: we can get rid of this mutex (and BlobData altogether) if we can somehow push image data into opengl at load time
     pub(crate) sprites_map: InternedMap<Arc<AtlasSprite>>,
@@ -274,6 +274,7 @@ pub fn load_data_file(
     Ok(Img::new(buf, width as usize, height as usize))
 }
 
+#[derive(Clone)]
 pub struct MultiAtlas {
     sprites_map: InternedMap<Arc<AtlasSprite>>,
 }

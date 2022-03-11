@@ -1,16 +1,16 @@
 use parking_lot::Mutex;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
-use std::path::Path;
 use std::sync::Arc;
 use vizia::*;
 
 use crate::app_state::{
-    AppConfig, AppEvent, AppState, AppTab, ConfigEditorTab, ConfigSearchFilter, ConfigSearchType,
-    SearchScope,
+    AppEvent, AppState, AppTab, ConfigEditorTab, ConfigSearchFilter, ConfigSearchType, SearchScope,
+    StylegroundSelection,
 };
-use crate::celeste_mod::discovery;
-use crate::lenses::{AutoSaverLens, CurrentTabImplLens, IsFailedLens};
+use crate::assets::InternedMap;
+use crate::celeste_mod::module::CelesteModule;
+use crate::lenses::{CurrentTabImplLens, IsFailedLens};
 use crate::logging::*;
 use crate::map_struct::{CelesteMapEntity, CelesteMapStyleground};
 use crate::widgets::tabs::project::load_map_inner;
@@ -26,19 +26,19 @@ pub enum ConfigSearchResult {
 #[derive(Clone, Debug)]
 pub struct EntityConfigSearchResult {
     pub name: String,
-    pub examples: Arc<Mutex<Vec<CelesteMapEntity>>>,
+    pub examples: Arc<Mutex<Vec<(CelesteMapEntity, MapID, usize)>>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct TriggerConfigSearchResult {
     pub name: String,
-    pub examples: Arc<Mutex<Vec<CelesteMapEntity>>>,
+    pub examples: Arc<Mutex<Vec<(CelesteMapEntity, MapID, usize)>>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct StylegroundConfigSearchResult {
     pub name: String,
-    pub examples: Arc<Mutex<Vec<CelesteMapStyleground>>>,
+    pub examples: Arc<Mutex<Vec<(CelesteMapStyleground, MapID, StylegroundSelection)>>>,
 }
 
 impl EntityConfigSearchResult {
@@ -259,6 +259,17 @@ pub fn build_search_settings(cx: &mut Context) {
                 },
             );
         });
+        HStack::new(cx, move |cx| {
+            Label::new(cx, "Exclude attributes");
+            Textbox::new(cx, ctab.then(ConfigEditorTab::attribute_filter)).on_edit(|cx, data| {
+                let tab = cx.data::<AppState>().unwrap().current_tab;
+                cx.emit(AppEvent::SelectSearchFilterAttributes { tab, filter: data });
+            });
+        })
+        .bind(ctab.then(ConfigEditorTab::search_filter), |handle, lens| {
+            let showme = lens.get(handle.cx).take() == ConfigSearchFilter::NoAttrConfig;
+            handle.display(showme);
+        });
         Binding::new(
             cx,
             IsFailedLens::new(
@@ -286,40 +297,41 @@ pub fn build_search_settings(cx: &mut Context) {
             cx,
             move |cx| {
                 let tab = cx.data::<AppState>().unwrap().current_tab;
+                let modules = cx.data::<AppState>().unwrap().modules.clone();
                 let filter = ctab.then(ConfigEditorTab::search_filter).get(cx).take();
+                let attrs = ctab.then(ConfigEditorTab::attribute_filter).get(cx).take();
                 let ty = ctab.then(ConfigEditorTab::search_type).get(cx).take();
                 let scope = ctab.then(ConfigEditorTab::search_scope).get(cx).take();
-                let root = AppState::config
-                    .then(AutoSaverLens::new())
-                    .then(AppConfig::celeste_root)
-                    .then(UnwrapLens::new())
-                    .get(cx)
-                    .take();
                 let targets = collect_search_targets(cx);
 
                 cx.spawn(move |cx| {
                     let results = match ty {
                         ConfigSearchType::Entities => {
-                            walk_maps(&root, &scope, &filter, &targets, scan_entities)
+                            walk_maps(&modules, &scope, &filter, &targets, &attrs, scan_entities)
                                 .emit_p(cx)
                                 .into_iter()
                                 .map(ConfigSearchResult::Entity)
                                 .collect()
                         }
                         ConfigSearchType::Triggers => {
-                            walk_maps(&root, &scope, &filter, &targets, scan_triggers)
+                            walk_maps(&modules, &scope, &filter, &targets, &attrs, scan_triggers)
                                 .emit_p(cx)
                                 .into_iter()
                                 .map(ConfigSearchResult::Trigger)
                                 .collect()
                         }
-                        ConfigSearchType::Stylegrounds => {
-                            walk_maps(&root, &scope, &filter, &targets, scan_stylegrounds)
-                                .emit_p(cx)
-                                .into_iter()
-                                .map(ConfigSearchResult::Styleground)
-                                .collect()
-                        }
+                        ConfigSearchType::Stylegrounds => walk_maps(
+                            &modules,
+                            &scope,
+                            &filter,
+                            &targets,
+                            &attrs,
+                            scan_stylegrounds,
+                        )
+                        .emit_p(cx)
+                        .into_iter()
+                        .map(ConfigSearchResult::Styleground)
+                        .collect(),
                     };
                     cx.emit(AppEvent::PopulateConfigSearchResults { tab, results })
                         .unwrap();
@@ -332,16 +344,16 @@ pub fn build_search_settings(cx: &mut Context) {
 }
 
 fn walk_maps<T>(
-    root: &Path,
+    modules: &InternedMap<CelesteModule>,
     scope: &SearchScope,
     filter: &ConfigSearchFilter,
     targets: &[SearchScope],
-    f: impl Fn(&mut HashSet<T>, &ConfigSearchFilter, &CelesteMap, &ModuleAggregate),
+    attrs: &str,
+    f: impl Fn(&mut HashSet<T>, &ConfigSearchFilter, &HashSet<&str>, &CelesteMap, &ModuleAggregate),
 ) -> LogResult<HashSet<T>> {
     let mut log = LogBuf::new();
     let mut results = HashSet::new();
-    let mut modules = HashMap::new();
-    discovery::load_all(root, &mut modules, |_, _| {}).offload(&mut log);
+    let attrs = attrs.split(',').collect::<HashSet<_>>();
     for (name, module) in modules.iter() {
         for map in &module.maps {
             if scope.filter_map(
@@ -354,8 +366,8 @@ fn walk_maps<T>(
                 if let Ok(map) =
                     load_map_inner(module.filesystem_root.as_ref().unwrap(), *name, *map)
                 {
-                    let palette = ModuleAggregate::new(&modules, &map).offload(&mut log);
-                    f(&mut results, filter, &map, &palette);
+                    let palette = ModuleAggregate::new(modules, &map).offload(&mut log);
+                    f(&mut results, filter, &attrs, &map, &palette);
                 }
             }
         }
@@ -367,10 +379,11 @@ fn walk_maps<T>(
 fn scan_entities(
     results: &mut HashSet<EntityConfigSearchResult>,
     filter: &ConfigSearchFilter,
+    attrs: &HashSet<&str>,
     map: &CelesteMap,
     palette: &ModuleAggregate,
 ) {
-    for room in &map.levels {
+    for (room_idx, room) in map.levels.iter().enumerate() {
         for entity in &room.entities {
             let included = match filter {
                 ConfigSearchFilter::All => true,
@@ -389,10 +402,10 @@ fn scan_entities(
                     .entity_config
                     .get(entity.name.as_str())
                     .map_or(true, |config| {
-                        entity
-                            .attributes
-                            .iter()
-                            .any(|(key, _)| config.attribute_info.contains_key(key.as_str()))
+                        entity.attributes.iter().any(|(key, _)| {
+                            !attrs.contains(key.as_str())
+                                && !config.attribute_info.contains_key(key.as_str())
+                        })
                     }),
                 ConfigSearchFilter::Matches(s) => entity
                     .name
@@ -410,10 +423,11 @@ fn scan_entities(
                         .unwrap()
                 };
                 let mut vec = ecsr.examples.lock();
+                let example = (entity.clone(), map.id.clone(), room_idx);
                 if vec.len() == 100 {
-                    vec[rand::random::<usize>() % 100] = entity.clone();
+                    vec[rand::random::<usize>() % 100] = example;
                 } else {
-                    vec.push(entity.clone());
+                    vec.push(example);
                 }
             }
         }
@@ -423,10 +437,11 @@ fn scan_entities(
 fn scan_triggers(
     results: &mut HashSet<TriggerConfigSearchResult>,
     filter: &ConfigSearchFilter,
+    attrs: &HashSet<&str>,
     map: &CelesteMap,
     palette: &ModuleAggregate,
 ) {
-    for room in &map.levels {
+    for (room_idx, room) in map.levels.iter().enumerate() {
         for entity in &room.entities {
             let included = match filter {
                 ConfigSearchFilter::All => true,
@@ -438,10 +453,10 @@ fn scan_triggers(
                     .trigger_config
                     .get(entity.name.as_str())
                     .map_or(true, |config| {
-                        entity
-                            .attributes
-                            .iter()
-                            .any(|(key, _)| config.attribute_info.contains_key(key.as_str()))
+                        entity.attributes.iter().any(|(key, _)| {
+                            !attrs.contains(key.as_str())
+                                && !config.attribute_info.contains_key(key.as_str())
+                        })
                     }),
                 ConfigSearchFilter::Matches(s) => entity
                     .name
@@ -459,10 +474,11 @@ fn scan_triggers(
                         .unwrap()
                 };
                 let mut vec = tcsr.examples.lock();
+                let example = (entity.clone(), map.id.clone(), room_idx);
                 if vec.len() == 100 {
-                    vec[rand::random::<usize>() % 100] = entity.clone();
+                    vec[rand::random::<usize>() % 100] = example;
                 } else {
-                    vec.push(entity.clone());
+                    vec.push(example);
                 }
             }
         }
@@ -472,11 +488,12 @@ fn scan_triggers(
 fn scan_stylegrounds(
     results: &mut HashSet<StylegroundConfigSearchResult>,
     filter: &ConfigSearchFilter,
+    attrs: &HashSet<&str>,
     map: &CelesteMap,
     palette: &ModuleAggregate,
 ) {
-    for g in [&map.foregrounds, &map.backgrounds] {
-        for style in g {
+    for (b, g) in [&map.foregrounds, &map.backgrounds].into_iter().enumerate() {
+        for (idx, style) in g.iter().enumerate() {
             let included = match filter {
                 ConfigSearchFilter::All => true,
                 ConfigSearchFilter::NoConfig => {
@@ -490,10 +507,10 @@ fn scan_stylegrounds(
                     .styleground_config
                     .get(style.name.as_str())
                     .map_or(true, |config| {
-                        style
-                            .attributes
-                            .iter()
-                            .any(|(key, _)| config.attribute_info.contains_key(key.as_str()))
+                        style.attributes.iter().any(|(key, _)| {
+                            !attrs.contains(key.as_str())
+                                && !config.attribute_info.contains_key(key.as_str())
+                        })
                     }),
                 ConfigSearchFilter::Matches(s) => style
                     .name
@@ -511,10 +528,15 @@ fn scan_stylegrounds(
                         .unwrap()
                 };
                 let mut vec = scsr.examples.lock();
+                let example = (
+                    style.clone(),
+                    map.id.clone(),
+                    StylegroundSelection { fg: b == 0, idx },
+                );
                 if vec.len() == 100 {
-                    vec[rand::random::<usize>() % 100] = style.clone();
+                    vec[rand::random::<usize>() % 100] = example;
                 } else {
-                    vec.push(style.clone());
+                    vec.push(example);
                 }
             }
         }
