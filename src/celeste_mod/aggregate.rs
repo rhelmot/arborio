@@ -5,7 +5,7 @@ use std::path::Path;
 use std::sync::Arc;
 use vizia::*;
 
-use crate::assets::{intern_str, InternedMap};
+use crate::assets::{intern_str, Interned, InternedMap};
 use crate::atlas_img::MultiAtlas;
 use crate::autotiler::{Autotiler, Tileset};
 use crate::celeste_mod::entity_config::{EntityConfig, StylegroundConfig, TriggerConfig};
@@ -45,6 +45,9 @@ impl ModuleAggregate {
             .dependencies
             .iter()
         {
+            if *dep.name == "Everest" {
+                continue;
+            }
             if modules.get(&dep.name).is_none() {
                 log.push(log!(
                     Warning,
@@ -54,38 +57,39 @@ impl ModuleAggregate {
                 ));
             }
         }
-        let dep_mods = || {
-            modules
-                .get(&current_module)
-                .unwrap()
-                .everest_metadata
-                .dependencies
-                .iter()
-                .filter_map(|dep| modules.get(&dep.name).map(|module| (*dep.name, module)))
-                .chain(iter::once((
-                    *current_module,
-                    modules.get("Arborio").unwrap(),
-                )))
-                .chain(iter::once((
-                    *current_module,
-                    modules.get("Celeste").unwrap(),
-                )))
-                .chain(iter::once((
-                    *current_module,
-                    modules.get(&current_module).unwrap(),
-                )))
-        };
-        let gameplay_atlas = {
-            let mut multi_atlas = MultiAtlas::new();
-            for (_, module) in dep_mods() {
-                multi_atlas.add(&module.gameplay_atlas);
-            }
-            multi_atlas
-        };
-        let mut autotilers: InternedMap<Arc<Autotiler>> = dep_mods()
-            .flat_map(|(_, module)| module.tilers.iter())
-            .map(|(name, tiler)| (*name, tiler.clone()))
-            .collect();
+        let gameplay_atlas = MultiAtlas::from(
+            build_palette_map(
+                "Gameplay Atlas",
+                dep_mods(modules, current_module),
+                |module| module.gameplay_atlas.sprites_map.iter(),
+            )
+            .offload(&mut log),
+        );
+        let mut autotilers = build_palette_map(
+            "Tiler Config",
+            dep_mods(modules, current_module),
+            |module| module.tilers.iter(),
+        )
+        .offload(&mut log);
+        let entity_config = build_palette_map(
+            "Entity Config",
+            dep_mods(modules, current_module),
+            |module| module.entity_config.iter(),
+        )
+        .offload(&mut log);
+        let trigger_config = build_palette_map(
+            "Trigger Config",
+            dep_mods(modules, current_module),
+            |module| module.trigger_config.iter(),
+        )
+        .offload(&mut log);
+        let styleground_config = build_palette_map(
+            "Styleground Config",
+            dep_mods(modules, current_module),
+            |module| module.styleground_config.iter(),
+        )
+        .offload(&mut log);
+
         let fg_xml = map
             .meta
             .as_ref()
@@ -98,7 +102,7 @@ impl ModuleAggregate {
             .and_then(|meta| meta.bg_tiles.as_ref())
             .map(|s| s.as_str())
             .unwrap_or("Graphics/BackgroundTiles.xml");
-        for (_, dep) in dep_mods() {
+        for (_, dep) in dep_mods(modules, current_module) {
             if let Some(root) = &dep.filesystem_root {
                 let mut config = open_module(root).unwrap();
                 if let Some(fp) = config.get_file(Path::new(fg_xml)) {
@@ -121,19 +125,6 @@ impl ModuleAggregate {
                 }
             }
         }
-
-        let entity_config: InternedMap<Arc<EntityConfig>> = dep_mods()
-            .flat_map(|(_, module)| module.entity_config.iter())
-            .map(|(name, config)| (*name, config.clone()))
-            .collect();
-        let trigger_config: InternedMap<Arc<TriggerConfig>> = dep_mods()
-            .flat_map(|(_, module)| module.trigger_config.iter())
-            .map(|(name, config)| (*name, config.clone()))
-            .collect();
-        let styleground_config: InternedMap<Arc<StylegroundConfig>> = dep_mods()
-            .flat_map(|(_, module)| module.styleground_config.iter())
-            .map(|(name, config)| (*name, config.clone()))
-            .collect();
 
         let fg_tiles_palette = extract_tiles_palette(autotilers.get("fg").unwrap());
         let bg_tiles_palette = extract_tiles_palette(autotilers.get("bg").unwrap());
@@ -160,7 +151,7 @@ impl ModuleAggregate {
             decals_palette,
         };
         result.sanity_check();
-        LogResult::new(result, log)
+        log.done(result)
     }
 
     pub fn sanity_check(&self) {
@@ -216,7 +207,7 @@ fn extract_entities_palette(config: &InternedMap<Arc<EntityConfig>>) -> Vec<Enti
                     template: idx,
                 })
         })
-        .filter(|es| *es.entity != "default")
+        .filter(|es| *es.entity != "default" && *es.entity != "trigger")
         .sorted_by_key(|es| es.template)
         .collect()
 }
@@ -236,4 +227,53 @@ fn extract_triggers_palette(config: &InternedMap<Arc<TriggerConfig>>) -> Vec<Tri
         .filter(|es| *es.trigger != "default")
         .sorted_by_key(|es| es.template)
         .collect()
+}
+
+fn dep_mods(
+    modules: &InternedMap<CelesteModule>,
+    current_module: Interned,
+) -> impl Iterator<Item = (&str, &CelesteModule)> {
+    iter::once(("Arborio", modules.get("Arborio").unwrap()))
+        .chain(iter::once(("Celeste", modules.get("Celeste").unwrap())))
+        .chain(
+            modules
+                .get(&current_module)
+                .unwrap()
+                .everest_metadata
+                .dependencies
+                .iter()
+                .filter(|dep| *dep.name != "Celeste" && *dep.name != "Everest")
+                .filter_map(|dep| modules.get(&dep.name).map(|module| (*dep.name, module))),
+        )
+        .chain(iter::once((
+            *current_module,
+            modules.get(&current_module).unwrap(),
+        )))
+}
+
+fn build_palette_map<'a, T: 'a + Clone, I: 'a + Iterator<Item = (&'a Interned, &'a T)>>(
+    // T will pretty much always be an arc
+    what: &'static str,
+    dep_mods: impl Iterator<Item = (&'a str, &'a CelesteModule)>,
+    mapper: impl Fn(&'a CelesteModule) -> I,
+) -> LogResult<InternedMap<T>> {
+    let mut log = LogBuf::new();
+    let mut result = HashMap::new();
+    let mut result_source = HashMap::new();
+    for (dep_name, dep_mod) in dep_mods {
+        for (res_name, res) in mapper(dep_mod) {
+            if result.insert(*res_name, res.clone()).is_some() {
+                log.push(log!(
+                    Warning,
+                    "{} {}: {} overriding {}",
+                    what,
+                    res_name,
+                    dep_name,
+                    result_source[&*res_name]
+                ));
+            }
+            result_source.insert(*res_name, dep_name);
+        }
+    }
+    log.done(result)
 }

@@ -1,3 +1,6 @@
+use std::borrow::Cow;
+use std::collections::hash_map::Entry;
+use std::ffi::OsStr;
 use std::path::Path;
 use walkdir::WalkDir;
 
@@ -81,7 +84,44 @@ pub fn load_into(
         {
             let mut module = CelesteModule::new(source.filesystem_root(), yaml);
             module.load(&mut source).offload(&mut log);
-            modules.insert(module.everest_metadata.name, module);
+            match modules.entry(module.everest_metadata.name) {
+                Entry::Occupied(mut e) => {
+                    let path_existing = e.get().filesystem_root.as_ref();
+                    let path_new = module.filesystem_root.as_ref();
+                    let ext_existing = path_existing
+                        .map(|root| root.extension().unwrap_or_else(|| OsStr::new("")))
+                        .and_then(|ext| ext.to_str());
+                    let ext_new = path_new
+                        .map(|root| root.extension().unwrap_or_else(|| OsStr::new("")))
+                        .and_then(|ext| ext.to_str());
+                    if ext_existing == Some("zip") && ext_new == Some("") {
+                        log.push(log!(
+                            Info,
+                            "Conflict between {} and {}, picked latter",
+                            path_existing.map_or(Cow::from("<builtin>"), |r| r.to_string_lossy()),
+                            path_new.map_or(Cow::from("<builtin>"), |r| r.to_string_lossy()),
+                        ));
+                        e.insert(module);
+                    } else if ext_existing == Some("") && ext_new == Some("zip") {
+                        log.push(log!(
+                            Info,
+                            "Conflict between {} and {}, picked former",
+                            path_existing.map_or(Cow::from("<builtin>"), |r| r.to_string_lossy()),
+                            path_new.map_or(Cow::from("<builtin>"), |r| r.to_string_lossy()),
+                        ));
+                    } else {
+                        log.push(log!(
+                            Warning,
+                            "Conflict between {} and {}, picked latter",
+                            path_existing.map_or(Cow::from("<builtin>"), |r| r.to_string_lossy()),
+                            path_new.map_or(Cow::from("<builtin>"), |r| r.to_string_lossy()),
+                        ));
+                    }
+                }
+                Entry::Vacant(v) => {
+                    v.insert(module);
+                }
+            }
         }
     }
     log.done(())

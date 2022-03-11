@@ -75,11 +75,11 @@ impl BlobData {
 #[derive(Debug)]
 pub struct Atlas {
     blobs: Vec<Arc<Mutex<BlobData>>>, // TODO: we can get rid of this mutex (and BlobData altogether) if we can somehow push image data into opengl at load time
-    sprites_map: InternedMap<Arc<AtlasSprite>>,
+    pub(crate) sprites_map: InternedMap<Arc<AtlasSprite>>,
 }
 
 #[derive(Debug)]
-struct AtlasSprite {
+pub struct AtlasSprite {
     blob: Arc<Mutex<BlobData>>,
     bounding_box: Rect<u16, UnknownUnit>,
     trim_offset: Vector2D<i16, UnknownUnit>,
@@ -279,19 +279,8 @@ pub struct MultiAtlas {
 }
 
 impl MultiAtlas {
-    pub fn new() -> Self {
-        Self {
-            sprites_map: InternedMap::new(),
-        }
-    }
-
-    pub fn add(&mut self, atlas: &Atlas) {
-        self.sprites_map.extend(
-            atlas
-                .sprites_map
-                .iter()
-                .map(|(path, sprite)| (*path, sprite.clone())),
-        );
+    pub fn from(sprites_map: InternedMap<Arc<AtlasSprite>>) -> Self {
+        Self { sprites_map }
     }
 
     pub fn iter_paths(&self) -> impl Iterator<Item = &Interned> + '_ {
