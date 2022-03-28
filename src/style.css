@@ -36,9 +36,11 @@ button.btn_item:checked {
 
 hstack {
     child-space: 0;
+    overflow: visible;
 }
 vstack {
     child-space: 0;
+    overflow: visible;
 }
 
 palette {
@@ -247,9 +249,14 @@ style_list list {
     background-color: #40a080;
 }
 
+dropdown {
+    overflow: visible;
+}
+
 .dropdown_element {
     width: 1s;
     child-left: 3px;
+    background-color: white;
 }
 
 .dropdown_element:over {
@@ -259,6 +266,24 @@ style_list list {
 
 menu>menustack { /* TODO remove this */
     z-index: 1000;
+}
+
+.config_search_settings {
+    height: auto;
+}
+
+.config_search_settings textbox {
+    width: 1s;
+}
+
+.config_editor_toolbar {
+    height: auto;
+}
+
+.config_editor_box {
+    width: 1s;
+    height: 1s;
+    min-height: 50px;
 }
 
 /*

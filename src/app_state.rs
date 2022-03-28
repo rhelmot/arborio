@@ -25,7 +25,7 @@ use crate::units::*;
 use crate::widgets::list_palette::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
 };
-use crate::widgets::tabs::config_editor::ConfigSearchResult;
+use crate::widgets::tabs::config_editor::{AnyConfig, ConfigSearchResult};
 
 #[derive(Lens)]
 pub struct AppState {
@@ -34,6 +34,7 @@ pub struct AppState {
     pub modules: InternedMap<CelesteModule>,
     pub modules_version: u32,
     pub palettes: HashMap<MapID, ModuleAggregate>,
+    pub omni_palette: ModuleAggregate,
     pub loaded_maps: HashMap<MapID, CelesteMap>,
 
     pub current_tab: usize,
@@ -61,8 +62,10 @@ pub struct AppState {
 #[derive(Serialize, Deserialize, Default, Lens, Debug)]
 pub struct AppConfig {
     pub celeste_root: Option<PathBuf>,
+    pub last_filepath: PathBuf,
 }
 
+#[allow(clippy::large_enum_variant)] // this is very rarely passed around by value
 #[derive(PartialEq, Eq, Debug, Lens, Clone)]
 pub enum AppTab {
     CelesteOverview,
@@ -81,6 +84,8 @@ pub struct ConfigEditorTab {
     pub search_results: Vec<ConfigSearchResult>,
     pub selected_result: usize,
     pub attribute_filter: String,
+    pub editing_config: Option<AnyConfig>,
+    pub error_message: String,
 }
 
 impl Default for ConfigEditorTab {
@@ -93,6 +98,8 @@ impl Default for ConfigEditorTab {
             search_results: vec![],
             selected_result: 0,
             attribute_filter: "originX,originY".to_owned(),
+            editing_config: None,
+            error_message: "".to_owned(),
         }
     }
 }
@@ -281,6 +288,9 @@ pub enum AppEvent {
     SetConfigPath {
         path: PathBuf,
     },
+    SetLastPath {
+        path: PathBuf,
+    },
     SetModules {
         modules: Mutex<InternedMap<CelesteModule>>,
     },
@@ -345,6 +355,14 @@ pub enum AppEvent {
     SelectConfigSearchResult {
         tab: usize,
         idx: usize,
+    },
+    EditConfig {
+        tab: usize,
+        config: AnyConfig,
+    },
+    SetConfigErrorMessage {
+        tab: usize,
+        message: String,
     },
     SelectStyleground {
         tab: usize,
@@ -512,6 +530,11 @@ impl AppState {
             modules: InternedMap::new(),
             modules_version: 0,
             palettes: HashMap::new(),
+            omni_palette: ModuleAggregate::new(
+                &InternedMap::new(),
+                &CelesteMap::new(MapID::default()),
+            )
+            .offload(&mut LogBuf::new()),
             progress: Progress {
                 progress: 100,
                 status: "".to_owned(),
@@ -641,12 +664,16 @@ impl AppState {
                 self.config.borrow_mut().celeste_root = Some(path.clone());
                 trigger_module_load(cx, path.clone());
             }
+            AppEvent::SetLastPath { path } => {
+                self.config.borrow_mut().last_filepath = path.clone();
+            }
             AppEvent::SetModules { modules } => {
                 let mut r = modules.lock().unwrap();
                 std::mem::swap(r.deref_mut(), &mut self.modules);
                 self.modules_version += 1;
-                trigger_palette_update(&mut self.palettes, &self.modules, &self.loaded_maps)
-                    .emit(cx);
+                self.omni_palette =
+                    trigger_palette_update(&mut self.palettes, &self.modules, &self.loaded_maps)
+                        .emit(cx);
             }
             AppEvent::SelectTool { spec } => {
                 if let Some(tool) = self.current_tool.take() {
@@ -788,6 +815,21 @@ impl AppState {
             AppEvent::SelectConfigSearchResult { tab, idx } => {
                 if let Some(AppTab::ConfigEditor(ctab)) = self.tabs.get_mut(*tab) {
                     ctab.selected_result = *idx;
+                    if let Some(result) = ctab.search_results.get(*idx) {
+                        ctab.editing_config = Some(result.get_config(&self.omni_palette));
+                    } else {
+                        ctab.editing_config = None;
+                    }
+                }
+            }
+            AppEvent::EditConfig { tab, config } => {
+                if let Some(AppTab::ConfigEditor(ctab)) = self.tabs.get_mut(*tab) {
+                    ctab.editing_config = Some(config.to_owned())
+                }
+            }
+            AppEvent::SetConfigErrorMessage { tab, message } => {
+                if let Some(AppTab::ConfigEditor(ctab)) = self.tabs.get_mut(*tab) {
+                    ctab.error_message = message.to_owned();
                 }
             }
 
@@ -1117,12 +1159,14 @@ pub fn trigger_palette_update(
     palettes: &mut HashMap<MapID, ModuleAggregate>,
     modules: &InternedMap<CelesteModule>,
     maps: &HashMap<MapID, CelesteMap>,
-) -> LogResult<()> {
+) -> LogResult<ModuleAggregate> {
     let mut log = LogBuf::new();
     for (name, pal) in palettes.iter_mut() {
         *pal = ModuleAggregate::new(modules, maps.get(name).unwrap()).offload(&mut log);
     }
-    LogResult::new((), log)
+    // discard logs here
+    let omni = ModuleAggregate::new_omni(modules).offload(&mut LogBuf::new());
+    LogResult::new(omni, log)
 }
 
 pub fn pick_new_name(map: &CelesteMap) -> String {

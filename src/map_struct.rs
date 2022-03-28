@@ -64,6 +64,22 @@ pub struct CelesteMap {
     pub meta: Option<CelesteMapMeta>,
 }
 
+impl CelesteMap {
+    pub fn new(id: MapID) -> Self {
+        Self {
+            name: id.sid.to_string(),
+            id,
+            dirty: false,
+            filler: vec![],
+            background_color: None,
+            foregrounds: vec![],
+            backgrounds: vec![],
+            levels: vec![],
+            meta: None,
+        }
+    }
+}
+
 // this is a fucking mess.
 #[derive(Debug, TryFromBinEl)]
 #[name("meta")]

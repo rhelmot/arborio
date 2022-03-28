@@ -35,17 +35,19 @@ pub fn build_tool_picker(cx: &mut Context) {
     Binding::new(cx, CurrentMapLens {}, |cx, map| {
         let showme = map.get_fallible(cx).is_some();
         Picker::new(cx, AppState::current_toolspec, |cx, tool_field| {
-            let selected = *tool_field.get(cx);
             for toolspec in ToolSpec::into_enum_iter() {
+                let selected = tool_field.map(move |sel| sel == &toolspec);
+                let selected2 = selected.clone();
                 Button::new(
                     cx,
                     move |cx| cx.emit(AppEvent::SelectTool { spec: toolspec }),
                     move |cx| {
-                        RadioButton::new(cx, toolspec == selected);
+                        let selected2 = selected2.clone();
+                        RadioButton::new(cx, selected2);
                         Label::new(cx, toolspec.name())
                     },
                 )
-                .checked(toolspec == selected)
+                .checked(selected)
                 .class("btn_item")
                 .layout_type(LayoutType::Row);
             }
@@ -57,26 +59,19 @@ pub fn build_tool_picker(cx: &mut Context) {
 pub fn build_layer_picker(cx: &mut Context) {
     VStack::new(cx, move |cx| {
         for layer in Layer::into_enum_iter() {
+            let selected = AppState::current_layer.map(move |sel| sel == &layer);
+            let selected2 = selected.clone();
             Button::new(
                 cx,
                 move |cx| {
                     cx.emit(AppEvent::SelectLayer { layer });
                 },
                 move |cx| {
-                    RadioButton::new(cx, false).bind(
-                        AppState::current_layer,
-                        move |handle, selected| {
-                            let selected = *selected.get(handle.cx);
-                            handle.checked(selected == layer);
-                        },
-                    );
+                    RadioButton::new(cx, selected2.clone());
                     Label::new(cx, layer.name())
                 },
             )
-            .bind(AppState::current_layer, move |handle, selected| {
-                let selected = *selected.get(handle.cx);
-                handle.checked(selected == layer);
-            })
+            .checked(selected)
             .class("btn_item")
             .layout_type(LayoutType::Row)
             .bind(AppState::current_toolspec, move |handle, toolspec| {

@@ -40,9 +40,9 @@ regex = "^1.5"
 
 # graphics
 # vizia = { path = "../../rust/VIZIA", default-features = false, features = ["winit", "clipboard"] }
-vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "8f3f1e557d2fb0fe17b8fa86ca262700fc877f9b" }
+vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "33dcd83597ade55a1e181a485ef28f9b17ac48b7" }
 # femtovg = { version = "0.3.0", default-features = false, features = ["image-loading"] } # inherit from vizia
-femtovg = { git = "https://github.com/femtovg/femtovg", rev = "604f35e52f403b2ad98774bcdc56c09dcedf32e6", default-features = false, features = ["image-loading"] }
+femtovg = { git = "https://github.com/femtovg/femtovg", rev = "87fe627794f3f793d8e3a338c838a2f8e8a8aa9d", default-features = false, features = ["image-loading"] }
 # femtovg = { path = "../../rust/femtovg", features = ["image-loading"] }
 image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
 imgref = "1.6.1"  # inherit from femtovg

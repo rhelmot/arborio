@@ -331,6 +331,7 @@ fn tweak_attr_picker<T: Data>(
         Dropdown::new(
             cx,
             move |cx| {
+                let labels2 = labels2.clone();
                 Label::new(cx, "").bind(lens.clone(), move |handle, item| {
                     if let Some(item) = item.get_fallible(handle.cx) {
                         let label = (labels2)(handle.cx, &item.take());

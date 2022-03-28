@@ -1,6 +1,10 @@
+use dialog::DialogBox;
 use parking_lot::Mutex;
+use std::collections::hash_map::Entry;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Arc;
 use vizia::*;
 
@@ -8,11 +12,14 @@ use crate::app_state::{
     AppEvent, AppState, AppTab, ConfigEditorTab, ConfigSearchFilter, ConfigSearchType, SearchScope,
     StylegroundSelection,
 };
-use crate::assets::InternedMap;
+use crate::assets::{intern_str, Interned, InternedMap};
+use crate::celeste_mod::entity_config::{
+    AttributeInfo, AttributeType, AttributeValue, EntityConfig, StylegroundConfig, TriggerConfig,
+};
 use crate::celeste_mod::module::CelesteModule;
 use crate::lenses::{CurrentTabImplLens, IsFailedLens};
 use crate::logging::*;
-use crate::map_struct::{CelesteMapEntity, CelesteMapStyleground};
+use crate::map_struct::{Attribute, CelesteMapEntity, CelesteMapStyleground};
 use crate::widgets::tabs::project::load_map_inner;
 use crate::{CelesteMap, MapID, ModuleAggregate};
 
@@ -23,28 +30,146 @@ pub enum ConfigSearchResult {
     Styleground(StylegroundConfigSearchResult),
 }
 
+#[derive(Debug, Clone, Lens)]
+pub enum AnyConfig {
+    Entity(EntityConfig),
+    Trigger(TriggerConfig),
+    Styleground(StylegroundConfig),
+}
+
 #[derive(Clone, Debug)]
 pub struct EntityConfigSearchResult {
-    pub name: String,
+    pub name: Interned,
     pub examples: Arc<Mutex<Vec<(CelesteMapEntity, MapID, usize)>>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct TriggerConfigSearchResult {
-    pub name: String,
+    pub name: Interned,
     pub examples: Arc<Mutex<Vec<(CelesteMapEntity, MapID, usize)>>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct StylegroundConfigSearchResult {
-    pub name: String,
+    pub name: Interned,
     pub examples: Arc<Mutex<Vec<(CelesteMapStyleground, MapID, StylegroundSelection)>>>,
 }
 
+impl AnyConfig {
+    pub fn set_default_draw(&mut self, app: &AppState) {
+        if let AnyConfig::Entity(e) = self {
+            e.standard_draw = app
+                .omni_palette
+                .entity_config
+                .get("default")
+                .unwrap()
+                .standard_draw
+                .clone();
+            e.selected_draw = app
+                .omni_palette
+                .entity_config
+                .get("default")
+                .unwrap()
+                .selected_draw
+                .clone();
+        }
+    }
+
+    pub fn analyze_uses(&mut self, result: &ConfigSearchResult, attribute_filter: &HashSet<&str>) {
+        let info = self.attr_info();
+        for (name, attr) in result.example_attrs() {
+            if attribute_filter.contains(name.as_str()) {
+                continue;
+            }
+            let suggestion = most_interesting_type(&attr);
+            match info.entry(intern_str(&name)) {
+                Entry::Occupied(mut o) => {
+                    let o = o.get_mut();
+                    o.ty = type_meet(&suggestion, &o.ty);
+                    if o.default.ty() != o.ty {
+                        o.default = default_value(&suggestion);
+                    }
+                }
+                Entry::Vacant(v) => {
+                    v.insert(AttributeInfo {
+                        default: default_value(&suggestion),
+                        ty: suggestion,
+                        options: vec![],
+                    });
+                }
+            }
+        }
+    }
+
+    pub fn attr_info(&mut self) -> &mut InternedMap<AttributeInfo> {
+        match self {
+            AnyConfig::Entity(e) => &mut e.attribute_info,
+            AnyConfig::Trigger(e) => &mut e.attribute_info,
+            AnyConfig::Styleground(e) => &mut e.attribute_info,
+        }
+    }
+}
+
+fn default_value(ty: &AttributeType) -> AttributeValue {
+    match ty {
+        AttributeType::String => AttributeValue::String("".to_owned()),
+        AttributeType::Float => AttributeValue::Float(0.0),
+        AttributeType::Int => AttributeValue::Int(0),
+        AttributeType::Bool => AttributeValue::Bool(false),
+    }
+}
+
+fn most_interesting_type(attr: &Attribute) -> AttributeType {
+    match attr {
+        Attribute::Bool(_) => AttributeType::Bool,
+        Attribute::Int(_) => AttributeType::Int,
+        Attribute::Float(f) => {
+            if f.round() == *f {
+                AttributeType::Int
+            } else {
+                AttributeType::Float
+            }
+        }
+        Attribute::Text(s) => {
+            if s.parse::<i32>().is_ok() {
+                AttributeType::Int
+            } else if s.parse::<f32>().is_ok() {
+                AttributeType::Float
+            } else if s.parse::<bool>().is_ok() {
+                AttributeType::Bool
+            } else {
+                AttributeType::String
+            }
+        }
+    }
+}
+
+fn type_meet(a: &AttributeType, b: &AttributeType) -> AttributeType {
+    use AttributeType::*;
+    match (a, b) {
+        (String, String) => String,
+        (String, Int) => String,
+        (String, Float) => String,
+        (String, Bool) => String,
+        (Float, Float) => Float,
+        (Float, Bool) => String,
+        (Float, Int) => Float,
+        (Float, String) => String,
+        (Bool, Bool) => Bool,
+        (Bool, Int) => String,
+        (Bool, String) => String,
+        (Bool, Float) => String,
+        (Int, Int) => Int,
+        (Int, Float) => Float,
+        (Int, String) => String,
+        (Int, Bool) => String,
+    }
+}
+
 impl EntityConfigSearchResult {
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: Interned) -> Self {
         Self {
-            name: name.to_owned(),
+            name,
             examples: Arc::new(Mutex::new(vec![])),
         }
     }
@@ -65,9 +190,9 @@ impl Hash for EntityConfigSearchResult {
 }
 
 impl TriggerConfigSearchResult {
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: Interned) -> Self {
         Self {
-            name: name.to_owned(),
+            name,
             examples: Arc::new(Mutex::new(vec![])),
         }
     }
@@ -88,9 +213,9 @@ impl Hash for TriggerConfigSearchResult {
 }
 
 impl StylegroundConfigSearchResult {
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: Interned) -> Self {
         Self {
-            name: name.to_owned(),
+            name,
             examples: Arc::new(Mutex::new(vec![])),
         }
     }
@@ -119,7 +244,7 @@ impl ConfigSearchResult {
         }
     }
 
-    fn num_examples(&self) -> usize {
+    fn examples_len(&self) -> usize {
         match self {
             ConfigSearchResult::Entity(e) => e.examples.lock().len(),
             ConfigSearchResult::Trigger(t) => t.examples.lock().len(),
@@ -127,8 +252,67 @@ impl ConfigSearchResult {
         }
     }
 
+    pub fn example_attrs(&self) -> impl '_ + Iterator<Item = (String, Attribute)> {
+        let e = if let ConfigSearchResult::Entity(e) = self {
+            Some(e)
+        } else {
+            None
+        };
+        let t = if let ConfigSearchResult::Trigger(e) = self {
+            Some(e)
+        } else {
+            None
+        };
+        let s = if let ConfigSearchResult::Styleground(e) = self {
+            Some(e)
+        } else {
+            None
+        };
+
+        let e = e
+            .into_iter()
+            .flat_map(|e| e.examples.lock().clone().into_iter())
+            .flat_map(|(e, _, _)| e.attributes.into_iter());
+        let t = t
+            .into_iter()
+            .flat_map(|e| e.examples.lock().clone().into_iter())
+            .flat_map(|(e, _, _)| e.attributes.into_iter());
+        let s = s
+            .into_iter()
+            .flat_map(|e| e.examples.lock().clone().into_iter())
+            .flat_map(|(e, _, _)| e.attributes.into_iter());
+
+        e.chain(t).chain(s)
+    }
+
     fn display_list(&self) -> String {
-        format!("{} ({})", self.name(), self.num_examples())
+        format!("{} ({})", self.name(), self.examples_len())
+    }
+
+    pub fn get_config(&self, palette: &ModuleAggregate) -> AnyConfig {
+        match self {
+            ConfigSearchResult::Entity(e) => AnyConfig::Entity(
+                palette
+                    .entity_config
+                    .get(&e.name)
+                    .map(|a| a.as_ref().clone())
+                    .unwrap_or_else(|| EntityConfig::new(&e.name)),
+            ),
+            ConfigSearchResult::Trigger(e) => AnyConfig::Trigger(
+                palette
+                    .trigger_config
+                    .get(&e.name)
+                    .map(|a| a.as_ref().clone())
+                    .unwrap_or_else(|| TriggerConfig::new(&e.name)),
+            ),
+            ConfigSearchResult::Styleground(e) => AnyConfig::Styleground(
+                palette
+                    .styleground_config
+                    .get(&e.name)
+                    .map(|a| a.as_ref().clone())
+                    .unwrap_or_else(|| StylegroundConfig::new(&e.name)),
+            ),
+        }
     }
 }
 
@@ -155,8 +339,16 @@ pub fn collect_search_targets(cx: &mut Context) -> Vec<SearchScope> {
 }
 
 pub fn build_config_editor(cx: &mut Context) {
-    build_search_settings(cx);
-    build_search_results(cx);
+    HStack::new(cx, |cx| {
+        VStack::new(cx, |cx| {
+            build_search_settings(cx);
+            build_search_results(cx);
+        });
+        VStack::new(cx, |cx| {
+            build_item_editor(cx);
+            build_item_preview(cx);
+        });
+    });
 }
 
 pub fn build_search_settings(cx: &mut Context) {
@@ -171,7 +363,7 @@ pub fn build_search_settings(cx: &mut Context) {
                         ctab.then(ConfigEditorTab::search_scope),
                         |handle, scope| {
                             if let Some(thing) = scope.get_fallible(handle.cx) {
-                                handle.text(format!("{}", thing.take()));
+                                handle.text(&format!("{}", thing.take()));
                             }
                         },
                     )
@@ -265,10 +457,6 @@ pub fn build_search_settings(cx: &mut Context) {
                 let tab = cx.data::<AppState>().unwrap().current_tab;
                 cx.emit(AppEvent::SelectSearchFilterAttributes { tab, filter: data });
             });
-        })
-        .bind(ctab.then(ConfigEditorTab::search_filter), |handle, lens| {
-            let showme = lens.get(handle.cx).take() == ConfigSearchFilter::NoAttrConfig;
-            handle.display(showme);
         });
         Binding::new(
             cx,
@@ -413,13 +601,13 @@ fn scan_entities(
                     .contains(&s.to_ascii_lowercase()),
             };
             if included {
-                let ecsr = EntityConfigSearchResult::new(&entity.name);
+                let ecsr = EntityConfigSearchResult::new(intern_str(&entity.name));
                 let ecsr = if let Some(entity_result) = results.get(&ecsr) {
                     entity_result
                 } else {
                     results.insert(ecsr);
                     results
-                        .get(&EntityConfigSearchResult::new(&entity.name))
+                        .get(&EntityConfigSearchResult::new(intern_str(&entity.name)))
                         .unwrap()
                 };
                 let mut vec = ecsr.examples.lock();
@@ -442,7 +630,7 @@ fn scan_triggers(
     palette: &ModuleAggregate,
 ) {
     for (room_idx, room) in map.levels.iter().enumerate() {
-        for entity in &room.entities {
+        for entity in &room.triggers {
             let included = match filter {
                 ConfigSearchFilter::All => true,
                 ConfigSearchFilter::NoConfig => {
@@ -464,13 +652,13 @@ fn scan_triggers(
                     .contains(&s.to_ascii_lowercase()),
             };
             if included {
-                let tcsr = TriggerConfigSearchResult::new(&entity.name);
+                let tcsr = TriggerConfigSearchResult::new(intern_str(&entity.name));
                 let tcsr = if let Some(trigger_result) = results.get(&tcsr) {
                     trigger_result
                 } else {
                     results.insert(tcsr);
                     results
-                        .get(&TriggerConfigSearchResult::new(&entity.name))
+                        .get(&TriggerConfigSearchResult::new(intern_str(&entity.name)))
                         .unwrap()
                 };
                 let mut vec = tcsr.examples.lock();
@@ -518,13 +706,13 @@ fn scan_stylegrounds(
                     .contains(&s.to_ascii_lowercase()),
             };
             if included {
-                let scsr = StylegroundConfigSearchResult::new(&style.name);
+                let scsr = StylegroundConfigSearchResult::new(intern_str(&style.name));
                 let scsr = if let Some(style_result) = results.get(&scsr) {
                     style_result
                 } else {
                     results.insert(scsr);
                     results
-                        .get(&StylegroundConfigSearchResult::new(&style.name))
+                        .get(&StylegroundConfigSearchResult::new(intern_str(&style.name)))
                         .unwrap()
                 };
                 let mut vec = scsr.examples.lock();
@@ -570,3 +758,142 @@ fn build_search_results(cx: &mut Context) {
         );
     });
 }
+
+pub fn build_item_editor(cx: &mut Context) {
+    let ctab = CurrentTabImplLens {}.then(AppTab::config_editor);
+    let tab = cx.data::<AppState>().unwrap().current_tab;
+    let config_lens = ctab.then(ConfigEditorTab::editing_config).unwrap();
+    config_editor_textbox(cx, config_lens.then(AnyConfig::entity), move |cx, c| {
+        cx.emit(AppEvent::EditConfig {
+            tab,
+            config: AnyConfig::Entity(c),
+        })
+    });
+    config_editor_textbox(cx, config_lens.then(AnyConfig::trigger), move |cx, c| {
+        cx.emit(AppEvent::EditConfig {
+            tab,
+            config: AnyConfig::Trigger(c),
+        })
+    });
+    config_editor_textbox(
+        cx,
+        config_lens.then(AnyConfig::styleground),
+        move |cx, c| {
+            cx.emit(AppEvent::EditConfig {
+                tab,
+                config: AnyConfig::Styleground(c),
+            })
+        },
+    );
+    Label::new(cx, ctab.then(ConfigEditorTab::error_message));
+    HStack::new(cx, move |cx| {
+        Button::new(
+            cx,
+            move |cx| {
+                let app = cx.data::<AppState>().unwrap();
+                let config = ctab.view(app, |ctab| {
+                    ctab.unwrap().editing_config.as_ref().unwrap().clone()
+                });
+                let text = match config {
+                    AnyConfig::Entity(e) => e.to_string(),
+                    AnyConfig::Trigger(e) => e.to_string(),
+                    AnyConfig::Styleground(e) => e.to_string(),
+                };
+                let default = PathBuf::from_str(".").unwrap();
+                let path = if !app.config.last_filepath.is_dir() {
+                    &default
+                } else {
+                    &app.config.last_filepath
+                };
+                let result = dialog::FileSelection::new("Save Config")
+                    .mode(dialog::FileSelectionMode::Save)
+                    .path(path)
+                    .show()
+                    .unwrap();
+                if let Some(result) = result {
+                    if let Err(e) = std::fs::write(&result, text) {
+                        dialog::Message::new(format!("Could not save file: {}", e))
+                            .title("Error")
+                            .show()
+                            .unwrap();
+                    }
+                    let result_path: PathBuf = result.into();
+                    cx.emit(AppEvent::SetLastPath {
+                        path: result_path
+                            .parent()
+                            .unwrap_or_else(|| Path::new("/"))
+                            .to_owned(),
+                    });
+                }
+            },
+            move |cx| Label::new(cx, "Save"),
+        );
+        Button::new(
+            cx,
+            move |cx| {
+                let app = cx.data::<AppState>().unwrap();
+                let tab = app.current_tab;
+                let mut config: AnyConfig = config_lens.get(cx).take();
+                config.set_default_draw(app);
+                cx.emit(AppEvent::EditConfig { tab, config });
+            },
+            move |cx| Label::new(cx, "Default Draw"),
+        );
+        Button::new(
+            cx,
+            move |cx| {
+                let app = cx.data::<AppState>().unwrap();
+                let tab = app.current_tab;
+                let mut config: AnyConfig = config_lens.get(cx).take();
+                let attrs = ctab.then(ConfigEditorTab::attribute_filter).get(cx).take();
+                let attrs = attrs.split(',').collect::<HashSet<_>>();
+                let result = ctab.view(app, |ctab| {
+                    ctab.unwrap()
+                        .search_results
+                        .get(ctab.unwrap().selected_result)
+                        .unwrap()
+                        .clone()
+                });
+                config.analyze_uses(&result, &attrs);
+                cx.emit(AppEvent::EditConfig { tab, config });
+            },
+            move |cx| Label::new(cx, "Analyze Attrs"),
+        );
+    })
+    .class("config_editor_toolbar");
+}
+
+fn config_editor_textbox<T>(
+    cx: &mut Context,
+    lens: impl Copy + Lens<Target = T>,
+    on_edit: impl 'static + Send + Sync + Clone + Fn(&mut Context, T),
+) where
+    T: FromStr + std::fmt::Display + Data,
+    <T as FromStr>::Err: ToString,
+{
+    let tab = cx.data::<AppState>().unwrap().current_tab;
+    Binding::new(cx, IsFailedLens::new(lens), move |cx, failed| {
+        if !failed.get(cx).take() {
+            let on_edit = on_edit.clone();
+            Textbox::new_multiline(cx, lens, true)
+                .on_edit(move |cx, text| match text.parse() {
+                    Ok(t) => {
+                        on_edit(cx, t);
+                        cx.emit(AppEvent::SetConfigErrorMessage {
+                            tab,
+                            message: "".to_owned(),
+                        });
+                    }
+                    Err(e) => {
+                        cx.emit(AppEvent::SetConfigErrorMessage {
+                            tab,
+                            message: e.to_string(),
+                        });
+                    }
+                })
+                .class("config_editor_box");
+        }
+    });
+}
+
+pub fn build_item_preview(_cx: &mut Context) {}

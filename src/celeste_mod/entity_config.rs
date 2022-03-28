@@ -1,16 +1,19 @@
 use serde;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt::Formatter;
+use std::str::FromStr;
 use vizia::*;
 
 use crate::assets;
+use crate::assets::intern_str;
 use crate::celeste_mod::entity_expression::{Const, Expression};
 use crate::map_struct::Attribute;
 use crate::units::*;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct EntityConfig {
-    pub entity_name: assets::Interned,
+    pub entity_name: assets::Interned, // TODO should this be a string since it's editable?
     pub hitboxes: EntityRects,
     #[serde(default)]
     pub standard_draw: EntityDraw,
@@ -34,7 +37,7 @@ pub struct EntityConfig {
     pub templates: Vec<EntityTemplate>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct TriggerConfig {
     pub trigger_name: assets::Interned,
     #[serde(default)]
@@ -45,7 +48,7 @@ pub struct TriggerConfig {
     pub templates: Vec<EntityTemplate>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct StylegroundConfig {
     pub styleground_name: assets::Interned,
     #[serde(default)]
@@ -72,7 +75,7 @@ impl Default for PencilBehavior {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct AttributeInfo {
     pub ty: AttributeType,
     pub default: AttributeValue,
@@ -80,7 +83,7 @@ pub struct AttributeInfo {
     pub options: Vec<AttributeOption>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct AttributeOption {
     pub name: String,
     pub value: AttributeValue,
@@ -102,13 +105,24 @@ pub enum AttributeValue {
     Bool(bool),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+impl AttributeValue {
+    pub fn ty(&self) -> AttributeType {
+        match self {
+            AttributeValue::String(_) => AttributeType::String,
+            AttributeValue::Float(_) => AttributeType::Float,
+            AttributeValue::Int(_) => AttributeType::Int,
+            AttributeValue::Bool(_) => AttributeType::Bool,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct EntityTemplate {
     pub name: assets::Interned,
     pub attributes: HashMap<assets::Interned, AttributeValue>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Default)]
 pub struct EntityRects {
     #[serde(default)]
     pub initial_rects: Vec<Rect>,
@@ -116,7 +130,7 @@ pub struct EntityRects {
     pub node_rects: Vec<Rect>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Default, PartialEq, Clone)]
 pub struct EntityDraw {
     #[serde(default)]
     pub initial_draw: Vec<DrawElement>,
@@ -125,7 +139,7 @@ pub struct EntityDraw {
 }
 
 #[allow(clippy::large_enum_variant, clippy::enum_variant_names)]
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub enum DrawElement {
     DrawRect {
         rect: Rect,
@@ -234,19 +248,19 @@ fn expr_zero() -> Expression {
     Expression::mk_const(0)
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Rect {
     pub topleft: Vec2,
     pub size: Vec2,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Vec2 {
     pub x: Expression,
     pub y: Expression,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Color {
     pub r: Expression,
     pub g: Expression,
@@ -334,6 +348,94 @@ impl AttributeValue {
             AttributeValue::Float(f) => Attribute::Float(*f),
             AttributeValue::Int(i) => Attribute::Int(*i),
             AttributeValue::Bool(b) => Attribute::Bool(*b),
+        }
+    }
+}
+
+// TODO there has GOTTA be a way to generalize this
+impl std::fmt::Display for EntityConfig {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        serde_yaml::to_string(self).unwrap().fmt(f)
+    }
+}
+
+impl std::fmt::Display for TriggerConfig {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        serde_yaml::to_string(self).unwrap().fmt(f)
+    }
+}
+
+impl std::fmt::Display for StylegroundConfig {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        serde_yaml::to_string(self).unwrap().fmt(f)
+    }
+}
+
+impl FromStr for EntityConfig {
+    type Err = serde_yaml::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_yaml::from_str(s)
+    }
+}
+
+impl FromStr for TriggerConfig {
+    type Err = serde_yaml::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_yaml::from_str(s)
+    }
+}
+
+impl FromStr for StylegroundConfig {
+    type Err = serde_yaml::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_yaml::from_str(s)
+    }
+}
+
+impl Data for EntityConfig {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
+impl Data for TriggerConfig {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
+impl Data for StylegroundConfig {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
+impl EntityConfig {
+    pub fn new(name: &str) -> Self {
+        Self {
+            entity_name: intern_str(name),
+            ..Self::default()
+        }
+    }
+}
+
+impl TriggerConfig {
+    pub fn new(name: &str) -> Self {
+        Self {
+            trigger_name: intern_str(name),
+            ..Self::default()
+        }
+    }
+}
+
+impl StylegroundConfig {
+    pub fn new(name: &str) -> Self {
+        Self {
+            styleground_name: intern_str(name),
+            ..Self::default()
         }
     }
 }

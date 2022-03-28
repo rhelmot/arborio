@@ -1,6 +1,5 @@
 use itertools::Itertools;
 use std::collections::HashMap;
-use std::iter;
 use std::path::Path;
 use std::sync::Arc;
 use vizia::*;
@@ -15,7 +14,7 @@ use crate::logging::*;
 use crate::widgets::list_palette::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
 };
-use crate::CelesteMap;
+use crate::{CelesteMap, MapID};
 
 #[derive(Lens, Clone)]
 pub struct ModuleAggregate {
@@ -38,56 +37,58 @@ impl ModuleAggregate {
     pub fn new(modules: &InternedMap<CelesteModule>, map: &CelesteMap) -> LogResult<Self> {
         let mut log = LogBuf::new();
         let current_module = map.id.module;
-        for dep in modules
-            .get(&current_module)
-            .unwrap()
-            .everest_metadata
-            .dependencies
-            .iter()
-        {
-            if *dep.name == "Everest" {
-                continue;
-            }
-            if modules.get(&dep.name).is_none() {
-                log.push(log!(
-                    Warning,
-                    "{} missing dependency {}",
-                    current_module,
-                    &dep.name
-                ));
+        if let Some(mymod) = modules.get(&map.id.module) {
+            for dep in mymod.everest_metadata.dependencies.iter() {
+                if *dep.name == "Everest" {
+                    continue;
+                }
+                if modules.get(&dep.name).is_none() {
+                    log.push(log!(
+                        Warning,
+                        "{} missing dependency {}",
+                        current_module,
+                        &dep.name
+                    ));
+                }
             }
         }
+
+        let result = Self::new_core(map, dep_mods(modules, current_module)).offload(&mut log);
+        log.done(result)
+    }
+
+    pub fn new_omni(modules: &InternedMap<CelesteModule>) -> LogResult<Self> {
+        Self::new_core(
+            &CelesteMap::new(MapID::default()),
+            modules.iter().map(|(x, y)| (**x, y)),
+        )
+    }
+
+    fn new_core<'a>(
+        map: &CelesteMap,
+        deps: impl Clone + Iterator<Item = (&'a str, &'a CelesteModule)>,
+    ) -> LogResult<Self> {
+        let mut log = LogBuf::new();
         let gameplay_atlas = MultiAtlas::from(
-            build_palette_map(
-                "Gameplay Atlas",
-                dep_mods(modules, current_module),
-                |module| module.gameplay_atlas.sprites_map.iter(),
-            )
+            build_palette_map("Gameplay Atlas", deps.clone(), |module| {
+                module.gameplay_atlas.sprites_map.iter()
+            })
             .offload(&mut log),
         );
-        let mut autotilers = build_palette_map(
-            "Tiler Config",
-            dep_mods(modules, current_module),
-            |module| module.tilers.iter(),
-        )
+        let mut autotilers =
+            build_palette_map("Tiler Config", deps.clone(), |module| module.tilers.iter())
+                .offload(&mut log);
+        let entity_config = build_palette_map("Entity Config", deps.clone(), |module| {
+            module.entity_config.iter()
+        })
         .offload(&mut log);
-        let entity_config = build_palette_map(
-            "Entity Config",
-            dep_mods(modules, current_module),
-            |module| module.entity_config.iter(),
-        )
+        let trigger_config = build_palette_map("Trigger Config", deps.clone(), |module| {
+            module.trigger_config.iter()
+        })
         .offload(&mut log);
-        let trigger_config = build_palette_map(
-            "Trigger Config",
-            dep_mods(modules, current_module),
-            |module| module.trigger_config.iter(),
-        )
-        .offload(&mut log);
-        let styleground_config = build_palette_map(
-            "Styleground Config",
-            dep_mods(modules, current_module),
-            |module| module.styleground_config.iter(),
-        )
+        let styleground_config = build_palette_map("Styleground Config", deps.clone(), |module| {
+            module.styleground_config.iter()
+        })
         .offload(&mut log);
 
         let fg_xml = map
@@ -102,7 +103,7 @@ impl ModuleAggregate {
             .and_then(|meta| meta.bg_tiles.as_ref())
             .map(|s| s.as_str())
             .unwrap_or("Graphics/BackgroundTiles.xml");
-        for (_, dep) in dep_mods(modules, current_module) {
+        for (_, dep) in deps.clone() {
             if let Some(root) = &dep.filesystem_root {
                 let mut config = open_module(root).unwrap();
                 if let Some(fp) = config.get_file(Path::new(fg_xml)) {
@@ -126,8 +127,16 @@ impl ModuleAggregate {
             }
         }
 
-        let fg_tiles_palette = extract_tiles_palette(autotilers.get("fg").unwrap());
-        let bg_tiles_palette = extract_tiles_palette(autotilers.get("bg").unwrap());
+        let fg_tiles_palette = if let Some(tiler) = autotilers.get("fg") {
+            extract_tiles_palette(tiler)
+        } else {
+            vec![]
+        };
+        let bg_tiles_palette = if let Some(tiler) = autotilers.get("bg") {
+            extract_tiles_palette(tiler)
+        } else {
+            vec![]
+        };
         let entities_palette = extract_entities_palette(&entity_config);
         let triggers_palette = extract_triggers_palette(&trigger_config);
         let decals_palette = gameplay_atlas
@@ -150,7 +159,9 @@ impl ModuleAggregate {
             triggers_palette,
             decals_palette,
         };
-        result.sanity_check();
+        if deps.count() != 0 {
+            result.sanity_check();
+        }
         log.done(result)
     }
 
@@ -232,23 +243,22 @@ fn extract_triggers_palette(config: &InternedMap<Arc<TriggerConfig>>) -> Vec<Tri
 fn dep_mods(
     modules: &InternedMap<CelesteModule>,
     current_module: Interned,
-) -> impl Iterator<Item = (&str, &CelesteModule)> {
-    iter::once(("Arborio", modules.get("Arborio").unwrap()))
-        .chain(iter::once(("Celeste", modules.get("Celeste").unwrap())))
-        .chain(
-            modules
-                .get(&current_module)
-                .unwrap()
-                .everest_metadata
-                .dependencies
-                .iter()
-                .filter(|dep| *dep.name != "Celeste" && *dep.name != "Everest")
-                .filter_map(|dep| modules.get(&dep.name).map(|module| (*dep.name, module))),
-        )
-        .chain(iter::once((
-            *current_module,
-            modules.get(&current_module).unwrap(),
-        )))
+) -> impl Clone + Iterator<Item = (&str, &CelesteModule)> {
+    let a = modules.get("Arborio").into_iter().map(|m| ("Arborio", m));
+    let b = modules.get("Celeste").into_iter().map(|m| ("Celeste", m));
+    let c = modules.get(&current_module).into_iter().flat_map(|m| {
+        m.everest_metadata
+            .dependencies
+            .iter()
+            .filter(|dep| *dep.name != "Celeste" && *dep.name != "Everest")
+            .filter_map(|dep| modules.get(&dep.name).map(|module| (*dep.name, module)))
+    });
+    let d = modules
+        .get(&current_module)
+        .into_iter()
+        .map(move |m| (*current_module, m));
+
+    a.chain(b).chain(c).chain(d)
 }
 
 fn build_palette_map<'a, T: 'a + Clone, I: 'a + Iterator<Item = (&'a Interned, &'a T)>>(
