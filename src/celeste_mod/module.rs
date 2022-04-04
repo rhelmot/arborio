@@ -80,7 +80,7 @@ impl CelesteModule {
                         config.templates.push(config.default_template());
                     }
                     self.entity_config
-                        .insert(config.entity_name, Arc::new(config));
+                        .insert(intern_str(&config.entity_name), Arc::new(config));
                 }
             } else {
                 log.push(log!(
@@ -100,7 +100,7 @@ impl CelesteModule {
                         config.templates.push(config.default_template());
                     }
                     self.trigger_config
-                        .insert(config.trigger_name, Arc::new(config));
+                        .insert(intern_str(&config.trigger_name), Arc::new(config));
                 }
             } else {
                 log.push(log!(
@@ -117,7 +117,7 @@ impl CelesteModule {
                     .offload(LogLevel::Error, &mut log)
                 {
                     self.styleground_config
-                        .insert(config.styleground_name, Arc::new(config));
+                        .insert(intern_str(&config.styleground_name), Arc::new(config));
                 }
             } else {
                 log.push(log!(

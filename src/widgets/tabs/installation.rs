@@ -17,7 +17,7 @@ pub fn build_installation_tab(cx: &mut Context) {
             .then(UnwrapLens::new()),
         |cx, root| {
             if let Some(root) = root.get_fallible(cx) {
-                Label::new(cx, &format!("Current celeste install is {:?}", *root));
+                Label::new(cx, &format!("Current celeste install is {:?}", root));
                 ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
                     Binding::new(cx, AppState::modules_version, move |cx, _| {
                         let modules = &cx.data::<AppState>().unwrap().modules;

@@ -13,7 +13,7 @@ use crate::units::*;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct EntityConfig {
-    pub entity_name: assets::Interned, // TODO should this be a string since it's editable?
+    pub entity_name: String,
     pub hitboxes: EntityRects,
     #[serde(default)]
     pub standard_draw: EntityDraw,
@@ -32,29 +32,29 @@ pub struct EntityConfig {
     #[serde(default)]
     pub solid: bool,
     #[serde(default)]
-    pub attribute_info: assets::InternedMap<AttributeInfo>,
+    pub attribute_info: HashMap<String, AttributeInfo>,
     #[serde(default)]
     pub templates: Vec<EntityTemplate>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct TriggerConfig {
-    pub trigger_name: assets::Interned,
+    pub trigger_name: String,
     #[serde(default)]
     pub nodes: bool,
     #[serde(default)]
-    pub attribute_info: assets::InternedMap<AttributeInfo>,
+    pub attribute_info: HashMap<String, AttributeInfo>,
     #[serde(default)]
     pub templates: Vec<EntityTemplate>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct StylegroundConfig {
-    pub styleground_name: assets::Interned,
+    pub styleground_name: String,
     #[serde(default)]
     pub preview: Option<Expression>,
     #[serde(default)]
-    pub attribute_info: assets::InternedMap<AttributeInfo>,
+    pub attribute_info: HashMap<String, AttributeInfo>,
 }
 
 fn eight() -> u32 {
@@ -326,7 +326,7 @@ impl Default for Color {
 impl EntityConfig {
     pub fn default_template(&self) -> EntityTemplate {
         EntityTemplate {
-            name: self.entity_name,
+            name: intern_str(&self.entity_name),
             attributes: HashMap::new(),
         }
     }
@@ -335,7 +335,7 @@ impl EntityConfig {
 impl TriggerConfig {
     pub fn default_template(&self) -> EntityTemplate {
         EntityTemplate {
-            name: self.trigger_name,
+            name: intern_str(&self.trigger_name),
             attributes: HashMap::new(),
         }
     }
@@ -416,7 +416,7 @@ impl Data for StylegroundConfig {
 impl EntityConfig {
     pub fn new(name: &str) -> Self {
         Self {
-            entity_name: intern_str(name),
+            entity_name: name.to_owned(),
             ..Self::default()
         }
     }
@@ -425,7 +425,7 @@ impl EntityConfig {
 impl TriggerConfig {
     pub fn new(name: &str) -> Self {
         Self {
-            trigger_name: intern_str(name),
+            trigger_name: name.to_owned(),
             ..Self::default()
         }
     }
@@ -434,7 +434,7 @@ impl TriggerConfig {
 impl StylegroundConfig {
     pub fn new(name: &str) -> Self {
         Self {
-            styleground_name: intern_str(name),
+            styleground_name: name.to_owned(),
             ..Self::default()
         }
     }

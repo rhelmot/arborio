@@ -14,7 +14,7 @@ pub fn build_tabs(cx: &mut Context) {
     let lens = VecIndexWithLens::new(AppState::tabs, AppState::current_tab);
     Binding::new(cx, lens, move |cx, current_tab| {
         if let Some(current_tab) = current_tab.get_fallible(cx) {
-            VStack::new(cx, move |cx| match *current_tab {
+            VStack::new(cx, move |cx| match current_tab {
                 AppTab::CelesteOverview => {
                     installation::build_installation_tab(cx);
                 }
@@ -47,7 +47,7 @@ pub fn build_tab_bar(cx: &mut Context) {
             cx.emit(AppEvent::SelectTab { idx: tab_index });
         })
         .bind(AppState::current_tab, move |handle, current_tab| {
-            let current_tab = *current_tab.get(handle.cx);
+            let current_tab = current_tab.get(handle.cx);
             handle.checked(current_tab == tab_index);
         });
     })

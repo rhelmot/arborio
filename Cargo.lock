@@ -1174,7 +1174,7 @@ dependencies = [
 [[package]]
 name = "morphorm"
 version = "0.3.0"
-source = "git+https://github.com/rhelmot/morphorm?rev=b1d42febbb269e8c0a2708d2ef885dadd8898399#b1d42febbb269e8c0a2708d2ef885dadd8898399"
+source = "git+https://github.com/vizia/morphorm?rev=c14e888b1d66719fc3f13ccdb1ea01a10368ef9e#c14e888b1d66719fc3f13ccdb1ea01a10368ef9e"
 dependencies = [
  "bitflags",
  "smallvec",
@@ -2114,6 +2114,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 [[package]]
 name = "vizia"
 version = "0.1.0"
+source = "git+https://github.com/rhelmot/VIZIA?rev=54712b177ff2f92f4872b269c85e137da3f0b714#54712b177ff2f92f4872b269c85e137da3f0b714"
 dependencies = [
  "vizia_core",
  "vizia_winit",
@@ -2122,6 +2123,7 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
+source = "git+https://github.com/rhelmot/VIZIA?rev=54712b177ff2f92f4872b269c85e137da3f0b714#54712b177ff2f92f4872b269c85e137da3f0b714"
 dependencies = [
  "bitflags",
  "copypasta",
@@ -2145,6 +2147,7 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
+source = "git+https://github.com/rhelmot/VIZIA?rev=54712b177ff2f92f4872b269c85e137da3f0b714#54712b177ff2f92f4872b269c85e137da3f0b714"
 dependencies = [
  "proc-macro2 1.0.36",
  "quote 1.0.14",
@@ -2154,6 +2157,7 @@ dependencies = [
 [[package]]
 name = "vizia_winit"
 version = "0.1.0"
+source = "git+https://github.com/rhelmot/VIZIA?rev=54712b177ff2f92f4872b269c85e137da3f0b714#54712b177ff2f92f4872b269c85e137da3f0b714"
 dependencies = [
  "console_error_panic_hook",
  "femtovg",

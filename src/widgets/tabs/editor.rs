@@ -75,13 +75,13 @@ pub fn build_layer_picker(cx: &mut Context) {
             .class("btn_item")
             .layout_type(LayoutType::Row)
             .bind(AppState::current_toolspec, move |handle, toolspec| {
-                let toolspec = *toolspec.get(handle.cx);
+                let toolspec = toolspec.get(handle.cx);
                 handle.display(layer != Layer::All || toolspec == ToolSpec::Selection);
             });
         }
     })
     .bind(AppState::current_toolspec, move |handle, toolspec| {
-        let toolspec = *toolspec.get(handle.cx);
+        let toolspec = toolspec.get(handle.cx);
         handle.display(toolspec != ToolSpec::Style);
     });
 }
@@ -97,7 +97,7 @@ pub fn build_palette_widgets(cx: &mut Context) {
         },
     )
     .bind(pair, |handle, pair| {
-        let (toolspec, layer) = *pair.get(handle.cx);
+        let (toolspec, layer) = pair.get(handle.cx);
         handle.display(layer == Layer::FgTiles && toolspec == ToolSpec::Pencil);
     });
 
@@ -108,7 +108,7 @@ pub fn build_palette_widgets(cx: &mut Context) {
         |cx, tile| cx.emit(AppEvent::SelectPaletteTile { fg: false, tile }),
     )
     .bind(pair, |handle, pair| {
-        let (toolspec, layer) = *pair.get(handle.cx);
+        let (toolspec, layer) = pair.get(handle.cx);
         handle.display(layer == Layer::BgTiles && toolspec == ToolSpec::Pencil);
     });
 
@@ -119,7 +119,7 @@ pub fn build_palette_widgets(cx: &mut Context) {
         |cx, entity| cx.emit(AppEvent::SelectPaletteEntity { entity }),
     )
     .bind(pair, |handle, pair| {
-        let (toolspec, layer) = *pair.get(handle.cx);
+        let (toolspec, layer) = pair.get(handle.cx);
         handle.display(layer == Layer::Entities && toolspec == ToolSpec::Pencil);
     });
 
@@ -130,7 +130,7 @@ pub fn build_palette_widgets(cx: &mut Context) {
         |cx, trigger| cx.emit(AppEvent::SelectPaletteTrigger { trigger }),
     )
     .bind(pair, |handle, pair| {
-        let (toolspec, layer) = *pair.get(handle.cx);
+        let (toolspec, layer) = pair.get(handle.cx);
         handle.display(layer == Layer::Triggers && toolspec == ToolSpec::Pencil);
     });
 
@@ -141,18 +141,18 @@ pub fn build_palette_widgets(cx: &mut Context) {
         |cx, decal| cx.emit(AppEvent::SelectPaletteDecal { decal }),
     )
     .bind(pair, |handle, pair| {
-        let (toolspec, layer) = *pair.get(handle.cx);
+        let (toolspec, layer) = pair.get(handle.cx);
         handle.display(
             (layer == Layer::FgDecals || layer == Layer::BgDecals) && toolspec == ToolSpec::Pencil,
         );
     });
 
     Binding::new(cx, AppState::current_objtile, move |cx, objtile| {
-        TilePaletteWidget::new(cx, *objtile.get(cx), |cx, tile| {
+        TilePaletteWidget::new(cx, objtile.get(cx), |cx, tile| {
             cx.emit(AppEvent::SelectPaletteObjectTile { tile })
         })
         .bind(pair, |handle, pair| {
-            let (toolspec, layer) = *pair.get(handle.cx);
+            let (toolspec, layer) = pair.get(handle.cx);
             handle.display(layer == Layer::ObjectTiles && toolspec == ToolSpec::Pencil);
         })
         .min_height(Units::Pixels(100.0))
@@ -164,7 +164,7 @@ pub fn build_palette_widgets(cx: &mut Context) {
 
 pub fn build_tweaker_widgets(cx: &mut Context) {
     Binding::new(cx, AppState::current_toolspec, |cx, tool_idx| {
-        let tool_idx = *tool_idx.get(cx);
+        let tool_idx = tool_idx.get(cx);
         EntityTweakerWidget::new(cx).display(tool_idx == ToolSpec::Selection);
         RoomTweakerWidget::new(cx).display(tool_idx == ToolSpec::Room);
         StyleListWidget::new(cx).display(tool_idx == ToolSpec::Style);

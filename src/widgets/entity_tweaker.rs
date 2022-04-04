@@ -22,7 +22,7 @@ impl EntityTweakerWidget {
                     }
                 });
                 Binding::new(cx, IsFailedLens::new(entity_lens), move |cx, failed| {
-                    if !*failed.get(cx) {
+                    if !failed.get(cx) {
                         ScrollView::new(cx, 0.0, 0.0, false, true, Self::members);
                     }
                 });
@@ -104,7 +104,7 @@ fn edit_entity<F: FnOnce(&mut CelesteMapEntity)>(cx: &mut Context, f: F) {
         Some(AppSelection::EntityBody(_, true) | AppSelection::EntityNode(_, _, true))
     );
 
-    let mut entity = (CurrentSelectedEntityLens {}).get(cx).take();
+    let mut entity = (CurrentSelectedEntityLens {}).get(cx);
 
     f(&mut entity);
 

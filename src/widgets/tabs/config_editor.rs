@@ -1,7 +1,7 @@
 use dialog::DialogBox;
 use parking_lot::Mutex;
 use std::collections::hash_map::Entry;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -82,7 +82,7 @@ impl AnyConfig {
                 continue;
             }
             let suggestion = most_interesting_type(&attr);
-            match info.entry(intern_str(&name)) {
+            match info.entry(name) {
                 Entry::Occupied(mut o) => {
                     let o = o.get_mut();
                     o.ty = type_meet(&suggestion, &o.ty);
@@ -101,7 +101,7 @@ impl AnyConfig {
         }
     }
 
-    pub fn attr_info(&mut self) -> &mut InternedMap<AttributeInfo> {
+    pub fn attr_info(&mut self) -> &mut HashMap<String, AttributeInfo> {
         match self {
             AnyConfig::Entity(e) => &mut e.attribute_info,
             AnyConfig::Trigger(e) => &mut e.attribute_info,
@@ -363,7 +363,7 @@ pub fn build_search_settings(cx: &mut Context) {
                         ctab.then(ConfigEditorTab::search_scope),
                         |handle, scope| {
                             if let Some(thing) = scope.get_fallible(handle.cx) {
-                                handle.text(&format!("{}", thing.take()));
+                                handle.text(&format!("{}", thing));
                             }
                         },
                     )
@@ -438,7 +438,7 @@ pub fn build_search_settings(cx: &mut Context) {
                         if let Some(filter) =
                             ctab.then(ConfigEditorTab::search_filter).get_fallible(cx)
                         {
-                            if !matches!(filter.take(), ConfigSearchFilter::Matches(_)) {
+                            if !matches!(filter, ConfigSearchFilter::Matches(_)) {
                                 let tab = cx.data::<AppState>().unwrap().current_tab;
                                 cx.emit(AppEvent::SelectSearchFilter {
                                     tab,
@@ -465,7 +465,7 @@ pub fn build_search_settings(cx: &mut Context) {
                     .then(ConfigSearchFilter::matches),
             ),
             move |cx, is_failed| {
-                if !*is_failed.get(cx) {
+                if !is_failed.get(cx) {
                     Textbox::new(
                         cx,
                         ctab.then(ConfigEditorTab::search_filter)
@@ -486,10 +486,10 @@ pub fn build_search_settings(cx: &mut Context) {
             move |cx| {
                 let tab = cx.data::<AppState>().unwrap().current_tab;
                 let modules = cx.data::<AppState>().unwrap().modules.clone();
-                let filter = ctab.then(ConfigEditorTab::search_filter).get(cx).take();
-                let attrs = ctab.then(ConfigEditorTab::attribute_filter).get(cx).take();
-                let ty = ctab.then(ConfigEditorTab::search_type).get(cx).take();
-                let scope = ctab.then(ConfigEditorTab::search_scope).get(cx).take();
+                let filter = ctab.then(ConfigEditorTab::search_filter).get(cx);
+                let attrs = ctab.then(ConfigEditorTab::attribute_filter).get(cx);
+                let ty = ctab.then(ConfigEditorTab::search_type).get(cx);
+                let scope = ctab.then(ConfigEditorTab::search_scope).get(cx);
                 let targets = collect_search_targets(cx);
 
                 cx.spawn(move |cx| {
@@ -746,7 +746,7 @@ fn build_search_results(cx: &mut Context) {
                     .bind(
                         ctab.then(ConfigEditorTab::selected_result),
                         move |handle, selected| {
-                            let selected = *selected.get(handle.cx);
+                            let selected = selected.get(handle.cx);
                             handle.checked(selected == idx);
                         },
                     )
@@ -833,7 +833,7 @@ pub fn build_item_editor(cx: &mut Context) {
             move |cx| {
                 let app = cx.data::<AppState>().unwrap();
                 let tab = app.current_tab;
-                let mut config: AnyConfig = config_lens.get(cx).take();
+                let mut config: AnyConfig = config_lens.get(cx);
                 config.set_default_draw(app);
                 cx.emit(AppEvent::EditConfig { tab, config });
             },
@@ -844,8 +844,8 @@ pub fn build_item_editor(cx: &mut Context) {
             move |cx| {
                 let app = cx.data::<AppState>().unwrap();
                 let tab = app.current_tab;
-                let mut config: AnyConfig = config_lens.get(cx).take();
-                let attrs = ctab.then(ConfigEditorTab::attribute_filter).get(cx).take();
+                let mut config: AnyConfig = config_lens.get(cx);
+                let attrs = ctab.then(ConfigEditorTab::attribute_filter).get(cx);
                 let attrs = attrs.split(',').collect::<HashSet<_>>();
                 let result = ctab.view(app, |ctab| {
                     ctab.unwrap()
@@ -873,7 +873,7 @@ fn config_editor_textbox<T>(
 {
     let tab = cx.data::<AppState>().unwrap().current_tab;
     Binding::new(cx, IsFailedLens::new(lens), move |cx, failed| {
-        if !failed.get(cx).take() {
+        if !failed.get(cx) {
             let on_edit = on_edit.clone();
             Textbox::new_multiline(cx, lens, true)
                 .on_edit(move |cx, text| match text.parse() {

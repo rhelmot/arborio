@@ -186,7 +186,7 @@ impl RoomTweakerWidget {
                 Binding::new(cx, lens, move |cx, lens| {
                     Checkbox::new(cx, lens.clone()).on_toggle(move |cx| {
                         let mut layers = [None; 4];
-                        layers[i] = Some(!*lens.get(cx));
+                        layers[i] = Some(!lens.get(cx));
                         emit(
                             cx,
                             CelesteMapLevelUpdate {

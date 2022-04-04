@@ -133,6 +133,7 @@ palette list {
     left: 0;
     child-left: 10px;
     min-width: 0;
+    text-wrap: false;
 }
 
 .progress_bar_bg {
@@ -140,6 +141,7 @@ palette list {
     background-color: white;
     left: 0;
     child-left: 10px;
+    text-wrap: false;
 }
 
 .map_category {

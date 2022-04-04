@@ -58,7 +58,7 @@ where
         Label::new(cx, name);
         Binding::new(cx, lens, move |cx, lens| {
             Checkbox::new(cx, lens.clone()).on_toggle(move |cx| {
-                setter(cx, !*lens.get(cx));
+                setter(cx, !lens.get(cx));
             });
         });
     });
@@ -75,7 +75,7 @@ pub fn advanced_attrs_editor(
         cx,
         attributes_lens.then(HashMapLenLens::new()),
         move |cx, len| {
-            let len = len.get_fallible(cx).map(|x| *x).unwrap_or(0);
+            let len = len.get_fallible(cx).unwrap_or(0);
             for i in 0..len {
                 let setter = setter.clone();
                 let remover = remover.clone();
@@ -102,17 +102,17 @@ pub fn advanced_attrs_editor(
                         setter2(cx, key, Attribute::Float(val))
                     });
                     Binding::new(cx, IsFailedLens::new(b_value_lens), move |cx, failed| {
-                        if !*failed.get(cx) {
+                        if !failed.get(cx) {
                             let setter2 = setter.clone();
                             Checkbox::new(cx, b_value_lens).on_toggle(move |cx| {
-                                let b = *b_value_lens.get(cx);
-                                setter2(cx, key_lens.get(cx).to_string(), Attribute::Bool(!b));
+                                let b = b_value_lens.get(cx);
+                                setter2(cx, key_lens.get(cx), Attribute::Bool(!b));
                             });
                         }
                     });
 
                     Label::new(cx, "-").class("remove_btn").on_press(move |cx| {
-                        remover(cx, key_lens.get(cx).take());
+                        remover(cx, key_lens.get(cx));
                     });
                 });
             }
@@ -160,9 +160,9 @@ pub fn advanced_attrs_editor(
             },
         );
         Label::new(cx, "+").class("add_btn").on_press(move |cx| {
-            let name = NewAttributeData::name.get(cx).take();
+            let name = NewAttributeData::name.get(cx);
             if !name.is_empty() {
-                adder(cx, name, *NewAttributeData::ty.get(cx));
+                adder(cx, name, NewAttributeData::ty.get(cx));
                 cx.emit(NewAttributeDataEvent::SetName("".to_owned()));
             }
         });
@@ -176,12 +176,12 @@ fn attr_editor<T: ToString + FromStr + Data>(
     setter: impl 'static + Clone + Send + Sync + Fn(&mut Context, String, T),
 ) {
     Binding::new(cx, IsFailedLens::new(lens.clone()), move |cx, failed| {
-        if !*failed.get(cx) {
+        if !failed.get(cx) {
             let key = key.clone();
             let setter = setter.clone();
             Textbox::new(cx, lens.clone()).on_edit(move |cx, text| {
                 if let Ok(value) = text.parse() {
-                    setter(cx, key.get(cx).to_string(), value);
+                    setter(cx, key.get(cx), value);
                     cx.current.toggle_class(cx, "validation_error", false);
                 } else {
                     cx.current.toggle_class(cx, "validation_error", true);

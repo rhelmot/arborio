@@ -17,7 +17,7 @@ macro_rules! edit_text {
             $label,
             CurrentStylegroundImplLens {}.then(CelesteMapStyleground::$attr),
             |cx, x| {
-                let mut style = CurrentStylegroundImplLens {}.get(cx).take();
+                let mut style = CurrentStylegroundImplLens {}.get(cx);
                 style.$attr = x;
                 emit(cx, style);
                 true
@@ -32,7 +32,7 @@ macro_rules! edit_check {
             $label,
             CurrentStylegroundImplLens {}.then(CelesteMapStyleground::$attr),
             |cx, x| {
-                let mut style = CurrentStylegroundImplLens {}.get(cx).take();
+                let mut style = CurrentStylegroundImplLens {}.get(cx);
                 style.$attr = x;
                 emit(cx, style);
             },
@@ -48,7 +48,7 @@ macro_rules! edit_optional_text {
                 .then(CelesteMapStyleground::$attr)
                 .then(UnwrapLens::new()),
             |cx, x| {
-                let mut style = CurrentStylegroundImplLens {}.get(cx).take();
+                let mut style = CurrentStylegroundImplLens {}.get(cx);
                 style.$attr = if x.is_empty() { None } else { Some(x) };
                 emit(cx, style);
                 true
@@ -92,15 +92,15 @@ where
     <L as Lens>::Source: Model,
 {
     Binding::new(cx, lens.map(|vec| vec.len()), move |cx, len_lens| {
-        for idx in (0..len_lens.get_fallible(cx).map(|x| *x).unwrap_or(0)).rev() {
+        for idx in (0..len_lens.get_fallible(cx).unwrap_or(0)).rev() {
             let lens = lens.index(idx);
             HStack::new(cx, move |cx| {
                 Label::new(cx, lens.then(StylegroundNameLens {}));
             })
             .class("palette_item")
             .bind(CurrentStylegroundLens {}, move |handle, selected| {
-                let is_me = selected.get_fallible(handle.cx).map(|x| x.take())
-                    == Some(StylegroundSelection { fg, idx });
+                let is_me =
+                    selected.get_fallible(handle.cx) == Some(StylegroundSelection { fg, idx });
                 handle.checked(is_me);
             })
             .on_press(move |cx| {
@@ -125,8 +125,8 @@ impl StyleTweakerWidget {
                         cx,
                         |cx| {
                             cx.emit(AppEvent::AddStyleground {
-                                map: CurrentMapLens {}.get(cx).take(),
-                                loc: CurrentStylegroundLens {}.get(cx).take(),
+                                map: CurrentMapLens {}.get(cx),
+                                loc: CurrentStylegroundLens {}.get(cx),
                                 style: CelesteMapStyleground::default(),
                             })
                         },
@@ -136,8 +136,8 @@ impl StyleTweakerWidget {
                         cx,
                         |cx| {
                             cx.emit(AppEvent::RemoveStyleground {
-                                map: CurrentMapLens {}.get(cx).take(),
-                                loc: CurrentStylegroundLens {}.get(cx).take(),
+                                map: CurrentMapLens {}.get(cx),
+                                loc: CurrentStylegroundLens {}.get(cx),
                             });
                         },
                         |cx| Label::new(cx, "-"),
@@ -145,11 +145,10 @@ impl StyleTweakerWidget {
                     Button::new(
                         cx,
                         |cx| {
-                            let sel = CurrentStylegroundLens {}.get(cx).take();
+                            let sel = CurrentStylegroundLens {}.get(cx);
                             let max_idx = CurrentMapImplLens {}
                                 .map(move |map| map.styles(sel.fg).len())
-                                .get(cx)
-                                .take();
+                                .get(cx);
                             let target = if sel.idx + 1 == max_idx {
                                 if sel.fg {
                                     return;
@@ -162,7 +161,7 @@ impl StyleTweakerWidget {
                                 }
                             };
                             cx.emit(AppEvent::MoveStyleground {
-                                map: CurrentMapLens {}.get(cx).take(),
+                                map: CurrentMapLens {}.get(cx),
                                 loc: sel,
                                 target,
                             });
@@ -176,15 +175,14 @@ impl StyleTweakerWidget {
                     Button::new(
                         cx,
                         |cx| {
-                            let sel = CurrentStylegroundLens {}.get(cx).take();
+                            let sel = CurrentStylegroundLens {}.get(cx);
                             let target = if sel.idx == 0 {
                                 if !sel.fg {
                                     return;
                                 }
                                 let max_idx = CurrentMapImplLens {}
                                     .map(move |map| map.styles(false).len())
-                                    .get(cx)
-                                    .take();
+                                    .get(cx);
                                 StylegroundSelection {
                                     fg: false,
                                     idx: max_idx,
@@ -196,7 +194,7 @@ impl StyleTweakerWidget {
                                 }
                             };
                             cx.emit(AppEvent::MoveStyleground {
-                                map: CurrentMapLens {}.get(cx).take(),
+                                map: CurrentMapLens {}.get(cx),
                                 loc: sel,
                                 target,
                             });
@@ -213,7 +211,7 @@ impl StyleTweakerWidget {
                         cx,
                         IsFailedLens::new(CurrentStylegroundImplLens {}),
                         move |cx, is_failed| {
-                            if !*is_failed.get(cx) {
+                            if !is_failed.get(cx) {
                                 Self::members(cx);
                             }
                         },
@@ -259,7 +257,7 @@ impl StyleTweakerWidget {
                 .to_owned()
             },
             |cx, item| {
-                let mut style = CurrentStylegroundImplLens {}.get(cx).take();
+                let mut style = CurrentStylegroundImplLens {}.get(cx);
                 style.dreaming = item;
                 emit(cx, style);
             },
@@ -273,12 +271,12 @@ impl StyleTweakerWidget {
             cx,
             CurrentStylegroundImplLens {}.then(CelesteMapStyleground::attributes),
             |cx, key, value| {
-                let mut current = CurrentStylegroundImplLens {}.get(cx).take();
+                let mut current = CurrentStylegroundImplLens {}.get(cx);
                 current.attributes.insert(key, value);
                 emit(cx, current);
             },
             |cx, key, ty| {
-                let mut current = CurrentStylegroundImplLens {}.get(cx).take();
+                let mut current = CurrentStylegroundImplLens {}.get(cx);
                 current.attributes.insert(
                     key,
                     match ty {
@@ -291,7 +289,7 @@ impl StyleTweakerWidget {
                 emit(cx, current);
             },
             |cx, key| {
-                let mut current = CurrentStylegroundImplLens {}.get(cx).take();
+                let mut current = CurrentStylegroundImplLens {}.get(cx);
                 current.attributes.remove(&key);
                 emit(cx, current);
             },
@@ -307,8 +305,8 @@ impl View for StyleTweakerWidget {
 
 fn emit(cx: &mut Context, style: CelesteMapStyleground) {
     let event = AppEvent::UpdateStyleground {
-        map: CurrentMapLens {}.get(cx).take(),
-        loc: CurrentStylegroundLens {}.get(cx).take(),
+        map: CurrentMapLens {}.get(cx),
+        loc: CurrentStylegroundLens {}.get(cx),
         style,
     };
     cx.emit(event);
@@ -334,7 +332,7 @@ fn tweak_attr_picker<T: Data>(
                 let labels2 = labels2.clone();
                 Label::new(cx, "").bind(lens.clone(), move |handle, item| {
                     if let Some(item) = item.get_fallible(handle.cx) {
-                        let label = (labels2)(handle.cx, &item.take());
+                        let label = (labels2)(handle.cx, &item);
                         handle.text(&label);
                     }
                 })

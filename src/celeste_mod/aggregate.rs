@@ -214,7 +214,7 @@ fn extract_entities_palette(config: &InternedMap<Arc<EntityConfig>>) -> Vec<Enti
                 .iter()
                 .enumerate()
                 .map(move |(idx, _)| EntitySelectable {
-                    entity: c.entity_name,
+                    entity: intern_str(&c.entity_name),
                     template: idx,
                 })
         })
@@ -231,7 +231,7 @@ fn extract_triggers_palette(config: &InternedMap<Arc<TriggerConfig>>) -> Vec<Tri
                 .iter()
                 .enumerate()
                 .map(move |(idx, _)| TriggerSelectable {
-                    trigger: c.trigger_name,
+                    trigger: intern_str(&c.trigger_name),
                     template: idx,
                 })
         })

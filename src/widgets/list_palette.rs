@@ -45,12 +45,12 @@ where
                     })
                     .class("palette_item")
                     .bind(selected.clone(), move |handle, selected| {
-                        let mine = *item3.get(handle.cx);
+                        let mine = item3.get(handle.cx);
                         let selected = selected.get(handle.cx);
                         handle.checked(selected.same(&mine));
                     })
                     .on_press(move |cx| {
-                        (callback)(cx, *item.get(cx));
+                        (callback)(cx, item.get(cx));
                     });
                 });
             });
@@ -321,7 +321,7 @@ impl EntitySelectable {
             nodes,
         };
         for (attr, info) in config.attribute_info.iter() {
-            if !entity.attributes.contains_key(**attr) {
+            if !entity.attributes.contains_key(attr) {
                 entity
                     .attributes
                     .insert(attr.to_string(), info.default.to_binel());
@@ -380,7 +380,7 @@ impl TriggerSelectable {
             nodes,
         };
         for (attr, info) in config.attribute_info.iter() {
-            if !entity.attributes.contains_key(**attr) {
+            if !entity.attributes.contains_key(attr) {
                 entity
                     .attributes
                     .insert(attr.to_string(), info.default.to_binel());
