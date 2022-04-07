@@ -1,5 +1,4 @@
 use byteorder::{LittleEndian, ReadBytesExt};
-use femtovg::{Color, ImageId, ImageSource, Paint, Path};
 use image::{DynamicImage, GenericImageView, ImageFormat};
 use imgref::Img;
 use rgb::RGBA8;
@@ -12,6 +11,7 @@ use std::io;
 use std::io::Read; // trait method import
 use std::path;
 use std::sync::{Arc, Mutex};
+use vizia::vg::{Color, ImageFlags, ImageId, ImageSource, Paint, Path};
 
 use crate::assets::{intern_owned, Interned, InternedMap};
 use crate::autotiler::TileReference;
@@ -52,7 +52,7 @@ impl BlobData {
         match self {
             BlobData::Waiting(buf) => {
                 let res = canvas
-                    .create_image(buf.as_ref(), femtovg::ImageFlags::NEAREST)
+                    .create_image(buf.as_ref(), ImageFlags::NEAREST)
                     .unwrap();
                 *self = BlobData::Loaded(res);
                 res
@@ -61,7 +61,7 @@ impl BlobData {
                 let res = canvas
                     .create_image(
                         ImageSource::try_from(dat.borrow()).unwrap(),
-                        femtovg::ImageFlags::NEAREST,
+                        ImageFlags::NEAREST,
                     )
                     .unwrap();
                 *self = BlobData::Loaded(res);
@@ -380,7 +380,7 @@ impl MultiAtlas {
         tile_ref: TileReference,
         ox: f32,
         oy: f32,
-        color: femtovg::Color,
+        color: Color,
     ) -> Result<(), String> {
         self.draw_sprite(
             canvas,

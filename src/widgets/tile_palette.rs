@@ -86,11 +86,11 @@ impl View for TilePaletteWidget {
         canvas.translate(bounds.x, bounds.y);
         //canvas.scissor(0.0, 0.0, bounds.w, bounds.h);
 
-        let mut path = femtovg::Path::new();
+        let mut path = vg::Path::new();
         path.rect(0.0, 0.0, bounds.w, bounds.h);
         canvas.fill_path(
             &mut path,
-            femtovg::Paint::linear_gradient(
+            vg::Paint::linear_gradient(
                 0.0,
                 0.0,
                 0.0,
@@ -124,7 +124,7 @@ impl View for TilePaletteWidget {
         let tile_hovered = point_room_to_tile(&point_lose_precision(&map_hovered).cast_unit());
         let map_hovered_snapped = point_tile_to_room(&tile_hovered);
 
-        let mut path = femtovg::Path::new();
+        let mut path = vg::Path::new();
         path.rect(
             map_hovered_snapped.x as f32,
             map_hovered_snapped.y as f32,
@@ -133,14 +133,14 @@ impl View for TilePaletteWidget {
         );
         canvas.fill_path(
             &mut path,
-            femtovg::Paint::color(femtovg::Color::rgba(255, 255, 0, 128)),
+            vg::Paint::color(vg::Color::rgba(255, 255, 0, 128)),
         );
 
         let map_selected_snapped = RoomPoint::new(
             ((self.selected % 32) * 8) as i32,
             ((self.selected / 32) * 8) as i32,
         );
-        let mut path = femtovg::Path::new();
+        let mut path = vg::Path::new();
         path.rect(
             map_selected_snapped.x as f32,
             map_selected_snapped.y as f32,
@@ -149,7 +149,7 @@ impl View for TilePaletteWidget {
         );
         canvas.fill_path(
             &mut path,
-            femtovg::Paint::color(femtovg::Color::rgba(100, 100, 255, 128)),
+            vg::Paint::color(vg::Color::rgba(100, 100, 255, 128)),
         );
 
         canvas.restore();

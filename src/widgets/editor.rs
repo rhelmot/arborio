@@ -1,9 +1,9 @@
 use euclid::{Angle, Point2D, Rect, Size2D, Transform2D, UnknownUnit, Vector2D};
-use femtovg::{Color, ImageFlags, Paint, Path, PixelFormat, RenderTarget};
 use lazy_static::lazy_static;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::time;
+use vizia::vg::{Color, ImageFlags, Paint, Path, PixelFormat, RenderTarget};
 use vizia::*;
 
 use crate::app_state::{AppSelection, AppState};
@@ -240,7 +240,7 @@ impl View for EditorWidget {
             );
             canvas.fill_path(&mut path, paint);
             if idx != current_room {
-                canvas.fill_path(&mut path, femtovg::Paint::color(ROOM_DESELECTED_COLOR));
+                canvas.fill_path(&mut path, vg::Paint::color(ROOM_DESELECTED_COLOR));
             }
             canvas.restore();
         }
@@ -826,7 +826,7 @@ fn draw_tiled(
     sprite: &str,
     bounds: &Rect<f32, UnknownUnit>,
     slice: &Rect<f32, UnknownUnit>,
-    color: femtovg::Color,
+    color: vg::Color,
 ) -> Result<(), String> {
     tile(bounds, slice.width(), slice.height(), |piece| {
         app.current_palette_unwrap().gameplay_atlas.draw_sprite(

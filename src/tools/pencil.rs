@@ -110,7 +110,7 @@ impl Tool for PencilTool {
 
         match state.current_layer {
             Layer::FgTiles | Layer::BgTiles | Layer::ObjectTiles => {
-                let mut path = femtovg::Path::new();
+                let mut path = vg::Path::new();
                 path.rect(
                     room_pos_snapped.x as f32,
                     room_pos_snapped.y as f32,
@@ -119,7 +119,7 @@ impl Tool for PencilTool {
                 );
                 canvas.fill_path(
                     &mut path,
-                    femtovg::Paint::color(femtovg::Color::rgba(255, 0, 255, 128)),
+                    vg::Paint::color(vg::Color::rgba(255, 0, 255, 128)),
                 );
             }
             Layer::Entities => {

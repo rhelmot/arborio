@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use vizia::vg;
 use vizia::*;
 
 use crate::app_state::{AppEvent, AppSelection, AppState, Layer};
@@ -286,7 +287,7 @@ impl Tool for SelectionTool {
         if let SelectionStatus::Selecting(ref_pos) = &self.status {
             let selection =
                 rect_normalize(&RoomRect::new(*ref_pos, (room_pos - *ref_pos).to_size()));
-            let mut path = femtovg::Path::new();
+            let mut path = vg::Path::new();
             path.rect(
                 selection.min_x() as f32,
                 selection.min_y() as f32,
@@ -295,11 +296,11 @@ impl Tool for SelectionTool {
             );
             canvas.stroke_path(
                 &mut path,
-                femtovg::Paint::color(femtovg::Color::rgb(0, 0, 0)).with_line_width(1.5),
+                vg::Paint::color(vg::Color::rgb(0, 0, 0)).with_line_width(1.5),
             );
         }
 
-        let mut path = femtovg::Path::new();
+        let mut path = vg::Path::new();
         for selectable in self
             .pending_selection
             .iter()
@@ -411,13 +412,13 @@ impl Tool for SelectionTool {
 
         canvas.fill_path(
             &mut path,
-            femtovg::Paint::color(femtovg::Color::rgba(255, 255, 0, 128)),
+            vg::Paint::color(vg::Color::rgba(255, 255, 0, 128)),
         );
 
         if self.status == SelectionStatus::None {
             if let Some(sel) = self.selectable_at(state, room, state.current_layer, room_pos) {
                 if !self.current_selection.contains(&sel) {
-                    let mut path = femtovg::Path::new();
+                    let mut path = vg::Path::new();
                     for rect in self.rects_of(state, room, sel) {
                         path.rect(
                             rect.min_x() as f32,
@@ -428,7 +429,7 @@ impl Tool for SelectionTool {
                     }
                     canvas.fill_path(
                         &mut path,
-                        femtovg::Paint::color(femtovg::Color::rgba(100, 100, 255, 128)),
+                        vg::Paint::color(vg::Color::rgba(100, 100, 255, 128)),
                     );
                 }
             }

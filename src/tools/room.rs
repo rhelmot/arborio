@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use vizia::vg::{Color, Paint, Path};
 use vizia::*;
 
 use crate::logging::LogResult;
@@ -189,7 +190,7 @@ impl Tool for RoomTool {
                 *ref_pos,
                 (map_pos - *ref_pos).to_size(),
             ));
-            let mut path = femtovg::Path::new();
+            let mut path = Path::new();
             path.rect(
                 selection.min_x() as f32,
                 selection.min_y() as f32,
@@ -198,11 +199,11 @@ impl Tool for RoomTool {
             );
             canvas.stroke_path(
                 &mut path,
-                femtovg::Paint::color(femtovg::Color::rgb(0, 0, 0)).with_line_width(1.5),
+                Paint::color(Color::rgb(0, 0, 0)).with_line_width(1.5),
             );
         }
 
-        let mut path = femtovg::Path::new();
+        let mut path = Path::new();
         for room in self
             .pending_selection
             .iter()
@@ -219,15 +220,12 @@ impl Tool for RoomTool {
             }
         }
 
-        canvas.fill_path(
-            &mut path,
-            femtovg::Paint::color(femtovg::Color::rgba(255, 255, 0, 128)),
-        );
+        canvas.fill_path(&mut path, Paint::color(Color::rgba(255, 255, 0, 128)));
 
         if self.status == SelectionStatus::None {
             if let Some(room) = room_at(map, map_pos_unsnapped) {
                 if !self.current_selection.contains(&room) {
-                    let mut path = femtovg::Path::new();
+                    let mut path = Path::new();
                     if let Some(room) = map.levels.get(room) {
                         let rect = &room.bounds;
                         path.rect(
@@ -237,10 +235,7 @@ impl Tool for RoomTool {
                             rect.height() as f32,
                         );
                     }
-                    canvas.fill_path(
-                        &mut path,
-                        femtovg::Paint::color(femtovg::Color::rgba(100, 100, 255, 128)),
-                    );
+                    canvas.fill_path(&mut path, Paint::color(Color::rgba(100, 100, 255, 128)));
                 }
             }
         }
@@ -250,7 +245,7 @@ impl Tool for RoomTool {
             ..
         }) = self.status
         {
-            let mut path = femtovg::Path::new();
+            let mut path = Path::new();
             for fake_event in self.resize(map, map_pos - pointer_reference_point) {
                 if let AppEvent::MoveRoom { bounds, .. } = fake_event {
                     path.rect(
@@ -264,7 +259,7 @@ impl Tool for RoomTool {
 
             canvas.stroke_path(
                 &mut path,
-                femtovg::Paint::color(femtovg::Color::rgb(0, 0, 0)).with_line_width(1.5),
+                Paint::color(Color::rgb(0, 0, 0)).with_line_width(1.5),
             );
         }
 

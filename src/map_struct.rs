@@ -10,7 +10,7 @@ use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::str::FromStr;
-use vizia::{Data, Lens};
+use vizia::{vg, Data, Lens};
 
 use crate::assets::{next_uuid, Interned};
 use crate::from_binel::{GetAttrOrChild, TryFromBinEl, TwoWayConverter};
@@ -387,7 +387,7 @@ impl CelesteMapLevel {
 #[derive(Default)]
 pub struct CelesteMapLevelCache {
     pub render_cache_valid: bool,
-    pub render_cache: Option<femtovg::ImageId>,
+    pub render_cache: Option<vg::ImageId>,
     pub last_entity_idx: usize,
     pub last_decal_idx: usize,
 }

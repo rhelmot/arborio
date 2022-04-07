@@ -269,12 +269,12 @@ pub struct Color {
 }
 
 impl Color {
-    pub fn evaluate(&self, env: &HashMap<&str, Const>) -> Result<femtovg::Color, String> {
+    pub fn evaluate(&self, env: &HashMap<&str, Const>) -> Result<vg::Color, String> {
         let r = self.r.evaluate(env)?.as_number()?.to_int() as u8;
         let g = self.g.evaluate(env)?.as_number()?.to_int() as u8;
         let b = self.b.evaluate(env)?.as_number()?.to_int() as u8;
         let a = self.a.evaluate(env)?.as_number()?.to_int() as u8;
-        Ok(femtovg::Color::rgba(r, g, b, a))
+        Ok(vg::Color::rgba(r, g, b, a))
     }
 }
 
