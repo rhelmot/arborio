@@ -31,7 +31,7 @@ where
             lens: selected.clone(),
             marker: PhantomData {},
         }
-        .build2(cx, move |cx| {
+        .build(cx, move |cx| {
             ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
                 List::new(cx, items, move |cx, _, item| {
                     let item2 = item.clone();

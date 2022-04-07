@@ -50,7 +50,7 @@ macro_rules! edit_check {
 impl RoomTweakerWidget {
     pub fn new(cx: &mut Context) -> Handle<'_, Self> {
         Self {}
-            .build2(cx, |cx| {
+            .build(cx, |cx| {
                 Binding::new(cx, RoomTweakerScopeLens {}, |cx, _| {
                     ScrollView::new(cx, 0.0, 0.0, false, true, Self::members);
                 });

@@ -50,7 +50,7 @@ pub struct EditorWidget {}
 
 impl EditorWidget {
     pub fn new(cx: &mut Context) -> Handle<Self> {
-        Self {}.build(cx)
+        Self {}.build(cx, |_| {})
     }
 }
 

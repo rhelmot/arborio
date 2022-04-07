@@ -40,7 +40,7 @@ regex = "^1.5"
 
 # graphics
 # vizia = { path = "../../rust/VIZIA", default-features = false, features = ["winit", "clipboard"] }
-vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "54712b177ff2f92f4872b269c85e137da3f0b714" }
+vizia = {git = "https://github.com/rhelmot/VIZIA", rev = "78e357e18e95c01640643984577d14d81dae0db8" }
 # femtovg = { version = "0.3.0", default-features = false, features = ["image-loading"] } # inherit from vizia
 femtovg = { git = "https://github.com/femtovg/femtovg", rev = "87fe627794f3f793d8e3a338c838a2f8e8a8aa9d", default-features = false, features = ["image-loading"] }
 # femtovg = { path = "../../rust/femtovg", features = ["image-loading"] }
@@ -53,6 +53,8 @@ num-traits = "0.2.10" # inherit from euclid
 # misc
 Inflector = "^0.11"
 
+[profile.dev]
+opt-level = 1
 [profile.dev.package.vizia_core]
 opt-level = 2
 [profile.dev.package.femtovg]

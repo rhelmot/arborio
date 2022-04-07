@@ -19,7 +19,7 @@ impl TilePaletteWidget {
             selected,
             callback: Box::new(callback),
         }
-        .build2(cx, move |_| {})
+        .build(cx, move |_| {})
         .width(Units::Stretch(1.0))
         .height(Units::Stretch(1.0))
     }

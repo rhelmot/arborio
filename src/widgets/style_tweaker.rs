@@ -61,7 +61,7 @@ pub struct StyleListWidget {}
 
 impl StyleListWidget {
     pub fn new(cx: &mut Context) -> Handle<'_, Self> {
-        Self {}.build2(cx, move |cx| {
+        Self {}.build(cx, move |cx| {
             ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
                 Label::new(cx, "Foregrounds").class("style_category");
                 build_active_style_list(
@@ -119,7 +119,7 @@ pub struct StyleTweakerWidget {}
 impl StyleTweakerWidget {
     pub fn new(cx: &mut Context) -> Handle<'_, Self> {
         Self {}
-            .build2(cx, |cx| {
+            .build(cx, |cx| {
                 HStack::new(cx, |cx| {
                     Button::new(
                         cx,
