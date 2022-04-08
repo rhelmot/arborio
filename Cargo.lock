@@ -7,10 +7,6 @@ name = "Inflector"
 version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3"
-dependencies = [
- "lazy_static",
- "regex",
-]
 
 [[package]]
 name = "addr2line"
@@ -85,7 +81,6 @@ dependencies = [
  "lazy_static",
  "lru",
  "nom 7.1.0",
- "num-traits",
  "parking_lot 0.12.0",
  "rand 0.8.5",
  "regex",
@@ -2113,7 +2108,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=b579578de6defd7e3db9d5ffa296d826caabf147#b579578de6defd7e3db9d5ffa296d826caabf147"
+source = "git+https://github.com/rhelmot/vizia?rev=e613d3ba52fcb930773ec2b65edae58918d95f05#e613d3ba52fcb930773ec2b65edae58918d95f05"
 dependencies = [
  "vizia_core",
  "vizia_winit",
@@ -2122,7 +2117,7 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=b579578de6defd7e3db9d5ffa296d826caabf147#b579578de6defd7e3db9d5ffa296d826caabf147"
+source = "git+https://github.com/rhelmot/vizia?rev=e613d3ba52fcb930773ec2b65edae58918d95f05#e613d3ba52fcb930773ec2b65edae58918d95f05"
 dependencies = [
  "bitflags",
  "copypasta",
@@ -2147,7 +2142,7 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=b579578de6defd7e3db9d5ffa296d826caabf147#b579578de6defd7e3db9d5ffa296d826caabf147"
+source = "git+https://github.com/rhelmot/vizia?rev=e613d3ba52fcb930773ec2b65edae58918d95f05#e613d3ba52fcb930773ec2b65edae58918d95f05"
 dependencies = [
  "proc-macro2 1.0.36",
  "quote 1.0.14",
@@ -2157,7 +2152,7 @@ dependencies = [
 [[package]]
 name = "vizia_winit"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=b579578de6defd7e3db9d5ffa296d826caabf147#b579578de6defd7e3db9d5ffa296d826caabf147"
+source = "git+https://github.com/rhelmot/vizia?rev=e613d3ba52fcb930773ec2b65edae58918d95f05#e613d3ba52fcb930773ec2b65edae58918d95f05"
 dependencies = [
  "console_error_panic_hook",
  "femtovg",

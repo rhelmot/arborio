@@ -36,19 +36,18 @@ serde_yaml = "^0.8"
 nom = "^7.1"
 zip = "^0.5"
 walkdir = "^2"
-regex = "^1.5"
+regex = { version = "^1.5", default-features = false, features = ["std"] }
 
 # graphics
 # vizia = { path = "../../rust/VIZIA", default-features = false, features = ["winit", "clipboard"] }
-vizia = {git = "https://github.com/vizia/vizia", rev = "b579578de6defd7e3db9d5ffa296d826caabf147", default-features = false, features = ["winit", "clipboard"] }
+vizia = {git = "https://github.com/rhelmot/vizia", rev = "e613d3ba52fcb930773ec2b65edae58918d95f05", default-features = false, features = ["winit", "clipboard"] }
 image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
 imgref = "1.6.1"  # inherit from femtovg
 rgb = "0.8.20"  # inherit from femtovg
 euclid = "^0.22"
-num-traits = "0.2.10" # inherit from euclid
 
 # misc
-Inflector = "^0.11"
+Inflector = { version = "^0.11", default-features = false }
 
 [profile.dev]
 opt-level = 1

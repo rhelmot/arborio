@@ -120,7 +120,12 @@ where
 
 pub fn rect_normalize<T, U>(rect: &Rect<T, U>) -> Rect<T, U>
 where
-    T: num_traits::Signed + Copy + PartialOrd,
+    T: Copy
+        + PartialOrd
+        + euclid::num::Zero
+        + std::ops::Add<T, Output = T>
+        + std::ops::Neg<Output = T>
+        + PartialOrd,
 {
     Rect::new(
         Point2D::new(
@@ -137,8 +142,19 @@ where
                     T::zero()
                 }),
         ),
-        Size2D::new(rect.size.width.abs(), rect.size.height.abs()),
+        Size2D::new(shitty_abs(rect.size.width), shitty_abs(rect.size.height)),
     )
+}
+
+fn shitty_abs<T>(num: T) -> T
+where
+    T: Copy + euclid::num::Zero + std::ops::Neg<Output = T> + PartialOrd,
+{
+    if num < T::zero() {
+        -num
+    } else {
+        num
+    }
 }
 
 #[derive(Debug, Clone)]
