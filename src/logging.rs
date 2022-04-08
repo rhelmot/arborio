@@ -25,7 +25,6 @@ pub enum LogLevel {
 pub struct LogBuf(Vec<LogMessage>);
 #[must_use]
 pub struct LogResult<T>(pub T, pub LogBuf);
-pub struct LogResultLoaded<T, E>(LogResult<Result<T, E>>);
 
 macro_rules! emit_log {
     ($cx:expr, $level:ident, $message:expr $(,$context:expr)* $(,)?) => {
