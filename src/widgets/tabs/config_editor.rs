@@ -13,7 +13,7 @@ use crate::app_state::{
     StylegroundSelection,
 };
 use crate::assets::{intern_str, Interned, InternedMap};
-use crate::celeste_mod::entity_config::{
+use crate::celeste_mod::config::{
     AttributeInfo, AttributeType, AttributeValue, EntityConfig, StylegroundConfig, TriggerConfig,
 };
 use crate::celeste_mod::module::CelesteModule;

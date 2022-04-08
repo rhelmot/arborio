@@ -5,7 +5,7 @@ use vizia::*;
 
 use crate::app_state::AppState;
 use crate::assets::Interned;
-use crate::celeste_mod::entity_config::{EntityConfig, TriggerConfig};
+use crate::celeste_mod::config::{EntityConfig, TriggerConfig};
 use crate::logging::*;
 use crate::map_struct::{CelesteMapEntity, Node};
 use crate::units::*;

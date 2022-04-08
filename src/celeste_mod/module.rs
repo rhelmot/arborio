@@ -6,7 +6,7 @@ use std::sync::Arc;
 use crate::atlas_img::Atlas;
 use crate::autotiler;
 use crate::autotiler::Tileset;
-use crate::celeste_mod::entity_config::{EntityConfig, StylegroundConfig, TriggerConfig};
+use crate::celeste_mod::config::{EntityConfig, StylegroundConfig, TriggerConfig};
 use crate::celeste_mod::everest_yaml::EverestYaml;
 use crate::celeste_mod::walker::ConfigSource;
 use crate::celeste_mod::walker::ConfigSourceTrait;

@@ -7,7 +7,7 @@ use vizia::*;
 use crate::assets::{intern_str, Interned, InternedMap};
 use crate::atlas_img::MultiAtlas;
 use crate::autotiler::{Autotiler, Tileset};
-use crate::celeste_mod::entity_config::{EntityConfig, StylegroundConfig, TriggerConfig};
+use crate::celeste_mod::config::{EntityConfig, StylegroundConfig, TriggerConfig};
 use crate::celeste_mod::module::CelesteModule;
 use crate::celeste_mod::walker::{open_module, ConfigSourceTrait};
 use crate::logging::*;

@@ -1,6 +1,6 @@
 use super::common::*;
 use crate::app_state::StylegroundSelection;
-use crate::celeste_mod::entity_config::AttributeType;
+use crate::celeste_mod::config::AttributeType;
 use crate::lenses::{
     CurrentMapImplLens, CurrentMapLens, CurrentStylegroundImplLens, CurrentStylegroundLens,
     IsFailedLens, StylegroundNameLens,

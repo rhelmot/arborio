@@ -1,4 +1,4 @@
-use crate::celeste_mod::entity_config::AttributeType;
+use crate::celeste_mod::config::AttributeType;
 use crate::lenses::{HashMapIndexWithLens, HashMapLenLens, HashMapNthKeyLens, IsFailedLens};
 use crate::map_struct::Attribute;
 use std::collections::HashMap;

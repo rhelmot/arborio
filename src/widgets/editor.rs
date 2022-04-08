@@ -8,8 +8,8 @@ use vizia::*;
 
 use crate::app_state::{AppSelection, AppState};
 use crate::autotiler::{TextureTile, TileReference};
-use crate::celeste_mod::entity_config::DrawElement;
-use crate::celeste_mod::entity_expression::{Const, Number};
+use crate::celeste_mod::config::expression::{Const, Number};
+use crate::celeste_mod::config::DrawElement;
 use crate::logging::*;
 use crate::map_struct::{
     Attribute, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapStyleground,

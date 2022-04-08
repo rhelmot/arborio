@@ -1,7 +1,7 @@
 use vizia::*;
 
 use crate::app_state::{AppEvent, AppSelection, AppState, AppTab};
-use crate::celeste_mod::entity_config::AttributeType;
+use crate::celeste_mod::config::AttributeType;
 use crate::lenses::{CurrentSelectedEntityLens, IsFailedLens};
 use crate::map_struct::{Attribute, CelesteMapEntity};
 use crate::widgets::common::advanced_attrs_editor;
