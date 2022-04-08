@@ -1,7 +1,6 @@
 #![allow(unused)]
 use std::convert::Infallible;
 use std::error::Error;
-use std::ops::{ControlFlow, FromResidual, Try};
 use std::sync::Mutex;
 use vizia::*;
 
@@ -111,38 +110,6 @@ impl<T> LogResult<T> {
     }
 }
 
-impl<T, E> LogResult<Result<T, E>> {
-    pub fn inload(mut self, buf: &mut LogBuf) -> LogResultLoaded<T, E> {
-        buf.0.append(&mut self.1 .0);
-        if self.0.is_err() {
-            std::mem::swap(&mut self.1, buf);
-        }
-        LogResultLoaded(self)
-    }
-}
-
-impl<T, E> Try for LogResultLoaded<T, E> {
-    type Output = T;
-    type Residual = LogResult<Result<Infallible, E>>;
-
-    fn from_output(output: Self::Output) -> Self {
-        Self(LogResult(Ok(output), LogBuf::new()))
-    }
-
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
-        match self.0 .0 {
-            Ok(o) => ControlFlow::Continue(o),
-            Err(e) => ControlFlow::Break(LogResult(Err(e), self.0 .1)),
-        }
-    }
-}
-impl<T, E> FromResidual for LogResultLoaded<T, E> {
-    fn from_residual(residual: <Self as Try>::Residual) -> Self {
-        let e = residual.0.unwrap_err();
-        Self(LogResult(Err(e), residual.1))
-    }
-}
-
 pub trait ResultExt<T> {
     fn offload(self, level: LogLevel, buf: &mut LogBuf) -> Option<T>;
     fn emit(self, level: LogLevel, cx: &mut Context) -> Option<T>;
@@ -156,9 +123,7 @@ impl<T, E: Into<Box<dyn Error>>> ResultExt<T> for Result<T, E> {
                 let s = s.into();
                 buf.push(LogMessage {
                     level,
-                    source: s
-                        .backtrace()
-                        .map_or("unknown offload".to_string(), |bt| bt.to_string()),
+                    source: "TODO missing feautre".to_string(),
                     message: s.to_string(),
                 });
                 None
@@ -173,9 +138,7 @@ impl<T, E: Into<Box<dyn Error>>> ResultExt<T> for Result<T, E> {
                 let s = s.into();
                 cx.emit(LogMessage {
                     level,
-                    source: s
-                        .backtrace()
-                        .map_or("unknown emit".to_string(), |bt| bt.to_string()),
+                    source: "TODO missing feature".to_string(),
                     message: s.to_string(),
                 });
                 None

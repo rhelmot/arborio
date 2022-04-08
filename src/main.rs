@@ -1,5 +1,3 @@
-#![feature(try_trait_v2)]
-#![feature(backtrace)]
 #![allow(clippy::too_many_arguments)]
 
 mod app_state;
