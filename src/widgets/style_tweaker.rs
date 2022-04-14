@@ -98,6 +98,7 @@ where
                 Label::new(cx, lens.then(StylegroundNameLens {}));
             })
             .class("palette_item")
+            .class("list_highlight")
             .bind(CurrentStylegroundLens {}, move |handle, selected| {
                 let is_me =
                     selected.get_fallible(handle.cx) == Some(StylegroundSelection { fg, idx });
@@ -124,28 +125,37 @@ impl StyleTweakerWidget {
                     Button::new(
                         cx,
                         |cx| {
-                            cx.emit(AppEvent::AddStyleground {
-                                map: CurrentMapLens {}.get(cx),
-                                loc: CurrentStylegroundLens {}.get(cx),
-                                style: CelesteMapStyleground::default(),
-                            })
+                            if (CurrentStylegroundLens {}).get_fallible(cx).is_some() {
+                                cx.emit(AppEvent::AddStyleground {
+                                    map: CurrentMapLens {}.get(cx),
+                                    loc: CurrentStylegroundLens {}.get(cx),
+                                    style: CelesteMapStyleground::default(),
+                                })
+                            }
                         },
-                        |cx| Label::new(cx, "+"),
+                        |cx| Label::new(cx, "\u{e145}").class("icon"),
                     );
                     Button::new(
                         cx,
                         |cx| {
-                            cx.emit(AppEvent::RemoveStyleground {
-                                map: CurrentMapLens {}.get(cx),
-                                loc: CurrentStylegroundLens {}.get(cx),
-                            });
+                            if (CurrentStylegroundLens {}).get_fallible(cx).is_some() {
+                                cx.emit(AppEvent::RemoveStyleground {
+                                    map: CurrentMapLens {}.get(cx),
+                                    loc: CurrentStylegroundLens {}.get(cx),
+                                });
+                            }
                         },
-                        |cx| Label::new(cx, "-"),
+                        |cx| Label::new(cx, "\u{e15b}").class("icon"),
                     );
                     Button::new(
                         cx,
                         |cx| {
-                            let sel = CurrentStylegroundLens {}.get(cx);
+                            let sel =
+                                if let Some(sel) = (CurrentStylegroundLens {}).get_fallible(cx) {
+                                    sel
+                                } else {
+                                    return;
+                                };
                             let max_idx = CurrentMapImplLens {}
                                 .map(move |map| map.styles(sel.fg).len())
                                 .get(cx);
@@ -170,12 +180,17 @@ impl StyleTweakerWidget {
                                 styleground: Some(target),
                             })
                         },
-                        |cx| Label::new(cx, "^"),
+                        |cx| Label::new(cx, "\u{e5ce}").class("icon"),
                     );
                     Button::new(
                         cx,
                         |cx| {
-                            let sel = CurrentStylegroundLens {}.get(cx);
+                            let sel =
+                                if let Some(sel) = (CurrentStylegroundLens {}).get_fallible(cx) {
+                                    sel
+                                } else {
+                                    return;
+                                };
                             let target = if sel.idx == 0 {
                                 if !sel.fg {
                                     return;
@@ -203,7 +218,7 @@ impl StyleTweakerWidget {
                                 styleground: Some(target),
                             })
                         },
-                        |cx| Label::new(cx, "v"),
+                        |cx| Label::new(cx, "\u{e5cf}").class("icon"),
                     );
                 });
                 ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
@@ -330,11 +345,18 @@ fn tweak_attr_picker<T: Data>(
             cx,
             move |cx| {
                 let labels2 = labels2.clone();
-                Label::new(cx, "").bind(lens.clone(), move |handle, item| {
-                    if let Some(item) = item.get_fallible(handle.cx) {
-                        let label = (labels2)(handle.cx, &item);
-                        handle.text(&label);
-                    }
+                let lens = lens.clone();
+                HStack::new(cx, move |cx| {
+                    let labels2 = labels2.clone();
+                    Label::new(cx, "").bind(lens, move |handle, item| {
+                        if let Some(item) = item.get_fallible(handle.cx) {
+                            let label = (labels2)(handle.cx, &item);
+                            handle.text(&label);
+                        }
+                    });
+                    Label::new(cx, ICON_DOWN_OPEN)
+                        .class("icon")
+                        .class("dropdown_icon");
                 })
             },
             move |cx| {
@@ -344,6 +366,7 @@ fn tweak_attr_picker<T: Data>(
                     let label = labels(cx, &item);
                     Label::new(cx, &label)
                         .class("dropdown_element")
+                        .class("btn_highlight")
                         .on_press(move |cx| {
                             cx.emit(PopupEvent::Close);
                             setter(cx, item.clone());

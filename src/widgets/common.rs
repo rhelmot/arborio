@@ -111,9 +111,12 @@ pub fn advanced_attrs_editor(
                         }
                     });
 
-                    Label::new(cx, "-").class("remove_btn").on_press(move |cx| {
-                        remover(cx, key_lens.get(cx));
-                    });
+                    Label::new(cx, "\u{e15b}")
+                        .class("icon")
+                        .class("remove_btn")
+                        .on_press(move |cx| {
+                            remover(cx, key_lens.get(cx));
+                        });
                 });
             }
         },
@@ -136,9 +139,8 @@ pub fn advanced_attrs_editor(
                         handle.text(&text);
                     });
                     Label::new(cx, ICON_DOWN_OPEN)
-                        .font("icons")
-                        .left(Stretch(1.0))
-                        .right(Pixels(5.0));
+                        .class("icon")
+                        .class("dropdown_icon");
                 })
             },
             |cx| {
@@ -151,6 +153,7 @@ pub fn advanced_attrs_editor(
                     ] {
                         Label::new(cx, &format!("{:?}", ty))
                             .class("dropdown_element")
+                            .class("btn_highlight")
                             .on_press(move |cx| {
                                 cx.emit(PopupEvent::Close);
                                 cx.emit(NewAttributeDataEvent::SetTy(ty));
@@ -159,13 +162,16 @@ pub fn advanced_attrs_editor(
                 });
             },
         );
-        Label::new(cx, "+").class("add_btn").on_press(move |cx| {
-            let name = NewAttributeData::name.get(cx);
-            if !name.is_empty() {
-                adder(cx, name, NewAttributeData::ty.get(cx));
-                cx.emit(NewAttributeDataEvent::SetName("".to_owned()));
-            }
-        });
+        Label::new(cx, "\u{e145}")
+            .class("icon")
+            .class("add_btn")
+            .on_press(move |cx| {
+                let name = NewAttributeData::name.get(cx);
+                if !name.is_empty() {
+                    adder(cx, name, NewAttributeData::ty.get(cx));
+                    cx.emit(NewAttributeDataEvent::SetName("".to_owned()));
+                }
+            });
     });
 }
 

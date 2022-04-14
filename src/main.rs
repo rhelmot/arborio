@@ -56,7 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             VStack::new(cx, move |cx| {
                 MenuController::new(cx, false, |cx| {
-                    MenuStack::new_horizontal(cx, build_menu_bar).class("menu_bar");
+                    MenuStack::new_horizontal(cx, build_menu_bar).id("menu_bar");
                 });
                 build_tab_bar(cx);
                 build_tabs(cx);
@@ -69,18 +69,19 @@ fn main() -> Result<(), Box<dyn Error>> {
                         ZStack::new(cx, move |cx| {
                             Label::new(cx, &status)
                                 .width(Units::Percentage(100.0))
-                                .class("progress_bar_bg");
+                                .id("progress_bar_bg");
                             Label::new(cx, &status)
                                 .width(Units::Percentage(progress as f32))
-                                .class("progress_bar");
+                                .id("progress_bar");
                         })
-                        .class("progress_bar_container");
+                        .id("progress_bar_container");
                     }
                 })
             })
-            .class("main");
+            .id("main");
         },
-    );
+    )
+    .ignore_default_styles();
 
     app.run();
     Ok(())

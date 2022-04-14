@@ -38,9 +38,13 @@ pub fn build_tab_bar(cx: &mut Context) {
     List::new(cx, AppState::tabs, move |cx, tab_index, tab| {
         HStack::new(cx, move |cx| {
             Label::new(cx, &tab.get(cx).to_string());
-            Label::new(cx, "x").class("close_btn").on_press(move |cx| {
-                cx.emit(AppEvent::CloseTab { idx: tab_index });
-            });
+            Label::new(cx, "\u{e5cd}")
+                .class("icon")
+                .class("close_btn")
+                .on_press(move |cx| {
+                    cx.emit(AppEvent::CloseTab { idx: tab_index });
+                });
+            Element::new(cx).class("tab_highlight");
         })
         .class("tab")
         .on_press(move |cx| {

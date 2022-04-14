@@ -359,19 +359,25 @@ pub fn build_search_settings(cx: &mut Context) {
             Dropdown::new(
                 cx,
                 move |cx| {
-                    Label::new(cx, "").bind(
-                        ctab.then(ConfigEditorTab::search_scope),
-                        |handle, scope| {
-                            if let Some(thing) = scope.get_fallible(handle.cx) {
-                                handle.text(&format!("{}", thing));
-                            }
-                        },
-                    )
+                    HStack::new(cx, move |cx| {
+                        Label::new(cx, "").bind(
+                            ctab.then(ConfigEditorTab::search_scope),
+                            |handle, scope| {
+                                if let Some(thing) = scope.get_fallible(handle.cx) {
+                                    handle.text(&format!("{}", thing));
+                                }
+                            },
+                        );
+                        Label::new(cx, ICON_DOWN_OPEN)
+                            .class("icon")
+                            .class("dropdown_icon");
+                    })
                 },
                 move |cx| {
                     for target in collect_search_targets(cx) {
                         Label::new(cx, &format!("{}", target))
                             .class("dropdown_element")
+                            .class("btn_highlight")
                             .on_press(move |cx| {
                                 cx.emit(PopupEvent::Close);
                                 let tab = cx.data::<AppState>().unwrap().current_tab;
@@ -388,7 +394,14 @@ pub fn build_search_settings(cx: &mut Context) {
             Label::new(cx, "Search for");
             Dropdown::new(
                 cx,
-                move |cx| Label::new(cx, ctab.then(ConfigEditorTab::search_type)),
+                move |cx| {
+                    HStack::new(cx, move |cx| {
+                        Label::new(cx, ctab.then(ConfigEditorTab::search_type));
+                        Label::new(cx, ICON_DOWN_OPEN)
+                            .class("icon")
+                            .class("dropdown_icon");
+                    })
+                },
                 move |cx| {
                     for target in [
                         ConfigSearchType::Entities,
@@ -397,6 +410,7 @@ pub fn build_search_settings(cx: &mut Context) {
                     ] {
                         Label::new(cx, &format!("{}", target))
                             .class("dropdown_element")
+                            .class("btn_highlight")
                             .on_press(move |cx| {
                                 cx.emit(PopupEvent::Close);
                                 let tab = cx.data::<AppState>().unwrap().current_tab;
@@ -410,7 +424,14 @@ pub fn build_search_settings(cx: &mut Context) {
             Label::new(cx, "Filter");
             Dropdown::new(
                 cx,
-                move |cx| Label::new(cx, ctab.then(ConfigEditorTab::search_filter)),
+                move |cx| {
+                    HStack::new(cx, move |cx| {
+                        Label::new(cx, ctab.then(ConfigEditorTab::search_filter));
+                        Label::new(cx, ICON_DOWN_OPEN)
+                            .class("icon")
+                            .class("dropdown_icon");
+                    })
+                },
                 move |cx| {
                     for target in [
                         ConfigSearchFilter::All,
@@ -420,6 +441,7 @@ pub fn build_search_settings(cx: &mut Context) {
                     ] {
                         Label::new(cx, &format!("{}", target))
                             .class("dropdown_element")
+                            .class("btn_highlight")
                             .on_press(move |cx| {
                                 cx.emit(PopupEvent::Close);
                                 let tab = cx.data::<AppState>().unwrap().current_tab;
@@ -434,6 +456,7 @@ pub fn build_search_settings(cx: &mut Context) {
                         &format!("{}", ConfigSearchFilter::Matches("".to_owned())),
                     )
                     .class("dropdown_element")
+                    .class("btn_highlight")
                     .on_press(move |cx| {
                         if let Some(filter) =
                             ctab.then(ConfigEditorTab::search_filter).get_fallible(cx)
@@ -742,7 +765,7 @@ fn build_search_results(cx: &mut Context) {
                     item.map(|item| item.display_list()).unwrap_or_default()
                 });
                 Label::new(cx, &display)
-                    .class("palette_item")
+                    .class("list_highlight")
                     .bind(
                         ctab.then(ConfigEditorTab::selected_result),
                         move |handle, selected| {
@@ -891,7 +914,7 @@ fn config_editor_textbox<T>(
                         });
                     }
                 })
-                .class("config_editor_box");
+                .id("config_editor_box");
         }
     });
 }

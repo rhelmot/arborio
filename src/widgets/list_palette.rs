@@ -44,6 +44,7 @@ where
                         });
                     })
                     .class("palette_item")
+                    .class("list_highlight")
                     .bind(selected.clone(), move |handle, selected| {
                         let mine = item3.get(handle.cx);
                         let selected = selected.get(handle.cx);

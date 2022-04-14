@@ -45,8 +45,8 @@ walkdir = "^2"
 regex = { version = "^1.5", default-features = false, features = ["std"] }
 
 # graphics
-# vizia = { path = "../../rust/VIZIA", default-features = false, features = ["winit", "clipboard"] }
-vizia = {git = "https://github.com/vizia/vizia", rev = "d99a4e1c09905c568b5c6523b19acedc2f19e0e5", default-features = false, features = ["winit", "clipboard"] }
+#vizia = { path = "../../rust/VIZIA", default-features = false, features = ["winit", "clipboard"] }
+vizia = {git = "https://github.com/rhelmot/vizia", rev = "95ccef44049f3dc114446c7d282fc9d6ff19304d", default-features = false, features = ["winit", "clipboard"] }
 image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
 imgref = "1.6.1"  # inherit from femtovg
 rgb = "0.8.20"  # inherit from femtovg
@@ -57,6 +57,7 @@ Inflector = { version = "^0.11", default-features = false }
 
 [profile.dev]
 opt-level = 1
+lto = false
 [profile.dev.package.vizia_core]
 opt-level = 2
 [profile.dev.package.femtovg]
@@ -64,4 +65,6 @@ opt-level = 2
 [profile.dev.package.png]
 opt-level = 3
 [profile.dev.package.adler]
+opt-level = 3
+[profile.dev.package.zip]
 opt-level = 3

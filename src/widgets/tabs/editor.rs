@@ -15,7 +15,7 @@ pub fn build_editor(cx: &mut Context) {
         VStack::new(cx, |cx| {
             build_tool_picker(cx);
         })
-        .class("left_bar");
+        .id("left_bar");
 
         EditorWidget::new(cx)
             .width(Stretch(1.0))
@@ -26,34 +26,32 @@ pub fn build_editor(cx: &mut Context) {
             build_palette_widgets(cx);
             build_tweaker_widgets(cx);
         })
-        .class("right_bar");
+        .id("right_bar");
     })
     .height(Stretch(1.0));
 }
 
 pub fn build_tool_picker(cx: &mut Context) {
-    Binding::new(cx, CurrentMapLens {}, |cx, map| {
-        let showme = map.get_fallible(cx).is_some();
-        Picker::new(cx, AppState::current_toolspec, |cx, tool_field| {
-            for toolspec in ToolSpec::into_enum_iter() {
-                let selected = tool_field.map(move |sel| sel == &toolspec);
-                let selected2 = selected.clone();
-                Button::new(
-                    cx,
-                    move |cx| cx.emit(AppEvent::SelectTool { spec: toolspec }),
-                    move |cx| {
-                        let selected2 = selected2.clone();
-                        RadioButton::new(cx, selected2);
-                        Label::new(cx, toolspec.name())
-                    },
-                )
-                .checked(selected)
-                .class("btn_item")
-                .layout_type(LayoutType::Row);
-            }
-        })
-        .display(showme);
-    });
+    VStack::new(cx, move |cx| {
+        Binding::new(cx, CurrentMapLens {}, |cx, map| {
+            let showme = map.get_fallible(cx).is_some();
+            Picker::new(cx, AppState::current_toolspec, |cx, tool_field| {
+                for toolspec in ToolSpec::into_enum_iter() {
+                    let selected = tool_field.map(move |sel| sel == &toolspec);
+                    let selected2 = selected.clone();
+                    HStack::new(cx, move |cx| {
+                        RadioButton::new(cx, selected2.clone());
+                        Label::new(cx, toolspec.name());
+                    })
+                    .on_press(move |cx| cx.emit(AppEvent::SelectTool { spec: toolspec }))
+                    .checked(selected)
+                    .class("list_highlight");
+                }
+            })
+            .display(showme);
+        });
+    })
+    .id("tool_picker");
 }
 
 pub fn build_layer_picker(cx: &mut Context) {
@@ -61,25 +59,20 @@ pub fn build_layer_picker(cx: &mut Context) {
         for layer in Layer::into_enum_iter() {
             let selected = AppState::current_layer.map(move |sel| sel == &layer);
             let selected2 = selected.clone();
-            Button::new(
-                cx,
-                move |cx| {
-                    cx.emit(AppEvent::SelectLayer { layer });
-                },
-                move |cx| {
-                    RadioButton::new(cx, selected2.clone());
-                    Label::new(cx, layer.name())
-                },
-            )
+            HStack::new(cx, move |cx| {
+                RadioButton::new(cx, selected2.clone());
+                Label::new(cx, layer.name());
+            })
+            .on_press(move |cx| cx.emit(AppEvent::SelectLayer { layer }))
             .checked(selected)
-            .class("btn_item")
-            .layout_type(LayoutType::Row)
+            .class("list_highlight")
             .bind(AppState::current_toolspec, move |handle, toolspec| {
                 let toolspec = toolspec.get(handle.cx);
                 handle.display(layer != Layer::All || toolspec == ToolSpec::Selection);
             });
         }
     })
+    .id("layer_picker")
     .bind(AppState::current_toolspec, move |handle, toolspec| {
         let toolspec = toolspec.get(handle.cx);
         handle.display(toolspec != ToolSpec::Style);

@@ -19,68 +19,71 @@ pub fn build_installation_tab(cx: &mut Context) {
             if let Some(root) = root.get_fallible(cx) {
                 Label::new(cx, &format!("Current celeste install is {:?}", root));
                 ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
-                    Binding::new(cx, AppState::modules_version, move |cx, _| {
-                        let modules = &cx.data::<AppState>().unwrap().modules;
-                        let mut modules_list = modules
-                            .iter()
-                            .map(|(name, module)| {
-                                (
-                                    *name,
-                                    module.maps.len(),
-                                    module.everest_metadata.name,
-                                    module.module_kind(),
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        modules_list.sort_by_key(|(_, _, name, _)| *name);
+                    VStack::new(cx, move |cx| {
+                        Binding::new(cx, AppState::modules_version, move |cx, _| {
+                            let modules = &cx.data::<AppState>().unwrap().modules;
+                            let mut modules_list = modules
+                                .iter()
+                                .map(|(name, module)| {
+                                    (
+                                        *name,
+                                        module.maps.len(),
+                                        module.everest_metadata.name,
+                                        module.module_kind(),
+                                    )
+                                })
+                                .collect::<Vec<_>>();
+                            modules_list.sort_by_key(|(_, _, name, _)| *name);
 
-                        let mut idx = 0usize;
-                        let mut first = true;
-                        while idx < modules_list.len() {
-                            if matches!(modules_list[idx].3, CelesteModuleKind::Directory) {
-                                let (sid, num_maps, name, _) = modules_list.remove(idx);
-                                if first {
-                                    first = false;
-                                    Label::new(cx, "My Mods").class("map_category");
+                            let mut idx = 0usize;
+                            let mut first = true;
+                            while idx < modules_list.len() {
+                                if matches!(modules_list[idx].3, CelesteModuleKind::Directory) {
+                                    let (sid, num_maps, name, _) = modules_list.remove(idx);
+                                    if first {
+                                        first = false;
+                                        Label::new(cx, "My Mods").class("module_category");
+                                    }
+                                    build_project_overview_card(cx, sid, name, num_maps);
+                                } else {
+                                    idx += 1;
                                 }
-                                build_project_overview_card(cx, sid, name, num_maps);
-                            } else {
-                                idx += 1;
                             }
-                        }
 
-                        let mut idx = 0usize;
-                        let mut first = true;
-                        while idx < modules_list.len() {
-                            if matches!(modules_list[idx].3, CelesteModuleKind::Builtin) {
-                                let (sid, num_maps, name, _) = modules_list.remove(idx);
-                                if first {
-                                    first = false;
-                                    Label::new(cx, "Builtin Modules").class("map_category");
+                            let mut idx = 0usize;
+                            let mut first = true;
+                            while idx < modules_list.len() {
+                                if matches!(modules_list[idx].3, CelesteModuleKind::Builtin) {
+                                    let (sid, num_maps, name, _) = modules_list.remove(idx);
+                                    if first {
+                                        first = false;
+                                        Label::new(cx, "Builtin Modules").class("module_category");
+                                    }
+                                    build_project_overview_card(cx, sid, name, num_maps);
+                                } else {
+                                    idx += 1;
                                 }
-                                build_project_overview_card(cx, sid, name, num_maps);
-                            } else {
-                                idx += 1;
                             }
-                        }
 
-                        let mut idx = 0usize;
-                        let mut first = true;
-                        while idx < modules_list.len() {
-                            if matches!(modules_list[idx].3, CelesteModuleKind::Zip) {
-                                let (sid, num_maps, name, _) = modules_list.remove(idx);
-                                if first {
-                                    first = false;
-                                    Label::new(cx, "Downloaded Mods").class("map_category");
+                            let mut idx = 0usize;
+                            let mut first = true;
+                            while idx < modules_list.len() {
+                                if matches!(modules_list[idx].3, CelesteModuleKind::Zip) {
+                                    let (sid, num_maps, name, _) = modules_list.remove(idx);
+                                    if first {
+                                        first = false;
+                                        Label::new(cx, "Downloaded Mods").class("module_category");
+                                    }
+                                    build_project_overview_card(cx, sid, name, num_maps);
+                                } else {
+                                    idx += 1;
                                 }
-                                build_project_overview_card(cx, sid, name, num_maps);
-                            } else {
-                                idx += 1;
                             }
-                        }
 
-                        assert_eq!(modules_list.len(), 0);
-                    });
+                            assert_eq!(modules_list.len(), 0);
+                        });
+                    })
+                    .id("modules_container");
                 });
             } else {
                 Button::new(
@@ -115,5 +118,6 @@ fn build_project_overview_card(cx: &mut Context, sid: Interned, name: Interned, 
         );
     })
     .class("module_overview_card")
+    .class("btn_highlight")
     .on_press(move |cx| cx.emit(AppEvent::OpenModuleOverviewTab { module: sid }));
 }

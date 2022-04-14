@@ -23,7 +23,9 @@ impl EntityTweakerWidget {
                 });
                 Binding::new(cx, IsFailedLens::new(entity_lens), move |cx, failed| {
                     if !failed.get(cx) {
-                        ScrollView::new(cx, 0.0, 0.0, false, true, Self::members);
+                        ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
+                            VStack::new(cx, Self::members).class("tweaker_container");
+                        });
                     }
                 });
             })
@@ -72,9 +74,12 @@ impl EntityTweakerWidget {
                     Textbox::new(cx, item.map(|pair| pair.y)).on_edit(move |cx, text| {
                         edit_node_y(cx, idx, text);
                     });
-                    Label::new(cx, "-").class("remove_btn").on_press(move |cx| {
-                        remove_node(cx, idx);
-                    });
+                    Label::new(cx, "\u{e15b}")
+                        .class("icon")
+                        .class("remove_btn")
+                        .on_press(move |cx| {
+                            remove_node(cx, idx);
+                        });
                 });
             },
         );

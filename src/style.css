@@ -1,79 +1,54 @@
-.main {
+/* main layout */
+
+#main {
     height: 100%;
+    background-color: #343a45;
+    color: #dddddd;
+    selection-color: #00000000;
+    caret-color: #00000000;
 }
 
-.menu_bar {
+#menu_bar {
     height: auto;
-}
-
-.left_bar {
-    width: 0s;
-}
-
-.right_bar {
-    width: 200px;
-}
-
-button.btn_item {
-    border-radius: 0;
-    background-color: #ffe4c4;
-    border-width: 1px;
-    border-color: black;
-    width: 1s;
-}
-
-button.btn_item label {
-    color: black;
-}
-
-button.btn_item:over {
-    background-color: #ffe4c4;
-}
-
-button.btn_item:checked {
-    background-color: #c0c4c4;
-}
-
-hstack {
-    child-space: 0;
-    overflow: visible;
-}
-vstack {
-    child-space: 0;
-    overflow: visible;
-}
-
-palette {
     width: 100%;
 }
 
-scrollbar {
-    opacity: 50%;
-    background-color: #c0c0c0c0;
+menucontroller {
+    width: 100%;
+    font-size: 14px;
 }
 
-scrollbar:over {
-    opacity: 90%;
+menustack {
+    background-color: #444449;
+    width: 1s;
 }
 
-palette list {
-    min-width: 100%;
+menu {
+    child-space: 5px;
+    width: auto;
 }
 
-.palette_item {
-    color: black;
+menu:over {
+    background-color: #4080c0;
 }
 
-.palette_item:checked {
-    background-color: #101040;
-    color: white;
+menustack.vertical {
+    child-space: 3px;
+    border-color: #555555;
+    border-width: 1px;
 }
 
-.palette_item label {
-    height: 20px;
-    min-width: 100%;
-    font-size: 15px;
-    child-left: 3px;
+menustack.vertical menu {
+    child-left: 15px;
+}
+
+menubutton {
+    child-space: 5px;
+    child-left: 15px;
+}
+
+menubutton:over {
+    background-color: #4080c0;
 }
 
 .tab_bar {
@@ -84,37 +59,34 @@ palette list {
 }
 
 .tab {
-    background-color: #ffe4c4;
-    border-radius: 2px;
-    color: black;
+    background-color: #44516e;
     child-left: 3px;
     child-right: 3px;
     child-top: 1s;
     child-bottom: 1s;
     height: 30px;
     width: auto;
-    border-color: #333333;
-    border-width: 1px;
+    font-size: 15px;
 }
 
 .tab:checked {
-    background-color: #c0c4c4;
-    border-width: 3px;
-    border-color: black;
+    background-color: #41557e;
 }
 
-.close_btn {
-    background-color: #ffc0c0;
-    width: 14px;
-    height: 14px;
-    border-radius: 7px;
-    color: black;
-
-    right: 10px;
+.tab_highlight {
+    position-type: self-directed;
+    display: none;
+    background-color: #4080c0;
+    top: 1s;
+    bottom: 0;
+    height: 3px;
+    left: 0;
+    width: 1s;
+    right: 0;
 }
 
-.close_btn:over {
-    background-color: #c0c0f0;
+.tab:checked .tab_highlight {
+    display: flex;
 }
 
 .tab_container {
@@ -122,11 +94,11 @@ palette list {
     width: 1s;
 }
 
-.progress_bar_container {
+#progress_bar_container {
     height: 22px;
 }
 
-.progress_bar {
+#progress_bar {
     color: white;
     background-color: #209020;
     overflow: hidden;
@@ -136,42 +108,74 @@ palette list {
     text-wrap: false;
 }
 
-.progress_bar_bg {
-    color: black;
-    background-color: white;
+#progress_bar_bg {
     left: 0;
     child-left: 10px;
     text-wrap: false;
 }
 
-.map_category {
+
+/* installation tab */
+
+.module_category {
     top: 20px;
-}
-
-.map_overview_card {
-    width: 100%;
-    child-space: 10px;
-}
-
-.map_title {
-    font-size: 20px;
-}
-
-.map_overview_card:over {
-    background-color: #c0c0f0;
-}
-
-.module_overview_card {
-    width: 100%;
-    child-space: 5px;
+    font: "roboto-bold";
+    color: white;
+    left: 35px;
 }
 
 .module_title {
     font-size: 20px;
 }
 
-.module_overview_card:over {
-    background-color: #c0c0f0;
+.module_overview_card {
+    width: 100%;
+    child-space: 5px;
+    child-left: 40px;
+}
+
+
+/* project tab */
+
+#maps_container {
+    top: 30px;
+}
+
+.map_overview_card {
+    width: 100%;
+    child-space: 10px;
+    child-left: 40px;
+    height: auto;
+}
+
+.map_title {
+    font-size: 20px;
+}
+
+
+/* editor */
+
+#left_bar {
+    width: auto;
+}
+
+#right_bar {
+    width: 200px;
+}
+
+palette {
+    width: 100%;
+}
+
+palette list {
+    min-width: 100%;
+}
+
+.palette_item label {
+    height: 20px;
+    min-width: 100%;
+    font-size: 15px;
+    child-left: 3px;
 }
 
 .tweaker {
@@ -190,13 +194,6 @@ palette list {
     width: 1s;
 }
 
-.tweaker label {
-    left: 3px;
-    right: 3px;
-    top: 4px;
-    bottom: 4px;
-}
-
 .tweaker textbox {
     width: 1s;
     top: 1s;
@@ -212,8 +209,15 @@ palette list {
     font-size: 15px;
 }
 
-.tweaker hstack {
+.tweaker_container {
     right: 14px;
+    left: 3px;
+    top: 3px;
+    row-between: 3px;
+}
+
+.tweaker_container>hstack {
+    col-between: 3px;
 }
 
 style_list {
@@ -224,51 +228,11 @@ style_list list {
     min-width: 100%;
 }
 
-.validation_error {
-    background-color: #ffc0c0;
-    border-color: red;
+#layer_picker {
+    height: auto;
 }
 
-.remove_btn {
-    border-radius: 4px;
-    width: 14px;
-    height: 14px;
-    background-color: #c0a0a0;
-}
-
-.remove_btn:over {
-    background-color: #a08040;
-}
-
-.add_btn {
-    border-radius: 4px;
-    width: 14px;
-    height: 14px;
-    background-color: #a0c0a0;
-}
-
-.add_btn:over {
-    background-color: #40a080;
-}
-
-dropdown {
-    overflow: visible;
-}
-
-.dropdown_element {
-    width: 1s;
-    child-left: 3px;
-    background-color: white;
-}
-
-.dropdown_element:over {
-    background-color: #101040;
-    color: white;
-}
-
-menu>menustack { /* TODO remove this */
-    z-index: 1000;
-}
+/* config editor */
 
 .config_search_settings {
     height: auto;
@@ -286,6 +250,230 @@ menu>menustack { /* TODO remove this */
     width: 1s;
     height: 1s;
     min-height: 50px;
+}
+
+/* controls */
+
+checkbox {
+    width: 22px;
+    height: 22px;
+    min-height: 0px;
+    border-radius: 3px;
+    border-width: 2px;
+    border-color: #888888;
+    child-space: 1s;
+    space: 2px;
+}
+
+radiobutton {
+    width: 18px;
+    height: 18px;
+    border-width: 1px;
+    border-radius: 50%;
+    border-color: #888888;
+    background-color: white;
+    child-space: 1s;
+    space: 2px;
+}
+
+radiobutton:checked {
+    border-color: #ef6308;
+    background-color: #ef6308;
+}
+
+radiobutton .inner {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: white;
+    display: none;
+}
+
+radiobutton:checked .inner {
+    display: flex;
+}
+
+textbox {
+    min-width: 18px;
+    min-height: auto;
+    height: 28px;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #888888;
+    child-top: 2px;
+    child-bottom: 2px;
+    child-left: 5px;
+    child-right: 5px;
+}
+
+textbox:checked {
+    border-color: #4080c0;
+    caret-color: #dddddd;
+    selection-color: #a44301;
+}
+
+label {
+    caret-color: #dddddd;
+    selection-color: #a44301;
+}
+
+.close_btn {
+    background-color: #ffc0c0;
+    font-size: 12px;
+    color: black;
+    child-left: 1s;
+    child-right: 1s;
+    min-height: 0;
+    height: 14px;
+    width: 14px;
+    border-radius: 50%;
+}
+
+.close_btn:over {
+    background-color: #c0c0f0;
+}
+
+.remove_btn {
+    font-size: 12px;
+    border-radius: 50%;
+    color: black;
+    child-space: 1s;
+    width: 14px;
+    height: 14px;
+    min-height: 0;
+    background-color: #c0a0a0;
+    top: 1s;
+    bottom: 1s;
+}
+
+.remove_btn:over {
+    background-color: #a08040;
+}
+
+.add_btn {
+    font-size: 12px;
+    border-radius: 50%;
+    color: black;
+    child-space: 1s;
+    width: 14px;
+    height: 14px;
+    min-height: 0;
+    background-color: #a0c0a0;
+    top: 1s;
+    bottom: 1s;
+}
+
+.add_btn:over {
+    background-color: #40a080;
+}
+
+scrollbar {
+    background-color: #c0c0c000;
+    width: 10px;
+}
+
+scrollbar:over {
+    background-color: #c0c0c080;
+}
+
+scrollview>scrollbar.horizontal {
+    height: 10px;
+}
+
+scrollview>scrollbar.vertical {
+    width: 10px;
+}
+
+scrollbar>.thumb {
+    border-radius: 4px;
+}
+
+scrollbar.horizontal>.thumb {
+    top: 1px;
+    height: 8px;
+}
+
+scrollbar.vertical>.thumb {
+    left: 1px;
+    width: 8px;
+}
+
+hstack {
+    child-space: 0;
+    overflow: visible;
+}
+
+vstack {
+    child-space: 0;
+    overflow: visible;
+}
+
+.validation_error {
+    background-color: #402020;
+    border-color: red;
+}
+
+dropdown {
+    overflow: visible;
+}
+
+dropdown button.title {
+    width: 100%;
+}
+
+dropdown popup {
+    background-color: #343a45;
+    border-color: #888888;
+    border-width: 1px;
+    child-space: 3px;
+    height: auto;
+}
+
+.dropdown_element {
+    child-left: 3px;
+}
+
+.dropdown_icon {
+    top: 1s;
+    bottom: 1s;
+    left: 3px;
+}
+
+button {
+    width: auto;
+    height: auto;
+    background-color: #464f5d;
+    border-width: 1px;
+    border-radius: 3px;
+    border-color: #888888;
+    outer-shadow: 0 3 3 #ffffff;
+    child-top: 2px;
+    child-bottom: 2px;
+    child-left: 5px;
+    child-right: 5px;
+}
+
+button:over {
+    background-color: #4f5862;
+}
+
+.btn_highlight {
+    width: 1s;
+    min-width: auto;
+}
+
+.btn_highlight:over {
+    background-color: #414f69;
+}
+
+.list_highlight {
+    height: auto;
+}
+
+.list_highlight:checked {
+    background-color: #101040;
+    color: white;
+    width: 1s;
 }
 
 /*

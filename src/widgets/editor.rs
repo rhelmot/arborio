@@ -22,15 +22,15 @@ lazy_static! {
 }
 
 const BACKDROP_COLOR: Color = Color {
-    r: 0.08,
-    g: 0.21,
-    b: 0.08,
+    r: 0.30,
+    g: 0.30,
+    b: 0.30,
     a: 1.00,
 };
 const FILLER_COLOR: Color = Color {
-    r: 0.50,
-    g: 0.25,
-    b: 0.00,
+    r: 0.40,
+    g: 0.40,
+    b: 0.40,
     a: 1.00,
 };
 const ROOM_EMPTY_COLOR: Color = Color {
