@@ -10,7 +10,6 @@ use crate::celeste_mod::config::{EntityConfig, StylegroundConfig, TriggerConfig}
 use crate::celeste_mod::everest_yaml::EverestYaml;
 use crate::celeste_mod::walker::ConfigSource;
 use crate::celeste_mod::walker::ConfigSourceTrait;
-use crate::logging::*;
 
 #[derive(Debug, Clone)] // Clone should just increase the refcount on each arc, right?
 pub struct CelesteModule {
@@ -38,94 +37,83 @@ impl CelesteModule {
         }
     }
 
-    pub fn load(&mut self, source: &mut ConfigSource) -> LogResult<()> {
-        let mut log = LogBuf::new();
-        self.gameplay_atlas
-            .load(source, "Gameplay")
-            .offload(&mut log);
+    pub fn load(&mut self, source: &mut ConfigSource) {
+        self.gameplay_atlas.load(source, "Gameplay");
 
         for path in source.list_all_files(&PathBuf::from("Arborio/tilers")) {
             if path.to_str().is_some() {
                 if let Some(fp) = source.get_file(&path) {
-                    if let Some(tiler) = Tileset::new(fp, "").offload(LogLevel::Error, &mut log) {
-                        self.tilers.insert(
-                            intern_str(
-                                path.file_stem()
-                                    .unwrap_or(path.as_os_str())
-                                    .to_str()
-                                    .unwrap(),
-                            ),
-                            Arc::new(tiler),
-                        );
+                    match Tileset::new(fp, "") {
+                        Ok(tiler) => {
+                            self.tilers.insert(
+                                intern_str(
+                                    path.file_stem()
+                                        .unwrap_or(path.as_os_str())
+                                        .to_str()
+                                        .unwrap(),
+                                ),
+                                Arc::new(tiler),
+                            );
+                        }
+                        Err(e) => log::error!("Failed constructing tileset: {}", e),
                     }
                 } else {
-                    log.push(log!(
-                        Critical,
-                        "Path disappeared from {}: {:?}",
-                        source,
-                        path
-                    ))
+                    log::error!("Path disappeared from {}: {:?}", source, path);
                 }
             } else {
-                log.push(log!(Error, "Invalid unicode in {}: {:?}", source, path));
+                log::error!("Invalid unicode in {}: {:?}", source, path);
             }
         }
 
         for path in source.list_all_files(&PathBuf::from("Arborio/entities")) {
             if let Some(f) = source.get_file(&path) {
-                if let Some(mut config) =
-                    serde_yaml::from_reader::<_, EntityConfig>(f).offload(LogLevel::Error, &mut log)
-                {
-                    if config.templates.is_empty() {
-                        config.templates.push(config.default_template());
+                match serde_yaml::from_reader::<_, EntityConfig>(f) {
+                    Ok(mut config) => {
+                        if config.templates.is_empty() {
+                            config.templates.push(config.default_template());
+                        }
+                        self.entity_config
+                            .insert(intern_str(&config.entity_name), Arc::new(config));
                     }
-                    self.entity_config
-                        .insert(intern_str(&config.entity_name), Arc::new(config));
+                    Err(e) => log::error!("Failed loading entity config {}: {}", path.display(), e),
                 }
             } else {
-                log.push(log!(
-                    Critical,
-                    "Path disappeared from {}: {:?}",
-                    source,
-                    path
-                ))
+                log::error!("Path disappeared from {}: {:?}", source, path);
             }
         }
         for path in source.list_all_files(&PathBuf::from("Arborio/triggers")) {
             if let Some(f) = source.get_file(&path) {
-                if let Some(mut config) = serde_yaml::from_reader::<_, TriggerConfig>(f)
-                    .offload(LogLevel::Error, &mut log)
-                {
-                    if config.templates.is_empty() {
-                        config.templates.push(config.default_template());
+                match serde_yaml::from_reader::<_, TriggerConfig>(f) {
+                    Ok(mut config) => {
+                        if config.templates.is_empty() {
+                            config.templates.push(config.default_template());
+                        }
+                        self.trigger_config
+                            .insert(intern_str(&config.trigger_name), Arc::new(config));
                     }
-                    self.trigger_config
-                        .insert(intern_str(&config.trigger_name), Arc::new(config));
+                    Err(e) => {
+                        log::error!("Failed loading trigger config {}: {}", path.display(), e)
+                    }
                 }
             } else {
-                log.push(log!(
-                    Critical,
-                    "Path disappeared from {}: {:?}",
-                    source,
-                    path
-                ))
+                log::error!("Path disappeared from {}: {:?}", source, path);
             }
         }
         for path in source.list_all_files(&PathBuf::from("Arborio/stylegrounds")) {
             if let Some(f) = source.get_file(&path) {
-                if let Some(config) = serde_yaml::from_reader::<_, StylegroundConfig>(f)
-                    .offload(LogLevel::Error, &mut log)
-                {
-                    self.styleground_config
-                        .insert(intern_str(&config.styleground_name), Arc::new(config));
+                match serde_yaml::from_reader::<_, StylegroundConfig>(f) {
+                    Ok(config) => {
+                        self.styleground_config
+                            .insert(intern_str(&config.styleground_name), Arc::new(config));
+                    }
+                    Err(e) => log::error!(
+                        "Failed loading styleground config {}: {}",
+                        path.display(),
+                        e
+                    ),
                 }
             } else {
-                log.push(log!(
-                    Critical,
-                    "Path disappeared from {}: {:?}",
-                    source,
-                    path
-                ))
+                log::error!("Path disappeared from {}: {:?}", source, path);
             }
         }
 
@@ -141,8 +129,6 @@ impl CelesteModule {
                 }
             }
         }
-
-        log.done(())
     }
 
     pub fn module_kind(&self) -> CelesteModuleKind {

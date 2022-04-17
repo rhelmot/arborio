@@ -10,7 +10,6 @@ use crate::autotiler::{Autotiler, Tileset};
 use crate::celeste_mod::config::{EntityConfig, StylegroundConfig, TriggerConfig};
 use crate::celeste_mod::module::CelesteModule;
 use crate::celeste_mod::walker::{open_module, ConfigSourceTrait};
-use crate::logging::*;
 use crate::widgets::list_palette::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
 };
@@ -34,8 +33,7 @@ pub struct ModuleAggregate {
 impl Model for ModuleAggregate {}
 
 impl ModuleAggregate {
-    pub fn new(modules: &InternedMap<CelesteModule>, map: &CelesteMap) -> LogResult<Self> {
-        let mut log = LogBuf::new();
+    pub fn new(modules: &InternedMap<CelesteModule>, map: &CelesteMap, emit_logs: bool) -> Self {
         let current_module = map.id.module;
         if let Some(mymod) = modules.get(&map.id.module) {
             for dep in mymod.everest_metadata.dependencies.iter() {
@@ -43,53 +41,57 @@ impl ModuleAggregate {
                     continue;
                 }
                 if modules.get(&dep.name).is_none() {
-                    log.push(log!(
-                        Warning,
-                        "{} missing dependency {}",
-                        current_module,
-                        &dep.name
-                    ));
+                    log::warn!("{} missing dependency {}", current_module, &dep.name);
                 }
             }
         }
 
-        let result = Self::new_core(map, dep_mods(modules, current_module)).offload(&mut log);
-        log.done(result)
+        Self::new_core(map, dep_mods(modules, current_module), emit_logs)
     }
 
-    pub fn new_omni(modules: &InternedMap<CelesteModule>) -> LogResult<Self> {
+    pub fn new_omni(modules: &InternedMap<CelesteModule>, emit_logs: bool) -> Self {
         Self::new_core(
             &CelesteMap::new(MapID::default()),
             modules.iter().map(|(x, y)| (**x, y)),
+            emit_logs,
         )
     }
 
     fn new_core<'a>(
         map: &CelesteMap,
         deps: impl Clone + Iterator<Item = (&'a str, &'a CelesteModule)>,
-    ) -> LogResult<Self> {
-        let mut log = LogBuf::new();
-        let gameplay_atlas = MultiAtlas::from(
-            build_palette_map("Gameplay Atlas", deps.clone(), |module| {
-                module.gameplay_atlas.sprites_map.iter()
-            })
-            .offload(&mut log),
+        emit_logs: bool,
+    ) -> Self {
+        let gameplay_atlas = MultiAtlas::from(build_palette_map(
+            "Gameplay Atlas",
+            deps.clone(),
+            |module| module.gameplay_atlas.sprites_map.iter(),
+            emit_logs,
+        ));
+        let mut autotilers = build_palette_map(
+            "Tiler Config",
+            deps.clone(),
+            |module| module.tilers.iter(),
+            emit_logs,
         );
-        let mut autotilers =
-            build_palette_map("Tiler Config", deps.clone(), |module| module.tilers.iter())
-                .offload(&mut log);
-        let entity_config = build_palette_map("Entity Config", deps.clone(), |module| {
-            module.entity_config.iter()
-        })
-        .offload(&mut log);
-        let trigger_config = build_palette_map("Trigger Config", deps.clone(), |module| {
-            module.trigger_config.iter()
-        })
-        .offload(&mut log);
-        let styleground_config = build_palette_map("Styleground Config", deps.clone(), |module| {
-            module.styleground_config.iter()
-        })
-        .offload(&mut log);
+        let entity_config = build_palette_map(
+            "Entity Config",
+            deps.clone(),
+            |module| module.entity_config.iter(),
+            emit_logs,
+        );
+        let trigger_config = build_palette_map(
+            "Trigger Config",
+            deps.clone(),
+            |module| module.trigger_config.iter(),
+            emit_logs,
+        );
+        let styleground_config = build_palette_map(
+            "Styleground Config",
+            deps.clone(),
+            |module| module.styleground_config.iter(),
+            emit_logs,
+        );
 
         let fg_xml = map
             .meta
@@ -162,7 +164,7 @@ impl ModuleAggregate {
         if deps.count() != 0 {
             result.sanity_check();
         }
-        log.done(result)
+        result
     }
 
     pub fn sanity_check(&self) {
@@ -266,24 +268,23 @@ fn build_palette_map<'a, T: 'a + Clone, I: 'a + Iterator<Item = (&'a Interned, &
     what: &'static str,
     dep_mods: impl Iterator<Item = (&'a str, &'a CelesteModule)>,
     mapper: impl Fn(&'a CelesteModule) -> I,
-) -> LogResult<InternedMap<T>> {
-    let mut log = LogBuf::new();
+    emit_logs: bool,
+) -> InternedMap<T> {
     let mut result = HashMap::new();
     let mut result_source = HashMap::new();
     for (dep_name, dep_mod) in dep_mods {
         for (res_name, res) in mapper(dep_mod) {
-            if result.insert(*res_name, res.clone()).is_some() {
-                log.push(log!(
-                    Warning,
+            if result.insert(*res_name, res.clone()).is_some() && emit_logs {
+                log::warn!(
                     "{} {}: {} overriding {}",
                     what,
                     res_name,
                     dep_name,
                     result_source[&*res_name]
-                ));
+                );
             }
             result_source.insert(*res_name, dep_name);
         }
     }
-    log.done(result)
+    result
 }

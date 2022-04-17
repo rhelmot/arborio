@@ -8,7 +8,6 @@ use enum_iterator::IntoEnumIterator;
 use vizia::*;
 
 use crate::app_state::{AppEvent, AppState};
-use crate::logging::*;
 use crate::units::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, IntoEnumIterator)]
@@ -56,9 +55,7 @@ pub trait Tool {
         vec![]
     }
 
-    fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &Context) -> LogResult<()> {
-        LogResult::new((), LogBuf::new())
-    }
+    fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &DrawContext) {}
 
     fn cursor(&self, cx: &Context, state: &AppState) -> CursorIcon {
         CursorIcon::Default

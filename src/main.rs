@@ -9,12 +9,11 @@ mod celeste_mod;
 #[macro_use]
 mod from_binel;
 mod lenses;
+mod logging;
 mod map_struct;
 mod tools;
 mod units;
 mod widgets;
-#[macro_use]
-mod logging;
 
 use celeste::binel::{BinEl, BinFile};
 use dialog::DialogBox;
@@ -43,7 +42,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ),
         |cx| {
             app_state::AppState::new().build(cx);
-            emit_log!(cx, Info, "Hello world!");
+            log::info!("Hello world!");
             if let Some(path) = &cx.data::<AppState>().unwrap().config.celeste_root {
                 let path = path.clone();
                 cx.emit(AppEvent::SetConfigPath { path });

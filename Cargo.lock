@@ -70,6 +70,7 @@ dependencies = [
  "include_dir",
  "itertools 0.10.3",
  "lazy_static",
+ "log",
  "lru",
  "nom 7.1.0",
  "parking_lot 0.12.0",
@@ -1051,9 +1052,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.14"
+version = "0.4.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
+checksum = "6389c490849ff5bc16be905ae24bc913a9c8892e19b2341dbc175e14c341c2b8"
 dependencies = [
  "cfg-if 1.0.0",
 ]
@@ -1887,9 +1888,9 @@ checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
 
 [[package]]
 name = "smithay-client-toolkit"
-version = "0.15.3"
+version = "0.15.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1325f292209cee78d5035530932422a30aa4c8fda1a16593ac083c1de211e68a"
+checksum = "8a28f16a97fa0e8ce563b2774d1e732dd5d4025d2772c5dba0a41a0f90a29da3"
 dependencies = [
  "bitflags",
  "calloop",
@@ -2108,7 +2109,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/vizia?rev=95ccef44049f3dc114446c7d282fc9d6ff19304d#95ccef44049f3dc114446c7d282fc9d6ff19304d"
+source = "git+https://github.com/rhelmot/vizia?rev=de5b4cd7012dcb35e2a45d5e7b7b778071085b7a#de5b4cd7012dcb35e2a45d5e7b7b778071085b7a"
 dependencies = [
  "vizia_core",
  "vizia_winit",
@@ -2117,7 +2118,7 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/vizia?rev=95ccef44049f3dc114446c7d282fc9d6ff19304d#95ccef44049f3dc114446c7d282fc9d6ff19304d"
+source = "git+https://github.com/rhelmot/vizia?rev=de5b4cd7012dcb35e2a45d5e7b7b778071085b7a#de5b4cd7012dcb35e2a45d5e7b7b778071085b7a"
 dependencies = [
  "bitflags",
  "copypasta",
@@ -2142,7 +2143,7 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/vizia?rev=95ccef44049f3dc114446c7d282fc9d6ff19304d#95ccef44049f3dc114446c7d282fc9d6ff19304d"
+source = "git+https://github.com/rhelmot/vizia?rev=de5b4cd7012dcb35e2a45d5e7b7b778071085b7a#de5b4cd7012dcb35e2a45d5e7b7b778071085b7a"
 dependencies = [
  "proc-macro2 1.0.36",
  "quote 1.0.14",
@@ -2152,7 +2153,7 @@ dependencies = [
 [[package]]
 name = "vizia_winit"
 version = "0.1.0"
-source = "git+https://github.com/rhelmot/vizia?rev=95ccef44049f3dc114446c7d282fc9d6ff19304d#95ccef44049f3dc114446c7d282fc9d6ff19304d"
+source = "git+https://github.com/rhelmot/vizia?rev=de5b4cd7012dcb35e2a45d5e7b7b778071085b7a#de5b4cd7012dcb35e2a45d5e7b7b778071085b7a"
 dependencies = [
  "console_error_panic_hook",
  "femtovg",

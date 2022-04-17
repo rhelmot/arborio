@@ -4,8 +4,6 @@ use vizia::*;
 
 use crate::app_state::{AppEvent, AppSelection, AppState, Layer};
 use crate::autotiler::{TextureTile, TileReference};
-use crate::logging::LogResult;
-use crate::logging::*;
 use crate::map_struct::{CelesteMapLevel, Node};
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
@@ -255,18 +253,17 @@ impl Tool for SelectionTool {
         self.clear_selection(app)
     }
 
-    fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &Context) -> LogResult<()> {
-        let mut log = LogBuf::new();
+    fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &DrawContext) {
         let room = if let Some(room) = state.current_room_ref() {
             room
         } else {
-            return log.done(());
+            return;
         };
         canvas.save();
         canvas.translate(room.bounds.origin.x as f32, room.bounds.origin.y as f32);
         // no scissor!
 
-        let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
+        let screen_pos = ScreenPoint::new(cx.mouse().cursorx, cx.mouse().cursory);
         let map_pos_precise = state
             .map_tab_unwrap()
             .transform
@@ -332,17 +329,15 @@ impl Tool for SelectionTool {
                         .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
                     {
                         let room_pos = point_tile_to_room(&pt);
-                        state
-                            .current_palette_unwrap()
-                            .gameplay_atlas
-                            .draw_tile(
-                                canvas,
-                                tile,
-                                room_pos.x as f32,
-                                room_pos.y as f32,
-                                Color::white().into(),
-                            )
-                            .offload(LogLevel::Error, &mut log);
+                        if let Err(e) = state.current_palette_unwrap().gameplay_atlas.draw_tile(
+                            canvas,
+                            tile,
+                            room_pos.x as f32,
+                            room_pos.y as f32,
+                            Color::white().into(),
+                        ) {
+                            log::error!("{}", e);
+                        }
                         path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
                     }
                 }
@@ -364,17 +359,15 @@ impl Tool for SelectionTool {
                         .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
                     {
                         let room_pos = point_tile_to_room(&pt);
-                        state
-                            .current_palette_unwrap()
-                            .gameplay_atlas
-                            .draw_tile(
-                                canvas,
-                                tile,
-                                room_pos.x as f32,
-                                room_pos.y as f32,
-                                Color::white().into(),
-                            )
-                            .offload(LogLevel::Error, &mut log);
+                        if let Err(e) = state.current_palette_unwrap().gameplay_atlas.draw_tile(
+                            canvas,
+                            tile,
+                            room_pos.x as f32,
+                            room_pos.y as f32,
+                            Color::white().into(),
+                        ) {
+                            log::error!("{}", e);
+                        }
                         path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
                     }
                 }
@@ -394,17 +387,15 @@ impl Tool for SelectionTool {
                         texture: "tilesets/scenery".into(), // TODO we shouldn't be doing this lookup during draw. cache this string statically?
                     };
                     let room_pos = point_tile_to_room(&pt);
-                    state
-                        .current_palette_unwrap()
-                        .gameplay_atlas
-                        .draw_tile(
-                            canvas,
-                            tile,
-                            room_pos.x as f32,
-                            room_pos.y as f32,
-                            Color::white().into(),
-                        )
-                        .offload(LogLevel::Error, &mut log);
+                    if let Err(e) = state.current_palette_unwrap().gameplay_atlas.draw_tile(
+                        canvas,
+                        tile,
+                        room_pos.x as f32,
+                        room_pos.y as f32,
+                        Color::white().into(),
+                    ) {
+                        log::error!("{}", e)
+                    }
                     path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
                 }
             }
@@ -436,8 +427,6 @@ impl Tool for SelectionTool {
         }
 
         canvas.restore();
-
-        log.done(())
     }
 
     fn cursor(&self, cx: &Context, app: &AppState) -> CursorIcon {

@@ -4,9 +4,7 @@ use imgref::Img;
 use rgb::RGBA8;
 use std::borrow::Borrow;
 use std::convert::TryFrom;
-use std::error::Error;
 use std::ffi::OsStr;
-use std::fmt::Formatter;
 use std::io;
 use std::io::Read; // trait method import
 use std::path;
@@ -16,29 +14,7 @@ use vizia::vg::{Color, ImageFlags, ImageId, ImageSource, Paint, Path};
 use crate::assets::{intern_owned, Interned, InternedMap};
 use crate::autotiler::TileReference;
 use crate::celeste_mod::walker::{ConfigSource, ConfigSourceTrait};
-use crate::logging::LogLevel;
-use crate::logging::*;
 use crate::units::*;
-
-#[derive(Debug)]
-pub struct AtlasImgError {
-    pub source: String,
-    pub inner: Box<dyn Error>,
-}
-
-impl std::fmt::Display for AtlasImgError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Error parsing {}: {}", self.source, self.inner)
-    }
-}
-
-impl Error for AtlasImgError {}
-
-impl AtlasImgError {
-    pub fn new(source: String, inner: Box<dyn Error>) -> Self {
-        Self { source, inner }
-    }
-}
 
 #[derive(Debug)]
 enum BlobData {
@@ -93,35 +69,28 @@ impl Atlas {
             sprites_map: InternedMap::new(),
         }
     }
-    pub fn load(&mut self, config: &mut ConfigSource, atlas: &str) -> LogResult<()> {
-        let mut log = LogBuf::new();
-        self.load_crunched(config, atlas)
-            .map_err(|e| {
-                AtlasImgError::new(
-                    format!("crunched atlas {} of {}", atlas, config),
-                    Box::new(e),
-                )
-            })
-            .offload(LogLevel::Critical, &mut log);
+    pub fn load(&mut self, config: &mut ConfigSource, atlas: &str) {
+        if let Err(e) = self.load_crunched(config, atlas) {
+            log::error!(
+                "Failed loading crunched atlas {} of {}: {}",
+                atlas,
+                config,
+                e
+            );
+        }
 
         for path in config.list_all_files(&path::PathBuf::from("Graphics/Atlases").join(atlas)) {
             if path.extension().and_then(|ext| ext.to_str()) == Some("png") {
-                self.load_loose(config, atlas, &path)
-                    .map_err(|e| {
-                        AtlasImgError::new(
-                            format!(
-                                "{} of {}",
-                                path.to_str().unwrap_or("<invalid unicode>"),
-                                config
-                            ),
-                            Box::new(e),
-                        )
-                    })
-                    .offload(LogLevel::Error, &mut log);
+                if let Err(e) = self.load_loose(config, atlas, &path) {
+                    log::error!(
+                        "Failed loading image {} of {}: {}",
+                        path.display(),
+                        config,
+                        e
+                    );
+                }
             }
         }
-
-        log.done(())
     }
 
     fn load_loose(

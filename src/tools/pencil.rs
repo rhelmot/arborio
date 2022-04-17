@@ -2,7 +2,6 @@ use vizia::*;
 
 use crate::app_state::{AppEvent, AppState, Layer};
 use crate::celeste_mod::config::PencilBehavior;
-use crate::logging::*;
 use crate::map_struct::{CelesteMapDecal, CelesteMapEntity, Node};
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
@@ -75,12 +74,11 @@ impl Tool for PencilTool {
         self.do_draw_finish(app, room_pos)
     }
 
-    fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &Context) -> LogResult<()> {
-        let mut log = LogBuf::new();
+    fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &DrawContext) {
         let room = if let Some(room) = state.current_room_ref() {
             room
         } else {
-            return LogResult::new((), log);
+            return;
         };
         canvas.save();
         canvas.translate(room.bounds.origin.x as f32, room.bounds.origin.y as f32);
@@ -91,7 +89,7 @@ impl Tool for PencilTool {
             room.bounds.size.height as f32,
         );
 
-        let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
+        let screen_pos = ScreenPoint::new(cx.mouse().cursorx, cx.mouse().cursory);
         let map_pos = state
             .map_tab_unwrap()
             .transform
@@ -133,8 +131,7 @@ impl Tool for PencilTool {
                     false,
                     false,
                     &room.object_tiles,
-                )
-                .offload(&mut log);
+                );
             }
             Layer::Triggers => {
                 let tmp_trigger = self.get_terminal_trigger(state, state.current_trigger, room_pos);
@@ -147,35 +144,30 @@ impl Tool for PencilTool {
                     false,
                     true,
                     &TileGrid::empty(),
-                )
-                .offload(&mut log);
+                );
             }
             Layer::FgDecals | Layer::BgDecals => {
                 let texture = format!("decals/{}", state.current_decal.0);
-                if cx.mouse.left.state == MouseButtonState::Released {
+                if cx.mouse().left.state == MouseButtonState::Released {
                     canvas.set_global_alpha(0.5);
                 }
-                state
-                    .current_palette_unwrap()
-                    .gameplay_atlas
-                    .draw_sprite(
-                        canvas,
-                        &texture,
-                        room_pos.cast().cast_unit(),
-                        None,
-                        None,
-                        None,
-                        None,
-                        0.0,
-                    )
-                    .offload(LogLevel::Error, &mut log);
+                if let Err(e) = state.current_palette_unwrap().gameplay_atlas.draw_sprite(
+                    canvas,
+                    &texture,
+                    room_pos.cast().cast_unit(),
+                    None,
+                    None,
+                    None,
+                    None,
+                    0.0,
+                ) {
+                    log::error!("{}", e);
+                }
             }
             _ => {}
         }
 
         canvas.restore();
-
-        LogResult::new((), log)
     }
 }
 

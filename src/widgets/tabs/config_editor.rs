@@ -18,7 +18,6 @@ use crate::celeste_mod::config::{
 };
 use crate::celeste_mod::module::CelesteModule;
 use crate::lenses::{CurrentTabImplLens, IsFailedLens};
-use crate::logging::*;
 use crate::map_struct::{Attribute, CelesteMapEntity, CelesteMapStyleground};
 use crate::widgets::tabs::project::load_map_inner;
 use crate::{CelesteMap, MapID, ModuleAggregate};
@@ -519,14 +518,12 @@ pub fn build_search_settings(cx: &mut Context) {
                     let results = match ty {
                         ConfigSearchType::Entities => {
                             walk_maps(&modules, &scope, &filter, &targets, &attrs, scan_entities)
-                                .emit_p(cx)
                                 .into_iter()
                                 .map(ConfigSearchResult::Entity)
                                 .collect()
                         }
                         ConfigSearchType::Triggers => {
                             walk_maps(&modules, &scope, &filter, &targets, &attrs, scan_triggers)
-                                .emit_p(cx)
                                 .into_iter()
                                 .map(ConfigSearchResult::Trigger)
                                 .collect()
@@ -539,7 +536,6 @@ pub fn build_search_settings(cx: &mut Context) {
                             &attrs,
                             scan_stylegrounds,
                         )
-                        .emit_p(cx)
                         .into_iter()
                         .map(ConfigSearchResult::Styleground)
                         .collect(),
@@ -561,8 +557,7 @@ fn walk_maps<T>(
     targets: &[SearchScope],
     attrs: &str,
     f: impl Fn(&mut HashSet<T>, &ConfigSearchFilter, &HashSet<&str>, &CelesteMap, &ModuleAggregate),
-) -> LogResult<HashSet<T>> {
-    let mut log = LogBuf::new();
+) -> HashSet<T> {
     let mut results = HashSet::new();
     let attrs = attrs.split(',').collect::<HashSet<_>>();
     for (name, module) in modules.iter() {
@@ -577,14 +572,14 @@ fn walk_maps<T>(
                 if let Ok(map) =
                     load_map_inner(module.filesystem_root.as_ref().unwrap(), *name, *map)
                 {
-                    let palette = ModuleAggregate::new(modules, &map).offload(&mut log);
+                    let palette = ModuleAggregate::new(modules, &map, false);
                     f(&mut results, filter, &attrs, &map, &palette);
                 }
             }
         }
     }
 
-    log.done(results)
+    results
 }
 
 fn scan_entities(

@@ -2,8 +2,6 @@ use std::collections::{HashMap, HashSet};
 use vizia::vg::{Color, Paint, Path};
 use vizia::*;
 
-use crate::logging::LogResult;
-use crate::logging::*;
 use crate::map_struct::{CelesteMap, CelesteMapLevel};
 use crate::tools::selection::ResizeSide;
 use crate::tools::{generic_nav, Tool};
@@ -166,15 +164,14 @@ impl Tool for RoomTool {
         }
     }
 
-    fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &Context) -> LogResult<()> {
-        let log = LogBuf::new();
+    fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &DrawContext) {
         let map = if let Some(map) = state.current_map_ref() {
             map
         } else {
-            return LogResult::new((), log);
+            return;
         };
 
-        let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
+        let screen_pos = ScreenPoint::new(cx.mouse().cursorx, cx.mouse().cursory);
         let map_pos_precise = state
             .map_tab_unwrap()
             .transform
@@ -264,8 +261,6 @@ impl Tool for RoomTool {
         }
 
         canvas.restore();
-
-        LogResult::new((), log)
     }
 
     fn cursor(&self, cx: &Context, app: &AppState) -> CursorIcon {

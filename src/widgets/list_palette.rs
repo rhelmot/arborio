@@ -6,7 +6,6 @@ use vizia::*;
 use crate::app_state::AppState;
 use crate::assets::Interned;
 use crate::celeste_mod::config::{EntityConfig, TriggerConfig};
-use crate::logging::*;
 use crate::map_struct::{CelesteMapEntity, Node};
 use crate::units::*;
 use crate::widgets::editor;
@@ -70,13 +69,13 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
         Some("palette".to_owned())
     }
 
-    fn draw(&self, cx: &mut Context, canvas: &mut Canvas) {
+    fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
         if !T::CAN_DRAW {
             return;
         }
 
-        let entity = cx.current;
-        let bounds = cx.cache.get_bounds(entity);
+        let entity = cx.current();
+        let bounds = cx.cache().get_bounds(entity);
         let data = self
             .lens
             .view(cx.data::<<L as Lens>::Source>().unwrap(), |x| *x.unwrap());
@@ -99,7 +98,7 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
             ),
         );
 
-        data.draw(cx.data::<AppState>().unwrap(), canvas).emit(cx);
+        data.draw(cx.data::<AppState>().unwrap(), canvas);
         canvas.restore();
     }
 }
@@ -108,7 +107,7 @@ pub trait PaletteItem: Copy + Clone + Data + Debug + Send {
     fn search_text(&self) -> String;
     fn display_name(&self, app: &AppState) -> String;
     const CAN_DRAW: bool = true;
-    fn draw(&self, app: &AppState, canvas: &mut Canvas) -> LogResult<()>;
+    fn draw(&self, app: &AppState, canvas: &mut Canvas);
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -151,30 +150,26 @@ impl PaletteItem for TileSelectable {
         self.name.to_owned()
     }
 
-    fn draw(&self, app: &AppState, canvas: &mut Canvas) -> LogResult<()> {
-        let mut log = LogBuf::new();
+    fn draw(&self, app: &AppState, canvas: &mut Canvas) {
         if let Some(texture) = self.texture {
             if !app.map_tab_check() {
                 println!("SOMETHING IS WRONG (list)");
             } else {
                 canvas.scale(3.0, 3.0);
-                app.current_palette_unwrap()
-                    .gameplay_atlas
-                    .draw_sprite(
-                        canvas,
-                        texture,
-                        Point2D::zero(),
-                        None,
-                        Some(Vector2D::zero()),
-                        None,
-                        None,
-                        0.0,
-                    )
-                    .offload(LogLevel::Error, &mut log);
+                if let Err(e) = app.current_palette_unwrap().gameplay_atlas.draw_sprite(
+                    canvas,
+                    texture,
+                    Point2D::zero(),
+                    None,
+                    Some(Vector2D::zero()),
+                    None,
+                    None,
+                    0.0,
+                ) {
+                    log::error!("Error drawing tileset: {}", e);
+                }
             }
         }
-
-        log.done(())
     }
 }
 
@@ -229,7 +224,7 @@ impl PaletteItem for EntitySelectable {
         (*self.config(app).templates[self.template].name).to_owned()
     }
 
-    fn draw(&self, app: &AppState, canvas: &mut Canvas) -> LogResult<()> {
+    fn draw(&self, app: &AppState, canvas: &mut Canvas) {
         canvas.scale(2.0, 2.0);
 
         let tmp_entity = self.instantiate(
@@ -262,7 +257,7 @@ impl PaletteItem for TriggerSelectable {
     }
 
     const CAN_DRAW: bool = false;
-    fn draw(&self, _app: &AppState, _canvas: &mut Canvas) -> LogResult<()> {
+    fn draw(&self, _app: &AppState, _canvas: &mut Canvas) {
         panic!("You cannot draw a trigger. don't call me!")
     }
 }
@@ -410,22 +405,19 @@ impl PaletteItem for DecalSelectable {
         self.0.to_string()
     }
 
-    fn draw(&self, app: &AppState, canvas: &mut Canvas) -> LogResult<()> {
-        let mut log = LogBuf::new();
-        app.current_palette_unwrap()
-            .gameplay_atlas
-            .draw_sprite(
-                canvas,
-                &format!("decals/{}", self.0),
-                Point2D::new(0.0, 0.0),
-                None,
-                Some(Vector2D::zero()),
-                None,
-                None,
-                0.0,
-            )
-            .offload(LogLevel::Error, &mut log);
-        log.done(())
+    fn draw(&self, app: &AppState, canvas: &mut Canvas) {
+        if let Err(e) = app.current_palette_unwrap().gameplay_atlas.draw_sprite(
+            canvas,
+            &format!("decals/{}", self.0),
+            Point2D::new(0.0, 0.0),
+            None,
+            Some(Vector2D::zero()),
+            None,
+            None,
+            0.0,
+        ) {
+            log::error!("Error drawing decal: {}", e);
+        }
     }
 }
 
