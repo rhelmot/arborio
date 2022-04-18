@@ -47,7 +47,7 @@ regex = { version = "^1.5", default-features = false, features = ["std"] }
 
 # graphics
 #vizia = { path = "../../rust/VIZIA", default-features = false, features = ["winit", "clipboard"] }
-vizia = {git = "https://github.com/rhelmot/vizia", rev = "de5b4cd7012dcb35e2a45d5e7b7b778071085b7a", default-features = false, features = ["winit", "clipboard"] }
+vizia = {git = "https://github.com/rhelmot/vizia", rev = "a8992104ba0c5137bf031757cea5815759c52acb", default-features = false, features = ["winit", "clipboard"] }
 image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
 imgref = "1.6.1"  # inherit from femtovg
 rgb = "0.8.20"  # inherit from femtovg
