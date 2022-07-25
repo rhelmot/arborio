@@ -353,7 +353,7 @@ impl MultiAtlas {
     ) -> Result<(), String> {
         self.draw_sprite(
             canvas,
-            *tile_ref.texture,
+            &tile_ref.texture,
             Point2D::new(ox, oy),
             Some(Rect::new(
                 Point2D::new(tile_ref.tile.x as f32 * 8.0, tile_ref.tile.y as f32 * 8.0),

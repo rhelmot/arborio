@@ -280,7 +280,7 @@ fn build_palette_map<'a, T: 'a + Clone, I: 'a + Iterator<Item = (&'a Interned, &
                     what,
                     res_name,
                     dep_name,
-                    result_source[&*res_name]
+                    result_source[res_name]
                 );
             }
             result_source.insert(*res_name, dep_name);

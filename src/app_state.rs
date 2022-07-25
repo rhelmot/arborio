@@ -13,7 +13,9 @@ use crate::assets::{next_uuid, Interned, InternedMap};
 use crate::auto_saver::AutoSaver;
 use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::celeste_mod::discovery;
+use crate::celeste_mod::everest_yaml::{EverestModuleVersion, EverestYaml};
 use crate::celeste_mod::module::CelesteModule;
+use crate::celeste_mod::walker::{ConfigSource, FolderSource};
 use crate::map_struct::{
     CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapLevelUpdate,
     CelesteMapStyleground, MapID,
@@ -109,7 +111,7 @@ impl PartialEq for ConfigEditorTab {
 
 impl Eq for ConfigEditorTab {}
 
-#[derive(Debug, PartialEq, Data, Clone)]
+#[derive(Debug, PartialEq, Eq, Data, Clone)]
 pub enum SearchScope {
     AllMods,
     AllOpenMods,
@@ -142,7 +144,7 @@ impl SearchScope {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Data)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Data)]
 pub enum ConfigSearchType {
     Entities,
     Triggers,
@@ -155,7 +157,7 @@ impl std::fmt::Display for ConfigSearchType {
     }
 }
 
-#[derive(Debug, Lens, Clone, PartialEq, Data)]
+#[derive(Debug, Lens, Clone, PartialEq, Eq, Data)]
 pub enum ConfigSearchFilter {
     All,
     NoConfig,
@@ -256,7 +258,7 @@ pub enum AppSelection {
     Decal(u32, bool),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Data)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Data)]
 pub struct StylegroundSelection {
     pub fg: bool,
     pub idx: usize,
@@ -297,6 +299,7 @@ pub enum AppEvent {
     OpenInstallationTab,
     OpenConfigEditorTab,
     OpenLogsTab,
+    NewMod,
     SelectTab {
         idx: usize,
     },
@@ -661,6 +664,43 @@ impl AppState {
                 self.modules_version += 1;
                 self.omni_palette =
                     trigger_palette_update(&mut self.palettes, &self.modules, &self.loaded_maps);
+            }
+            AppEvent::NewMod => {
+                let mut number = 1;
+                'outer: loop {
+                    let name = format!("untitled-{}", number);
+                    let path = self.config.celeste_root.clone().unwrap().join(&name);
+                    for (ident, module) in self.modules.iter() {
+                        if **ident == name.as_str()
+                            || *module.everest_metadata.name == name.as_str()
+                            || path.exists()
+                        {
+                            number += 1;
+                            continue 'outer;
+                        }
+                    }
+
+                    let everest_data = EverestYaml {
+                        name: name.clone().into(),
+                        version: EverestModuleVersion(vec![0, 0, 0]),
+                        dll: None,
+                        dependencies: vec![],
+                    };
+                    std::fs::create_dir(&path).unwrap();
+                    everest_data
+                        .serialize(&mut serde_yaml::Serializer::new(
+                            std::fs::File::create(&path.join("everest.yaml")).unwrap(),
+                        ))
+                        .unwrap();
+
+                    let mut module_src = ConfigSource::Dir(FolderSource::new(&path).unwrap());
+                    let mut module = CelesteModule::new(Some(path), everest_data);
+                    module.load(&mut module_src);
+
+                    self.modules.insert(name.into(), module);
+                    self.modules_version += 1;
+                    break;
+                }
             }
             AppEvent::SelectTool { spec } => {
                 if let Some(tool) = self.current_tool.take() {

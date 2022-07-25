@@ -50,7 +50,7 @@ pub struct AttributeOption {
     pub value: AttributeValue,
 }
 
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Data)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Data)]
 pub enum AttributeType {
     String,
     Float,

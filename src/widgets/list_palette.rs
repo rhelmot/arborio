@@ -265,7 +265,7 @@ impl PaletteItem for TriggerSelectable {
 impl EntitySelectable {
     pub fn config<'a>(&self, app: &'a AppState) -> &'a Arc<EntityConfig> {
         app.current_palette_unwrap()
-            .get_entity_config(*self.entity, false)
+            .get_entity_config(&self.entity, false)
     }
 
     pub fn instantiate(
@@ -387,7 +387,7 @@ impl TriggerSelectable {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DecalSelectable(pub Interned);
 
 impl Data for DecalSelectable {

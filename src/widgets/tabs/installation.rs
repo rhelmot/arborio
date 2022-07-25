@@ -36,14 +36,17 @@ pub fn build_installation_tab(cx: &mut Context) {
                             modules_list.sort_by_key(|(_, _, name, _)| *name);
 
                             let mut idx = 0usize;
-                            let mut first = true;
+                            Label::new(cx, "My Mods").class("module_category");
+                            HStack::new(cx, move |cx| {
+                                Label::new(cx, "+").class("big_plus");
+                                Label::new(cx, "New Project").id("new_mod_text");
+                            })
+                            .class("btn_highlight")
+                            .id("new_mod_button")
+                            .on_press(|cx| cx.emit(AppEvent::NewMod));
                             while idx < modules_list.len() {
                                 if matches!(modules_list[idx].3, CelesteModuleKind::Directory) {
                                     let (sid, num_maps, name, _) = modules_list.remove(idx);
-                                    if first {
-                                        first = false;
-                                        Label::new(cx, "My Mods").class("module_category");
-                                    }
                                     build_project_overview_card(cx, sid, name, num_maps);
                                 } else {
                                     idx += 1;

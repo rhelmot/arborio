@@ -28,7 +28,7 @@ jobs:
     - name: Install rust stable
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: stable
         override: true
         components: rustfmt, clippy
     - name: Check Format
