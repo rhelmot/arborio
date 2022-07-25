@@ -269,8 +269,15 @@ fn get_attr_comparator(
     if ["bgtiles", "fgtiles", "objtiles"].contains(&elem_name) && attr_name == "innerText" {
         return compare_int_tiles;
     }
-    if ["Foregrounds", "Backgrounds"].contains(&elem_name) && attr_name == "alpha" {
-        return compare_alpha;
+    if ["Foregrounds", "Backgrounds"].contains(&elem_name)
+        && ["alpha", "scrollx", "scrolly"].contains(&attr_name)
+    {
+        return compare_default_one;
+    }
+    if ["Foregrounds", "Backgrounds"].contains(&elem_name)
+        && ["loopx", "loopy", "instantIn"].contains(&attr_name)
+    {
+        return compare_default_true;
     }
     if ATTRS_IGNORE.contains(&(elem_name, attr_name)) {
         return fuzzy_ignore;
@@ -462,8 +469,15 @@ fn bin_el_attr_fuzzy_equal_optional(first: Option<&BinElAttr>, second: Option<&B
     }
 }
 
-fn compare_alpha(first: Option<&BinElAttr>, second: Option<&BinElAttr>) -> bool {
+fn compare_default_one(first: Option<&BinElAttr>, second: Option<&BinElAttr>) -> bool {
     let one = BinElAttr::Int(1);
+    let first = first.unwrap_or(&one);
+    let second = second.unwrap_or(&one);
+    bin_el_attr_fuzzy_equal_required(Some(first), Some(second))
+}
+
+fn compare_default_true(first: Option<&BinElAttr>, second: Option<&BinElAttr>) -> bool {
+    let one = BinElAttr::Bool(true);
     let first = first.unwrap_or(&one);
     let second = second.unwrap_or(&one);
     bin_el_attr_fuzzy_equal_required(Some(first), Some(second))
@@ -517,6 +531,7 @@ mod test {
     fn test_saving_all_mods() {
         let mut cfg: AppConfig = confy::load("arborio").unwrap_or_default();
         if let Some(root) = &cfg.celeste_root {
+            println!("Beginning test.");
             assert!(root.is_dir(), "Arborio is misconfigured");
             let mut config = FolderSource::new(&root.join("Content")).unwrap();
             for path in config.list_all_files(Path::new("Maps")) {

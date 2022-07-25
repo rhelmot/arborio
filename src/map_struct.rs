@@ -446,10 +446,10 @@ pub struct CelesteMapStyleground {
     pub x: f32,
     #[default]
     pub y: f32,
-    #[default]
+    #[default(1.0)]
     #[name("scrollx")]
     pub scroll_x: f32,
-    #[default]
+    #[default(1.0)]
     #[name("scrolly")]
     pub scroll_y: f32,
     #[default]
@@ -468,10 +468,10 @@ pub struct CelesteMapStyleground {
     #[default]
     #[name("flipy")]
     pub flip_y: bool,
-    #[default]
+    #[default(true)]
     #[name("loopx")]
     pub loop_x: bool,
-    #[default]
+    #[default(true)]
     #[name("loopy")]
     pub loop_y: bool,
     #[default]
@@ -490,7 +490,7 @@ pub struct CelesteMapStyleground {
     #[optional]
     pub dreaming: Option<bool>,
     #[name("instantIn")]
-    #[default]
+    #[default(true)]
     pub instant_in: bool,
     #[name("instantOut")]
     #[default]
