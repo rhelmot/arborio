@@ -669,7 +669,13 @@ impl AppState {
                 let mut number = 1;
                 'outer: loop {
                     let name = format!("untitled-{}", number);
-                    let path = self.config.celeste_root.clone().unwrap().join(&name);
+                    let path = self
+                        .config
+                        .celeste_root
+                        .clone()
+                        .unwrap()
+                        .join("Mods")
+                        .join(&name);
                     for (ident, module) in self.modules.iter() {
                         if **ident == name.as_str()
                             || *module.everest_metadata.name == name.as_str()
@@ -687,7 +693,7 @@ impl AppState {
                         dependencies: vec![],
                     };
                     std::fs::create_dir(&path).unwrap();
-                    everest_data
+                    [&everest_data]
                         .serialize(&mut serde_yaml::Serializer::new(
                             std::fs::File::create(&path.join("everest.yaml")).unwrap(),
                         ))
