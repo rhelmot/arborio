@@ -35,18 +35,155 @@ where
 {
     HStack::new(cx, move |cx| {
         Label::new(cx, name);
-        Textbox::new(cx, lens).on_edit(move |cx, value| {
-            if let Ok(parsed) = value.parse() {
-                if setter(cx, parsed) {
-                    cx.current.toggle_class(cx, "validation_error", false);
-                } else {
-                    cx.current.toggle_class(cx, "validation_error", true);
-                }
-            } else {
-                cx.current.toggle_class(cx, "validation_error", true);
-            }
+        validator_box(cx, lens, setter, |cx, valid| {
+            cx.current.toggle_class(cx, "validation_error", !valid);
         });
     });
+}
+
+pub fn validator_box<L, F1, F2>(cx: &mut Context, lens: L, setter: F1, set_valid: F2)
+where
+    L: Lens,
+    <L as Lens>::Target: ToString + FromStr + Data,
+    F1: 'static + Send + Sync + Fn(&mut Context, <L as Lens>::Target) -> bool,
+    F2: 'static + Send + Sync + Fn(&mut Context, bool),
+{
+    Textbox::new(cx, lens).on_edit(move |cx, value| {
+        if let Ok(parsed) = value.parse() {
+            if setter(cx, parsed) {
+                set_valid(cx, true);
+            } else {
+                set_valid(cx, false);
+            }
+        } else {
+            set_valid(cx, false);
+        }
+    });
+}
+
+#[derive(Debug, Lens)]
+struct EditingState {
+    editing: bool,
+    valid: bool,
+}
+
+#[derive(Debug)]
+enum EditingStateEvent {
+    Start,
+    End,
+    Valid(bool),
+}
+
+#[derive(Debug, Clone, Lens)]
+struct ModelContainer<T: 'static + Clone + Send + Sync> {
+    val: T,
+}
+
+#[derive(Debug)]
+enum ModelEvent<T> {
+    Set(Option<T>), // only an option so the data can be taken out
+}
+
+impl<T: 'static + Clone + Send + Sync> Model for ModelContainer<T> {
+    fn event(&mut self, _cx: &mut Context, event: &mut Event) {
+        if let Some(ModelEvent::Set(msg)) = event.message.downcast() {
+            if let Some(v) = msg.take() {
+                self.val = v;
+            }
+        }
+    }
+}
+
+impl Model for EditingState {
+    fn event(&mut self, _cx: &mut Context, event: &mut Event) {
+        if let Some(msg) = event.message.downcast() {
+            match msg {
+                EditingStateEvent::End => self.editing = false,
+                EditingStateEvent::Start => self.editing = true,
+                EditingStateEvent::Valid(b) => self.valid = *b,
+            }
+        }
+    }
+}
+
+// should editable be a lens?
+pub fn label_with_pencil<L, F1, F2>(
+    cx: &mut Context,
+    lens: L,
+    validator: F1,
+    setter: F2,
+    editable: bool,
+) -> Handle<impl View>
+where
+    L: Lens,
+    <L as Lens>::Target: ToString + FromStr + Data + Send + Sync,
+    F1: 'static + Send + Sync + Clone + Fn(&mut Context, &<L as Lens>::Target) -> bool,
+    F2: 'static + Send + Sync + Clone + Fn(&mut Context, <L as Lens>::Target),
+{
+    HStack::new(cx, move |cx| {
+        EditingState {
+            editing: false,
+            valid: true,
+        }
+        .build(cx);
+
+        Binding::new(cx, EditingState::editing, move |cx, editing_lens| {
+            let setter = setter.clone();
+            let validator = validator.clone();
+            let editing = editing_lens.get(cx);
+            let lens = lens.clone();
+            if editing {
+                ModelContainer { val: lens.get(cx) }.build(cx);
+                Label::new(cx, "\u{e5ca}")
+                    .font("material")
+                    .class("btn_highlight")
+                    .class("pencil_icon")
+                    .on_press(move |cx| {
+                        if EditingState::valid.get(cx) {
+                            let value = ModelContainer::val.get(cx);
+                            setter(cx, value);
+                            cx.emit(EditingStateEvent::End);
+                        }
+                    })
+                    .bind(EditingState::valid, move |handle, lens| {
+                        let val = lens.get(handle.cx);
+                        handle.toggle_class("disabled", val);
+                    });
+                Label::new(cx, "\u{e5cd}")
+                    .font("material")
+                    .class("btn_highlight")
+                    .class("pencil_icon")
+                    .on_press(|cx| {
+                        cx.emit(EditingStateEvent::End);
+                    });
+                validator_box(
+                    cx,
+                    ModelContainer::val,
+                    move |cx, val| {
+                        if validator(cx, &val) {
+                            cx.emit(ModelEvent::Set(Some(val)));
+                            true
+                        } else {
+                            false
+                        }
+                    },
+                    move |cx, valid| {
+                        cx.current.toggle_class(cx, "validation_error", !valid);
+                        cx.emit(EditingStateEvent::Valid(valid));
+                    },
+                );
+            } else {
+                if editable {
+                    Label::new(cx, "\u{e150}")
+                        .font("material")
+                        .class("btn_highlight")
+                        .class("pencil_icon")
+                        .on_press(move |cx| cx.emit(EditingStateEvent::Start));
+                }
+                Label::new(cx, lens).class("pencilable_label");
+            }
+        });
+    })
 }
 
 pub fn tweak_attr_check<L, F>(cx: &mut Context, name: &'static str, lens: L, setter: F)

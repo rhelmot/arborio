@@ -163,8 +163,13 @@ menubutton:over {
 
 /* project tab */
 
+.title {
+    font-size: 40px;
+}
+
 #maps_container {
     top: 30px;
+    height: auto;
 }
 
 .map_overview_card {
@@ -178,6 +183,28 @@ menubutton:over {
     font-size: 20px;
 }
 
+.btn_highlight.pencil_icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    child-space: 1s;
+}
+
+.pencilable hstack {
+    width: auto;
+}
+.pencilable label {
+    width: auto;
+}
+.pencilable {
+    width: auto;
+}
+.pencilable textbox {
+    width: 300px;
+}
+.project_name .pencilable_label {
+    font-size: 40px;
+}
 
 /* editor */
 

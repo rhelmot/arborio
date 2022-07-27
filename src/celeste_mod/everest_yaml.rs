@@ -2,6 +2,8 @@ use itertools::Itertools;
 use serde::de::{Error, Unexpected};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::path::Path;
+use std::str::FromStr;
+use vizia::Data;
 
 use crate::assets::Interned;
 use crate::celeste_mod::walker::{ConfigSource, ConfigSourceTrait};
@@ -47,7 +49,7 @@ pub struct EverestYamlDependency {
     pub version: EverestModuleVersion,
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Clone, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Clone, Debug, Data)]
 pub struct EverestModuleVersion(pub Vec<i32>);
 
 impl<'de> Deserialize<'de> for EverestModuleVersion {
@@ -56,13 +58,8 @@ impl<'de> Deserialize<'de> for EverestModuleVersion {
         D: Deserializer<'de>,
     {
         let s: String = Deserialize::deserialize(deserializer)?;
-        s.split('.')
-            .map(|x| x.parse())
-            .collect::<Result<Vec<i32>, _>>()
-            .map_err(|_| {
-                D::Error::invalid_value(Unexpected::Other("unable to parse integer"), &"1.2.3")
-            })
-            .map(EverestModuleVersion)
+        s.parse()
+            .map_err(|e| D::Error::invalid_value(Unexpected::Other(e), &"1.2.3"))
     }
 }
 
@@ -71,7 +68,25 @@ impl Serialize for EverestModuleVersion {
     where
         S: Serializer,
     {
-        self.0.iter().map(|x| x.to_string()).join(".").serialize(s)
+        self.to_string().serialize(s)
+    }
+}
+
+impl ToString for EverestModuleVersion {
+    fn to_string(&self) -> String {
+        self.0.iter().map(|x| x.to_string()).join(".")
+    }
+}
+
+impl FromStr for EverestModuleVersion {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.split('.')
+            .map(|x| x.parse())
+            .collect::<Result<Vec<i32>, _>>()
+            .map_err(|_| "unable to parse integer")
+            .map(EverestModuleVersion)
     }
 }
 
@@ -117,5 +132,14 @@ impl EverestYaml {
                     .unwrap_or("<invalid unicode>")
             ))
         }
+    }
+
+    pub fn save(&self, mod_path: &Path) {
+        println!("Saving with name {}", self.name);
+        [self]
+            .serialize(&mut serde_yaml::Serializer::new(
+                std::fs::File::create(&mod_path.join("everest.yaml")).unwrap(),
+            ))
+            .unwrap();
     }
 }

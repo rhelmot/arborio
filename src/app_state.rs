@@ -1,3 +1,4 @@
+use log::error;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
@@ -305,6 +306,18 @@ pub enum AppEvent {
     },
     CloseTab {
         idx: usize,
+    },
+    SetModName {
+        project: Interned,
+        name: String,
+    },
+    SetModVersion {
+        project: Interned,
+        version: EverestModuleVersion,
+    },
+    SetModPath {
+        project: Interned,
+        path: PathBuf,
     },
     MovePreview {
         tab: usize,
@@ -693,11 +706,7 @@ impl AppState {
                         dependencies: vec![],
                     };
                     std::fs::create_dir(&path).unwrap();
-                    [&everest_data]
-                        .serialize(&mut serde_yaml::Serializer::new(
-                            std::fs::File::create(&path.join("everest.yaml")).unwrap(),
-                        ))
-                        .unwrap();
+                    everest_data.save(&path);
 
                     let mut module_src = ConfigSource::Dir(FolderSource::new(&path).unwrap());
                     let mut module = CelesteModule::new(Some(path), everest_data);
@@ -706,6 +715,40 @@ impl AppState {
                     self.modules.insert(name.into(), module);
                     self.modules_version += 1;
                     break;
+                }
+            }
+            AppEvent::SetModName { project, name } => {
+                if let Some(module) = self.modules.get_mut(project) {
+                    module.everest_metadata.name = name.clone().into();
+                    module
+                        .everest_metadata
+                        .save(module.filesystem_root.as_ref().unwrap());
+                    self.modules_version += 1;
+                }
+            }
+            AppEvent::SetModVersion { project, version } => {
+                if let Some(module) = self.modules.get_mut(project) {
+                    module.everest_metadata.version = version.clone();
+                    module
+                        .everest_metadata
+                        .save(module.filesystem_root.as_ref().unwrap());
+                    self.modules_version += 1;
+                }
+            }
+            AppEvent::SetModPath { project, path } => {
+                if let Some(module) = self.modules.get_mut(project) {
+                    if let Err(e) = std::fs::rename(module.filesystem_root.as_ref().unwrap(), path)
+                    {
+                        error!(
+                            "Could not move {} to {}: {}",
+                            &module.everest_metadata.name,
+                            path.to_string_lossy(),
+                            e
+                        );
+                    } else {
+                        module.filesystem_root = Some(path.clone());
+                        self.modules_version += 1;
+                    }
                 }
             }
             AppEvent::SelectTool { spec } => {

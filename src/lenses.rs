@@ -667,3 +667,32 @@ impl Lens for CurrentTabImplLens {
         map(source.tabs.get(source.current_tab))
     }
 }
+
+pub struct StaticerLens<T: 'static> {
+    data: T,
+}
+
+impl<T: Clone> Clone for StaticerLens<T> {
+    fn clone(&self) -> Self {
+        StaticerLens {
+            data: self.data.clone(),
+        }
+    }
+}
+
+impl<T: Copy> Copy for StaticerLens<T> {}
+
+impl<T: Clone> Lens for StaticerLens<T> {
+    type Source = ();
+    type Target = T;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, _: &Self::Source, map: F) -> O {
+        map(Some(&self.data))
+    }
+}
+
+impl<T> StaticerLens<T> {
+    pub fn new(data: T) -> Self {
+        StaticerLens { data }
+    }
+}
