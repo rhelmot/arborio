@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 mod app_state;
+#[macro_use]
 mod assets;
 mod atlas_img;
 mod auto_saver;
@@ -26,7 +27,7 @@ use crate::app_state::{AppEvent, AppState, AppTab, Layer};
 use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::from_binel::TryFromBinEl;
 use crate::lenses::{CurrentTabImplLens, IsFailedLens};
-use crate::map_struct::{CelesteMap, MapID};
+use crate::map_struct::{CelesteMap, MapPath};
 use crate::widgets::tabs::{build_tab_bar, build_tabs};
 use widgets::entity_tweaker::EntityTweakerWidget;
 use widgets::list_palette::PaletteWidget;
@@ -100,7 +101,11 @@ fn build_menu_bar(cx: &mut Context) {
                 move |cx| {
                     let app = cx.data::<AppState>().unwrap();
                     let map = app.current_map_ref().unwrap();
-                    save(app, map).unwrap_or_else(|err| {
+                    let path = app
+                        .loaded_maps_id_to_path
+                        .get(&app.map_tab_unwrap().id)
+                        .unwrap();
+                    save(app, path, map).unwrap_or_else(|err| {
                         dialog::Message::new(err.to_string())
                             .title("Failed to save")
                             .show()
@@ -146,8 +151,8 @@ fn build_menu_bar(cx: &mut Context) {
     );
 }
 
-fn save(app: &AppState, map: &CelesteMap) -> Result<(), io::Error> {
-    let module = app.modules.get(&map.id.module).unwrap();
+fn save(app: &AppState, path: &MapPath, map: &CelesteMap) -> Result<(), io::Error> {
+    let module = app.modules.get(&path.module).unwrap();
     if *module.everest_metadata.name == "Celeste" {
         return Err(io::Error::new(
             io::ErrorKind::Other,
@@ -159,7 +164,10 @@ fn save(app: &AppState, map: &CelesteMap) -> Result<(), io::Error> {
         if root.is_dir() {
             return save_as(
                 map,
-                &root.join("Maps").join(*map.id.sid).with_extension("bin"),
+                &root
+                    .join("Maps")
+                    .join(path.sid.clone())
+                    .with_extension("bin"),
             );
         }
     }
@@ -178,7 +186,7 @@ fn save_to<W: io::Write>(map: &CelesteMap, writer: &mut W) -> Result<(), io::Err
     let binel: BinEl = map.to_binel();
     let file = BinFile {
         root: binel,
-        package: map.id.sid.to_string(),
+        package: "is this field used? please tell me if it's used".to_string(),
     };
 
     celeste::binel::writer::put_file(writer, &file)

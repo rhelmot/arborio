@@ -19,8 +19,7 @@ use crate::celeste_mod::config::{
 use crate::celeste_mod::module::CelesteModule;
 use crate::lenses::{CurrentTabImplLens, IsFailedLens};
 use crate::map_struct::{Attribute, CelesteMapEntity, CelesteMapStyleground};
-use crate::widgets::tabs::project::load_map_inner;
-use crate::{CelesteMap, MapID, ModuleAggregate};
+use crate::{CelesteMap, MapPath, ModuleAggregate};
 
 #[derive(Debug, Clone)]
 pub enum ConfigSearchResult {
@@ -39,19 +38,19 @@ pub enum AnyConfig {
 #[derive(Clone, Debug)]
 pub struct EntityConfigSearchResult {
     pub name: Interned,
-    pub examples: Arc<Mutex<Vec<(CelesteMapEntity, MapID, usize)>>>,
+    pub examples: Arc<Mutex<Vec<(CelesteMapEntity, MapPath, usize)>>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct TriggerConfigSearchResult {
     pub name: Interned,
-    pub examples: Arc<Mutex<Vec<(CelesteMapEntity, MapID, usize)>>>,
+    pub examples: Arc<Mutex<Vec<(CelesteMapEntity, MapPath, usize)>>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct StylegroundConfigSearchResult {
     pub name: Interned,
-    pub examples: Arc<Mutex<Vec<(CelesteMapStyleground, MapID, StylegroundSelection)>>>,
+    pub examples: Arc<Mutex<Vec<(CelesteMapStyleground, MapPath, StylegroundSelection)>>>,
 }
 
 impl AnyConfig {
@@ -330,7 +329,9 @@ pub fn collect_search_targets(cx: &mut Context) -> Vec<SearchScope> {
     }
     for tab in &app.tabs {
         if let AppTab::Map(m) = tab {
-            result.push(SearchScope::Map(m.id.clone()));
+            result.push(SearchScope::Map(
+                app.loaded_maps_id_to_path.get(&m.id).unwrap().clone(),
+            ));
         }
     }
 
@@ -556,24 +557,29 @@ fn walk_maps<T>(
     filter: &ConfigSearchFilter,
     targets: &[SearchScope],
     attrs: &str,
-    f: impl Fn(&mut HashSet<T>, &ConfigSearchFilter, &HashSet<&str>, &CelesteMap, &ModuleAggregate),
+    f: impl Fn(
+        &mut HashSet<T>,
+        &ConfigSearchFilter,
+        &HashSet<&str>,
+        &CelesteMap,
+        &MapPath,
+        &ModuleAggregate,
+    ),
 ) -> HashSet<T> {
     let mut results = HashSet::new();
     let attrs = attrs.split(',').collect::<HashSet<_>>();
     for (name, module) in modules.iter() {
         for map in &module.maps {
-            if scope.filter_map(
-                &MapID {
-                    module: *name,
-                    sid: *map,
-                },
-                targets,
-            ) {
+            let map_path = MapPath {
+                module: *name,
+                sid: map.clone(),
+            };
+            if scope.filter_map(&map_path, targets) {
                 if let Ok(map) =
-                    load_map_inner(module.filesystem_root.as_ref().unwrap(), *name, *map)
+                    CelesteModule::load_map_static(module.filesystem_root.as_ref().unwrap(), map)
                 {
-                    let palette = ModuleAggregate::new(modules, &map, false);
-                    f(&mut results, filter, &attrs, &map, &palette);
+                    let palette = ModuleAggregate::new(modules, &map, *name, false);
+                    f(&mut results, filter, &attrs, &map, &map_path, &palette);
                 }
             }
         }
@@ -587,6 +593,7 @@ fn scan_entities(
     filter: &ConfigSearchFilter,
     attrs: &HashSet<&str>,
     map: &CelesteMap,
+    map_path: &MapPath,
     palette: &ModuleAggregate,
 ) {
     for (room_idx, room) in map.levels.iter().enumerate() {
@@ -629,7 +636,7 @@ fn scan_entities(
                         .unwrap()
                 };
                 let mut vec = ecsr.examples.lock();
-                let example = (entity.clone(), map.id.clone(), room_idx);
+                let example = (entity.clone(), map_path.clone(), room_idx);
                 if vec.len() == 100 {
                     vec[rand::random::<usize>() % 100] = example;
                 } else {
@@ -645,6 +652,7 @@ fn scan_triggers(
     filter: &ConfigSearchFilter,
     attrs: &HashSet<&str>,
     map: &CelesteMap,
+    map_path: &MapPath,
     palette: &ModuleAggregate,
 ) {
     for (room_idx, room) in map.levels.iter().enumerate() {
@@ -680,7 +688,7 @@ fn scan_triggers(
                         .unwrap()
                 };
                 let mut vec = tcsr.examples.lock();
-                let example = (entity.clone(), map.id.clone(), room_idx);
+                let example = (entity.clone(), map_path.clone(), room_idx);
                 if vec.len() == 100 {
                     vec[rand::random::<usize>() % 100] = example;
                 } else {
@@ -696,6 +704,7 @@ fn scan_stylegrounds(
     filter: &ConfigSearchFilter,
     attrs: &HashSet<&str>,
     map: &CelesteMap,
+    map_path: &MapPath,
     palette: &ModuleAggregate,
 ) {
     for (b, g) in [&map.foregrounds, &map.backgrounds].into_iter().enumerate() {
@@ -736,7 +745,7 @@ fn scan_stylegrounds(
                 let mut vec = scsr.examples.lock();
                 let example = (
                     style.clone(),
-                    map.id.clone(),
+                    map_path.clone(),
                     StylegroundSelection { fg: b == 0, idx },
                 );
                 if vec.len() == 100 {

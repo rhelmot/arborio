@@ -208,7 +208,7 @@ impl PencilTool {
         match app.current_layer {
             Layer::ObjectTiles => {
                 vec![AppEvent::ObjectTileUpdate {
-                    map: app.map_tab_unwrap().id.clone(),
+                    map: app.map_tab_unwrap().id,
                     room: app.map_tab_unwrap().current_room,
                     offset: tile_pos,
                     data: TileGrid {
@@ -225,7 +225,7 @@ impl PencilTool {
                     app.current_bg_tile
                 };
                 vec![AppEvent::TileUpdate {
-                    map: app.map_tab_unwrap().id.clone(),
+                    map: app.map_tab_unwrap().id,
                     room: app.map_tab_unwrap().current_room,
                     fg,
                     offset: tile_pos,
@@ -242,7 +242,7 @@ impl PencilTool {
                         if diff > app.draw_interval {
                             self.reference_point = Some(room_pos);
                             vec![AppEvent::EntityAdd {
-                                map: app.map_tab_unwrap().id.clone(),
+                                map: app.map_tab_unwrap().id,
                                 room: app.map_tab_unwrap().current_room,
                                 entity: self.get_terminal_entity(app, app.current_entity, room_pos),
                                 trigger: false,
@@ -254,7 +254,7 @@ impl PencilTool {
                     None => {
                         self.reference_point = Some(room_pos);
                         vec![AppEvent::EntityAdd {
-                            map: app.map_tab_unwrap().id.clone(),
+                            map: app.map_tab_unwrap().id,
                             room: app.map_tab_unwrap().current_room,
                             entity: self.get_terminal_entity(app, app.current_entity, room_pos),
                             trigger: false,
@@ -289,7 +289,7 @@ impl PencilTool {
                                 self.get_terminal_entity(app, app.current_entity, room_pos)
                             };
                             vec![AppEvent::EntityAdd {
-                                map: app.map_tab_unwrap().id.clone(),
+                                map: app.map_tab_unwrap().id,
                                 room: app.map_tab_unwrap().current_room,
                                 entity,
                                 trigger: app.current_layer == Layer::Triggers,
@@ -302,7 +302,7 @@ impl PencilTool {
             }
             Layer::FgDecals | Layer::BgDecals => {
                 vec![AppEvent::DecalAdd {
-                    map: app.map_tab_unwrap().id.clone(),
+                    map: app.map_tab_unwrap().id,
                     room: app.map_tab_unwrap().current_room,
                     fg: app.current_layer == Layer::FgDecals,
                     decal: CelesteMapDecal {

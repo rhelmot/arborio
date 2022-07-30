@@ -102,3 +102,15 @@ impl Borrow<str> for Interned {
         self.0
     }
 }
+
+macro_rules! uuid_cls {
+    ($name:ident) => {
+        #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone, Data)]
+        pub struct $name(u32);
+        impl $name {
+            pub fn new() -> Self {
+                return Self(next_uuid());
+            }
+        }
+    };
+}

@@ -715,7 +715,7 @@ impl SelectionTool {
         let mut result = self.notify_selection(app);
         if let Some((offset, data)) = self.fg_float.take() {
             result.push(AppEvent::TileUpdate {
-                map: app.map_tab_unwrap().id.clone(),
+                map: app.map_tab_unwrap().id,
                 room: app.map_tab_unwrap().current_room,
                 fg: true,
                 offset,
@@ -724,7 +724,7 @@ impl SelectionTool {
         }
         if let Some((offset, data)) = self.bg_float.take() {
             result.push(AppEvent::TileUpdate {
-                map: app.map_tab_unwrap().id.clone(),
+                map: app.map_tab_unwrap().id,
                 room: app.map_tab_unwrap().current_room,
                 fg: false,
                 offset,
@@ -733,7 +733,7 @@ impl SelectionTool {
         }
         if let Some((offset, data)) = self.obj_float.take() {
             result.push(AppEvent::ObjectTileUpdate {
-                map: app.map_tab_unwrap().id.clone(),
+                map: app.map_tab_unwrap().id,
                 room: app.map_tab_unwrap().current_room,
                 offset,
                 data,
@@ -827,7 +827,7 @@ impl SelectionTool {
                         decal.x = new.x;
                         decal.y = new.y;
                         events.push(AppEvent::DecalUpdate {
-                            map: app.map_tab_unwrap().id.clone(),
+                            map: app.map_tab_unwrap().id,
                             room: app.map_tab_unwrap().current_room,
                             fg: *fg,
                             decal,
@@ -840,7 +840,7 @@ impl SelectionTool {
         entity_updates
             .into_iter()
             .map(|(_, entity)| AppEvent::EntityUpdate {
-                map: app.map_tab_unwrap().id.clone(),
+                map: app.map_tab_unwrap().id,
                 room: app.map_tab_unwrap().current_room,
                 entity,
                 trigger: false,
@@ -849,7 +849,7 @@ impl SelectionTool {
                 trigger_updates
                     .into_iter()
                     .map(|(_, entity)| AppEvent::EntityUpdate {
-                        map: app.map_tab_unwrap().id.clone(),
+                        map: app.map_tab_unwrap().id,
                         room: app.map_tab_unwrap().current_room,
                         entity,
                         trigger: true,
@@ -928,7 +928,7 @@ impl SelectionTool {
                     e.width = new_rect.size.width.max(config.minimum_size_x as i32) as u32;
                     e.height = new_rect.size.height.max(config.minimum_size_y as i32) as u32;
                     events.push(AppEvent::EntityUpdate {
-                        map: app.map_tab_unwrap().id.clone(),
+                        map: app.map_tab_unwrap().id,
                         room: app.map_tab_unwrap().current_room,
                         entity: e,
                         trigger: *trigger,
@@ -966,7 +966,7 @@ impl SelectionTool {
                         d.scale_x = new_stretch.x;
                         d.scale_y = new_stretch.y;
                         events.push(AppEvent::DecalUpdate {
-                            map: app.map_tab_unwrap().id.clone(),
+                            map: app.map_tab_unwrap().id,
                             room: app.map_tab_unwrap().current_room,
                             fg: *fg,
                             decal: d,
@@ -989,7 +989,7 @@ impl SelectionTool {
                 AppSelection::FgTile(pt) => {
                     add_to_float(&mut self.fg_float, pt, &room.solids, '\0');
                     events.push(AppEvent::TileUpdate {
-                        map: app.map_tab_unwrap().id.clone(),
+                        map: app.map_tab_unwrap().id,
                         room: app.map_tab_unwrap().current_room,
                         fg: true,
                         offset: pt,
@@ -1004,7 +1004,7 @@ impl SelectionTool {
                 AppSelection::BgTile(pt) => {
                     add_to_float(&mut self.bg_float, pt, &room.bg, '\0');
                     events.push(AppEvent::TileUpdate {
-                        map: app.map_tab_unwrap().id.clone(),
+                        map: app.map_tab_unwrap().id,
                         room: app.map_tab_unwrap().current_room,
                         fg: false,
                         offset: pt,
@@ -1019,7 +1019,7 @@ impl SelectionTool {
                 AppSelection::ObjectTile(pt) => {
                     add_to_float(&mut self.obj_float, pt, &room.object_tiles, -2);
                     events.push(AppEvent::ObjectTileUpdate {
-                        map: app.map_tab_unwrap().id.clone(),
+                        map: app.map_tab_unwrap().id,
                         room: app.map_tab_unwrap().current_room,
                         offset: pt,
                         data: TileGrid {
@@ -1226,7 +1226,7 @@ impl SelectionTool {
                 }
                 AppSelection::EntityBody(id, trigger) => {
                     result.push(AppEvent::EntityRemove {
-                        map: app.map_tab_unwrap().id.clone(),
+                        map: app.map_tab_unwrap().id,
                         room: app.map_tab_unwrap().current_room,
                         id: *id,
                         trigger: *trigger,
@@ -1250,7 +1250,7 @@ impl SelectionTool {
                 }
                 AppSelection::Decal(id, fg) => {
                     result.push(AppEvent::DecalRemove {
-                        map: app.map_tab_unwrap().id.clone(),
+                        map: app.map_tab_unwrap().id,
                         room: app.map_tab_unwrap().current_room,
                         id: *id,
                         fg: *fg,
@@ -1269,7 +1269,7 @@ impl SelectionTool {
                         }
                     }
                     result.push(AppEvent::EntityUpdate {
-                        map: app.map_tab_unwrap().id.clone(),
+                        map: app.map_tab_unwrap().id,
                         room: app.map_tab_unwrap().current_room,
                         entity,
                         trigger: false,
@@ -1288,7 +1288,7 @@ impl SelectionTool {
                         }
                     }
                     result.push(AppEvent::EntityUpdate {
-                        map: app.map_tab_unwrap().id.clone(),
+                        map: app.map_tab_unwrap().id,
                         room: app.map_tab_unwrap().current_room,
                         entity,
                         trigger: true,

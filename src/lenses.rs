@@ -415,7 +415,7 @@ impl Lens for RoomTweakerScopeLens {
             return map(None);
         };
 
-        map(Some(&(maptab.id.clone(), maptab.current_room)))
+        map(Some(&(maptab.id, maptab.current_room)))
     }
 }
 

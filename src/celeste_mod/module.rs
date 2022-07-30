@@ -1,15 +1,17 @@
-use crate::assets::{intern_str, Interned, InternedMap};
+use crate::assets::{intern_str, InternedMap};
 use std::ffi::{OsStr, OsString};
-use std::path::PathBuf;
+use std::io;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::atlas_img::Atlas;
-use crate::autotiler;
 use crate::autotiler::Tileset;
 use crate::celeste_mod::config::{EntityConfig, StylegroundConfig, TriggerConfig};
 use crate::celeste_mod::everest_yaml::EverestYaml;
-use crate::celeste_mod::walker::ConfigSource;
 use crate::celeste_mod::walker::ConfigSourceTrait;
+use crate::celeste_mod::walker::{open_module, ConfigSource};
+use crate::map_struct::from_reader;
+use crate::{autotiler, save_as, CelesteMap};
 
 #[derive(Debug, Clone)] // Clone should just increase the refcount on each arc, right?
 pub struct CelesteModule {
@@ -20,7 +22,7 @@ pub struct CelesteModule {
     pub entity_config: InternedMap<Arc<EntityConfig>>,
     pub trigger_config: InternedMap<Arc<TriggerConfig>>,
     pub styleground_config: InternedMap<Arc<StylegroundConfig>>,
-    pub maps: Vec<Interned>,
+    pub maps: Vec<String>,
 }
 
 impl CelesteModule {
@@ -125,7 +127,7 @@ impl CelesteModule {
                     .with_extension("")
                     .to_str()
                 {
-                    self.maps.push(intern_str(sid));
+                    self.maps.push(sid.to_string());
                 }
             }
         }
@@ -145,6 +147,41 @@ impl CelesteModule {
         } else {
             CelesteModuleKind::Builtin
         }
+    }
+
+    pub fn load_map_static(root: &Path, sid: &str) -> Result<CelesteMap, io::Error> {
+        let mut config = match open_module(root) {
+            None => {
+                return Err(io::Error::new(
+                    io::ErrorKind::NotFound,
+                    "Module has disappeared. Did you delete something?",
+                ))
+            }
+            Some(c) => c,
+        };
+        let reader = match config.get_file(&PathBuf::from("Maps").join(sid.to_string() + ".bin")) {
+            None => {
+                return Err(io::Error::new(
+                    io::ErrorKind::NotFound,
+                    "Map file has disappeared. Did you delete something?",
+                ))
+            }
+            Some(r) => r,
+        };
+
+        from_reader(reader)
+    }
+
+    pub fn create_map(&mut self, sid: String) {
+        let p = self
+            .filesystem_root
+            .as_ref()
+            .unwrap()
+            .join("Maps")
+            .join(sid.clone() + ".bin");
+        std::fs::create_dir_all(p.parent().unwrap()).expect("Failed to create directory for map");
+        save_as(&CelesteMap::new(), &p).expect("Could not save blank map");
+        self.maps.push(sid);
     }
 }
 

@@ -211,7 +211,7 @@ fn emit(cx: &mut Context, update: CelesteMapLevelUpdate) {
     let app = cx.data::<AppState>().unwrap();
     let tab = app.map_tab_unwrap();
     let event = AppEvent::UpdateRoomMisc {
-        map: tab.id.clone(),
+        map: tab.id,
         idx: tab.current_room,
         update,
     };
@@ -241,7 +241,7 @@ fn emit_bounds(
         bounds.size.height = h;
     }
     let event = AppEvent::MoveRoom {
-        map: tab.id.clone(),
+        map: tab.id,
         room: tab.current_room,
         bounds,
     };

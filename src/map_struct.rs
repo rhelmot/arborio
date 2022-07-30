@@ -17,16 +17,18 @@ use crate::from_binel::{GetAttrOrChild, TryFromBinEl, TwoWayConverter};
 use crate::units::*;
 
 #[derive(Eq, PartialEq, Hash, Debug, Clone, Default)]
-pub struct MapID {
+pub struct MapPath {
     pub module: Interned,
-    pub sid: Interned,
+    pub sid: String,
 }
 
-impl Data for MapID {
+impl Data for MapPath {
     fn same(&self, other: &Self) -> bool {
         self == other
     }
 }
+
+uuid_cls!(MapID);
 
 #[derive(Clone, Debug, TryFromBinEl)]
 #[convert_with(MapComponentConverter)]
@@ -43,11 +45,7 @@ pub struct Rect {
 #[name("Map")]
 pub struct CelesteMap {
     #[bin_el_skip]
-    pub id: MapID,
-    #[bin_el_skip]
     pub dirty: bool,
-    #[bin_el_skip]
-    pub name: String,
 
     #[name("Filler")]
     pub filler: Vec<MapRectStrict>,
@@ -65,10 +63,8 @@ pub struct CelesteMap {
 }
 
 impl CelesteMap {
-    pub fn new(id: MapID) -> Self {
+    pub fn new() -> Self {
         Self {
-            name: id.sid.to_string(),
-            id,
             dirty: false,
             filler: vec![],
             background_color: None,
@@ -286,8 +282,8 @@ impl Default for CelesteMapLevel {
             music_progress: "".to_string(),
             ambience_progress: "".to_string(),
             delay_alt_music_fade: false,
-            solids: TileGrid::new_default(tile_size),
-            bg: TileGrid::new_default(tile_size),
+            solids: TileGrid::new(tile_size, '0'),
+            bg: TileGrid::new(tile_size, '0'),
             object_tiles: TileGrid::new(tile_size, -1),
             entities: vec![],
             triggers: vec![],
@@ -929,15 +925,12 @@ impl CelesteMapEntity {
     }
 }
 
-pub fn from_reader(
-    id: MapID,
-    mut reader: impl std::io::Read,
-) -> Result<CelesteMap, std::io::Error> {
+pub fn from_reader(mut reader: impl std::io::Read) -> Result<CelesteMap, std::io::Error> {
     let mut file = vec![];
     reader.read_to_end(&mut file)?;
     let (_, binfile) = celeste::binel::parser::take_file(file.as_slice())
         .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "Not a Celeste map"))?;
-    let map = from_binfile(id, binfile).map_err(|e| {
+    let map = from_binfile(binfile).map_err(|e| {
         std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             format!("Data validation error: {}", e),
@@ -947,14 +940,9 @@ pub fn from_reader(
     Ok(map)
 }
 
-pub fn from_binfile(id: MapID, binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
+pub fn from_binfile(binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
     expect_elem!(binfile.root, "Map");
-
-    let mut result = CelesteMap::try_from_bin_el(&binfile.root);
-    if let Ok(ref mut r) = result {
-        r.id = id;
-    }
-    result
+    CelesteMap::try_from_bin_el(&binfile.root)
 }
 
 impl TryFromBinEl for CelesteMapLevel {

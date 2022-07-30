@@ -95,15 +95,13 @@ impl View for EntityTweakerWidget {
 
 fn edit_entity<F: FnOnce(&mut CelesteMapEntity)>(cx: &mut Context, f: F) {
     let app_state = cx.data::<AppState>().unwrap();
-    let (current_map, current_room, current_selected) =
-        match app_state.tabs.get(app_state.current_tab) {
-            Some(AppTab::Map(map_tab)) => (
-                map_tab.id.clone(),
-                map_tab.current_room,
-                map_tab.current_selected,
-            ),
-            _ => panic!("How'd you do that"),
-        };
+    let (current_map, current_room, current_selected) = match app_state
+        .tabs
+        .get(app_state.current_tab)
+    {
+        Some(AppTab::Map(map_tab)) => (map_tab.id, map_tab.current_room, map_tab.current_selected),
+        _ => panic!("How'd you do that"),
+    };
     let trigger = matches!(
         current_selected,
         Some(AppSelection::EntityBody(_, true) | AppSelection::EntityNode(_, _, true))

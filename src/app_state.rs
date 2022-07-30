@@ -1,3 +1,4 @@
+use dialog::DialogBox;
 use log::error;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -5,7 +6,7 @@ use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Formatter;
 use std::ops::DerefMut;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time;
 use vizia::*;
@@ -15,11 +16,11 @@ use crate::auto_saver::AutoSaver;
 use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::celeste_mod::discovery;
 use crate::celeste_mod::everest_yaml::{EverestModuleVersion, EverestYaml};
-use crate::celeste_mod::module::CelesteModule;
+use crate::celeste_mod::module::{CelesteModule, CelesteModuleKind};
 use crate::celeste_mod::walker::{ConfigSource, FolderSource};
 use crate::map_struct::{
     CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapLevelUpdate,
-    CelesteMapStyleground, MapID,
+    CelesteMapStyleground, MapID, MapPath,
 };
 use crate::tools::{Tool, ToolSpec};
 use crate::units::*;
@@ -37,9 +38,12 @@ pub struct AppState {
     pub palettes: HashMap<MapID, ModuleAggregate>,
     pub omni_palette: ModuleAggregate,
     pub loaded_maps: HashMap<MapID, CelesteMap>,
+    pub loaded_maps_path_to_id: HashMap<MapPath, MapID>,
+    pub loaded_maps_id_to_path: HashMap<MapID, MapPath>,
 
     pub current_tab: usize,
     pub tabs: Vec<AppTab>,
+    pub poison_tab: usize,
 
     pub current_toolspec: ToolSpec,
     pub current_tool: Option<RefCell<Box<dyn Tool>>>,
@@ -63,6 +67,7 @@ pub struct AppState {
 pub struct AppConfig {
     pub celeste_root: Option<PathBuf>,
     pub last_filepath: PathBuf,
+    pub user_name: String,
 }
 
 #[allow(clippy::large_enum_variant)] // this is very rarely passed around by value
@@ -118,7 +123,7 @@ pub enum SearchScope {
     AllOpenMods,
     AllOpenMaps,
     Mod(Interned),
-    Map(MapID),
+    Map(MapPath),
 }
 
 impl std::fmt::Display for SearchScope {
@@ -134,7 +139,7 @@ impl std::fmt::Display for SearchScope {
 }
 
 impl SearchScope {
-    pub fn filter_map(&self, id: &MapID, collected_targets: &[SearchScope]) -> bool {
+    pub fn filter_map(&self, id: &MapPath, collected_targets: &[SearchScope]) -> bool {
         match self {
             SearchScope::AllMods => true,
             SearchScope::AllOpenMods => collected_targets.contains(&SearchScope::Mod(id.module)),
@@ -209,7 +214,7 @@ impl ToString for AppTab {
         match self {
             AppTab::CelesteOverview => "All Mods".to_owned(),
             AppTab::ProjectOverview(s) => format!("{} - Overview", s),
-            AppTab::Map(m) => m.id.sid.to_string(),
+            AppTab::Map(_) => "TODO".to_string(),
             AppTab::ConfigEditor(_) => "Config Editor".to_owned(),
             AppTab::Logs => "Logs".to_owned(),
         }
@@ -294,18 +299,25 @@ pub enum AppEvent {
     OpenModuleOverviewTab {
         module: Interned,
     },
-    Load {
+    OpenMap {
+        path: MapPath,
+    },
+    LoadMap {
+        path: MapPath,
         map: RefCell<Option<Box<CelesteMap>>>,
     },
     OpenInstallationTab,
     OpenConfigEditorTab,
     OpenLogsTab,
-    NewMod,
     SelectTab {
         idx: usize,
     },
     CloseTab {
         idx: usize,
+    },
+    NewMod,
+    DeleteMod {
+        project: Interned,
     },
     SetModName {
         project: Interned,
@@ -318,6 +330,9 @@ pub enum AppEvent {
     SetModPath {
         project: Interned,
         path: PathBuf,
+    },
+    NewMap {
+        project: Interned,
     },
     MovePreview {
         tab: usize,
@@ -521,8 +536,11 @@ impl AppState {
         AppState {
             config: cfg,
             current_tab: 0,
+            poison_tab: usize::MAX,
             tabs: vec![AppTab::CelesteOverview],
             loaded_maps: HashMap::new(),
+            loaded_maps_path_to_id: HashMap::new(),
+            loaded_maps_id_to_path: HashMap::new(),
             current_toolspec: ToolSpec::Selection,
             current_tool: None,
             current_fg_tile: TileSelectable::default(),
@@ -542,7 +560,8 @@ impl AppState {
             palettes: HashMap::new(),
             omni_palette: ModuleAggregate::new(
                 &InternedMap::new(),
-                &CelesteMap::new(MapID::default()),
+                &CelesteMap::new(),
+                "Celeste".into(),
                 false,
             ),
             progress: Progress {
@@ -641,12 +660,46 @@ impl AppState {
                     idx: self.tabs.len() - 1,
                 });
             }
-            AppEvent::Load { map } => {
+            AppEvent::OpenMap { path } => {
+                let mut found = false;
+                for (idx, tab) in self.tabs.iter().enumerate() {
+                    if matches!(tab, AppTab::Map(maptab) if self.loaded_maps_id_to_path.get(&maptab.id).unwrap() == path)
+                    {
+                        cx.emit(AppEvent::SelectTab { idx });
+                        found = true;
+                        break;
+                    }
+                }
+                if !found {
+                    if let Some(module) = self.modules.get(&path.module) {
+                        if let Some(module_root) = module.filesystem_root.clone() {
+                            let path = path.clone();
+                            cx.spawn(move |cx| {
+                                if let Some(map_struct) = load_map(&module_root, &path.sid) {
+                                    cx.emit(AppEvent::LoadMap {
+                                        path: path.clone(),
+                                        map: RefCell::new(Some(Box::new(map_struct))),
+                                    })
+                                    .unwrap();
+                                }
+                            })
+                        }
+                    }
+                }
+            }
+            AppEvent::LoadMap { path, map } => {
                 if let Some(map) = map.borrow_mut().take() {
-                    if !self.loaded_maps.contains_key(&map.id) {
+                    let id = if let Some(id) = self.loaded_maps_path_to_id.get(path) {
+                        *id
+                    } else {
+                        let id = MapID::new();
+                        self.loaded_maps_path_to_id.insert(path.clone(), id);
+                        id
+                    };
+                    if !self.loaded_maps.contains_key(&id) {
                         self.tabs.push(AppTab::Map(MapTab {
                             nonce: next_uuid(),
-                            id: map.id.clone(),
+                            id,
                             current_room: 0,
                             current_selected: None,
                             styleground_selected: None,
@@ -657,11 +710,13 @@ impl AppState {
                             idx: self.tabs.len() - 1,
                         });
                     }
-                    if let Entry::Vacant(e) = self.palettes.entry(map.id.clone()) {
-                        e.insert(ModuleAggregate::new(&self.modules, &map, true));
+                    if let Entry::Vacant(e) = self.palettes.entry(id) {
+                        e.insert(ModuleAggregate::new(&self.modules, &map, path.module, true));
                     }
 
-                    self.loaded_maps.insert(map.id.clone(), *map);
+                    self.loaded_maps.insert(id, *map);
+                    self.loaded_maps_id_to_path.insert(id, path.clone());
+                    self.loaded_maps_path_to_id.insert(path.clone(), id);
                 }
             }
             AppEvent::SetConfigPath { path } => {
@@ -675,8 +730,12 @@ impl AppState {
                 let mut r = modules.lock().unwrap();
                 std::mem::swap(r.deref_mut(), &mut self.modules);
                 self.modules_version += 1;
-                self.omni_palette =
-                    trigger_palette_update(&mut self.palettes, &self.modules, &self.loaded_maps);
+                self.omni_palette = trigger_palette_update(
+                    &mut self.palettes,
+                    &self.modules,
+                    &self.loaded_maps,
+                    &self.loaded_maps_id_to_path,
+                );
             }
             AppEvent::NewMod => {
                 let mut number = 1;
@@ -711,10 +770,20 @@ impl AppState {
                     let mut module_src = ConfigSource::Dir(FolderSource::new(&path).unwrap());
                     let mut module = CelesteModule::new(Some(path), everest_data);
                     module.load(&mut module_src);
+                    let module_id = name.into();
 
-                    self.modules.insert(name.into(), module);
+                    self.modules.insert(module_id, module);
                     self.modules_version += 1;
+
+                    cx.emit(AppEvent::OpenModuleOverviewTab { module: module_id });
                     break;
+                }
+            }
+            AppEvent::DeleteMod { project } => {
+                if let Some(path) = self.modules.remove(project).and_then(|m| m.filesystem_root) {
+                    self.modules_version += 1;
+                    std::fs::remove_dir_all(path).expect("Failed to delete mod from filesystem");
+                    self.garbage_collect();
                 }
             }
             AppEvent::SetModName { project, name } => {
@@ -749,6 +818,41 @@ impl AppState {
                         module.filesystem_root = Some(path.clone());
                         self.modules_version += 1;
                     }
+                }
+            }
+            AppEvent::NewMap { project } => {
+                if let Some(module) = self.modules.get_mut(project) {
+                    assert!(matches!(module.module_kind(), CelesteModuleKind::Directory));
+                    let mut new_id = 0;
+                    let new_sid = 'outer2: loop {
+                        new_id += 1;
+                        let new_sid = format!(
+                            "{}/{}/untitled-{}",
+                            self.config.user_name,
+                            module
+                                .filesystem_root
+                                .as_ref()
+                                .unwrap()
+                                .file_name()
+                                .unwrap()
+                                .to_string_lossy(),
+                            new_id
+                        );
+                        for old_sid in module.maps.iter() {
+                            if **old_sid == new_sid {
+                                continue 'outer2;
+                            }
+                        }
+                        break new_sid;
+                    };
+                    module.create_map(new_sid.clone());
+                    cx.emit(AppEvent::OpenMap {
+                        path: MapPath {
+                            module: *project,
+                            sid: new_sid,
+                        },
+                    });
+                    self.modules_version += 1;
                 }
             }
             AppEvent::SelectTool { spec } => {
@@ -810,16 +914,8 @@ impl AppState {
                 }
             }
             AppEvent::CloseTab { idx } => {
-                self.tabs.remove(*idx);
-                let new_tab = if (self.current_tab > *idx || self.current_tab >= self.tabs.len())
-                    && self.current_tab > 0
-                {
-                    self.current_tab - 1
-                } else {
-                    self.current_tab
-                };
+                self.poison_tab = *idx;
                 self.garbage_collect();
-                cx.emit(AppEvent::SelectTab { idx: new_tab });
             }
             AppEvent::Pan { tab, delta } => {
                 if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(*tab) {
@@ -1161,12 +1257,42 @@ impl AppState {
     }
 
     pub fn garbage_collect(&mut self) {
+        // destroy any tabs related to resources which no longer exist or are marked for closure
+        // compute the new current-tab index
+        let mut idx = 0;
+        let mut current_delta: usize = 0;
+        self.tabs.retain(|tab| {
+            let closure = |idx: usize, tab: &AppTab| -> bool {
+                if idx == self.poison_tab {
+                    return false;
+                }
+
+                match tab {
+                    AppTab::ProjectOverview(project) => self.modules.contains_key(project),
+                    AppTab::Map(maptab) => self
+                        .modules
+                        .contains_key(&self.loaded_maps_id_to_path.get(&maptab.id).unwrap().module),
+                    _ => true,
+                }
+            };
+
+            let result = closure(idx, tab);
+            if !result && self.current_tab > idx {
+                current_delta += 1;
+            }
+            idx += 1;
+            result
+        });
+        self.current_tab = self.current_tab.saturating_sub(current_delta);
+        self.poison_tab = usize::MAX;
+
+        // collect a list of maps which need to be retained in memory based on open tabs
         let mut open_maps = HashSet::new();
         for tab in &self.tabs {
             #[allow(clippy::single_match)] // we will want more arms in the future
             match tab {
                 AppTab::Map(maptab) => {
-                    open_maps.insert(maptab.id.clone());
+                    open_maps.insert(maptab.id);
                 }
                 _ => {}
             }
@@ -1234,9 +1360,15 @@ pub fn trigger_palette_update(
     palettes: &mut HashMap<MapID, ModuleAggregate>,
     modules: &InternedMap<CelesteModule>,
     maps: &HashMap<MapID, CelesteMap>,
+    map_paths: &HashMap<MapID, MapPath>,
 ) -> ModuleAggregate {
-    for (name, pal) in palettes.iter_mut() {
-        *pal = ModuleAggregate::new(modules, maps.get(name).unwrap(), true);
+    for (id, pal) in palettes.iter_mut() {
+        *pal = ModuleAggregate::new(
+            modules,
+            maps.get(id).unwrap(),
+            map_paths.get(id).unwrap().module,
+            true,
+        );
     }
     // discard logs here
     ModuleAggregate::new_omni(modules, false)
@@ -1271,6 +1403,19 @@ pub fn pick_new_name(map: &CelesteMap) -> String {
             break result;
         } else {
             num += 1;
+        }
+    }
+}
+
+fn load_map(module_root: &Path, sid: &str) -> Option<CelesteMap> {
+    match CelesteModule::load_map_static(module_root, sid) {
+        Ok(m) => Some(m),
+        Err(e) => {
+            dialog::Message::new(e.to_string())
+                .title("Failed to load map")
+                .show()
+                .unwrap();
+            None
         }
     }
 }

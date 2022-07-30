@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use vizia::vg::{Color, Paint, Path};
 use vizia::*;
 
-use crate::map_struct::{CelesteMap, CelesteMapLevel};
+use crate::map_struct::{CelesteMap, CelesteMapLevel, MapID};
 use crate::tools::selection::ResizeSide;
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
@@ -64,6 +64,7 @@ impl Tool for RoomTool {
         let map_pos = (map_pos_unsnapped / 8) * 8;
 
         let map = app.current_map_ref().unwrap();
+        let mapid = app.map_tab_unwrap().id;
 
         match event {
             WindowEvent::MouseUp(_) => {
@@ -72,7 +73,7 @@ impl Tool for RoomTool {
                     SelectionStatus::Resizing(ResizingStatus {
                         pointer_reference_point,
                         ..
-                    }) => self.resize(map, map_pos - pointer_reference_point),
+                    }) => self.resize(mapid, map, map_pos - pointer_reference_point),
                     _ => vec![],
                 };
                 self.status = SelectionStatus::None;
@@ -118,7 +119,7 @@ impl Tool for RoomTool {
                     SelectionStatus::Dragging(DraggingStatus {
                         pointer_reference_point,
                         ..
-                    }) => self.nudge(map, map_pos - pointer_reference_point),
+                    }) => self.nudge(mapid, map, map_pos - pointer_reference_point),
                     SelectionStatus::Resizing(_) => vec![],
                 }
             }
@@ -133,7 +134,7 @@ impl Tool for RoomTool {
                     });
                     let mut events = self.notify_selection(app);
                     events.push(AppEvent::AddRoom {
-                        map: map.id.clone(),
+                        map: mapid,
                         idx: None,
                         room: Box::new(result),
                     });
@@ -143,10 +144,10 @@ impl Tool for RoomTool {
                 }
             }
             WindowEvent::KeyDown(code, _) if self.status == SelectionStatus::None => match code {
-                Code::ArrowDown => self.nudge(map, MapVectorStrict::new(0, 8)),
-                Code::ArrowUp => self.nudge(map, MapVectorStrict::new(0, -8)),
-                Code::ArrowRight => self.nudge(map, MapVectorStrict::new(8, 0)),
-                Code::ArrowLeft => self.nudge(map, MapVectorStrict::new(-8, 0)),
+                Code::ArrowDown => self.nudge(mapid, map, MapVectorStrict::new(0, 8)),
+                Code::ArrowUp => self.nudge(mapid, map, MapVectorStrict::new(0, -8)),
+                Code::ArrowRight => self.nudge(mapid, map, MapVectorStrict::new(8, 0)),
+                Code::ArrowLeft => self.nudge(mapid, map, MapVectorStrict::new(-8, 0)),
                 Code::KeyA if cx.modifiers.contains(Modifiers::CTRL) => {
                     self.current_selection = rooms_in(
                         map,
@@ -157,7 +158,7 @@ impl Tool for RoomTool {
                     );
                     vec![]
                 }
-                Code::Backspace | Code::Delete => self.delete_all(map),
+                Code::Backspace | Code::Delete => self.delete_all(mapid),
                 _ => vec![],
             },
             _ => vec![],
@@ -180,6 +181,7 @@ impl Tool for RoomTool {
             .transform_point(screen_pos);
         let map_pos_unsnapped = point_lose_precision(&map_pos_precise);
         let map_pos = (map_pos_unsnapped / 8) * 8;
+        let mapid = state.map_tab_unwrap().id;
 
         canvas.save();
         if let SelectionStatus::Selecting(ref_pos) = &self.status {
@@ -243,7 +245,7 @@ impl Tool for RoomTool {
         }) = self.status
         {
             let mut path = Path::new();
-            for fake_event in self.resize(map, map_pos - pointer_reference_point) {
+            for fake_event in self.resize(mapid, map, map_pos - pointer_reference_point) {
                 if let AppEvent::MoveRoom { bounds, .. } = fake_event {
                     path.rect(
                         bounds.min_x() as f32,
@@ -309,7 +311,7 @@ impl RoomTool {
         self.notify_selection(app)
     }
 
-    fn nudge(&self, map: &CelesteMap, nudge: MapVectorStrict) -> Vec<AppEvent> {
+    fn nudge(&self, mapid: MapID, map: &CelesteMap, nudge: MapVectorStrict) -> Vec<AppEvent> {
         let dragging = if let SelectionStatus::Dragging(dragging) = &self.status {
             Some(dragging)
         } else {
@@ -323,7 +325,7 @@ impl RoomTool {
                 .map(|d| d.selection_reference_points[room])
                 .unwrap_or_else(|| map.levels[*room].bounds.origin);
             events.push(AppEvent::MoveRoom {
-                map: map.id.clone(),
+                map: mapid,
                 room: *room,
                 bounds: MapRectStrict::new(base + nudge, map.levels[*room].bounds.size),
             });
@@ -332,7 +334,7 @@ impl RoomTool {
         events
     }
 
-    fn resize(&self, map: &CelesteMap, resize: MapVectorStrict) -> Vec<AppEvent> {
+    fn resize(&self, mapid: MapID, map: &CelesteMap, resize: MapVectorStrict) -> Vec<AppEvent> {
         let dragging = if let SelectionStatus::Resizing(dragging) = &self.status {
             Some(dragging)
         } else {
@@ -377,7 +379,7 @@ impl RoomTool {
             new_rect.size.width = new_rect.size.width.max(8);
             new_rect.size.height = new_rect.size.height.max(8);
             events.push(AppEvent::MoveRoom {
-                map: map.id.clone(),
+                map: mapid,
                 room: *room,
                 bounds: new_rect,
             });
@@ -438,11 +440,11 @@ impl RoomTool {
         ResizeSide::None
     }
 
-    fn delete_all(&self, map: &CelesteMap) -> Vec<AppEvent> {
+    fn delete_all(&self, mapid: MapID) -> Vec<AppEvent> {
         self.current_selection
             .iter()
             .map(|idx| AppEvent::DeleteRoom {
-                map: map.id.clone(),
+                map: mapid,
                 idx: *idx,
             })
             .collect()

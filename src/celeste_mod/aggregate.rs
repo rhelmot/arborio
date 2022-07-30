@@ -13,7 +13,7 @@ use crate::celeste_mod::walker::{open_module, ConfigSourceTrait};
 use crate::widgets::list_palette::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
 };
-use crate::{CelesteMap, MapID};
+use crate::CelesteMap;
 
 #[derive(Lens, Clone)]
 pub struct ModuleAggregate {
@@ -33,9 +33,13 @@ pub struct ModuleAggregate {
 impl Model for ModuleAggregate {}
 
 impl ModuleAggregate {
-    pub fn new(modules: &InternedMap<CelesteModule>, map: &CelesteMap, emit_logs: bool) -> Self {
-        let current_module = map.id.module;
-        if let Some(mymod) = modules.get(&map.id.module) {
+    pub fn new(
+        modules: &InternedMap<CelesteModule>,
+        map: &CelesteMap,
+        current_module: Interned,
+        emit_logs: bool,
+    ) -> Self {
+        if let Some(mymod) = modules.get(&current_module) {
             for dep in mymod.everest_metadata.dependencies.iter() {
                 if *dep.name == "Everest" {
                     continue;
@@ -51,7 +55,7 @@ impl ModuleAggregate {
 
     pub fn new_omni(modules: &InternedMap<CelesteModule>, emit_logs: bool) -> Self {
         Self::new_core(
-            &CelesteMap::new(MapID::default()),
+            &CelesteMap::new(),
             modules.iter().map(|(x, y)| (**x, y)),
             emit_logs,
         )
