@@ -7,7 +7,7 @@ pub mod style;
 use enum_iterator::IntoEnumIterator;
 use vizia::*;
 
-use crate::app_state::{AppEvent, AppState};
+use crate::app_state::{AppEvent, AppInternalEvent, AppState};
 use crate::units::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, IntoEnumIterator)]
@@ -49,7 +49,10 @@ impl ToolSpec {
 
 #[allow(unused_variables)]
 pub trait Tool {
-    fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent>;
+    fn event(&mut self, event: &WindowEvent, cx: &mut Context) -> Vec<AppEvent>;
+    fn internal_event(&mut self, event: &AppInternalEvent, cx: &mut Context) -> Vec<AppEvent> {
+        vec![]
+    }
 
     fn switch_off(&mut self, app: &AppState, cx: &Context) -> Vec<AppEvent> {
         vec![]
@@ -57,7 +60,7 @@ pub trait Tool {
 
     fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &DrawContext) {}
 
-    fn cursor(&self, cx: &Context, state: &AppState) -> CursorIcon {
+    fn cursor(&self, cx: &mut Context) -> CursorIcon {
         CursorIcon::Default
     }
 }

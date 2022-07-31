@@ -22,7 +22,8 @@ impl PencilTool {
 }
 
 impl Tool for PencilTool {
-    fn event(&mut self, event: &WindowEvent, app: &AppState, cx: &Context) -> Vec<AppEvent> {
+    fn event(&mut self, event: &WindowEvent, cx: &mut Context) -> Vec<AppEvent> {
+        let app = cx.data::<AppState>().unwrap();
         let events = generic_nav(event, app, cx, true);
         if !events.is_empty() {
             return events;
@@ -246,6 +247,7 @@ impl PencilTool {
                                 room: app.map_tab_unwrap().current_room,
                                 entity: self.get_terminal_entity(app, app.current_entity, room_pos),
                                 trigger: false,
+                                selectme: false,
                             }]
                         } else {
                             vec![]
@@ -258,6 +260,7 @@ impl PencilTool {
                             room: app.map_tab_unwrap().current_room,
                             entity: self.get_terminal_entity(app, app.current_entity, room_pos),
                             trigger: false,
+                            selectme: false,
                         }]
                     }
                 }
@@ -293,6 +296,7 @@ impl PencilTool {
                                 room: app.map_tab_unwrap().current_room,
                                 entity,
                                 trigger: app.current_layer == Layer::Triggers,
+                                selectme: false,
                             }]
                         } else {
                             vec![]
@@ -313,6 +317,7 @@ impl PencilTool {
                         scale_y: 1.0,
                         texture: app.current_decal.0.to_string(),
                     },
+                    selectme: false,
                 }]
             }
             _ => vec![],

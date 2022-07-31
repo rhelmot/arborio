@@ -35,6 +35,7 @@ log = "0.4.16"
 # system interaction
 confy = "^0.4"
 dialog = "^0.3"
+copypasta = { version = "0.7.1", default-features = false }  # inherit from vizia
 
 # configuration and parsing
 serde = { version = "^1.0", features = ["derive" ] }
@@ -51,7 +52,7 @@ vizia = {git = "https://github.com/rhelmot/vizia", rev = "a8992104ba0c5137bf0317
 image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
 imgref = "1.6.1"  # inherit from femtovg
 rgb = "0.8.20"  # inherit from femtovg
-euclid = "^0.22"
+euclid = { version = "^0.22", features = ["serde"] }
 
 # misc
 Inflector = { version = "^0.11", default-features = false }

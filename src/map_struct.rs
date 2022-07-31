@@ -3,6 +3,7 @@
 use celeste::binel::*;
 use euclid::{Point2D, Size2D};
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
@@ -186,7 +187,7 @@ pub struct CelesteMapMetaAudioState {
     pub music: String,
 }
 
-#[derive(Debug, Lens)]
+#[derive(Debug, Lens, Serialize, Deserialize)]
 pub struct CelesteMapLevel {
     pub name: String,
     pub bounds: MapRectStrict,
@@ -219,6 +220,7 @@ pub struct CelesteMapLevel {
     pub fg_tiles: TileGrid<i32>,
     pub bg_tiles: TileGrid<i32>,
 
+    #[serde(skip)]
     pub cache: RefCell<CelesteMapLevelCache>,
 }
 
@@ -388,7 +390,7 @@ pub struct CelesteMapLevelCache {
     pub last_decal_idx: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, TryFromBinEl, Lens)]
+#[derive(Debug, Clone, PartialEq, TryFromBinEl, Lens, Serialize, Deserialize)]
 pub struct CelesteMapEntity {
     pub id: i32,
     #[name]
@@ -405,7 +407,7 @@ pub struct CelesteMapEntity {
     pub nodes: Vec<Node>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, TryFromBinEl, Data)]
+#[derive(Debug, Clone, PartialEq, Eq, TryFromBinEl, Data, Serialize, Deserialize)]
 #[name("node")]
 pub struct Node {
     pub x: i32,
@@ -417,7 +419,7 @@ impl From<(i32, i32)> for Node {
     }
 }
 
-#[derive(Debug, Clone, TryFromBinEl, PartialEq)]
+#[derive(Debug, Clone, TryFromBinEl, PartialEq, Serialize, Deserialize)]
 #[name("decal")]
 pub struct CelesteMapDecal {
     #[generate(next_uuid())]
@@ -519,7 +521,7 @@ pub enum CelesteMapErrorType {
     OutOfRange,
 }
 
-#[derive(Debug, PartialEq, Clone, Lens)]
+#[derive(Debug, PartialEq, Clone, Lens, Serialize, Deserialize)]
 pub enum Attribute {
     Bool(bool),
     Int(i32),
@@ -1314,7 +1316,7 @@ impl AttrCoercion for RoomGlob {
     }
 
     fn serialize(&self) -> BinElAttr {
-        self.text.serialize()
+        AttrCoercion::serialize(&self.text)
     }
 }
 
@@ -1443,7 +1445,7 @@ macro_rules! attr_converter_impl {
             }
 
             fn serialize(val: &$types) -> Self::BinType {
-                val.serialize()
+                AttrCoercion::serialize(val)
             }
         })+
     }

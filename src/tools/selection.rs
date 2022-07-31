@@ -2,7 +2,9 @@ use std::collections::{HashMap, HashSet};
 use vizia::vg;
 use vizia::*;
 
-use crate::app_state::{AppEvent, AppSelection, AppState, Layer};
+use crate::app_state::{
+    AppEvent, AppInRoomSelectable, AppInternalEvent, AppSelectable, AppSelection, AppState, Layer,
+};
 use crate::autotiler::{TextureTile, TileReference};
 use crate::map_struct::{CelesteMapLevel, Node};
 use crate::tools::{generic_nav, Tool};
@@ -131,7 +133,8 @@ impl SelectionTool {
 }
 
 impl Tool for SelectionTool {
-    fn event(&mut self, event: &WindowEvent, app: &AppState, cx: &Context) -> Vec<AppEvent> {
+    fn event(&mut self, event: &WindowEvent, cx: &mut Context) -> Vec<AppEvent> {
+        let app = cx.data::<AppState>().unwrap();
         let nav_events = generic_nav(event, app, cx, true);
         if !nav_events.is_empty() {
             return nav_events;
@@ -230,7 +233,7 @@ impl Tool for SelectionTool {
                 Code::ArrowUp => self.nudge(app, room, RoomVector::new(0, -8)),
                 Code::ArrowRight => self.nudge(app, room, RoomVector::new(8, 0)),
                 Code::ArrowLeft => self.nudge(app, room, RoomVector::new(-8, 0)),
-                Code::KeyA if cx.modifiers.contains(Modifiers::CTRL) => {
+                Code::KeyA if cx.modifiers == Modifiers::CTRL => {
                     self.current_selection = self.selectables_in(
                         app,
                         room,
@@ -242,11 +245,47 @@ impl Tool for SelectionTool {
                     );
                     vec![]
                 }
+                Code::KeyC if cx.modifiers == Modifiers::CTRL => self.clipboard_copy(app, room),
+                Code::KeyX if cx.modifiers == Modifiers::CTRL => {
+                    let mut result = self.clipboard_copy(app, room);
+                    result.extend(self.delete_all(app, room));
+                    result
+                }
+                Code::KeyV if cx.modifiers == Modifiers::CTRL => {
+                    if let Ok(s) = cx.clipboard.get_contents() {
+                        let app = cx.data().unwrap();
+                        self.clipboard_paste(app, s)
+                    } else {
+                        vec![]
+                    }
+                }
                 Code::Backspace | Code::Delete => self.delete_all(app, room),
                 _ => vec![],
             },
             _ => vec![],
         }
+    }
+
+    fn internal_event(&mut self, event: &AppInternalEvent, cx: &mut Context) -> Vec<AppEvent> {
+        let app = cx.data::<AppState>().unwrap();
+        let room = match app.current_room_ref() {
+            Some(room) => room,
+            None => return vec![],
+        };
+        match event {
+            AppInternalEvent::SelectMeEntity { id, trigger } => {
+                self.current_selection
+                    .insert(AppSelection::EntityBody(*id, *trigger));
+                for (idx, _) in room.entity(*id, *trigger).unwrap().nodes.iter().enumerate() {
+                    self.current_selection
+                        .insert(AppSelection::EntityNode(*id, idx, *trigger));
+                }
+            }
+            AppInternalEvent::SelectMeDecal { id, fg } => {
+                self.current_selection.insert(AppSelection::Decal(*id, *fg));
+            }
+        }
+        self.notify_selection(app)
     }
 
     fn switch_off(&mut self, app: &AppState, _cx: &Context) -> Vec<AppEvent> {
@@ -429,7 +468,8 @@ impl Tool for SelectionTool {
         canvas.restore();
     }
 
-    fn cursor(&self, cx: &Context, app: &AppState) -> CursorIcon {
+    fn cursor(&self, cx: &mut Context) -> CursorIcon {
+        let app = cx.data::<AppState>().unwrap();
         let room = if let Some(room) = app.current_room_ref() {
             room
         } else {
@@ -469,8 +509,8 @@ impl SelectionTool {
             }]
         } else {
             vec![AppEvent::SelectObject {
-                selection: None,
                 tab: app.current_tab,
+                selection: None,
             }]
         }
     }
@@ -1037,6 +1077,24 @@ impl SelectionTool {
         events
     }
 
+    fn elaborate_nodes(&mut self, room: &CelesteMapLevel) {
+        for sel in self
+            .current_selection
+            .iter()
+            .cloned()
+            .collect::<Vec<AppSelection>>()
+        {
+            if let AppSelection::EntityNode(id, _, trigger) = sel {
+                self.current_selection
+                    .insert(AppSelection::EntityBody(id, trigger));
+                for (idx, _) in room.entity(id, trigger).unwrap().nodes.iter().enumerate() {
+                    self.current_selection
+                        .insert(AppSelection::EntityNode(id, idx, trigger));
+                }
+            }
+        }
+    }
+
     fn can_resize(&self, app: &AppState, room: &CelesteMapLevel, pointer: RoomPoint) -> ResizeSide {
         // get which side of the rectangle we're on
         let mut side = ResizeSide::None;
@@ -1300,6 +1358,168 @@ impl SelectionTool {
         self.current_selection.clear();
         result.extend(self.notify_selection(app));
 
+        result
+    }
+
+    pub fn clipboard_copy(&mut self, app: &AppState, room: &CelesteMapLevel) -> Vec<AppEvent> {
+        let mut result = self.float_tiles(app, room);
+        self.elaborate_nodes(room);
+        result.extend(self.notify_selection(app));
+
+        let mut clipboard_data: Vec<AppInRoomSelectable> = vec![];
+        if let Some(float) = &self.fg_float {
+            clipboard_data.push(AppInRoomSelectable::FgTiles(float.0, float.1.clone()));
+        }
+        if let Some(float) = &self.bg_float {
+            clipboard_data.push(AppInRoomSelectable::BgTiles(float.0, float.1.clone()));
+        }
+        if let Some(float) = &self.obj_float {
+            clipboard_data.push(AppInRoomSelectable::ObjectTiles(float.0, float.1.clone()));
+        }
+        for sel in &self.current_selection {
+            match sel {
+                AppSelection::FgTile(_) | AppSelection::BgTile(_) | AppSelection::ObjectTile(_) => {
+                    unreachable!()
+                }
+                AppSelection::EntityNode(_, _, _) => {}
+                AppSelection::EntityBody(id, trigger) => {
+                    clipboard_data.push(AppInRoomSelectable::Entity(
+                        room.entity(*id, *trigger).unwrap().clone(),
+                        *trigger,
+                    ));
+                }
+                AppSelection::Decal(id, fg) => {
+                    clipboard_data.push(AppInRoomSelectable::Decal(
+                        room.decal(*id, *fg).unwrap().clone(),
+                        *fg,
+                    ));
+                }
+            }
+        }
+        let s = serde_yaml::to_string(&AppSelectable::InRoom(clipboard_data))
+            .expect("Failed to serialize copied data");
+        result.push(AppEvent::SetClipboard { contents: s });
+        result
+    }
+
+    pub fn clipboard_paste(&mut self, app: &AppState, data: String) -> Vec<AppEvent> {
+        let mut result = self.clear_selection(app);
+        let deser: AppSelectable = match serde_yaml::from_str(&data) {
+            Ok(d) => d,
+            Err(_) => return result,
+        };
+        let room = match app.current_room_ref() {
+            Some(room) => room,
+            None => return result,
+        };
+        let clipboard_data = match deser {
+            AppSelectable::InRoom(d) => d,
+            AppSelectable::Rooms(_) => return result,
+        };
+        if clipboard_data.is_empty() {
+            return result;
+        }
+        let mut min_tile = TilePoint::new(i32::MAX, i32::MAX);
+        let mut max_tile = TilePoint::new(i32::MIN, i32::MIN);
+        for obj in clipboard_data.iter() {
+            match obj {
+                AppInRoomSelectable::FgTiles(point, float) => {
+                    min_tile = min_tile.min(*point);
+                    max_tile = max_tile.max(*point + float.size());
+                }
+                AppInRoomSelectable::BgTiles(point, float) => {
+                    min_tile = min_tile.min(*point);
+                    max_tile = max_tile.max(*point + float.size());
+                }
+                AppInRoomSelectable::ObjectTiles(point, float) => {
+                    min_tile = min_tile.min(*point);
+                    max_tile = max_tile.max(*point + float.size());
+                }
+                AppInRoomSelectable::Entity(entity, trigger) => {
+                    let config = app
+                        .current_palette_unwrap()
+                        .get_entity_config(&entity.name, *trigger);
+                    let env = entity.make_env();
+                    for hitbox in config.hitboxes.initial_rects.iter().filter_map(|r| {
+                        match r.evaluate_int(&env) {
+                            Ok(r) => Some(r),
+                            Err(_) => {
+                                //println!("{}", s);
+                                None
+                            }
+                        }
+                    }) {
+                        min_tile = min_tile.min(point_room_to_tile(&hitbox.min()));
+                        max_tile = max_tile.max(point_room_to_tile(&hitbox.max()));
+                    }
+                }
+                AppInRoomSelectable::Decal(decal, _) => {
+                    if let Some(dim) = app
+                        .current_palette_unwrap()
+                        .gameplay_atlas
+                        .sprite_dimensions(&decal_texture(decal))
+                    {
+                        let size = dim
+                            .cast()
+                            .cast_unit()
+                            .to_vector()
+                            .component_mul(Vector2D::new(decal.scale_x, decal.scale_y))
+                            .cast()
+                            .to_size()
+                            .abs();
+                        let hitbox = Rect::new(
+                            RoomPoint::new(decal.x as i32, decal.y as i32) - size / 2,
+                            size,
+                        );
+                        min_tile = min_tile.min(point_room_to_tile(&hitbox.min()));
+                        max_tile = max_tile.max(point_room_to_tile(&hitbox.max()));
+                    }
+                }
+            }
+        }
+        let center = (min_tile.to_vector() + max_tile.to_vector()) / 2;
+        let real_center =
+            (size_room_to_tile(&room.bounds.size.cast_unit::<RoomSpace>()) / 2).to_vector();
+        let offset = real_center - center;
+        for obj in clipboard_data {
+            match obj {
+                AppInRoomSelectable::FgTiles(point, float) => {
+                    self.fg_float = Some((point + offset, float));
+                }
+                AppInRoomSelectable::BgTiles(point, float) => {
+                    self.bg_float = Some((point + offset, float));
+                }
+                AppInRoomSelectable::ObjectTiles(point, float) => {
+                    self.obj_float = Some((point + offset, float));
+                }
+                AppInRoomSelectable::Entity(mut entity, trigger) => {
+                    entity.x += vector_tile_to_room(&offset).x;
+                    entity.y += vector_tile_to_room(&offset).y;
+                    for node in entity.nodes.iter_mut() {
+                        node.x += vector_tile_to_room(&offset).x;
+                        node.y += vector_tile_to_room(&offset).y;
+                    }
+                    result.push(AppEvent::EntityAdd {
+                        map: app.map_tab_unwrap().id,
+                        room: app.map_tab_unwrap().current_room,
+                        entity,
+                        trigger,
+                        selectme: true,
+                    });
+                }
+                AppInRoomSelectable::Decal(mut decal, fg) => {
+                    decal.x += vector_tile_to_room(&offset).x;
+                    decal.y += vector_tile_to_room(&offset).y;
+                    result.push(AppEvent::DecalAdd {
+                        map: app.map_tab_unwrap().id,
+                        room: app.map_tab_unwrap().current_room,
+                        decal,
+                        fg,
+                        selectme: true,
+                    });
+                }
+            }
+        }
         result
     }
 }

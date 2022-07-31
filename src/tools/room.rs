@@ -47,7 +47,8 @@ impl RoomTool {
 }
 
 impl Tool for RoomTool {
-    fn event(&mut self, event: &WindowEvent, app: &AppState, cx: &Context) -> Vec<AppEvent> {
+    fn event(&mut self, event: &WindowEvent, cx: &mut Context) -> Vec<AppEvent> {
+        let app = cx.data::<AppState>().unwrap();
         let events = generic_nav(event, app, cx, false);
         if !events.is_empty() {
             return events;
@@ -265,7 +266,8 @@ impl Tool for RoomTool {
         canvas.restore();
     }
 
-    fn cursor(&self, cx: &Context, app: &AppState) -> CursorIcon {
+    fn cursor(&self, cx: &mut Context) -> CursorIcon {
+        let app = cx.data::<AppState>().unwrap();
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos_precise = app
             .map_tab_unwrap()

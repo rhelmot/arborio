@@ -2,6 +2,7 @@
 
 use euclid::*;
 pub use euclid::{Point2D, Rect, Size2D, UnknownUnit, Vector2D};
+use serde::{Deserialize, Serialize};
 
 pub struct TileSpace;
 pub struct RoomSpace;
@@ -157,7 +158,7 @@ where
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TileGrid<T> {
     pub tiles: Vec<T>,
     pub stride: usize,

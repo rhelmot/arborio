@@ -46,7 +46,7 @@ pub struct AppState {
     pub poison_tab: usize,
 
     pub current_toolspec: ToolSpec,
-    pub current_tool: Option<RefCell<Box<dyn Tool>>>,
+    pub current_tool: RefCell<Option<Box<dyn Tool>>>,
     pub current_layer: Layer,
     pub current_fg_tile: TileSelectable,
     pub current_bg_tile: TileSelectable,
@@ -264,6 +264,21 @@ pub enum AppSelection {
     Decal(u32, bool),
 }
 
+#[derive(Serialize, Deserialize)]
+pub enum AppSelectable {
+    InRoom(Vec<AppInRoomSelectable>),
+    Rooms(Vec<CelesteMapLevel>),
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum AppInRoomSelectable {
+    FgTiles(TilePoint, TileGrid<char>),
+    BgTiles(TilePoint, TileGrid<char>),
+    ObjectTiles(TilePoint, TileGrid<i32>),
+    Entity(CelesteMapEntity, bool),
+    Decal(CelesteMapDecal, bool),
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Data)]
 pub struct StylegroundSelection {
     pub fg: bool,
@@ -286,6 +301,9 @@ impl Data for Progress {
 pub enum AppEvent {
     Progress {
         progress: Progress,
+    },
+    SetClipboard {
+        contents: String,
     },
     SetConfigPath {
         path: PathBuf,
@@ -476,6 +494,7 @@ pub enum AppEvent {
         room: usize,
         entity: CelesteMapEntity,
         trigger: bool,
+        selectme: bool,
     },
     EntityUpdate {
         map: MapID,
@@ -494,6 +513,7 @@ pub enum AppEvent {
         room: usize,
         fg: bool,
         decal: CelesteMapDecal,
+        selectme: bool,
     },
     DecalUpdate {
         map: MapID,
@@ -507,6 +527,13 @@ pub enum AppEvent {
         fg: bool,
         id: u32,
     },
+}
+
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum AppInternalEvent {
+    SelectMeEntity { id: i32, trigger: bool },
+    SelectMeDecal { id: u32, fg: bool },
 }
 
 impl Model for AppState {
@@ -542,7 +569,7 @@ impl AppState {
             loaded_maps_path_to_id: HashMap::new(),
             loaded_maps_id_to_path: HashMap::new(),
             current_toolspec: ToolSpec::Selection,
-            current_tool: None,
+            current_tool: RefCell::new(None),
             current_fg_tile: TileSelectable::default(),
             current_bg_tile: TileSelectable::default(),
             current_entity: EntitySelectable::default(),
@@ -616,6 +643,11 @@ impl AppState {
             // global events
             AppEvent::Progress { progress } => {
                 self.progress = progress.clone();
+            }
+            AppEvent::SetClipboard { contents } => {
+                cx.clipboard
+                    .set_contents(contents.clone())
+                    .unwrap_or_else(|e| log::error!("Failed to copy: {}", e));
             }
             AppEvent::OpenModuleOverviewTab { module } => {
                 for (i, tab) in self.tabs.iter().enumerate() {
@@ -856,13 +888,13 @@ impl AppState {
                 }
             }
             AppEvent::SelectTool { spec } => {
-                if let Some(tool) = self.current_tool.take() {
-                    for event in tool.borrow_mut().switch_off(self, cx) {
+                if let Some(mut tool) = self.current_tool.borrow_mut().take() {
+                    for event in tool.switch_off(self, cx) {
                         cx.emit(event);
                     }
                 }
                 self.current_toolspec = *spec;
-                self.current_tool = Some(RefCell::new(spec.switch_on(self)));
+                *self.current_tool.borrow_mut() = Some(spec.switch_on(self));
             }
             AppEvent::SelectLayer { layer } => {
                 self.current_layer = *layer;
@@ -901,15 +933,15 @@ impl AppState {
             // tab events
             AppEvent::SelectTab { idx } => {
                 if *idx < self.tabs.len() {
-                    if let Some(tool) = self.current_tool.take() {
-                        for event in tool.borrow_mut().switch_off(self, cx) {
+                    if let Some(mut tool) = self.current_tool.borrow_mut().take() {
+                        for event in tool.switch_off(self, cx) {
                             cx.emit(event);
                         }
                     }
                     self.current_tab = *idx;
                     if let Some(AppTab::Map(_)) = self.tabs.get(*idx) {
-                        self.current_tool =
-                            Some(RefCell::new(self.current_toolspec.switch_on(self)));
+                        *self.current_tool.borrow_mut() =
+                            Some(self.current_toolspec.switch_on(self));
                     }
                 }
             }
@@ -1116,6 +1148,7 @@ impl AppState {
                 room,
                 entity,
                 trigger,
+                selectme,
             } => {
                 if let Some(room) = self
                     .loaded_maps
@@ -1123,7 +1156,8 @@ impl AppState {
                     .and_then(|map| map.levels.get_mut(*room))
                 {
                     let mut entity = entity.clone();
-                    entity.id = room.next_id();
+                    let id = room.next_id();
+                    entity.id = id;
                     if *trigger {
                         room.triggers.push(entity);
                     } else {
@@ -1131,6 +1165,15 @@ impl AppState {
                     }
                     room.cache.borrow_mut().render_cache_valid = false;
                     self.loaded_maps.get_mut(map).unwrap().dirty = true;
+                    if *selectme {
+                        cx.event_queue.push_back(
+                            Event::new(AppInternalEvent::SelectMeEntity {
+                                id,
+                                trigger: *trigger,
+                            })
+                            .propagate(Propagation::Subtree),
+                        );
+                    }
                 }
             }
             AppEvent::EntityUpdate {
@@ -1189,6 +1232,7 @@ impl AppState {
                 room,
                 fg,
                 decal,
+                selectme,
             } => {
                 if let Some(room) = self
                     .loaded_maps
@@ -1201,10 +1245,17 @@ impl AppState {
                     } else {
                         &mut room.bg_decals
                     };
-                    decal.id = next_uuid();
+                    let id = next_uuid();
+                    decal.id = id;
                     decals.push(decal);
                     room.cache.borrow_mut().render_cache_valid = false;
                     self.loaded_maps.get_mut(map).unwrap().dirty = true;
+                    if *selectme {
+                        cx.event_queue.push_back(
+                            Event::new(AppInternalEvent::SelectMeDecal { id, fg: *fg })
+                                .propagate(Propagation::Subtree),
+                        );
+                    }
                 }
             }
             AppEvent::DecalUpdate {

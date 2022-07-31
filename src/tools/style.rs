@@ -15,7 +15,8 @@ impl StyleTool {
 }
 
 impl Tool for StyleTool {
-    fn event(&mut self, event: &WindowEvent, app: &AppState, cx: &Context) -> Vec<AppEvent> {
+    fn event(&mut self, event: &WindowEvent, cx: &mut Context) -> Vec<AppEvent> {
+        let app = cx.data::<AppState>().unwrap();
         let events = generic_nav(event, app, cx, true);
         if !events.is_empty() {
             return events;

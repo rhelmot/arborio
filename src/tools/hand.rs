@@ -16,7 +16,8 @@ impl HandTool {
 }
 
 impl Tool for HandTool {
-    fn event(&mut self, event: &WindowEvent, state: &AppState, cx: &Context) -> Vec<AppEvent> {
+    fn event(&mut self, event: &WindowEvent, cx: &mut Context) -> Vec<AppEvent> {
+        let state = cx.data::<AppState>().unwrap();
         let scroll_events = generic_nav(event, state, cx, true);
         if !scroll_events.is_empty() {
             return scroll_events;

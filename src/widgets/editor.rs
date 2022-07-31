@@ -69,16 +69,36 @@ impl View for EditorWidget {
             let app = cx
                 .data::<AppState>()
                 .expect("EditorWidget must have an AppState in its ancestry");
-            let (events, cursor) = if let Some(tool) = &app.current_tool {
-                let mut tool = tool.borrow_mut();
-                (tool.event(window_event, app, cx), tool.cursor(cx, app))
-            } else {
-                (vec![], CursorIcon::Default)
+            let tool = app.current_tool.borrow_mut().take();
+            let (events, cursor) = match tool {
+                Some(mut tool) => {
+                    let r = (tool.event(window_event, cx), tool.cursor(cx));
+                    *cx.data::<AppState>().unwrap().current_tool.borrow_mut() = Some(tool);
+                    r
+                }
+                None => (vec![], CursorIcon::Default),
             };
             for event in events {
                 cx.emit(event);
             }
             cx.emit(WindowEvent::SetCursor(cursor));
+        }
+        if let Some(internal_event) = event.message.downcast() {
+            let app = cx
+                .data::<AppState>()
+                .expect("EditorWidget must have an AppState in its ancestry");
+            let tool = app.current_tool.borrow_mut().take();
+            let events = match tool {
+                Some(mut tool) => {
+                    let r = tool.internal_event(internal_event, cx);
+                    *cx.data::<AppState>().unwrap().current_tool.borrow_mut() = Some(tool);
+                    r
+                }
+                None => vec![],
+            };
+            for event in events {
+                cx.emit(event);
+            }
         }
     }
 
@@ -255,8 +275,10 @@ impl View for EditorWidget {
         );
         canvas.restore();
 
-        if let Some(tool) = &app.current_tool {
-            tool.borrow_mut().draw(canvas, app, cx);
+        let tool = { app.current_tool.borrow_mut().take() };
+        if let Some(mut tool) = tool {
+            tool.draw(canvas, app, cx);
+            *app.current_tool.borrow_mut() = Some(tool);
         }
     }
 }
