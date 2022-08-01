@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use vizia::vg::{Color, Paint, Path};
 use vizia::*;
 
+use crate::app_state::{AppInternalEvent, AppSelectable};
 use crate::map_struct::{CelesteMap, CelesteMapLevel, MapID};
 use crate::tools::selection::ResizeSide;
 use crate::tools::{generic_nav, Tool};
@@ -138,6 +139,7 @@ impl Tool for RoomTool {
                         map: mapid,
                         idx: None,
                         room: Box::new(result),
+                        selectme: false,
                     });
                     events
                 } else {
@@ -149,7 +151,7 @@ impl Tool for RoomTool {
                 Code::ArrowUp => self.nudge(mapid, map, MapVectorStrict::new(0, -8)),
                 Code::ArrowRight => self.nudge(mapid, map, MapVectorStrict::new(8, 0)),
                 Code::ArrowLeft => self.nudge(mapid, map, MapVectorStrict::new(-8, 0)),
-                Code::KeyA if cx.modifiers.contains(Modifiers::CTRL) => {
+                Code::KeyA if cx.modifiers == Modifiers::CTRL => {
                     self.current_selection = rooms_in(
                         map,
                         MapRectStrict::new(
@@ -159,11 +161,32 @@ impl Tool for RoomTool {
                     );
                     vec![]
                 }
+                Code::KeyC if cx.modifiers == Modifiers::CTRL => self.clipboard_copy(app, mapid),
+                Code::KeyX if cx.modifiers == Modifiers::CTRL => {
+                    let mut result = self.clipboard_copy(app, mapid);
+                    result.extend(self.delete_all(mapid));
+                    result
+                }
+                Code::KeyV if cx.modifiers == Modifiers::CTRL => {
+                    if let Ok(s) = cx.clipboard.get_contents() {
+                        let app = cx.data().unwrap();
+                        self.clipboard_paste(app, mapid, s)
+                    } else {
+                        vec![]
+                    }
+                }
                 Code::Backspace | Code::Delete => self.delete_all(mapid),
                 _ => vec![],
             },
             _ => vec![],
         }
+    }
+
+    fn internal_event(&mut self, event: &AppInternalEvent, _cx: &mut Context) -> Vec<AppEvent> {
+        if let AppInternalEvent::SelectMeRoom { idx } = event {
+            self.current_selection.insert(*idx);
+        }
+        vec![]
     }
 
     fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &DrawContext) {
@@ -448,6 +471,64 @@ impl RoomTool {
             .map(|idx| AppEvent::DeleteRoom {
                 map: mapid,
                 idx: *idx,
+            })
+            .collect()
+    }
+
+    fn clipboard_copy(&self, app: &AppState, mapid: MapID) -> Vec<AppEvent> {
+        if self.current_selection.is_empty() {
+            return vec![];
+        }
+        let map = app.loaded_maps.get(&mapid).unwrap();
+        vec![AppEvent::SetClipboard {
+            contents: serde_yaml::to_string(&AppSelectable::Rooms(
+                self.current_selection
+                    .iter()
+                    .map(|roomid| map.levels.get(*roomid).unwrap().clone())
+                    .collect(),
+            ))
+            .unwrap(),
+        }]
+    }
+
+    fn clipboard_paste(&mut self, app: &AppState, mapid: MapID, data: String) -> Vec<AppEvent> {
+        let result = self.clear_selection(app);
+        let deser: AppSelectable = match serde_yaml::from_str(&data) {
+            Ok(d) => d,
+            Err(_) => return result,
+        };
+        let clipboard_data = match deser {
+            AppSelectable::Rooms(d) => d,
+            _ => return result,
+        };
+        if clipboard_data.is_empty() {
+            return result;
+        }
+        let mut min_pt = MapPointStrict::new(i32::MAX, i32::MAX);
+        let mut max_pt = MapPointStrict::new(i32::MIN, i32::MIN);
+        for room in clipboard_data.iter() {
+            min_pt = min_pt.min(room.bounds.min());
+            max_pt = max_pt.max(room.bounds.max());
+        }
+        let center = ((min_pt.to_vector() + max_pt.to_vector()) / 2).to_point();
+        let real_center = point_lose_precision(
+            &app.map_tab_unwrap()
+                .transform
+                .inverse()
+                .unwrap()
+                .transform_point(ScreenPoint::new(100., 100.)),
+        );
+        let offset = real_center - center;
+        clipboard_data
+            .into_iter()
+            .map(|mut room| AppEvent::AddRoom {
+                map: mapid,
+                idx: None,
+                room: Box::new({
+                    room.bounds.origin += offset;
+                    room
+                }),
+                selectme: true,
             })
             .collect()
     }

@@ -284,6 +284,7 @@ impl Tool for SelectionTool {
             AppInternalEvent::SelectMeDecal { id, fg } => {
                 self.current_selection.insert(AppSelection::Decal(*id, *fg));
             }
+            _ => {}
         }
         self.notify_selection(app)
     }

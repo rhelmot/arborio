@@ -443,6 +443,7 @@ pub enum AppEvent {
         map: MapID,
         idx: Option<usize>,
         room: Box<CelesteMapLevel>,
+        selectme: bool,
     },
     DeleteRoom {
         map: MapID,
@@ -531,9 +532,11 @@ pub enum AppEvent {
 
 #[derive(Debug)]
 #[non_exhaustive]
+#[allow(clippy::enum_variant_names)]
 pub enum AppInternalEvent {
     SelectMeEntity { id: i32, trigger: bool },
     SelectMeDecal { id: u32, fg: bool },
+    SelectMeRoom { idx: usize },
 }
 
 impl Model for AppState {
@@ -1073,14 +1076,27 @@ impl AppState {
                     }
                 }
             }
-            AppEvent::AddRoom { map, idx, room } => {
+            AppEvent::AddRoom {
+                map,
+                idx,
+                room,
+                selectme,
+            } => {
                 if let Some(map) = self.loaded_maps.get_mut(map) {
                     let idx = idx.unwrap_or_else(|| map.levels.len());
                     let mut room = room.as_ref().clone();
-                    if room.name.is_empty() {
+                    if room.name.is_empty()
+                        || map.levels.iter().any(|iroom| room.name == iroom.name)
+                    {
                         room.name = pick_new_name(map);
                     }
                     map.levels.insert(idx, room);
+                    if *selectme {
+                        cx.event_queue.push_back(
+                            Event::new(AppInternalEvent::SelectMeRoom { idx })
+                                .propagate(Propagation::Subtree),
+                        );
+                    }
                 }
             }
             AppEvent::DeleteRoom { map, idx } => {
