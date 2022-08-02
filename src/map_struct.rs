@@ -10,6 +10,7 @@ use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
+use std::mem::swap;
 use std::str::FromStr;
 use vizia::{vg, Data, Lens};
 
@@ -322,62 +323,62 @@ pub struct CelesteMapLevelUpdate {
 }
 
 impl CelesteMapLevel {
-    pub fn apply(&mut self, update: &CelesteMapLevelUpdate) {
-        if let Some(x) = &update.name {
-            self.name = x.clone();
+    pub fn apply(&mut self, update: &mut CelesteMapLevelUpdate) {
+        if let Some(x) = &mut update.name {
+            swap(&mut self.name, x);
         }
-        if let Some(x) = &update.color {
-            self.color = *x;
+        if let Some(x) = &mut update.color {
+            swap(&mut self.color, x);
         }
-        if let Some(x) = &update.camera_offset_x {
-            self.camera_offset_x = *x
+        if let Some(x) = &mut update.camera_offset_x {
+            swap(&mut self.camera_offset_x, x);
         };
-        if let Some(x) = &update.camera_offset_y {
-            self.camera_offset_y = *x
+        if let Some(x) = &mut update.camera_offset_y {
+            swap(&mut self.camera_offset_y, x);
         };
-        if let Some(x) = &update.wind_pattern {
-            self.wind_pattern = x.clone()
+        if let Some(x) = &mut update.wind_pattern {
+            swap(&mut self.wind_pattern, x);
         };
-        if let Some(x) = &update.space {
-            self.space = *x
+        if let Some(x) = &mut update.space {
+            swap(&mut self.space, x);
         };
-        if let Some(x) = &update.underwater {
-            self.underwater = *x
+        if let Some(x) = &mut update.underwater {
+            swap(&mut self.underwater, x);
         };
-        if let Some(x) = &update.whisper {
-            self.whisper = *x
+        if let Some(x) = &mut update.whisper {
+            swap(&mut self.whisper, x);
         };
-        if let Some(x) = &update.dark {
-            self.dark = *x
+        if let Some(x) = &mut update.dark {
+            swap(&mut self.dark, x);
         };
-        if let Some(x) = &update.disable_down_transition {
-            self.disable_down_transition = *x
+        if let Some(x) = &mut update.disable_down_transition {
+            swap(&mut self.disable_down_transition, x);
         };
-        if let Some(x) = &update.enforce_dash_number {
-            self.enforce_dash_number = *x
+        if let Some(x) = &mut update.enforce_dash_number {
+            swap(&mut self.enforce_dash_number, x);
         };
-        if let Some(x) = &update.music {
-            self.music = x.clone()
+        if let Some(x) = &mut update.music {
+            swap(&mut self.music, x);
         };
-        if let Some(x) = &update.alt_music {
-            self.alt_music = x.clone()
+        if let Some(x) = &mut update.alt_music {
+            swap(&mut self.alt_music, x);
         };
-        if let Some(x) = &update.ambience {
-            self.ambience = x.clone()
+        if let Some(x) = &mut update.ambience {
+            swap(&mut self.ambience, x);
         };
         for i in 0..4 {
-            if let Some(x) = &update.music_layers[i] {
-                self.music_layers[i] = *x
+            if let Some(x) = &mut update.music_layers[i] {
+                swap(&mut self.music_layers[i], x);
             };
         }
-        if let Some(x) = &update.music_progress {
-            self.music_progress = x.clone()
+        if let Some(x) = &mut update.music_progress {
+            swap(&mut self.music_progress, x);
         };
-        if let Some(x) = &update.ambience_progress {
-            self.ambience_progress = x.clone()
+        if let Some(x) = &mut update.ambience_progress {
+            swap(&mut self.ambience_progress, x);
         };
-        if let Some(x) = &update.enforce_dash_number {
-            self.enforce_dash_number = *x;
+        if let Some(x) = &mut update.enforce_dash_number {
+            swap(&mut self.enforce_dash_number, x);
         };
     }
 }

@@ -43,6 +43,31 @@ fn main() -> Result<(), Box<dyn Error>> {
         ),
         |cx| {
             app_state::AppState::new().build(cx);
+            cx.listeners.insert(
+                cx.current,
+                Box::new(|_, cx, event| {
+                    if let Some(window_event) = event.message.downcast() {
+                        let app = cx.data::<AppState>().unwrap();
+                        match window_event {
+                            WindowEvent::KeyDown(Code::KeyZ, _)
+                                if cx.modifiers == Modifiers::CTRL =>
+                            {
+                                if let Some(AppTab::Map(maptab)) = app.tabs.get(app.current_tab) {
+                                    cx.emit(AppEvent::Undo { map: maptab.id });
+                                }
+                            }
+                            WindowEvent::KeyDown(Code::KeyY, _)
+                                if cx.modifiers == Modifiers::CTRL =>
+                            {
+                                if let Some(AppTab::Map(maptab)) = app.tabs.get(app.current_tab) {
+                                    cx.emit(AppEvent::Redo { map: maptab.id });
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }),
+            );
             log::info!("Hello world!");
             if let Some(path) = &cx.data::<AppState>().unwrap().config.celeste_root {
                 let path = path.clone();

@@ -1,6 +1,7 @@
+use std::cell::RefCell;
 use vizia::*;
 
-use crate::app_state::{AppEvent, AppSelection, AppState, AppTab};
+use crate::app_state::{AppEvent, AppSelection, AppState, AppTab, EventPhase, MapEvent, RoomEvent};
 use crate::celeste_mod::config::AttributeType;
 use crate::lenses::{CurrentSelectedEntityLens, IsFailedLens};
 use crate::map_struct::{Attribute, CelesteMapEntity};
@@ -111,11 +112,16 @@ fn edit_entity<F: FnOnce(&mut CelesteMapEntity)>(cx: &mut Context, f: F) {
 
     f(&mut entity);
 
-    cx.emit(AppEvent::EntityUpdate {
+    cx.emit(AppEvent::MapEvent {
         map: current_map,
-        room: current_room,
-        entity,
-        trigger,
+        event: RefCell::new(Some(MapEvent::RoomEvent {
+            idx: current_room,
+            event: RoomEvent::EntityUpdate {
+                entity: Box::new(entity),
+                trigger,
+            },
+        })),
+        merge_phase: EventPhase::new(), // TODO batch correctly
     });
 }
 

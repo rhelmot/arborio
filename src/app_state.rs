@@ -3,7 +3,7 @@ use log::error;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Formatter;
 use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
@@ -29,6 +29,10 @@ use crate::widgets::list_palette::{
 };
 use crate::widgets::tabs::config_editor::{AnyConfig, ConfigSearchResult};
 
+const UNDO_BUFFER_SIZE: usize = 1000;
+
+crate::uuid_cls!(EventPhase);
+
 #[derive(Lens)]
 pub struct AppState {
     pub config: AutoSaver<AppConfig>,
@@ -37,9 +41,13 @@ pub struct AppState {
     pub modules_version: u32,
     pub palettes: HashMap<MapID, ModuleAggregate>,
     pub omni_palette: ModuleAggregate,
+    // TODO merge all these fuckers
     pub loaded_maps: HashMap<MapID, CelesteMap>,
-    pub loaded_maps_path_to_id: HashMap<MapPath, MapID>,
+    pub loaded_maps_path_to_id: HashMap<MapPath, MapID>, // except for you. you can stay.
     pub loaded_maps_id_to_path: HashMap<MapID, MapPath>,
+    pub loaded_maps_undo_buffer: HashMap<MapID, VecDeque<MapEvent>>,
+    pub loaded_maps_redo_buffer: HashMap<MapID, VecDeque<MapEvent>>,
+    pub loaded_maps_event_phase: HashMap<MapID, EventPhase>,
 
     pub current_tab: usize,
     pub tabs: Vec<AppTab>,
@@ -411,48 +419,9 @@ pub enum AppEvent {
         tab: usize,
         styleground: Option<StylegroundSelection>,
     },
-    AddStyleground {
-        map: MapID,
-        loc: StylegroundSelection,
-        style: CelesteMapStyleground,
-    },
-    UpdateStyleground {
-        map: MapID,
-        loc: StylegroundSelection,
-        style: CelesteMapStyleground,
-    },
-    RemoveStyleground {
-        map: MapID,
-        loc: StylegroundSelection,
-    },
-    MoveStyleground {
-        map: MapID,
-        loc: StylegroundSelection,
-        target: StylegroundSelection,
-    },
     SelectRoom {
         tab: usize,
         idx: usize,
-    },
-    MoveRoom {
-        map: MapID,
-        room: usize,
-        bounds: MapRectStrict,
-    },
-    AddRoom {
-        map: MapID,
-        idx: Option<usize>,
-        room: Box<CelesteMapLevel>,
-        selectme: bool,
-    },
-    DeleteRoom {
-        map: MapID,
-        idx: usize,
-    },
-    UpdateRoomMisc {
-        map: MapID,
-        idx: usize,
-        update: CelesteMapLevelUpdate,
     },
     SelectLayer {
         layer: Layer,
@@ -477,54 +446,103 @@ pub enum AppEvent {
         tab: usize,
         selection: Option<AppSelection>,
     },
-    TileUpdate {
+    MapEvent {
         map: MapID,
-        room: usize,
+        event: RefCell<Option<MapEvent>>,
+        merge_phase: EventPhase,
+    },
+    Undo {
+        map: MapID,
+    },
+    Redo {
+        map: MapID,
+    },
+}
+
+// HERE LIVES THE UNDO/REDOABLES
+// guidelines:
+// - should all be ABSOLUTE, or can be made absolute through mutation before apply
+//   (so undo/redo phased merging works)
+// - should only require a single reference to do their jobs, e.g. to the map or to the room
+// - should all have a precise inverse, so history tracking is easy
+// - events with the same phase should completely supersede each other!!
+
+#[derive(Debug)]
+pub enum MapEvent {
+    AddStyleground {
+        loc: StylegroundSelection,
+        style: Box<CelesteMapStyleground>,
+    },
+    UpdateStyleground {
+        loc: StylegroundSelection,
+        style: Box<CelesteMapStyleground>,
+    },
+    RemoveStyleground {
+        loc: StylegroundSelection,
+    },
+    MoveStyleground {
+        loc: StylegroundSelection,
+        target: StylegroundSelection,
+    },
+    AddRoom {
+        idx: Option<usize>, // made absolute through mutation
+        room: Box<CelesteMapLevel>,
+        selectme: bool,
+    },
+    DeleteRoom {
+        idx: usize,
+    },
+    RoomEvent {
+        idx: usize,
+        event: RoomEvent,
+    },
+    Batched {
+        events: Vec<MapEvent>, // must be COMPLETELY orthogonal!!!
+    },
+}
+
+#[derive(Debug)]
+pub enum RoomEvent {
+    MoveRoom {
+        bounds: MapRectStrict,
+    },
+    UpdateRoomMisc {
+        update: Box<CelesteMapLevelUpdate>,
+    },
+    TileUpdate {
         fg: bool,
         offset: TilePoint,
         data: TileGrid<char>,
     },
     ObjectTileUpdate {
-        map: MapID,
-        room: usize,
         offset: TilePoint,
         data: TileGrid<i32>,
     },
     EntityAdd {
-        map: MapID,
-        room: usize,
-        entity: CelesteMapEntity,
+        entity: Box<CelesteMapEntity>,
         trigger: bool,
         selectme: bool,
+        genid: bool,
     },
     EntityUpdate {
-        map: MapID,
-        room: usize,
-        entity: CelesteMapEntity,
+        entity: Box<CelesteMapEntity>,
         trigger: bool,
     },
     EntityRemove {
-        map: MapID,
-        room: usize,
         id: i32,
         trigger: bool,
     },
     DecalAdd {
-        map: MapID,
-        room: usize,
         fg: bool,
-        decal: CelesteMapDecal,
+        decal: Box<CelesteMapDecal>,
         selectme: bool,
+        genid: bool,
     },
     DecalUpdate {
-        map: MapID,
-        room: usize,
         fg: bool,
-        decal: CelesteMapDecal,
+        decal: Box<CelesteMapDecal>,
     },
     DecalRemove {
-        map: MapID,
-        room: usize,
         fg: bool,
         id: u32,
     },
@@ -571,6 +589,9 @@ impl AppState {
             loaded_maps: HashMap::new(),
             loaded_maps_path_to_id: HashMap::new(),
             loaded_maps_id_to_path: HashMap::new(),
+            loaded_maps_undo_buffer: HashMap::new(),
+            loaded_maps_redo_buffer: HashMap::new(),
+            loaded_maps_event_phase: HashMap::new(),
             current_toolspec: ToolSpec::Selection,
             current_tool: RefCell::new(None),
             current_fg_tile: TileSelectable::default(),
@@ -727,9 +748,7 @@ impl AppState {
                     let id = if let Some(id) = self.loaded_maps_path_to_id.get(path) {
                         *id
                     } else {
-                        let id = MapID::new();
-                        self.loaded_maps_path_to_id.insert(path.clone(), id);
-                        id
+                        MapID::new()
                     };
                     if !self.loaded_maps.contains_key(&id) {
                         self.tabs.push(AppTab::Map(MapTab {
@@ -752,6 +771,11 @@ impl AppState {
                     self.loaded_maps.insert(id, *map);
                     self.loaded_maps_id_to_path.insert(id, path.clone());
                     self.loaded_maps_path_to_id.insert(path.clone(), id);
+                    self.loaded_maps_event_phase.insert(id, EventPhase::null());
+                    self.loaded_maps_undo_buffer
+                        .insert(id, VecDeque::with_capacity(UNDO_BUFFER_SIZE));
+                    self.loaded_maps_redo_buffer
+                        .insert(id, VecDeque::with_capacity(UNDO_BUFFER_SIZE));
                 }
             }
             AppEvent::SetConfigPath { path } => {
@@ -1039,286 +1063,354 @@ impl AppState {
                     ctab.error_message = message.to_owned();
                 }
             }
-
-            // map events
-            AppEvent::AddStyleground { map, loc, style } => {
-                if let Some(map) = self.loaded_maps.get_mut(map) {
-                    let vec = map.styles_mut(loc.fg);
-                    if loc.idx <= vec.len() {
-                        vec.insert(loc.idx, style.clone());
-                    }
-                }
-            }
-            AppEvent::UpdateStyleground { map, loc, style } => {
-                if let Some(map) = self.loaded_maps.get_mut(map) {
-                    if let Some(style_ref) = map.styles_mut(loc.fg).get_mut(loc.idx) {
-                        *style_ref = style.clone();
-                    }
-                }
-            }
-            AppEvent::RemoveStyleground { map, loc } => {
-                if let Some(map) = self.loaded_maps.get_mut(map) {
-                    let vec = map.styles_mut(loc.fg);
-                    if loc.idx < vec.len() {
-                        vec.remove(loc.idx);
-                    }
-                }
-            }
-            AppEvent::MoveStyleground { map, loc, target } => {
-                if let Some(map) = self.loaded_maps.get_mut(map) {
-                    let vec = map.styles_mut(loc.fg);
-                    if loc.idx < vec.len() {
-                        let style = vec.remove(loc.idx);
-                        let vec = map.styles_mut(target.fg);
-                        let real_target = if target.idx <= vec.len() { target } else { loc };
-                        let vec = map.styles_mut(real_target.fg);
-                        vec.insert(real_target.idx, style);
-                    }
-                }
-            }
-            AppEvent::AddRoom {
+            AppEvent::MapEvent {
                 map,
+                event,
+                merge_phase,
+            } => {
+                if let Some(event) = event.borrow_mut().take() {
+                    if let Some(map_obj) = self.loaded_maps.get_mut(map) {
+                        match Self::apply_map_event(cx, map_obj, event) {
+                            Ok(undo) => {
+                                cx.style.needs_redraw = true;
+                                map_obj.dirty = true;
+                                let buf = self.loaded_maps_undo_buffer.get_mut(map).unwrap();
+                                if buf.len() == UNDO_BUFFER_SIZE {
+                                    buf.pop_front();
+                                }
+                                if buf.back().is_none()
+                                    || self.loaded_maps_event_phase.get(map).unwrap() != merge_phase
+                                {
+                                    buf.push_back(undo);
+                                }
+                                *self.loaded_maps_event_phase.get_mut(map).unwrap() = *merge_phase;
+                                self.loaded_maps_redo_buffer.get_mut(map).unwrap().clear();
+                            }
+                            Err(e) => {
+                                log::error!("Internal error: map event: {}", e);
+                            }
+                        }
+                    } else {
+                        log::error!(
+                            "Internal error: event referred to a map which does not exist {:?}",
+                            map
+                        );
+                    }
+                } else {
+                    log::error!("Internal error: MapEvent being applied twice?");
+                }
+            }
+            AppEvent::Undo { map } => {
+                if let Some(map_obj) = self.loaded_maps.get_mut(map) {
+                    let undo_buf = self.loaded_maps_undo_buffer.get_mut(map).unwrap();
+                    let redo_buf = self.loaded_maps_redo_buffer.get_mut(map).unwrap();
+                    if let Some(event) = undo_buf.pop_back() {
+                        match Self::apply_map_event(cx, map_obj, event) {
+                            Ok(opposite) => {
+                                cx.style.needs_redraw = true;
+                                map_obj.dirty = true;
+                                redo_buf.push_back(opposite);
+                                self.loaded_maps_event_phase
+                                    .insert(*map, EventPhase::null());
+                            }
+                            Err(e) => {
+                                log::error!("Internal error: Failed to undo: {}", e);
+                            }
+                        }
+                    }
+                }
+            }
+            AppEvent::Redo { map } => {
+                if let Some(map_obj) = self.loaded_maps.get_mut(map) {
+                    let undo_buf = self.loaded_maps_undo_buffer.get_mut(map).unwrap();
+                    let redo_buf = self.loaded_maps_redo_buffer.get_mut(map).unwrap();
+                    if let Some(event) = redo_buf.pop_back() {
+                        match Self::apply_map_event(cx, map_obj, event) {
+                            Ok(opposite) => {
+                                cx.style.needs_redraw = true;
+                                map_obj.dirty = true;
+                                undo_buf.push_back(opposite);
+                                self.loaded_maps_event_phase
+                                    .insert(*map, EventPhase::null());
+                            }
+                            Err(e) => {
+                                log::error!("Internal error: Failed to redo: {}", e);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn apply_map_event(
+        cx: &mut Context,
+        map: &mut CelesteMap,
+        event: MapEvent,
+    ) -> Result<MapEvent, String> {
+        match event {
+            MapEvent::Batched { events } => Ok(MapEvent::Batched {
+                events: events
+                    .into_iter()
+                    .map(|ev| Self::apply_map_event(cx, map, ev))
+                    .collect::<Result<Vec<MapEvent>, String>>()?,
+            }),
+            MapEvent::AddStyleground { loc, style } => {
+                let vec = map.styles_mut(loc.fg);
+                if loc.idx <= vec.len() {
+                    vec.insert(loc.idx, *style);
+                    Ok(MapEvent::RemoveStyleground { loc })
+                } else {
+                    Err("Out of range".to_owned())
+                }
+            }
+            MapEvent::UpdateStyleground { loc, mut style } => {
+                if let Some(style_ref) = map.styles_mut(loc.fg).get_mut(loc.idx) {
+                    std::mem::swap(style_ref, &mut style);
+                    Ok(MapEvent::UpdateStyleground { loc, style })
+                } else {
+                    Err("Out of range".to_owned())
+                }
+            }
+            MapEvent::RemoveStyleground { loc } => {
+                let vec = map.styles_mut(loc.fg);
+                if loc.idx < vec.len() {
+                    let style = vec.remove(loc.idx);
+                    Ok(MapEvent::AddStyleground {
+                        loc,
+                        style: Box::new(style),
+                    })
+                } else {
+                    Err("Out of range".to_owned())
+                }
+            }
+            MapEvent::MoveStyleground { loc, target } => {
+                let vec = map.styles_mut(loc.fg);
+                if loc.idx < vec.len() {
+                    let style = vec.remove(loc.idx);
+                    let vec = map.styles_mut(target.fg);
+                    let real_target = if target.idx <= vec.len() { target } else { loc };
+                    let vec = map.styles_mut(real_target.fg);
+                    vec.insert(real_target.idx, style);
+                    Ok(MapEvent::MoveStyleground {
+                        loc: real_target,
+                        target: loc,
+                    })
+                } else {
+                    Err("Out of range".to_owned())
+                }
+            }
+            MapEvent::AddRoom {
                 idx,
-                room,
+                mut room,
                 selectme,
             } => {
-                if let Some(map) = self.loaded_maps.get_mut(map) {
-                    let idx = idx.unwrap_or_else(|| map.levels.len());
-                    let mut room = room.as_ref().clone();
-                    if room.name.is_empty()
-                        || map.levels.iter().any(|iroom| room.name == iroom.name)
-                    {
-                        room.name = pick_new_name(map);
-                    }
-                    map.levels.insert(idx, room);
-                    if *selectme {
+                let idx = idx.unwrap_or(map.levels.len());
+                if room.name.is_empty() || map.levels.iter().any(|iroom| room.name == iroom.name) {
+                    room.name = pick_new_name(map);
+                }
+                if idx <= map.levels.len() {
+                    map.levels.insert(idx, *room);
+                    if selectme {
                         cx.event_queue.push_back(
                             Event::new(AppInternalEvent::SelectMeRoom { idx })
                                 .propagate(Propagation::Subtree),
                         );
                     }
+
+                    Ok(MapEvent::DeleteRoom { idx })
+                } else {
+                    Err("Out of range".to_owned())
                 }
             }
-            AppEvent::DeleteRoom { map, idx } => {
-                if let Some(map) = self.loaded_maps.get_mut(map) {
-                    map.levels.remove(*idx);
+            MapEvent::DeleteRoom { idx } => {
+                if idx <= map.levels.len() {
+                    let room = map.levels.remove(idx);
+                    Ok(MapEvent::AddRoom {
+                        idx: Some(idx),
+                        room: Box::new(room),
+                        selectme: false,
+                    })
+                } else {
+                    Err("Out of range".to_owned())
                 }
             }
-            AppEvent::UpdateRoomMisc { map, idx, update } => {
-                if let Some(map) = self.loaded_maps.get_mut(map) {
-                    if let Some(room) = map.levels.get_mut(*idx) {
-                        room.apply(update);
-                    }
+            MapEvent::RoomEvent { idx, event } => {
+                if let Some(room) = map.levels.get_mut(idx) {
+                    room.cache.borrow_mut().render_cache_valid = false;
+                    Ok(MapEvent::RoomEvent {
+                        idx,
+                        event: Self::apply_room_event(cx, room, event)?,
+                    })
+                } else {
+                    Err("Out of range".to_owned())
                 }
             }
-            AppEvent::MoveRoom { map, room, bounds } => {
-                if let Some(map) = self.loaded_maps.get_mut(map) {
-                    if let Some(room) = map.levels.get_mut(*room) {
-                        if room.bounds.size != bounds.size {
-                            room.solids.resize((bounds.size / 8).cast_unit(), '0');
-                            room.bg.resize((bounds.size / 8).cast_unit(), '0');
-                            room.object_tiles.resize((bounds.size / 8).cast_unit(), -1);
-                            room.cache.borrow_mut().render_cache = None;
-                            room.cache.borrow_mut().render_cache_valid = false;
-                        }
-                        room.bounds = *bounds;
-                    }
-                }
+        }
+    }
+
+    fn apply_room_event(
+        cx: &mut Context,
+        room: &mut CelesteMapLevel,
+        event: RoomEvent,
+    ) -> Result<RoomEvent, String> {
+        match event {
+            RoomEvent::UpdateRoomMisc { mut update } => {
+                room.apply(&mut update);
+                Ok(RoomEvent::UpdateRoomMisc { update })
             }
-            AppEvent::TileUpdate {
-                map,
-                room,
+            RoomEvent::MoveRoom { mut bounds } => {
+                if room.bounds.size != bounds.size {
+                    room.solids.resize((bounds.size / 8).cast_unit(), '0');
+                    room.bg.resize((bounds.size / 8).cast_unit(), '0');
+                    room.object_tiles.resize((bounds.size / 8).cast_unit(), -1);
+                    room.cache.borrow_mut().render_cache = None;
+                }
+                std::mem::swap(&mut room.bounds, &mut bounds);
+                Ok(RoomEvent::MoveRoom { bounds })
+            }
+            RoomEvent::TileUpdate {
                 fg,
                 offset,
-                data,
+                mut data,
             } => {
-                if let Some(map) = self.loaded_maps.get_mut(map) {
-                    if let Some(room) = map.levels.get_mut(*room) {
-                        let target = if *fg { &mut room.solids } else { &mut room.bg };
-                        let dirty = apply_tiles(offset, data, target, '\0');
-                        if dirty {
-                            room.cache.borrow_mut().render_cache_valid = false;
-                            map.dirty = true;
-                        }
-                    }
-                }
+                let target = if fg { &mut room.solids } else { &mut room.bg };
+                apply_tiles(&offset, &mut data, target, '\0');
+                Ok(RoomEvent::TileUpdate { fg, offset, data })
             }
-            AppEvent::ObjectTileUpdate {
-                map,
-                room,
-                offset,
-                data,
-            } => {
-                if let Some(map) = self.loaded_maps.get_mut(map) {
-                    if let Some(room) = map.levels.get_mut(*room) {
-                        let dirty = apply_tiles(offset, data, &mut room.object_tiles, -2);
-                        if dirty {
-                            room.cache.borrow_mut().render_cache_valid = false;
-                            map.dirty = true;
-                        }
-                    }
-                }
+            RoomEvent::ObjectTileUpdate { offset, mut data } => {
+                apply_tiles(&offset, &mut data, &mut room.object_tiles, -2);
+                Ok(RoomEvent::ObjectTileUpdate { offset, data })
             }
-            AppEvent::EntityAdd {
-                map,
-                room,
-                entity,
+            RoomEvent::EntityAdd {
+                mut entity,
                 trigger,
                 selectme,
+                genid,
             } => {
-                if let Some(room) = self
-                    .loaded_maps
-                    .get_mut(map)
-                    .and_then(|map| map.levels.get_mut(*room))
-                {
-                    let mut entity = entity.clone();
+                let id = if genid {
                     let id = room.next_id();
                     entity.id = id;
-                    if *trigger {
-                        room.triggers.push(entity);
-                    } else {
-                        room.entities.push(entity)
-                    }
-                    room.cache.borrow_mut().render_cache_valid = false;
-                    self.loaded_maps.get_mut(map).unwrap().dirty = true;
-                    if *selectme {
-                        cx.event_queue.push_back(
-                            Event::new(AppInternalEvent::SelectMeEntity {
-                                id,
-                                trigger: *trigger,
-                            })
+                    id
+                } else if room.entity(entity.id, trigger).is_some() {
+                    return Err("Entity/trigger already exists".to_owned());
+                } else {
+                    entity.id
+                };
+                if trigger {
+                    room.triggers.push(*entity);
+                } else {
+                    room.entities.push(*entity)
+                }
+                if selectme {
+                    cx.event_queue.push_back(
+                        Event::new(AppInternalEvent::SelectMeEntity { id, trigger })
                             .propagate(Propagation::Subtree),
-                        );
-                    }
+                    );
                 }
+                Ok(RoomEvent::EntityRemove { id, trigger })
             }
-            AppEvent::EntityUpdate {
-                map,
-                room,
-                entity,
+            RoomEvent::EntityUpdate {
+                mut entity,
                 trigger,
             } => {
-                if let Some(room) = self
-                    .loaded_maps
-                    .get_mut(map)
-                    .and_then(|map| map.levels.get_mut(*room))
-                {
-                    if let Some(e) = room.entity_mut(entity.id, *trigger) {
-                        *e = entity.clone();
-                        room.cache.borrow_mut().render_cache_valid = false;
-                        self.loaded_maps.get_mut(map).unwrap().dirty = true;
-                    }
+                if let Some(e) = room.entity_mut(entity.id, trigger) {
+                    std::mem::swap(e, &mut entity);
+                    Ok(RoomEvent::EntityUpdate { entity, trigger })
+                } else {
+                    Err("No such entity".to_owned())
                 }
             }
-            AppEvent::EntityRemove {
-                map,
-                room,
-                id,
-                trigger,
-            } => {
-                if let Some(room) = self
-                    .loaded_maps
-                    .get_mut(map)
-                    .and_then(|map| map.levels.get_mut(*room))
-                {
-                    // tfw drain_filter is unstable
-                    let mut i = 0;
-                    let mut any = false;
-                    let entities = if *trigger {
-                        &mut room.triggers
-                    } else {
-                        &mut room.entities
-                    };
-                    while i < entities.len() {
-                        if entities[i].id == *id {
-                            entities.remove(i);
-                            any = true;
-                        } else {
-                            i += 1;
-                        }
-                    }
-                    if any {
-                        room.cache.borrow_mut().render_cache_valid = false;
-                        self.loaded_maps.get_mut(map).unwrap().dirty = true;
+            RoomEvent::EntityRemove { id, trigger } => {
+                let entities = if trigger {
+                    &mut room.triggers
+                } else {
+                    &mut room.entities
+                };
+                for (idx, entity) in entities.iter_mut().enumerate() {
+                    if entity.id == id {
+                        let entity = entities.remove(idx);
+                        return Ok(RoomEvent::EntityAdd {
+                            entity: Box::new(entity),
+                            trigger,
+                            selectme: false,
+                            genid: true,
+                        });
                     }
                 }
+                Err("No such entity".to_owned())
+                // while i < entities.len() {
+                //     if entities[i].id == *id {
+                //         entities.remove(i);
+                //     } else {
+                //         i += 1;
+                //     }
+                // }
             }
-            AppEvent::DecalAdd {
-                map,
-                room,
+            RoomEvent::DecalAdd {
                 fg,
-                decal,
+                mut decal,
                 selectme,
+                genid,
             } => {
-                if let Some(room) = self
-                    .loaded_maps
-                    .get_mut(map)
-                    .and_then(|map| map.levels.get_mut(*room))
-                {
-                    let mut decal = decal.clone();
-                    let decals = if *fg {
-                        &mut room.fg_decals
-                    } else {
-                        &mut room.bg_decals
-                    };
+                let id = if genid {
                     let id = next_uuid();
                     decal.id = id;
-                    decals.push(decal);
-                    room.cache.borrow_mut().render_cache_valid = false;
-                    self.loaded_maps.get_mut(map).unwrap().dirty = true;
-                    if *selectme {
-                        cx.event_queue.push_back(
-                            Event::new(AppInternalEvent::SelectMeDecal { id, fg: *fg })
-                                .propagate(Propagation::Subtree),
-                        );
-                    }
+                    id
+                } else if room.decal(decal.id, fg).is_some() {
+                    return Err("Decal already exists".to_owned());
+                } else {
+                    decal.id
+                };
+                let decals = if fg {
+                    &mut room.fg_decals
+                } else {
+                    &mut room.bg_decals
+                };
+                decals.push(*decal);
+                if selectme {
+                    cx.event_queue.push_back(
+                        Event::new(AppInternalEvent::SelectMeDecal { id, fg })
+                            .propagate(Propagation::Subtree),
+                    );
+                }
+                Ok(RoomEvent::DecalRemove { fg, id })
+            }
+            RoomEvent::DecalUpdate { fg, mut decal } => {
+                if let Some(decal_dest) = room.decal_mut(decal.id, fg) {
+                    std::mem::swap(decal_dest, &mut decal);
+                    Ok(RoomEvent::DecalUpdate { fg, decal })
+                } else {
+                    Err("No such decal".to_owned())
                 }
             }
-            AppEvent::DecalUpdate {
-                map,
-                room,
-                fg,
-                decal,
-            } => {
-                if let Some(room) = self
-                    .loaded_maps
-                    .get_mut(map)
-                    .and_then(|map| map.levels.get_mut(*room))
-                {
-                    if let Some(decal_dest) = room.decal_mut(decal.id, *fg) {
-                        *decal_dest = decal.clone();
-                        room.cache.borrow_mut().render_cache_valid = false;
-                        self.loaded_maps.get_mut(map).unwrap().dirty = true;
+            RoomEvent::DecalRemove { fg, id } => {
+                // tfw drain_filter is unstable
+                let decals = if fg {
+                    &mut room.fg_decals
+                } else {
+                    &mut room.bg_decals
+                };
+                for (idx, decal) in decals.iter_mut().enumerate() {
+                    if decal.id == id {
+                        let decal = decals.remove(idx);
+                        return Ok(RoomEvent::DecalAdd {
+                            fg,
+                            decal: Box::new(decal),
+                            selectme: false,
+                            genid: false,
+                        });
                     }
                 }
-            }
-            AppEvent::DecalRemove { map, room, fg, id } => {
-                if let Some(room) = self
-                    .loaded_maps
-                    .get_mut(map)
-                    .and_then(|map| map.levels.get_mut(*room))
-                {
-                    // tfw drain_filter is unstable
-                    let mut i = 0;
-                    let mut any = false;
-                    let decals = if *fg {
-                        &mut room.fg_decals
-                    } else {
-                        &mut room.bg_decals
-                    };
-                    while i < decals.len() {
-                        if decals[i].id == *id {
-                            decals.remove(i);
-                            any = true;
-                        } else {
-                            i += 1;
-                        }
-                    }
-                    if any {
-                        room.cache.borrow_mut().render_cache_valid = false;
-                        self.loaded_maps.get_mut(map).unwrap().dirty = true;
-                    }
-                }
+                Err("No such decal".to_owned())
+                // while i < decals.len() {
+                //     if decals[i].id == *id {
+                //         decals.remove(i);
+                //         any = true;
+                //     } else {
+                //         i += 1;
+                //     }
+                // }
             }
         }
     }
@@ -1365,24 +1457,84 @@ impl AppState {
             }
         }
         self.loaded_maps.retain(|id, _| open_maps.contains(id));
+        self.loaded_maps_path_to_id
+            .retain(|_, id| open_maps.contains(id));
+        self.loaded_maps_id_to_path
+            .retain(|id, _| open_maps.contains(id));
+        self.loaded_maps_undo_buffer
+            .retain(|id, _| open_maps.contains(id));
+        self.loaded_maps_redo_buffer
+            .retain(|id, _| open_maps.contains(id));
+        self.loaded_maps_event_phase
+            .retain(|id, _| open_maps.contains(id));
         self.palettes.retain(|id, _| open_maps.contains(id));
+    }
+
+    pub fn map_event(&self, event: MapEvent, merge_phase: EventPhase) -> AppEvent {
+        AppEvent::MapEvent {
+            map: self.map_tab_unwrap().id,
+            merge_phase,
+            event: RefCell::new(Some(event)),
+        }
+    }
+
+    pub fn map_event_unique(&self, event: MapEvent) -> AppEvent {
+        self.map_event(event, EventPhase::new())
+    }
+
+    pub fn room_event(&self, event: RoomEvent, merge_phase: EventPhase) -> AppEvent {
+        self.room_event_explicit(event, merge_phase, self.map_tab_unwrap().current_room)
+    }
+
+    pub fn room_event_explicit(
+        &self,
+        event: RoomEvent,
+        merge_phase: EventPhase,
+        room: usize,
+    ) -> AppEvent {
+        self.map_event(MapEvent::RoomEvent { idx: room, event }, merge_phase)
+    }
+
+    // pub fn room_event_unique(&self, event: RoomEvent) -> AppEvent {
+    //     self.room_event(event, EventPhase::new())
+    // }
+
+    // pub fn room_event_unique_explicit(&self, event: RoomEvent, room: usize) -> AppEvent {
+    //     self.room_event_explicit(event, EventPhase::new(), room)
+    // }
+
+    pub fn batch_event(
+        &self,
+        events: impl IntoIterator<Item = MapEvent>,
+        merge_phase: EventPhase,
+    ) -> AppEvent {
+        self.map_event(
+            MapEvent::Batched {
+                events: events.into_iter().collect(),
+            },
+            merge_phase,
+        )
+    }
+
+    pub fn batch_event_unique(&self, events: impl IntoIterator<Item = MapEvent>) -> AppEvent {
+        self.batch_event(events, EventPhase::new())
     }
 }
 
 pub fn apply_tiles<T: Copy + Eq>(
     offset: &TilePoint,
-    data: &TileGrid<T>,
+    data: &mut TileGrid<T>,
     target: &mut TileGrid<T>,
     ignore: T,
 ) -> bool {
     let mut dirty = false;
     let mut line_start = *offset;
     let mut cur = line_start;
-    for (idx, tile) in data.tiles.iter().enumerate() {
+    for (idx, tile) in data.tiles.iter_mut().enumerate() {
         if *tile != ignore {
             if let Some(tile_ref) = target.get_mut(cur) {
                 if *tile_ref != *tile {
-                    *tile_ref = *tile;
+                    std::mem::swap(tile_ref, tile);
                     dirty = true;
                 }
             }

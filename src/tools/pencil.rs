@@ -1,6 +1,6 @@
 use vizia::*;
 
-use crate::app_state::{AppEvent, AppState, Layer};
+use crate::app_state::{AppEvent, AppState, EventPhase, Layer, RoomEvent};
 use crate::celeste_mod::config::PencilBehavior;
 use crate::map_struct::{CelesteMapDecal, CelesteMapEntity, Node};
 use crate::tools::{generic_nav, Tool};
@@ -8,15 +8,16 @@ use crate::units::*;
 use crate::widgets::editor;
 use crate::widgets::list_palette::{EntitySelectable, TriggerSelectable};
 
-#[derive(Default)]
 pub struct PencilTool {
     reference_point: Option<RoomPoint>,
+    draw_phase: EventPhase,
 }
 
 impl PencilTool {
     pub fn new() -> Self {
         Self {
             reference_point: None,
+            draw_phase: EventPhase::null(),
         }
     }
 }
@@ -174,6 +175,7 @@ impl Tool for PencilTool {
 
 impl PencilTool {
     fn do_draw_start(&mut self, app: &AppState, room_pos: RoomPoint) {
+        self.draw_phase = EventPhase::new();
         match app.current_layer {
             Layer::Entities | Layer::Triggers => {
                 let pencil = if app.current_layer == Layer::Triggers {
@@ -198,6 +200,7 @@ impl PencilTool {
         }
     }
 
+    // TODO test to see if the diff would do anything before sending an event
     fn do_draw(&mut self, app: &AppState, room_pos: RoomPoint) -> Vec<AppEvent> {
         let tile_pos = point_room_to_tile(&room_pos);
         let room_pos = if app.snap {
@@ -208,15 +211,16 @@ impl PencilTool {
 
         match app.current_layer {
             Layer::ObjectTiles => {
-                vec![AppEvent::ObjectTileUpdate {
-                    map: app.map_tab_unwrap().id,
-                    room: app.map_tab_unwrap().current_room,
-                    offset: tile_pos,
-                    data: TileGrid {
-                        tiles: vec![app.current_objtile as i32],
-                        stride: 1,
+                vec![app.room_event(
+                    RoomEvent::ObjectTileUpdate {
+                        offset: tile_pos,
+                        data: TileGrid {
+                            tiles: vec![app.current_objtile as i32],
+                            stride: 1,
+                        },
                     },
-                }]
+                    self.draw_phase,
+                )]
             }
             Layer::FgTiles | Layer::BgTiles => {
                 let fg = app.current_layer == Layer::FgTiles;
@@ -225,16 +229,17 @@ impl PencilTool {
                 } else {
                     app.current_bg_tile
                 };
-                vec![AppEvent::TileUpdate {
-                    map: app.map_tab_unwrap().id,
-                    room: app.map_tab_unwrap().current_room,
-                    fg,
-                    offset: tile_pos,
-                    data: TileGrid {
-                        tiles: vec![ch.id],
-                        stride: 1,
+                vec![app.room_event(
+                    RoomEvent::TileUpdate {
+                        fg,
+                        offset: tile_pos,
+                        data: TileGrid {
+                            tiles: vec![ch.id],
+                            stride: 1,
+                        },
                     },
-                }]
+                    self.draw_phase,
+                )]
             }
             Layer::Entities if app.current_entity.config(app).pencil == PencilBehavior::Line => {
                 match self.reference_point {
@@ -242,26 +247,38 @@ impl PencilTool {
                         let diff = (room_pos - last_draw).cast::<f32>().length();
                         if diff > app.draw_interval {
                             self.reference_point = Some(room_pos);
-                            vec![AppEvent::EntityAdd {
-                                map: app.map_tab_unwrap().id,
-                                room: app.map_tab_unwrap().current_room,
-                                entity: self.get_terminal_entity(app, app.current_entity, room_pos),
-                                trigger: false,
-                                selectme: false,
-                            }]
+                            vec![app.room_event(
+                                RoomEvent::EntityAdd {
+                                    entity: Box::new(self.get_terminal_entity(
+                                        app,
+                                        app.current_entity,
+                                        room_pos,
+                                    )),
+                                    trigger: false,
+                                    selectme: false,
+                                    genid: true,
+                                },
+                                self.draw_phase,
+                            )]
                         } else {
                             vec![]
                         }
                     }
                     None => {
                         self.reference_point = Some(room_pos);
-                        vec![AppEvent::EntityAdd {
-                            map: app.map_tab_unwrap().id,
-                            room: app.map_tab_unwrap().current_room,
-                            entity: self.get_terminal_entity(app, app.current_entity, room_pos),
-                            trigger: false,
-                            selectme: false,
-                        }]
+                        vec![app.room_event(
+                            RoomEvent::EntityAdd {
+                                entity: Box::new(self.get_terminal_entity(
+                                    app,
+                                    app.current_entity,
+                                    room_pos,
+                                )),
+                                trigger: false,
+                                selectme: false,
+                                genid: true,
+                            },
+                            self.draw_phase,
+                        )]
                     }
                 }
             }
@@ -291,13 +308,15 @@ impl PencilTool {
                             } else {
                                 self.get_terminal_entity(app, app.current_entity, room_pos)
                             };
-                            vec![AppEvent::EntityAdd {
-                                map: app.map_tab_unwrap().id,
-                                room: app.map_tab_unwrap().current_room,
-                                entity,
-                                trigger: app.current_layer == Layer::Triggers,
-                                selectme: false,
-                            }]
+                            vec![app.room_event(
+                                RoomEvent::EntityAdd {
+                                    entity: Box::new(entity),
+                                    trigger: app.current_layer == Layer::Triggers,
+                                    selectme: false,
+                                    genid: true,
+                                },
+                                self.draw_phase,
+                            )]
                         } else {
                             vec![]
                         }
@@ -305,20 +324,22 @@ impl PencilTool {
                 }
             }
             Layer::FgDecals | Layer::BgDecals => {
-                vec![AppEvent::DecalAdd {
-                    map: app.map_tab_unwrap().id,
-                    room: app.map_tab_unwrap().current_room,
-                    fg: app.current_layer == Layer::FgDecals,
-                    decal: CelesteMapDecal {
-                        id: 0,
-                        x: room_pos.x,
-                        y: room_pos.y,
-                        scale_x: 1.0,
-                        scale_y: 1.0,
-                        texture: app.current_decal.0.to_string(),
+                vec![app.room_event(
+                    RoomEvent::DecalAdd {
+                        fg: app.current_layer == Layer::FgDecals,
+                        decal: Box::new(CelesteMapDecal {
+                            id: 0,
+                            x: room_pos.x,
+                            y: room_pos.y,
+                            scale_x: 1.0,
+                            scale_y: 1.0,
+                            texture: app.current_decal.0.to_string(),
+                        }),
+                        selectme: false,
+                        genid: true,
                     },
-                    selectme: false,
-                }]
+                    self.draw_phase,
+                )]
             }
             _ => vec![],
         };

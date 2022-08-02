@@ -1,6 +1,8 @@
+use std::cell::RefCell;
 use vizia::*;
 
 use super::common::*;
+use crate::app_state::{EventPhase, MapEvent, RoomEvent};
 use crate::lenses::{
     CurrentRoomLens, RectHLens, RectWLens, RectXLens, RectYLens, RoomTweakerScopeLens,
 };
@@ -210,10 +212,15 @@ impl View for RoomTweakerWidget {
 fn emit(cx: &mut Context, update: CelesteMapLevelUpdate) {
     let app = cx.data::<AppState>().unwrap();
     let tab = app.map_tab_unwrap();
-    let event = AppEvent::UpdateRoomMisc {
+    let event = AppEvent::MapEvent {
         map: tab.id,
-        idx: tab.current_room,
-        update,
+        event: RefCell::new(Some(MapEvent::RoomEvent {
+            idx: tab.current_room,
+            event: RoomEvent::UpdateRoomMisc {
+                update: Box::new(update),
+            },
+        })),
+        merge_phase: EventPhase::new(), // TODO proper batching
     };
     cx.emit(event);
 }
@@ -240,10 +247,13 @@ fn emit_bounds(
     if let Some(h) = update_h {
         bounds.size.height = h;
     }
-    let event = AppEvent::MoveRoom {
+    let event = AppEvent::MapEvent {
         map: tab.id,
-        room: tab.current_room,
-        bounds,
+        event: RefCell::new(Some(MapEvent::RoomEvent {
+            idx: tab.current_room,
+            event: RoomEvent::MoveRoom { bounds },
+        })),
+        merge_phase: EventPhase::new(), // TODO proper batching
     };
     cx.emit(event);
 }
