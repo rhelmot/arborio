@@ -6,7 +6,8 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
-use vizia::*;
+use vizia::fonts::icons_names::DOWN;
+use vizia::prelude::*;
 
 use crate::app_state::{
     AppEvent, AppState, AppTab, ConfigEditorTab, ConfigSearchFilter, ConfigSearchType, SearchScope,
@@ -314,7 +315,7 @@ impl ConfigSearchResult {
     }
 }
 
-pub fn collect_search_targets(cx: &mut Context) -> Vec<SearchScope> {
+pub fn collect_search_targets<C: DataContext>(cx: &mut C) -> Vec<SearchScope> {
     let app = cx.data::<AppState>().unwrap();
     let mut result = vec![
         SearchScope::AllOpenMods,
@@ -368,9 +369,7 @@ pub fn build_search_settings(cx: &mut Context) {
                                 }
                             },
                         );
-                        Label::new(cx, ICON_DOWN_OPEN)
-                            .class("icon")
-                            .class("dropdown_icon");
+                        Label::new(cx, DOWN).class("icon").class("dropdown_icon");
                     })
                 },
                 move |cx| {
@@ -397,9 +396,7 @@ pub fn build_search_settings(cx: &mut Context) {
                 move |cx| {
                     HStack::new(cx, move |cx| {
                         Label::new(cx, ctab.then(ConfigEditorTab::search_type));
-                        Label::new(cx, ICON_DOWN_OPEN)
-                            .class("icon")
-                            .class("dropdown_icon");
+                        Label::new(cx, DOWN).class("icon").class("dropdown_icon");
                     })
                 },
                 move |cx| {
@@ -427,9 +424,7 @@ pub fn build_search_settings(cx: &mut Context) {
                 move |cx| {
                     HStack::new(cx, move |cx| {
                         Label::new(cx, ctab.then(ConfigEditorTab::search_filter));
-                        Label::new(cx, ICON_DOWN_OPEN)
-                            .class("icon")
-                            .class("dropdown_icon");
+                        Label::new(cx, DOWN).class("icon").class("dropdown_icon");
                     })
                 },
                 move |cx| {
@@ -893,7 +888,7 @@ pub fn build_item_editor(cx: &mut Context) {
 fn config_editor_textbox<T>(
     cx: &mut Context,
     lens: impl Copy + Lens<Target = T>,
-    on_edit: impl 'static + Send + Sync + Clone + Fn(&mut Context, T),
+    on_edit: impl 'static + Send + Sync + Clone + Fn(&mut EventContext, T),
 ) where
     T: FromStr + std::fmt::Display + Data,
     <T as FromStr>::Err: ToString,

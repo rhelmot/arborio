@@ -1,7 +1,8 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use vizia::*;
+use vizia::prelude::*;
+use vizia::vg::{Paint, Path};
 
 use crate::app_state::AppState;
 use crate::assets::Interned;
@@ -21,7 +22,7 @@ where
 {
     pub fn new<F, LL>(cx: &mut Context, items: LL, selected: LI, callback: F) -> Handle<Self>
     where
-        F: 'static + Fn(&mut Context, T) + Copy,
+        F: 'static + Fn(&mut EventContext, T) + Copy,
         LL: Lens<Target = Vec<T>>,
         <LI as Lens>::Source: Model,
         <LL as Lens>::Source: Model,
@@ -65,8 +66,8 @@ where
 }
 
 impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
-    fn element(&self) -> Option<String> {
-        Some("palette".to_owned())
+    fn element(&self) -> Option<&'static str> {
+        Some("palette")
     }
 
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
@@ -74,8 +75,7 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
             return;
         }
 
-        let entity = cx.current();
-        let bounds = cx.cache().get_bounds(entity);
+        let bounds = cx.bounds();
         let data = self
             .lens
             .view(cx.data::<<L as Lens>::Source>().unwrap(), |x| *x.unwrap());
@@ -84,11 +84,11 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
         canvas.translate(bounds.x, bounds.y);
         canvas.scissor(0.0, 0.0, bounds.w, 100.0);
 
-        let mut path = vg::Path::new();
+        let mut path = Path::new();
         path.rect(0.0, 0.0, bounds.w, 100.0);
         canvas.fill_path(
             &mut path,
-            vg::Paint::linear_gradient(
+            Paint::linear_gradient(
                 0.0,
                 0.0,
                 0.0,

@@ -2,7 +2,7 @@ use crate::app_state::{AppEvent, AppState};
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
 
-use vizia::*;
+use vizia::prelude::*;
 
 #[derive(Default)]
 pub struct HandTool {
@@ -16,7 +16,7 @@ impl HandTool {
 }
 
 impl Tool for HandTool {
-    fn event(&mut self, event: &WindowEvent, cx: &mut Context) -> Vec<AppEvent> {
+    fn event(&mut self, event: &WindowEvent, cx: &mut EventContext) -> Vec<AppEvent> {
         let state = cx.data::<AppState>().unwrap();
         let scroll_events = generic_nav(event, state, cx, true);
         if !scroll_events.is_empty() {

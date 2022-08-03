@@ -4,7 +4,7 @@ use crate::celeste_mod::module::CelesteModuleKind;
 use crate::lenses::StaticerLens;
 use crate::widgets::common::label_with_pencil;
 use crate::MapPath;
-use vizia::*;
+use vizia::prelude::*;
 
 pub fn build_project_tab(cx: &mut Context, project: Interned) {
     ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
@@ -144,14 +144,12 @@ enum DeleteEvent {
 }
 
 impl Model for DeleteState {
-    fn event(&mut self, _cx: &mut Context, event: &mut Event) {
-        if let Some(msg) = event.message.downcast() {
-            match msg {
-                DeleteEvent::Start => self.started = true,
-                DeleteEvent::Cancel => self.started = false,
-                DeleteEvent::Validate(b) => self.validated = *b,
-            }
-        }
+    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+        event.map(|msg, _| match msg {
+            DeleteEvent::Start => self.started = true,
+            DeleteEvent::Cancel => self.started = false,
+            DeleteEvent::Validate(b) => self.validated = *b,
+        });
     }
 }
 

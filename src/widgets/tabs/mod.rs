@@ -8,7 +8,7 @@ use crate::app_state::AppState;
 use crate::app_state::AppTab;
 use crate::lenses::VecIndexWithLens;
 use crate::AppEvent;
-use vizia::*;
+use vizia::prelude::*;
 
 pub fn build_tabs(cx: &mut Context) {
     let lens = VecIndexWithLens::new(AppState::tabs, AppState::current_tab);

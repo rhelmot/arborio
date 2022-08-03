@@ -1,8 +1,8 @@
-use vizia::*;
+use vizia::prelude::*;
 
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
-use crate::{AppEvent, AppState, Context, WindowEvent};
+use crate::{AppEvent, AppState};
 
 pub struct StyleTool {
     status: Option<(MapPointStrict, MapPointStrict)>,
@@ -15,7 +15,7 @@ impl StyleTool {
 }
 
 impl Tool for StyleTool {
-    fn event(&mut self, event: &WindowEvent, cx: &mut Context) -> Vec<AppEvent> {
+    fn event(&mut self, event: &WindowEvent, cx: &mut EventContext) -> Vec<AppEvent> {
         let app = cx.data::<AppState>().unwrap();
         let events = generic_nav(event, app, cx, true);
         if !events.is_empty() {

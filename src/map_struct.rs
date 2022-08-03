@@ -12,7 +12,9 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::mem::swap;
 use std::str::FromStr;
-use vizia::{vg, Data, Lens};
+use vizia::prelude::Data;
+use vizia::prelude::*;
+use vizia::vg;
 
 use crate::assets::{next_uuid, Interned};
 use crate::from_binel::{GetAttrOrChild, TryFromBinEl, TwoWayConverter};
@@ -587,7 +589,7 @@ impl Into<BinElAttr> for Attribute {
     }
 }
 
-impl vizia::Data for CelesteMapEntity {
+impl Data for CelesteMapEntity {
     fn same(&self, other: &Self) -> bool {
         self == other
     }

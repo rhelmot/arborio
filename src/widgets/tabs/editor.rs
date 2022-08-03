@@ -1,5 +1,5 @@
 use enum_iterator::IntoEnumIterator;
-use vizia::*;
+use vizia::prelude::*;
 
 use crate::app_state::AppState;
 use crate::lenses::{AnotherLens, CurrentMapLens, CurrentPaletteLens};
@@ -35,20 +35,21 @@ pub fn build_tool_picker(cx: &mut Context) {
     VStack::new(cx, move |cx| {
         Binding::new(cx, CurrentMapLens {}, |cx, map| {
             let showme = map.get_fallible(cx).is_some();
-            Picker::new(cx, AppState::current_toolspec, |cx, tool_field| {
-                for toolspec in ToolSpec::into_enum_iter() {
-                    let selected = tool_field.map(move |sel| sel == &toolspec);
-                    let selected2 = selected.clone();
-                    HStack::new(cx, move |cx| {
-                        RadioButton::new(cx, selected2.clone());
-                        Label::new(cx, toolspec.name());
-                    })
-                    .on_press(move |cx| cx.emit(AppEvent::SelectTool { spec: toolspec }))
-                    .checked(selected)
-                    .class("list_highlight");
-                }
-            })
-            .display(showme);
+            if showme {
+                Binding::new(cx, AppState::current_toolspec, |cx, tool_field| {
+                    for toolspec in ToolSpec::into_enum_iter() {
+                        let selected = tool_field.map(move |sel| sel == &toolspec);
+                        let selected2 = selected.clone();
+                        HStack::new(cx, move |cx| {
+                            RadioButton::new(cx, selected2.clone());
+                            Label::new(cx, toolspec.name());
+                        })
+                        .on_press(move |cx| cx.emit(AppEvent::SelectTool { spec: toolspec }))
+                        .checked(selected)
+                        .class("list_highlight");
+                    }
+                })
+            }
         });
     })
     .id("tool_picker");

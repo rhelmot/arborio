@@ -5,7 +5,7 @@ pub mod selection;
 pub mod style;
 
 use enum_iterator::IntoEnumIterator;
-use vizia::*;
+use vizia::prelude::*;
 
 use crate::app_state::{AppEvent, AppInternalEvent, AppState};
 use crate::units::*;
@@ -49,18 +49,18 @@ impl ToolSpec {
 
 #[allow(unused_variables)]
 pub trait Tool {
-    fn event(&mut self, event: &WindowEvent, cx: &mut Context) -> Vec<AppEvent>;
-    fn internal_event(&mut self, event: &AppInternalEvent, cx: &mut Context) -> Vec<AppEvent> {
+    fn event(&mut self, event: &WindowEvent, cx: &mut EventContext) -> Vec<AppEvent>;
+    fn internal_event(&mut self, event: &AppInternalEvent, cx: &mut EventContext) -> Vec<AppEvent> {
         vec![]
     }
 
-    fn switch_off(&mut self, app: &AppState, cx: &Context) -> Vec<AppEvent> {
+    fn switch_off(&mut self, app: &AppState, cx: &EventContext) -> Vec<AppEvent> {
         vec![]
     }
 
     fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &DrawContext) {}
 
-    fn cursor(&self, cx: &mut Context) -> CursorIcon {
+    fn cursor(&self, cx: &mut EventContext) -> CursorIcon {
         CursorIcon::Default
     }
 }
@@ -70,7 +70,7 @@ pub const SCROLL_SENSITIVITY: f32 = 35.0;
 pub fn generic_nav(
     event: &WindowEvent,
     state: &AppState,
-    cx: &Context,
+    cx: &EventContext,
     room: bool,
 ) -> Vec<AppEvent> {
     let screen_pt = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);

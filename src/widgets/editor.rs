@@ -3,8 +3,8 @@ use lazy_static::lazy_static;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::time;
+use vizia::prelude::*;
 use vizia::vg::{Color, ImageFlags, Paint, Path, PixelFormat, RenderTarget};
-use vizia::*;
 
 use crate::app_state::{AppSelection, AppState};
 use crate::autotiler::{TextureTile, TileReference};
@@ -54,17 +54,21 @@ impl EditorWidget {
 }
 
 impl View for EditorWidget {
-    fn event(&mut self, cx: &mut Context, event: &mut Event) {
-        if let Some(window_event) = event.message.downcast() {
+    fn element(&self) -> Option<&'static str> {
+        Some("arborio_editor")
+    }
+
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
+        event.map(|window_event, _| {
             if let WindowEvent::SetCursor(_) = window_event {
                 return;
             }
 
             // TODO: nuance
-            cx.style.needs_redraw = true;
+            cx.needs_redraw();
 
             if let WindowEvent::MouseDown(..) = &window_event {
-                cx.focused = cx.current;
+                cx.focus();
             }
             let app = cx
                 .data::<AppState>()
@@ -82,8 +86,8 @@ impl View for EditorWidget {
                 cx.emit(event);
             }
             cx.emit(WindowEvent::SetCursor(cursor));
-        }
-        if let Some(internal_event) = event.message.downcast() {
+        });
+        event.map(|internal_event, _| {
             let app = cx
                 .data::<AppState>()
                 .expect("EditorWidget must have an AppState in its ancestry");
@@ -99,12 +103,11 @@ impl View for EditorWidget {
             for event in events {
                 cx.emit(event);
             }
-        }
+        });
     }
 
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
-        let entity = cx.current();
-        let bounds = cx.cache().get_bounds(entity);
+        let bounds = cx.bounds();
         let app = cx
             .data::<AppState>()
             .expect("EditorWidget must have an AppState in its ancestry");
@@ -255,7 +258,7 @@ impl View for EditorWidget {
             );
             canvas.fill_path(&mut path, paint);
             if idx != current_room {
-                canvas.fill_path(&mut path, vg::Paint::color(ROOM_DESELECTED_COLOR));
+                canvas.fill_path(&mut path, Paint::color(ROOM_DESELECTED_COLOR));
             }
             canvas.restore();
         }
@@ -816,7 +819,7 @@ fn draw_tiled(
     sprite: &str,
     bounds: &Rect<f32, UnknownUnit>,
     slice: &Rect<f32, UnknownUnit>,
-    color: vg::Color,
+    color: Color,
 ) -> Result<(), String> {
     tile(bounds, slice.width(), slice.height(), |piece| {
         app.current_palette_unwrap().gameplay_atlas.draw_sprite(

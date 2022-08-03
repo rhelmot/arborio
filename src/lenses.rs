@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::Deref;
-use vizia::*;
+use vizia::prelude::*;
 
 use crate::app_state::{AppSelection, AppState, AppTab, MapTab, StylegroundSelection};
 use crate::auto_saver::AutoSaver;

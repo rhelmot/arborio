@@ -21,7 +21,7 @@ use dialog::DialogBox;
 use std::error::Error;
 use std::path::Path;
 use std::{fs, io};
-use vizia::*;
+use vizia::prelude::*;
 
 use crate::app_state::{AppEvent, AppState, AppTab, Layer};
 use crate::celeste_mod::aggregate::ModuleAggregate;
@@ -35,78 +35,66 @@ use widgets::list_palette::PaletteWidget;
 fn main() -> Result<(), Box<dyn Error>> {
     let icon_img = image::load_from_memory(include_bytes!("../img/icon.png")).unwrap();
     let (width, height) = (icon_img.width(), icon_img.height());
-    let app = Application::new(
-        WindowDescription::new().with_title("Arborio").with_icon(
-            icon_img.into_bytes(),
-            width,
-            height,
-        ),
-        |cx| {
-            app_state::AppState::new().build(cx);
-            cx.listeners.insert(
-                cx.current,
-                Box::new(|_, cx, event| {
-                    if let Some(window_event) = event.message.downcast() {
-                        let app = cx.data::<AppState>().unwrap();
-                        match window_event {
-                            WindowEvent::KeyDown(Code::KeyZ, _)
-                                if cx.modifiers == Modifiers::CTRL =>
-                            {
-                                if let Some(AppTab::Map(maptab)) = app.tabs.get(app.current_tab) {
-                                    cx.emit(AppEvent::Undo { map: maptab.id });
-                                }
-                            }
-                            WindowEvent::KeyDown(Code::KeyY, _)
-                                if cx.modifiers == Modifiers::CTRL =>
-                            {
-                                if let Some(AppTab::Map(maptab)) = app.tabs.get(app.current_tab) {
-                                    cx.emit(AppEvent::Redo { map: maptab.id });
-                                }
-                            }
-                            _ => {}
+    let app = Application::new(|cx| {
+        app_state::AppState::new().build(cx);
+        cx.add_global_listener(|cx, event| {
+            event.map(|window_event, _| {
+                let app = cx.data::<AppState>().unwrap();
+                match window_event {
+                    WindowEvent::KeyDown(Code::KeyZ, _) if cx.modifiers == &Modifiers::CTRL => {
+                        if let Some(AppTab::Map(maptab)) = app.tabs.get(app.current_tab) {
+                            cx.emit(AppEvent::Undo { map: maptab.id });
                         }
                     }
-                }),
-            );
-            log::info!("Hello world!");
-            if let Some(path) = &cx.data::<AppState>().unwrap().config.celeste_root {
-                let path = path.clone();
-                cx.emit(AppEvent::SetConfigPath { path });
-            }
-            //cx.add_theme(include_str!("style.css"));
-            cx.add_stylesheet("src/style.css")
-                .expect("Could not load stylesheet. Are you running me in the right directory?");
-
-            cx.text_context.resize_shaping_run_cache(10000);
-
-            VStack::new(cx, move |cx| {
-                MenuController::new(cx, false, |cx| {
-                    MenuStack::new_horizontal(cx, build_menu_bar).id("menu_bar");
-                });
-                build_tab_bar(cx);
-                build_tabs(cx);
-
-                Binding::new(cx, AppState::progress, move |cx, progress| {
-                    let progress = progress.get(cx);
-                    if progress.progress != 100 {
-                        let status = format!("{}% - {}", progress.progress, progress.status);
-                        let progress = progress.progress;
-                        ZStack::new(cx, move |cx| {
-                            Label::new(cx, &status)
-                                .width(Units::Percentage(100.0))
-                                .id("progress_bar_bg");
-                            Label::new(cx, &status)
-                                .width(Units::Percentage(progress as f32))
-                                .id("progress_bar");
-                        })
-                        .id("progress_bar_container");
+                    WindowEvent::KeyDown(Code::KeyY, _) if cx.modifiers == &Modifiers::CTRL => {
+                        if let Some(AppTab::Map(maptab)) = app.tabs.get(app.current_tab) {
+                            cx.emit(AppEvent::Redo { map: maptab.id });
+                        }
                     }
-                })
+                    _ => {}
+                }
+            });
+        });
+        log::info!("Hello world!");
+        if let Some(path) = &cx.data::<AppState>().unwrap().config.celeste_root {
+            let path = path.clone();
+            cx.emit(AppEvent::SetConfigPath { path });
+        }
+        //cx.add_theme(include_str!("style.css"));
+        cx.add_stylesheet("src/style.css")
+            .expect("Could not load stylesheet. Are you running me in the right directory?");
+
+        cx.text_context().resize_shaping_run_cache(10000);
+
+        VStack::new(cx, move |cx| {
+            MenuController::new(cx, false, |cx| {
+                MenuStack::new_horizontal(cx, build_menu_bar).id("menu_bar");
+            });
+            build_tab_bar(cx);
+            build_tabs(cx);
+
+            Binding::new(cx, AppState::progress, move |cx, progress| {
+                let progress = progress.get(cx);
+                if progress.progress != 100 {
+                    let status = format!("{}% - {}", progress.progress, progress.status);
+                    let progress = progress.progress;
+                    ZStack::new(cx, move |cx| {
+                        Label::new(cx, &status)
+                            .width(Units::Percentage(100.0))
+                            .id("progress_bar_bg");
+                        Label::new(cx, &status)
+                            .width(Units::Percentage(progress as f32))
+                            .id("progress_bar");
+                    })
+                    .id("progress_bar_container");
+                }
             })
-            .id("main");
-        },
-    )
-    .ignore_default_styles();
+        })
+        .id("main");
+    })
+    .title("Arborio")
+    .icon(icon_img.into_bytes(), width, height)
+    .ignore_default_theme();
 
     app.run();
     Ok(())

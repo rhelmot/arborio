@@ -1,4 +1,5 @@
-use vizia::*;
+use vizia::prelude::*;
+use vizia::vg::{Color, Paint, Path};
 
 use crate::app_state::{AppEvent, AppState, EventPhase, Layer, RoomEvent};
 use crate::celeste_mod::config::PencilBehavior;
@@ -23,7 +24,7 @@ impl PencilTool {
 }
 
 impl Tool for PencilTool {
-    fn event(&mut self, event: &WindowEvent, cx: &mut Context) -> Vec<AppEvent> {
+    fn event(&mut self, event: &WindowEvent, cx: &mut EventContext) -> Vec<AppEvent> {
         let app = cx.data::<AppState>().unwrap();
         let events = generic_nav(event, app, cx, true);
         if !events.is_empty() {
@@ -57,7 +58,7 @@ impl Tool for PencilTool {
         }
     }
 
-    fn switch_off(&mut self, app: &AppState, cx: &Context) -> Vec<AppEvent> {
+    fn switch_off(&mut self, app: &AppState, cx: &EventContext) -> Vec<AppEvent> {
         let room = if let Some(room) = app.current_room_ref() {
             room
         } else {
@@ -91,7 +92,7 @@ impl Tool for PencilTool {
             room.bounds.size.height as f32,
         );
 
-        let screen_pos = ScreenPoint::new(cx.mouse().cursorx, cx.mouse().cursory);
+        let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos = state
             .map_tab_unwrap()
             .transform
@@ -110,17 +111,14 @@ impl Tool for PencilTool {
 
         match state.current_layer {
             Layer::FgTiles | Layer::BgTiles | Layer::ObjectTiles => {
-                let mut path = vg::Path::new();
+                let mut path = Path::new();
                 path.rect(
                     room_pos_snapped.x as f32,
                     room_pos_snapped.y as f32,
                     8.0,
                     8.0,
                 );
-                canvas.fill_path(
-                    &mut path,
-                    vg::Paint::color(vg::Color::rgba(255, 0, 255, 128)),
-                );
+                canvas.fill_path(&mut path, Paint::color(Color::rgba(255, 0, 255, 128)));
             }
             Layer::Entities => {
                 let tmp_entity = self.get_terminal_entity(state, state.current_entity, room_pos);
@@ -150,7 +148,7 @@ impl Tool for PencilTool {
             }
             Layer::FgDecals | Layer::BgDecals => {
                 let texture = format!("decals/{}", state.current_decal.0);
-                if cx.mouse().left.state == MouseButtonState::Released {
+                if cx.mouse.left.state == MouseButtonState::Released {
                     canvas.set_global_alpha(0.5);
                 }
                 if let Err(e) = state.current_palette_unwrap().gameplay_atlas.draw_sprite(

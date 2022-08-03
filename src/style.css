@@ -208,6 +208,10 @@ menubutton:over {
 
 /* editor */
 
+arborio_editor {
+    overflow: hidden;
+}
+
 #left_bar {
     width: auto;
 }

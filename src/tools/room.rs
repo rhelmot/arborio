@@ -1,13 +1,13 @@
 use std::collections::{HashMap, HashSet};
+use vizia::prelude::*;
 use vizia::vg::{Color, Paint, Path};
-use vizia::*;
 
 use crate::app_state::{AppInternalEvent, AppSelectable, EventPhase, MapEvent, RoomEvent};
 use crate::map_struct::{CelesteMap, CelesteMapLevel, MapID};
 use crate::tools::selection::ResizeSide;
 use crate::tools::{generic_nav, Tool};
 use crate::units::*;
-use crate::{AppEvent, AppState, Context, WindowEvent};
+use crate::{AppEvent, AppState};
 
 pub struct RoomTool {
     pending_selection: HashSet<usize>,
@@ -50,7 +50,7 @@ impl RoomTool {
 }
 
 impl Tool for RoomTool {
-    fn event(&mut self, event: &WindowEvent, cx: &mut Context) -> Vec<AppEvent> {
+    fn event(&mut self, event: &WindowEvent, cx: &mut EventContext) -> Vec<AppEvent> {
         let app = cx.data::<AppState>().unwrap();
         let events = generic_nav(event, app, cx, false);
         if !events.is_empty() {
@@ -162,7 +162,7 @@ impl Tool for RoomTool {
                         Code::ArrowUp => self.nudge(app, map, MapVectorStrict::new(0, -8)),
                         Code::ArrowRight => self.nudge(app, map, MapVectorStrict::new(8, 0)),
                         Code::ArrowLeft => self.nudge(app, map, MapVectorStrict::new(-8, 0)),
-                        Code::KeyA if cx.modifiers == Modifiers::CTRL => {
+                        Code::KeyA if cx.modifiers == &Modifiers::CTRL => {
                             self.current_selection = rooms_in(
                                 map,
                                 MapRectStrict::new(
@@ -172,16 +172,16 @@ impl Tool for RoomTool {
                             );
                             vec![]
                         }
-                        Code::KeyC if cx.modifiers == Modifiers::CTRL => {
+                        Code::KeyC if cx.modifiers == &Modifiers::CTRL => {
                             self.clipboard_copy(app, mapid)
                         }
-                        Code::KeyX if cx.modifiers == Modifiers::CTRL => {
+                        Code::KeyX if cx.modifiers == &Modifiers::CTRL => {
                             let mut result = self.clipboard_copy(app, mapid);
                             result.extend(self.delete_all(app));
                             result
                         }
-                        Code::KeyV if cx.modifiers == Modifiers::CTRL => {
-                            if let Ok(s) = cx.clipboard.get_contents() {
+                        Code::KeyV if cx.modifiers == &Modifiers::CTRL => {
+                            if let Ok(s) = cx.get_clipboard() {
                                 let app = cx.data().unwrap();
                                 self.clipboard_paste(app, s)
                             } else {
@@ -199,7 +199,11 @@ impl Tool for RoomTool {
         }
     }
 
-    fn internal_event(&mut self, event: &AppInternalEvent, _cx: &mut Context) -> Vec<AppEvent> {
+    fn internal_event(
+        &mut self,
+        event: &AppInternalEvent,
+        _cx: &mut EventContext,
+    ) -> Vec<AppEvent> {
         if let AppInternalEvent::SelectMeRoom { idx } = event {
             self.current_selection.insert(*idx);
         }
@@ -213,7 +217,7 @@ impl Tool for RoomTool {
             return;
         };
 
-        let screen_pos = ScreenPoint::new(cx.mouse().cursorx, cx.mouse().cursory);
+        let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos_precise = state
             .map_tab_unwrap()
             .transform
@@ -309,7 +313,7 @@ impl Tool for RoomTool {
         canvas.restore();
     }
 
-    fn cursor(&self, cx: &mut Context) -> CursorIcon {
+    fn cursor(&self, cx: &mut EventContext) -> CursorIcon {
         let app = cx.data::<AppState>().unwrap();
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos_precise = app

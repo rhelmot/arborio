@@ -7,7 +7,7 @@ use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicU32, Ordering};
-use vizia::*;
+use vizia::prelude::*;
 
 pub fn next_uuid() -> u32 {
     static UUID: AtomicU32 = AtomicU32::new(1);

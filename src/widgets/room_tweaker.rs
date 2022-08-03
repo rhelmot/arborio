@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use vizia::*;
+use vizia::prelude::*;
 
 use super::common::*;
 use crate::app_state::{EventPhase, MapEvent, RoomEvent};
@@ -105,9 +105,9 @@ impl RoomTweakerWidget {
             .on_edit(move |cx, value| {
                 if let Ok(parsed) = value.parse() {
                     emit_bounds(cx, Some(parsed), None, None, None);
-                    cx.current.toggle_class(cx, "validation_error", false);
+                    cx.toggle_class("validation_error", false);
                 } else {
-                    cx.current.toggle_class(cx, "validation_error", true);
+                    cx.toggle_class("validation_error", true);
                 }
             });
         });
@@ -122,9 +122,9 @@ impl RoomTweakerWidget {
             .on_edit(move |cx, value| {
                 if let Ok(parsed) = value.parse() {
                     emit_bounds(cx, None, Some(parsed), None, None);
-                    cx.current.toggle_class(cx, "validation_error", false);
+                    cx.toggle_class("validation_error", false);
                 } else {
-                    cx.current.toggle_class(cx, "validation_error", true);
+                    cx.toggle_class("validation_error", true);
                 }
             });
         });
@@ -139,9 +139,9 @@ impl RoomTweakerWidget {
             .on_edit(move |cx, value| {
                 if let Ok(parsed) = value.parse() {
                     emit_bounds(cx, None, None, Some(parsed), None);
-                    cx.current.toggle_class(cx, "validation_error", false);
+                    cx.toggle_class("validation_error", false);
                 } else {
-                    cx.current.toggle_class(cx, "validation_error", true);
+                    cx.toggle_class("validation_error", true);
                 }
             });
         });
@@ -156,9 +156,9 @@ impl RoomTweakerWidget {
             .on_edit(move |cx, value| {
                 if let Ok(parsed) = value.parse() {
                     emit_bounds(cx, None, None, None, Some(parsed));
-                    cx.current.toggle_class(cx, "validation_error", false);
+                    cx.toggle_class("validation_error", false);
                 } else {
-                    cx.current.toggle_class(cx, "validation_error", true);
+                    cx.toggle_class("validation_error", true);
                 }
             });
         });
@@ -204,12 +204,12 @@ impl RoomTweakerWidget {
 }
 
 impl View for RoomTweakerWidget {
-    fn element(&self) -> Option<String> {
-        Some("room-tweaker".to_owned())
+    fn element(&self) -> Option<&'static str> {
+        Some("room-tweaker")
     }
 }
 
-fn emit(cx: &mut Context, update: CelesteMapLevelUpdate) {
+fn emit(cx: &mut EventContext, update: CelesteMapLevelUpdate) {
     let app = cx.data::<AppState>().unwrap();
     let tab = app.map_tab_unwrap();
     let event = AppEvent::MapEvent {
@@ -226,7 +226,7 @@ fn emit(cx: &mut Context, update: CelesteMapLevelUpdate) {
 }
 
 fn emit_bounds(
-    cx: &mut Context,
+    cx: &mut EventContext,
     update_x: Option<i32>,
     update_y: Option<i32>,
     update_w: Option<i32>,

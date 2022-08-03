@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
+use vizia::prelude::*;
 use vizia::vg;
-use vizia::*;
 
 use crate::app_state::{
     AppEvent, AppInRoomSelectable, AppInternalEvent, AppSelectable, AppSelection, AppState,
@@ -179,7 +179,7 @@ impl SelectionTool {
 }
 
 impl Tool for SelectionTool {
-    fn event(&mut self, event: &WindowEvent, cx: &mut Context) -> Vec<AppEvent> {
+    fn event(&mut self, event: &WindowEvent, cx: &mut EventContext) -> Vec<AppEvent> {
         let app = cx.data::<AppState>().unwrap();
         let nav_events = generic_nav(event, app, cx, true);
         if !nav_events.is_empty() {
@@ -283,7 +283,7 @@ impl Tool for SelectionTool {
                         Code::ArrowUp => self.nudge(room, RoomVector::new(0, -8)),
                         Code::ArrowRight => self.nudge(room, RoomVector::new(8, 0)),
                         Code::ArrowLeft => self.nudge(room, RoomVector::new(-8, 0)),
-                        Code::KeyA if cx.modifiers == Modifiers::CTRL => {
+                        Code::KeyA if cx.modifiers == &Modifiers::CTRL => {
                             self.current_selection = self.selectables_in(
                                 app,
                                 room,
@@ -295,16 +295,16 @@ impl Tool for SelectionTool {
                             );
                             AppEventStaging::new()
                         }
-                        Code::KeyC if cx.modifiers == Modifiers::CTRL => {
+                        Code::KeyC if cx.modifiers == &Modifiers::CTRL => {
                             self.clipboard_copy(app, room)
                         }
-                        Code::KeyX if cx.modifiers == Modifiers::CTRL => {
+                        Code::KeyX if cx.modifiers == &Modifiers::CTRL => {
                             let mut result = self.clipboard_copy(app, room);
                             result.accumulate(self.delete_all(app, room));
                             result
                         }
-                        Code::KeyV if cx.modifiers == Modifiers::CTRL => {
-                            if let Ok(s) = cx.clipboard.get_contents() {
+                        Code::KeyV if cx.modifiers == &Modifiers::CTRL => {
+                            if let Ok(s) = cx.get_clipboard() {
                                 let app = cx.data().unwrap();
                                 self.clipboard_paste(app, s)
                             } else {
@@ -323,7 +323,7 @@ impl Tool for SelectionTool {
         .finalize(cx.data::<AppState>().unwrap(), self.draw_phase)
     }
 
-    fn internal_event(&mut self, event: &AppInternalEvent, cx: &mut Context) -> Vec<AppEvent> {
+    fn internal_event(&mut self, event: &AppInternalEvent, cx: &mut EventContext) -> Vec<AppEvent> {
         let app = cx.data::<AppState>().unwrap();
         let room = match app.current_room_ref() {
             Some(room) => room,
@@ -346,7 +346,7 @@ impl Tool for SelectionTool {
         self.notify_selection(app).finalize(app, self.draw_phase)
     }
 
-    fn switch_off(&mut self, app: &AppState, _cx: &Context) -> Vec<AppEvent> {
+    fn switch_off(&mut self, app: &AppState, _cx: &EventContext) -> Vec<AppEvent> {
         self.clear_selection(app).finalize(app, self.draw_phase)
     }
 
@@ -360,7 +360,7 @@ impl Tool for SelectionTool {
         canvas.translate(room.bounds.origin.x as f32, room.bounds.origin.y as f32);
         // no scissor!
 
-        let screen_pos = ScreenPoint::new(cx.mouse().cursorx, cx.mouse().cursory);
+        let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos_precise = state
             .map_tab_unwrap()
             .transform
@@ -526,7 +526,7 @@ impl Tool for SelectionTool {
         canvas.restore();
     }
 
-    fn cursor(&self, cx: &mut Context) -> CursorIcon {
+    fn cursor(&self, cx: &mut EventContext) -> CursorIcon {
         let app = cx.data::<AppState>().unwrap();
         let room = if let Some(room) = app.current_room_ref() {
             room

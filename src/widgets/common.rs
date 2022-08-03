@@ -1,9 +1,11 @@
 use crate::celeste_mod::config::AttributeType;
 use crate::lenses::{HashMapIndexWithLens, HashMapLenLens, HashMapNthKeyLens, IsFailedLens};
 use crate::map_struct::Attribute;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::str::FromStr;
-use vizia::*;
+use vizia::fonts::icons_names::DOWN;
+use vizia::prelude::*;
 
 #[derive(Lens)]
 pub struct NewAttributeData {
@@ -12,13 +14,11 @@ pub struct NewAttributeData {
 }
 
 impl Model for NewAttributeData {
-    fn event(&mut self, _cx: &mut Context, event: &mut Event) {
-        if let Some(msg) = event.message.downcast() {
-            match msg {
-                NewAttributeDataEvent::SetName(name) => self.name = name.clone(),
-                NewAttributeDataEvent::SetTy(ty) => self.ty = *ty,
-            }
-        }
+    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+        event.map(|msg, _| match msg {
+            NewAttributeDataEvent::SetName(name) => self.name = name.clone(),
+            NewAttributeDataEvent::SetTy(ref ty) => self.ty = *ty,
+        });
     }
 }
 
@@ -31,12 +31,12 @@ pub fn tweak_attr_text<L, F>(cx: &mut Context, name: &'static str, lens: L, sett
 where
     L: Lens,
     <L as Lens>::Target: ToString + FromStr + Data,
-    F: 'static + Send + Sync + Fn(&mut Context, <L as Lens>::Target) -> bool,
+    F: 'static + Send + Sync + Fn(&mut EventContext, <L as Lens>::Target) -> bool,
 {
     HStack::new(cx, move |cx| {
         Label::new(cx, name);
         validator_box(cx, lens, setter, |cx, valid| {
-            cx.current.toggle_class(cx, "validation_error", !valid);
+            cx.toggle_class("validation_error", !valid);
         });
     });
 }
@@ -45,8 +45,8 @@ pub fn validator_box<L, F1, F2>(cx: &mut Context, lens: L, setter: F1, set_valid
 where
     L: Lens,
     <L as Lens>::Target: ToString + FromStr + Data,
-    F1: 'static + Send + Sync + Fn(&mut Context, <L as Lens>::Target) -> bool,
-    F2: 'static + Send + Sync + Fn(&mut Context, bool),
+    F1: 'static + Send + Sync + Fn(&mut EventContext, <L as Lens>::Target) -> bool,
+    F2: 'static + Send + Sync + Fn(&mut EventContext, bool),
 {
     Textbox::new(cx, lens).on_edit(move |cx, value| {
         if let Ok(parsed) = value.parse() {
@@ -81,28 +81,27 @@ struct ModelContainer<T: 'static + Clone + Send + Sync> {
 
 #[derive(Debug)]
 enum ModelEvent<T> {
-    Set(Option<T>), // only an option so the data can be taken out
+    Set(RefCell<Option<T>>), // only an option so the data can be taken out
 }
 
 impl<T: 'static + Clone + Send + Sync> Model for ModelContainer<T> {
-    fn event(&mut self, _cx: &mut Context, event: &mut Event) {
-        if let Some(ModelEvent::Set(msg)) = event.message.downcast() {
+    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+        event.map(|msg, _| {
+            let ModelEvent::Set(msg) = msg;
             if let Some(v) = msg.take() {
                 self.val = v;
             }
-        }
+        });
     }
 }
 
 impl Model for EditingState {
-    fn event(&mut self, _cx: &mut Context, event: &mut Event) {
-        if let Some(msg) = event.message.downcast() {
-            match msg {
-                EditingStateEvent::End => self.editing = false,
-                EditingStateEvent::Start => self.editing = true,
-                EditingStateEvent::Valid(b) => self.valid = *b,
-            }
-        }
+    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+        event.map(|msg, _| match msg {
+            EditingStateEvent::End => self.editing = false,
+            EditingStateEvent::Start => self.editing = true,
+            EditingStateEvent::Valid(b) => self.valid = *b,
+        });
     }
 }
 
@@ -117,8 +116,8 @@ pub fn label_with_pencil<L, F1, F2>(
 where
     L: Lens,
     <L as Lens>::Target: ToString + FromStr + Data + Send + Sync,
-    F1: 'static + Send + Sync + Clone + Fn(&mut Context, &<L as Lens>::Target) -> bool,
-    F2: 'static + Send + Sync + Clone + Fn(&mut Context, <L as Lens>::Target),
+    F1: 'static + Send + Sync + Clone + Fn(&mut EventContext, &<L as Lens>::Target) -> bool,
+    F2: 'static + Send + Sync + Clone + Fn(&mut EventContext, <L as Lens>::Target),
 {
     HStack::new(cx, move |cx| {
         EditingState {
@@ -161,14 +160,14 @@ where
                     ModelContainer::val,
                     move |cx, val| {
                         if validator(cx, &val) {
-                            cx.emit(ModelEvent::Set(Some(val)));
+                            cx.emit(ModelEvent::Set(RefCell::new(Some(val))));
                             true
                         } else {
                             false
                         }
                     },
                     move |cx, valid| {
-                        cx.current.toggle_class(cx, "validation_error", !valid);
+                        cx.toggle_class("validation_error", !valid);
                         cx.emit(EditingStateEvent::Valid(valid));
                     },
                 );
@@ -189,7 +188,7 @@ where
 pub fn tweak_attr_check<L, F>(cx: &mut Context, name: &'static str, lens: L, setter: F)
 where
     L: Lens<Target = bool>,
-    F: 'static + Send + Sync + Copy + Fn(&mut Context, bool),
+    F: 'static + Send + Sync + Copy + Fn(&mut EventContext, bool),
 {
     HStack::new(cx, move |cx| {
         Label::new(cx, name);
@@ -204,9 +203,9 @@ where
 pub fn advanced_attrs_editor(
     cx: &mut Context,
     attributes_lens: impl Lens<Target = HashMap<String, Attribute>> + Copy + Send + Sync,
-    setter: impl 'static + Clone + Send + Sync + Fn(&mut Context, String, Attribute),
-    adder: impl 'static + Fn(&mut Context, String, AttributeType),
-    remover: impl 'static + Clone + Fn(&mut Context, String),
+    setter: impl 'static + Clone + Send + Sync + Fn(&mut EventContext, String, Attribute),
+    adder: impl 'static + Fn(&mut EventContext, String, AttributeType),
+    remover: impl 'static + Clone + Fn(&mut EventContext, String),
 ) {
     Binding::new(
         cx,
@@ -275,9 +274,7 @@ pub fn advanced_attrs_editor(
                         let text = format!("{:?}", ty.get(handle.cx));
                         handle.text(&text);
                     });
-                    Label::new(cx, ICON_DOWN_OPEN)
-                        .class("icon")
-                        .class("dropdown_icon");
+                    Label::new(cx, DOWN).class("icon").class("dropdown_icon");
                 })
             },
             |cx| {
@@ -316,7 +313,7 @@ fn attr_editor<T: ToString + FromStr + Data>(
     cx: &mut Context,
     lens: impl Lens<Target = T>,
     key: impl Send + Sync + Lens<Target = String>,
-    setter: impl 'static + Clone + Send + Sync + Fn(&mut Context, String, T),
+    setter: impl 'static + Clone + Send + Sync + Fn(&mut EventContext, String, T),
 ) {
     Binding::new(cx, IsFailedLens::new(lens.clone()), move |cx, failed| {
         if !failed.get(cx) {
@@ -325,9 +322,9 @@ fn attr_editor<T: ToString + FromStr + Data>(
             Textbox::new(cx, lens.clone()).on_edit(move |cx, text| {
                 if let Ok(value) = text.parse() {
                     setter(cx, key.get(cx), value);
-                    cx.current.toggle_class(cx, "validation_error", false);
+                    cx.toggle_class("validation_error", false);
                 } else {
-                    cx.current.toggle_class(cx, "validation_error", true);
+                    cx.toggle_class("validation_error", true);
                 }
             });
         }

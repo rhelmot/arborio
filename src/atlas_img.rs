@@ -9,6 +9,7 @@ use std::io;
 use std::io::Read; // trait method import
 use std::path;
 use std::sync::{Arc, Mutex};
+use vizia::prelude::Canvas;
 use vizia::vg::{Color, ImageFlags, ImageId, ImageSource, Paint, Path};
 
 use crate::assets::{intern_owned, Interned, InternedMap};
@@ -24,7 +25,7 @@ enum BlobData {
 }
 
 impl BlobData {
-    fn image_id(&mut self, canvas: &mut vizia::Canvas) -> ImageId {
+    fn image_id(&mut self, canvas: &mut Canvas) -> ImageId {
         match self {
             BlobData::Waiting(buf) => {
                 let res = canvas
@@ -265,7 +266,7 @@ impl MultiAtlas {
 
     pub fn draw_sprite(
         &self,
-        canvas: &mut vizia::Canvas,
+        canvas: &mut Canvas,
         sprite_path: &str,
         point: Point2D<f32, UnknownUnit>,
         slice: Option<Rect<f32, UnknownUnit>>,
@@ -345,7 +346,7 @@ impl MultiAtlas {
 
     pub fn draw_tile(
         &self,
-        canvas: &mut vizia::Canvas,
+        canvas: &mut Canvas,
         tile_ref: TileReference,
         ox: f32,
         oy: f32,

@@ -9,7 +9,7 @@ use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time;
-use vizia::*;
+use vizia::prelude::*;
 
 use crate::assets::{next_uuid, Interned, InternedMap};
 use crate::auto_saver::AutoSaver;
@@ -558,10 +558,10 @@ pub enum AppInternalEvent {
 }
 
 impl Model for AppState {
-    fn event(&mut self, cx: &mut Context, event: &mut Event) {
-        if let Some(app_event) = event.message.downcast() {
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
+        event.map(|app_event, _| {
             self.apply(cx, app_event);
-        }
+        });
     }
 }
 
@@ -662,15 +662,14 @@ impl AppState {
         }
     }
 
-    pub fn apply(&mut self, cx: &mut Context, event: &AppEvent) {
+    pub fn apply(&mut self, cx: &mut EventContext, event: &AppEvent) {
         match event {
             // global events
             AppEvent::Progress { progress } => {
                 self.progress = progress.clone();
             }
             AppEvent::SetClipboard { contents } => {
-                cx.clipboard
-                    .set_contents(contents.clone())
+                cx.set_clipboard(contents.clone())
                     .unwrap_or_else(|e| log::error!("Failed to copy: {}", e));
             }
             AppEvent::OpenModuleOverviewTab { module } => {
@@ -1072,7 +1071,7 @@ impl AppState {
                     if let Some(map_obj) = self.loaded_maps.get_mut(map) {
                         match Self::apply_map_event(cx, map_obj, event) {
                             Ok(undo) => {
-                                cx.style.needs_redraw = true;
+                                cx.needs_redraw();
                                 map_obj.dirty = true;
                                 let buf = self.loaded_maps_undo_buffer.get_mut(map).unwrap();
                                 if buf.len() == UNDO_BUFFER_SIZE {
@@ -1107,7 +1106,7 @@ impl AppState {
                     if let Some(event) = undo_buf.pop_back() {
                         match Self::apply_map_event(cx, map_obj, event) {
                             Ok(opposite) => {
-                                cx.style.needs_redraw = true;
+                                cx.needs_redraw();
                                 map_obj.dirty = true;
                                 redo_buf.push_back(opposite);
                                 self.loaded_maps_event_phase
@@ -1127,7 +1126,7 @@ impl AppState {
                     if let Some(event) = redo_buf.pop_back() {
                         match Self::apply_map_event(cx, map_obj, event) {
                             Ok(opposite) => {
-                                cx.style.needs_redraw = true;
+                                cx.needs_redraw();
                                 map_obj.dirty = true;
                                 undo_buf.push_back(opposite);
                                 self.loaded_maps_event_phase
@@ -1144,7 +1143,7 @@ impl AppState {
     }
 
     pub fn apply_map_event(
-        cx: &mut Context,
+        cx: &mut EventContext,
         map: &mut CelesteMap,
         event: MapEvent,
     ) -> Result<MapEvent, String> {
@@ -1212,7 +1211,7 @@ impl AppState {
                 if idx <= map.levels.len() {
                     map.levels.insert(idx, *room);
                     if selectme {
-                        cx.event_queue.push_back(
+                        cx.emit_custom(
                             Event::new(AppInternalEvent::SelectMeRoom { idx })
                                 .propagate(Propagation::Subtree),
                         );
@@ -1250,7 +1249,7 @@ impl AppState {
     }
 
     fn apply_room_event(
-        cx: &mut Context,
+        cx: &mut EventContext,
         room: &mut CelesteMapLevel,
         event: RoomEvent,
     ) -> Result<RoomEvent, String> {
@@ -1303,7 +1302,7 @@ impl AppState {
                     room.entities.push(*entity)
                 }
                 if selectme {
-                    cx.event_queue.push_back(
+                    cx.emit_custom(
                         Event::new(AppInternalEvent::SelectMeEntity { id, trigger })
                             .propagate(Propagation::Subtree),
                     );
@@ -1369,7 +1368,7 @@ impl AppState {
                 };
                 decals.push(*decal);
                 if selectme {
-                    cx.event_queue.push_back(
+                    cx.emit_custom(
                         Event::new(AppInternalEvent::SelectMeDecal { id, fg })
                             .propagate(Propagation::Subtree),
                     );
@@ -1549,7 +1548,7 @@ pub fn apply_tiles<T: Copy + Eq>(
     dirty
 }
 
-pub fn trigger_module_load(cx: &mut Context, path: PathBuf) {
+pub fn trigger_module_load(cx: &mut EventContext, path: PathBuf) {
     cx.spawn(move |cx| {
         let mut result = InternedMap::new();
         discovery::load_all(&path, &mut result, |p, s| {

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::str::FromStr;
-use vizia::*;
+use vizia::prelude::*;
 
 use crate::assets;
 use crate::assets::intern_str;

@@ -2,7 +2,7 @@ use itertools::Itertools;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-use vizia::*;
+use vizia::prelude::*;
 
 use crate::assets::{intern_str, Interned, InternedMap};
 use crate::atlas_img::MultiAtlas;

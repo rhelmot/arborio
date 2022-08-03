@@ -1,6 +1,7 @@
 use dialog::DialogBox;
 use std::path::Path;
-use vizia::*;
+use vizia::prelude::*;
+use vizia::state::UnwrapLens;
 
 use crate::app_state::{AppConfig, AppState};
 use crate::assets::Interned;

@@ -3,7 +3,7 @@ use serde::de::{Error, Unexpected};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::path::Path;
 use std::str::FromStr;
-use vizia::Data;
+use vizia::prelude::Data;
 
 use crate::assets::Interned;
 use crate::celeste_mod::walker::{ConfigSource, ConfigSourceTrait};

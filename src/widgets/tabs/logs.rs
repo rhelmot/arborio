@@ -1,4 +1,4 @@
-use vizia::*;
+use vizia::prelude::*;
 
 pub fn build_logs(cx: &mut Context) {
     ScrollView::new(cx, 0.0, 100.0, false, true, |_cx| {

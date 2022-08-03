@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use vizia::*;
+use vizia::prelude::*;
 
 use crate::app_state::{AppEvent, AppSelection, AppState, AppTab, EventPhase, MapEvent, RoomEvent};
 use crate::celeste_mod::config::AttributeType;
@@ -89,12 +89,12 @@ impl EntityTweakerWidget {
 }
 
 impl View for EntityTweakerWidget {
-    fn element(&self) -> Option<String> {
-        Some("entity-tweaker".to_owned())
+    fn element(&self) -> Option<&'static str> {
+        Some("entity-tweaker")
     }
 }
 
-fn edit_entity<F: FnOnce(&mut CelesteMapEntity)>(cx: &mut Context, f: F) {
+fn edit_entity<F: FnOnce(&mut CelesteMapEntity)>(cx: &mut EventContext, f: F) {
     let app_state = cx.data::<AppState>().unwrap();
     let (current_map, current_room, current_selected) = match app_state
         .tabs
@@ -125,19 +125,19 @@ fn edit_entity<F: FnOnce(&mut CelesteMapEntity)>(cx: &mut Context, f: F) {
     });
 }
 
-fn edit_attribute(cx: &mut Context, key: String, value: Attribute) {
+fn edit_attribute(cx: &mut EventContext, key: String, value: Attribute) {
     edit_entity(cx, move |entity| {
         entity.attributes.insert(key, value);
     });
 }
 
-fn remove_attribute(cx: &mut Context, key: String) {
+fn remove_attribute(cx: &mut EventContext, key: String) {
     edit_entity(cx, move |entity| {
         entity.attributes.remove(&key);
     });
 }
 
-fn add_default_attribute(cx: &mut Context, key: String, ty: AttributeType) {
+fn add_default_attribute(cx: &mut EventContext, key: String, ty: AttributeType) {
     edit_entity(cx, move |entity| {
         entity.attributes.insert(
             key,
@@ -151,76 +151,76 @@ fn add_default_attribute(cx: &mut Context, key: String, ty: AttributeType) {
     });
 }
 
-fn edit_x(cx: &mut Context, value: String) {
+fn edit_x(cx: &mut EventContext, value: String) {
     if let Ok(value) = value.parse() {
         edit_entity(cx, move |entity| {
             entity.x = value;
         });
-        cx.current.toggle_class(cx, "validation_error", false);
+        cx.toggle_class("validation_error", false);
     } else {
-        cx.current.toggle_class(cx, "validation_error", true);
+        cx.toggle_class("validation_error", true);
     }
 }
-fn edit_y(cx: &mut Context, value: String) {
+fn edit_y(cx: &mut EventContext, value: String) {
     if let Ok(value) = value.parse() {
         edit_entity(cx, move |entity| {
             entity.y = value;
         });
-        cx.current.toggle_class(cx, "validation_error", false);
+        cx.toggle_class("validation_error", false);
     } else {
-        cx.current.toggle_class(cx, "validation_error", true);
+        cx.toggle_class("validation_error", true);
     }
 }
-fn edit_w(cx: &mut Context, value: String) {
+fn edit_w(cx: &mut EventContext, value: String) {
     if let Ok(value) = value.parse() {
         edit_entity(cx, move |entity| {
             entity.width = value;
         });
-        cx.current.toggle_class(cx, "validation_error", false);
+        cx.toggle_class("validation_error", false);
     } else {
-        cx.current.toggle_class(cx, "validation_error", true);
+        cx.toggle_class("validation_error", true);
     }
 }
-fn edit_h(cx: &mut Context, value: String) {
+fn edit_h(cx: &mut EventContext, value: String) {
     if let Ok(value) = value.parse() {
         edit_entity(cx, move |entity| {
             entity.height = value;
         });
-        cx.current.toggle_class(cx, "validation_error", false);
+        cx.toggle_class("validation_error", false);
     } else {
-        cx.current.toggle_class(cx, "validation_error", true);
+        cx.toggle_class("validation_error", true);
     }
 }
 
-fn edit_node_x(cx: &mut Context, idx: usize, value: String) {
+fn edit_node_x(cx: &mut EventContext, idx: usize, value: String) {
     if let Ok(x) = value.parse() {
         edit_entity(cx, move |entity| {
             entity.nodes[idx] = (x, entity.nodes[idx].y).into();
         });
-        cx.current.toggle_class(cx, "validation_error", false);
+        cx.toggle_class("validation_error", false);
     } else {
-        cx.current.toggle_class(cx, "validation_error", true);
+        cx.toggle_class("validation_error", true);
     }
 }
 
-fn edit_node_y(cx: &mut Context, idx: usize, value: String) {
+fn edit_node_y(cx: &mut EventContext, idx: usize, value: String) {
     if let Ok(y) = value.parse() {
         edit_entity(cx, move |entity| {
             entity.nodes[idx] = (entity.nodes[idx].x, y).into();
         });
-        cx.current.toggle_class(cx, "validation_error", false);
+        cx.toggle_class("validation_error", false);
     } else {
-        cx.current.toggle_class(cx, "validation_error", true);
+        cx.toggle_class("validation_error", true);
     }
 }
 
-fn remove_node(cx: &mut Context, idx: usize) {
+fn remove_node(cx: &mut EventContext, idx: usize) {
     edit_entity(cx, move |entity| {
         entity.nodes.remove(idx);
     })
 }
 
-fn add_node(cx: &mut Context) {
+fn add_node(cx: &mut EventContext) {
     let mut select = None;
     let mut id = None;
     edit_entity(cx, |entity| {

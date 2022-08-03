@@ -9,7 +9,9 @@ use crate::map_struct::{Attribute, CelesteMap, CelesteMapStyleground};
 use crate::{AppEvent, AppState};
 use std::cell::RefCell;
 use std::rc::Rc;
-use vizia::*;
+use vizia::fonts::icons_names::DOWN;
+use vizia::prelude::*;
+use vizia::state::UnwrapLens;
 
 macro_rules! edit_text {
     ($cx: expr, $label:expr, $attr:ident) => {
@@ -82,8 +84,8 @@ impl StyleListWidget {
 }
 
 impl View for StyleListWidget {
-    fn element(&self) -> Option<String> {
-        Some("style_list".to_owned())
+    fn element(&self) -> Option<&'static str> {
+        Some("style_list")
     }
 }
 
@@ -326,12 +328,12 @@ impl StyleTweakerWidget {
 }
 
 impl View for StyleTweakerWidget {
-    fn element(&self) -> Option<String> {
-        Some("style_tweaker".to_owned())
+    fn element(&self) -> Option<&'static str> {
+        Some("style_tweaker")
     }
 }
 
-fn emit(cx: &mut Context, style: CelesteMapStyleground) {
+fn emit(cx: &mut EventContext, style: CelesteMapStyleground) {
     cx.emit(AppEvent::MapEvent {
         event: RefCell::new(Some(MapEvent::UpdateStyleground {
             loc: CurrentStylegroundLens {}.get(cx),
@@ -349,7 +351,7 @@ fn tweak_attr_picker<T: Data>(
     lens: impl Lens<Target = T>,
     items: impl 'static + IntoIterator<Item = T> + Clone,
     labels: impl 'static + Fn(&mut Context, &T) -> String,
-    setter: impl 'static + Fn(&mut Context, T),
+    setter: impl 'static + Fn(&mut EventContext, T),
 ) {
     let labels = Rc::new(labels);
     let labels2 = labels.clone();
@@ -369,9 +371,7 @@ fn tweak_attr_picker<T: Data>(
                             handle.text(&label);
                         }
                     });
-                    Label::new(cx, ICON_DOWN_OPEN)
-                        .class("icon")
-                        .class("dropdown_icon");
+                    Label::new(cx, DOWN).class("icon").class("dropdown_icon");
                 })
             },
             move |cx| {
