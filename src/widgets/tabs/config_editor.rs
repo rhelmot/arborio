@@ -13,14 +13,14 @@ use crate::app_state::{
     AppEvent, AppState, AppTab, ConfigEditorTab, ConfigSearchFilter, ConfigSearchType, SearchScope,
     StylegroundSelection,
 };
-use crate::assets::{intern_str, Interned, InternedMap};
+use crate::assets::{intern_str, Interned};
+use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::celeste_mod::config::{
     AttributeInfo, AttributeType, AttributeValue, EntityConfig, StylegroundConfig, TriggerConfig,
 };
-use crate::celeste_mod::module::CelesteModule;
+use crate::celeste_mod::module::{CelesteModule, ModuleID};
 use crate::lenses::{CurrentTabImplLens, IsFailedLens};
-use crate::map_struct::{Attribute, CelesteMapEntity, CelesteMapStyleground};
-use crate::{CelesteMap, MapPath, ModuleAggregate};
+use crate::map_struct::{Attribute, CelesteMap, CelesteMapEntity, CelesteMapStyleground, MapPath};
 
 #[derive(Debug, Clone)]
 pub enum ConfigSearchResult {
@@ -331,7 +331,7 @@ pub fn collect_search_targets<C: DataContext>(cx: &mut C) -> Vec<SearchScope> {
     for tab in &app.tabs {
         if let AppTab::Map(m) = tab {
             result.push(SearchScope::Map(
-                app.loaded_maps_id_to_path.get(&m.id).unwrap().clone(),
+                app.loaded_maps.get(&m.id).unwrap().path.clone(),
             ));
         }
     }
@@ -365,7 +365,8 @@ pub fn build_search_settings(cx: &mut Context) {
                             ctab.then(ConfigEditorTab::search_scope),
                             |handle, scope| {
                                 if let Some(thing) = scope.get_fallible(handle.cx) {
-                                    handle.text(&format!("{}", thing));
+                                    let text = thing.text(handle.cx);
+                                    handle.text(&text);
                                 }
                             },
                         );
@@ -374,7 +375,8 @@ pub fn build_search_settings(cx: &mut Context) {
                 },
                 move |cx| {
                     for target in collect_search_targets(cx) {
-                        Label::new(cx, &format!("{}", target))
+                        let text = target.text(cx);
+                        Label::new(cx, &text)
                             .class("dropdown_element")
                             .class("btn_highlight")
                             .on_press(move |cx| {
@@ -547,7 +549,7 @@ pub fn build_search_settings(cx: &mut Context) {
 }
 
 fn walk_maps<T>(
-    modules: &InternedMap<CelesteModule>,
+    modules: &HashMap<ModuleID, CelesteModule>,
     scope: &SearchScope,
     filter: &ConfigSearchFilter,
     targets: &[SearchScope],
@@ -561,6 +563,10 @@ fn walk_maps<T>(
         &ModuleAggregate,
     ),
 ) -> HashSet<T> {
+    let modules_lookup = modules
+        .iter()
+        .map(|(id, m)| (m.everest_metadata.name.clone(), *id))
+        .collect::<HashMap<String, ModuleID>>();
     let mut results = HashSet::new();
     let attrs = attrs.split(',').collect::<HashSet<_>>();
     for (name, module) in modules.iter() {
@@ -573,7 +579,8 @@ fn walk_maps<T>(
                 if let Ok(map) =
                     CelesteModule::load_map_static(module.filesystem_root.as_ref().unwrap(), map)
                 {
-                    let palette = ModuleAggregate::new(modules, &map, *name, false);
+                    let palette =
+                        ModuleAggregate::new(modules, &modules_lookup, &map, *name, false);
                     f(&mut results, filter, &attrs, &map, &map_path, &palette);
                 }
             }

@@ -106,12 +106,13 @@ impl Borrow<str> for Interned {
 #[macro_export]
 macro_rules! uuid_cls {
     ($name:ident) => {
+        use vizia::prelude::Data;
         #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone, Data)]
         pub struct $name(u32);
         #[allow(unused)]
         impl $name {
             pub fn new() -> Self {
-                Self(next_uuid())
+                Self($crate::assets::next_uuid())
             }
 
             pub fn null() -> Self {

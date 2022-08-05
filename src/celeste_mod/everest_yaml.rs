@@ -5,12 +5,11 @@ use std::path::Path;
 use std::str::FromStr;
 use vizia::prelude::Data;
 
-use crate::assets::Interned;
 use crate::celeste_mod::walker::{ConfigSource, ConfigSourceTrait};
 
 pub fn celeste_module_yaml() -> EverestYaml {
     EverestYaml {
-        name: "Celeste".into(),
+        name: "Celeste".to_string(),
         version: EverestModuleVersion(vec![1, 4, 0, 0]),
         dll: None,
         dependencies: vec![],
@@ -19,11 +18,11 @@ pub fn celeste_module_yaml() -> EverestYaml {
 
 pub fn arborio_module_yaml() -> EverestYaml {
     EverestYaml {
-        name: "Arborio".into(),
+        name: "Arborio".to_string(),
         version: EverestModuleVersion(vec![0, 1, 0]),
         dll: None,
         dependencies: vec![EverestYamlDependency {
-            name: "Celeste".into(),
+            name: "Celeste".to_string(),
             version: EverestModuleVersion(vec![1, 4, 0, 0]),
         }],
     }
@@ -32,7 +31,7 @@ pub fn arborio_module_yaml() -> EverestYaml {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EverestYaml {
     #[serde(rename = "Name")]
-    pub name: Interned,
+    pub name: String,
     #[serde(rename = "Version")]
     pub version: EverestModuleVersion,
     #[serde(rename = "DLL", default)]
@@ -44,7 +43,7 @@ pub struct EverestYaml {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EverestYamlDependency {
     #[serde(rename = "Name")]
-    pub name: Interned,
+    pub name: String,
     #[serde(rename = "Version")]
     pub version: EverestModuleVersion,
 }

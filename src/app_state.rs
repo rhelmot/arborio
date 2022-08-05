@@ -1,23 +1,27 @@
+use celeste::binel::{BinEl, BinFile};
 use dialog::DialogBox;
 use log::error;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::ffi::OsStr;
 use std::fmt::Formatter;
 use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use std::time;
+use std::{io, time};
 use vizia::prelude::*;
 
-use crate::assets::{next_uuid, Interned, InternedMap};
+use crate::assets::next_uuid;
 use crate::auto_saver::AutoSaver;
 use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::celeste_mod::discovery;
 use crate::celeste_mod::everest_yaml::{EverestModuleVersion, EverestYaml};
-use crate::celeste_mod::module::{CelesteModule, CelesteModuleKind};
+use crate::celeste_mod::module::{CelesteModule, CelesteModuleKind, ModuleID, CELESTE_MODULE_ID};
 use crate::celeste_mod::walker::{ConfigSource, FolderSource};
+use crate::from_binel::TryFromBinEl;
 use crate::map_struct::{
     CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapLevelUpdate,
     CelesteMapStyleground, MapID, MapPath,
@@ -37,17 +41,12 @@ crate::uuid_cls!(EventPhase);
 pub struct AppState {
     pub config: AutoSaver<AppConfig>,
 
-    pub modules: InternedMap<CelesteModule>,
+    pub modules: HashMap<ModuleID, CelesteModule>,
+    pub modules_lookup: HashMap<String, ModuleID>,
     pub modules_version: u32,
-    pub palettes: HashMap<MapID, ModuleAggregate>,
     pub omni_palette: ModuleAggregate,
-    // TODO merge all these fuckers
-    pub loaded_maps: HashMap<MapID, CelesteMap>,
-    pub loaded_maps_path_to_id: HashMap<MapPath, MapID>, // except for you. you can stay.
-    pub loaded_maps_id_to_path: HashMap<MapID, MapPath>,
-    pub loaded_maps_undo_buffer: HashMap<MapID, VecDeque<MapEvent>>,
-    pub loaded_maps_redo_buffer: HashMap<MapID, VecDeque<MapEvent>>,
-    pub loaded_maps_event_phase: HashMap<MapID, EventPhase>,
+    pub loaded_maps: HashMap<MapID, MapState>,
+    pub loaded_maps_lookup: HashMap<MapPath, MapID>,
 
     pub current_tab: usize,
     pub tabs: Vec<AppTab>,
@@ -71,6 +70,16 @@ pub struct AppState {
     pub progress: Progress,
 }
 
+#[derive(Lens)]
+pub struct MapState {
+    pub map: CelesteMap,
+    pub path: MapPath,
+    pub undo_buffer: VecDeque<MapAction>,
+    pub redo_buffer: VecDeque<MapAction>,
+    pub event_phase: EventPhase,
+    pub palette: ModuleAggregate,
+}
+
 #[derive(Serialize, Deserialize, Default, Lens, Debug)]
 pub struct AppConfig {
     pub celeste_root: Option<PathBuf>,
@@ -82,7 +91,7 @@ pub struct AppConfig {
 #[derive(PartialEq, Eq, Debug, Lens, Clone)]
 pub enum AppTab {
     CelesteOverview,
-    ProjectOverview(Interned),
+    ProjectOverview(ModuleID),
     Map(MapTab),
     ConfigEditor(ConfigEditorTab),
     Logs,
@@ -130,20 +139,8 @@ pub enum SearchScope {
     AllMods,
     AllOpenMods,
     AllOpenMaps,
-    Mod(Interned),
+    Mod(ModuleID),
     Map(MapPath),
-}
-
-impl std::fmt::Display for SearchScope {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SearchScope::AllMods => write!(f, "All Installed Mods"),
-            SearchScope::AllOpenMods => write!(f, "All Open Mods"),
-            SearchScope::AllOpenMaps => write!(f, "All Open Maps"),
-            SearchScope::Mod(s) => write!(f, "{}", s),
-            SearchScope::Map(s) => write!(f, "{}", s.sid),
-        }
-    }
 }
 
 impl SearchScope {
@@ -154,6 +151,22 @@ impl SearchScope {
             SearchScope::AllOpenMaps => collected_targets.contains(&SearchScope::Map(id.clone())),
             SearchScope::Mod(m) => id.module == *m,
             SearchScope::Map(m) => id == m,
+        }
+    }
+
+    pub fn text<C: DataContext>(&self, cx: &mut C) -> String {
+        match self {
+            SearchScope::AllMods => "All Mods".to_owned(),
+            SearchScope::AllOpenMods => "All Open Projects".to_owned(),
+            SearchScope::AllOpenMaps => "All Open Maps".to_owned(),
+            SearchScope::Mod(m) => {
+                let app = cx.data::<AppState>().unwrap();
+                match app.modules.get(m) {
+                    Some(module) => module.everest_metadata.name.clone(),
+                    None => "<dead project ref>".to_owned(),
+                }
+            }
+            SearchScope::Map(m) => m.sid.clone(),
         }
     }
 }
@@ -214,18 +227,6 @@ impl Eq for MapTab {}
 impl Data for AppTab {
     fn same(&self, other: &Self) -> bool {
         self == other
-    }
-}
-
-impl ToString for AppTab {
-    fn to_string(&self) -> String {
-        match self {
-            AppTab::CelesteOverview => "All Mods".to_owned(),
-            AppTab::ProjectOverview(s) => format!("{} - Overview", s),
-            AppTab::Map(_) => "TODO".to_string(),
-            AppTab::ConfigEditor(_) => "Config Editor".to_owned(),
-            AppTab::Logs => "Logs".to_owned(),
-        }
     }
 }
 
@@ -320,10 +321,10 @@ pub enum AppEvent {
         path: PathBuf,
     },
     SetModules {
-        modules: Mutex<InternedMap<CelesteModule>>,
+        modules: Mutex<HashMap<ModuleID, CelesteModule>>,
     },
     OpenModuleOverviewTab {
-        module: Interned,
+        module: ModuleID,
     },
     OpenMap {
         path: MapPath,
@@ -342,24 +343,6 @@ pub enum AppEvent {
         idx: usize,
     },
     NewMod,
-    DeleteMod {
-        project: Interned,
-    },
-    SetModName {
-        project: Interned,
-        name: String,
-    },
-    SetModVersion {
-        project: Interned,
-        version: EverestModuleVersion,
-    },
-    SetModPath {
-        project: Interned,
-        path: PathBuf,
-    },
-    NewMap {
-        project: Interned,
-    },
     MovePreview {
         tab: usize,
         pos: MapPointStrict,
@@ -447,15 +430,33 @@ pub enum AppEvent {
         selection: Option<AppSelection>,
     },
     MapEvent {
-        map: MapID,
-        event: RefCell<Option<MapEvent>>,
+        map: Option<MapID>,
+        event: MapEvent,
+    },
+    ProjectEvent {
+        project: Option<ModuleID>,
+        event: ProjectEvent,
+    },
+}
+
+#[derive(Debug)]
+pub enum ProjectEvent {
+    SetName { name: String },
+    SetVersion { version: EverestModuleVersion },
+    SetPath { path: PathBuf },
+    NewMap,
+    Delete,
+}
+
+#[derive(Debug)]
+pub enum MapEvent {
+    Undo,
+    Redo,
+    Save,
+    //Delete,
+    Action {
+        event: RefCell<Option<MapAction>>,
         merge_phase: EventPhase,
-    },
-    Undo {
-        map: MapID,
-    },
-    Redo {
-        map: MapID,
     },
 }
 
@@ -468,7 +469,7 @@ pub enum AppEvent {
 // - events with the same phase should completely supersede each other!!
 
 #[derive(Debug)]
-pub enum MapEvent {
+pub enum MapAction {
     AddStyleground {
         loc: StylegroundSelection,
         style: Box<CelesteMapStyleground>,
@@ -492,17 +493,17 @@ pub enum MapEvent {
     DeleteRoom {
         idx: usize,
     },
-    RoomEvent {
+    RoomAction {
         idx: usize,
-        event: RoomEvent,
+        event: RoomAction,
     },
     Batched {
-        events: Vec<MapEvent>, // must be COMPLETELY orthogonal!!!
+        events: Vec<MapAction>, // must be COMPLETELY orthogonal!!!
     },
 }
 
 #[derive(Debug)]
-pub enum RoomEvent {
+pub enum RoomAction {
     MoveRoom {
         bounds: MapRectStrict,
     },
@@ -578,7 +579,7 @@ impl AppState {
         }
         let cfg = AutoSaver::new(cfg, |cfg: &mut AppConfig| {
             confy::store("arborio", &cfg)
-                .unwrap_or_else(|e| panic!("Failed to save celeste_mod file: {}", e));
+                .unwrap_or_else(|e| panic!("Failed to save config file: {}", e));
         });
 
         AppState {
@@ -587,11 +588,7 @@ impl AppState {
             poison_tab: usize::MAX,
             tabs: vec![AppTab::CelesteOverview],
             loaded_maps: HashMap::new(),
-            loaded_maps_path_to_id: HashMap::new(),
-            loaded_maps_id_to_path: HashMap::new(),
-            loaded_maps_undo_buffer: HashMap::new(),
-            loaded_maps_redo_buffer: HashMap::new(),
-            loaded_maps_event_phase: HashMap::new(),
+            loaded_maps_lookup: HashMap::new(),
             current_toolspec: ToolSpec::Selection,
             current_tool: RefCell::new(None),
             current_fg_tile: TileSelectable::default(),
@@ -606,13 +603,14 @@ impl AppState {
             current_objtile: 0,
             objtiles_transform: MapToScreen::identity(),
 
-            modules: InternedMap::new(),
+            modules: HashMap::new(),
+            modules_lookup: HashMap::new(),
             modules_version: 0,
-            palettes: HashMap::new(),
             omni_palette: ModuleAggregate::new(
-                &InternedMap::new(),
+                &HashMap::new(),
+                &HashMap::new(),
                 &CelesteMap::new(),
-                "Celeste".into(),
+                *CELESTE_MODULE_ID,
                 false,
             ),
             progress: Progress {
@@ -636,17 +634,42 @@ impl AppState {
         }
     }
 
+    pub fn current_project_id(&self) -> Option<ModuleID> {
+        match self.tabs.get(self.current_tab) {
+            Some(AppTab::ProjectOverview(id)) => Some(*id),
+            Some(AppTab::Map(maptab)) => {
+                Some(self.loaded_maps.get(&maptab.id).unwrap().path.module)
+            }
+            _ => None,
+        }
+    }
+
     pub fn current_palette_unwrap(&self) -> &ModuleAggregate {
         if let Some(AppTab::Map(result)) = self.tabs.get(self.current_tab) {
-            self.palettes.get(&result.id).expect("stale reference")
+            &self
+                .loaded_maps
+                .get(&result.id)
+                .expect("stale reference")
+                .palette
         } else {
             panic!("misuse of current_palette_unwrap");
         }
     }
 
+    pub fn current_map_id(&self) -> Option<MapID> {
+        if let Some(tab) = self.tabs.get(self.current_tab) {
+            match tab {
+                AppTab::Map(maptab) => Some(maptab.id),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
     pub fn current_map_ref(&self) -> Option<&CelesteMap> {
         if let Some(AppTab::Map(maptab)) = self.tabs.get(self.current_tab) {
-            self.loaded_maps.get(&maptab.id)
+            self.loaded_maps.get(&maptab.id).map(|s| &s.map)
         } else {
             None
         }
@@ -656,7 +679,7 @@ impl AppState {
         if let Some(AppTab::Map(maptab)) = self.tabs.get(self.current_tab) {
             self.loaded_maps
                 .get(&maptab.id)
-                .and_then(|map| map.levels.get(maptab.current_room))
+                .and_then(|map| map.map.levels.get(maptab.current_room))
         } else {
             None
         }
@@ -718,7 +741,7 @@ impl AppState {
             AppEvent::OpenMap { path } => {
                 let mut found = false;
                 for (idx, tab) in self.tabs.iter().enumerate() {
-                    if matches!(tab, AppTab::Map(maptab) if self.loaded_maps_id_to_path.get(&maptab.id).unwrap() == path)
+                    if matches!(tab, AppTab::Map(maptab) if &self.loaded_maps.get(&maptab.id).unwrap().path == path)
                     {
                         cx.emit(AppEvent::SelectTab { idx });
                         found = true;
@@ -744,7 +767,7 @@ impl AppState {
             }
             AppEvent::LoadMap { path, map } => {
                 if let Some(map) = map.borrow_mut().take() {
-                    let id = if let Some(id) = self.loaded_maps_path_to_id.get(path) {
+                    let id = if let Some(id) = self.loaded_maps_lookup.get(path) {
                         *id
                     } else {
                         MapID::new()
@@ -763,18 +786,25 @@ impl AppState {
                             idx: self.tabs.len() - 1,
                         });
                     }
-                    if let Entry::Vacant(e) = self.palettes.entry(id) {
-                        e.insert(ModuleAggregate::new(&self.modules, &map, path.module, true));
-                    }
 
-                    self.loaded_maps.insert(id, *map);
-                    self.loaded_maps_id_to_path.insert(id, path.clone());
-                    self.loaded_maps_path_to_id.insert(path.clone(), id);
-                    self.loaded_maps_event_phase.insert(id, EventPhase::null());
-                    self.loaded_maps_undo_buffer
-                        .insert(id, VecDeque::with_capacity(UNDO_BUFFER_SIZE));
-                    self.loaded_maps_redo_buffer
-                        .insert(id, VecDeque::with_capacity(UNDO_BUFFER_SIZE));
+                    self.loaded_maps.insert(
+                        id,
+                        MapState {
+                            palette: ModuleAggregate::new(
+                                &self.modules,
+                                &self.modules_lookup,
+                                &map,
+                                path.module,
+                                true,
+                            ),
+                            map: *map,
+                            path: path.clone(),
+                            undo_buffer: VecDeque::with_capacity(UNDO_BUFFER_SIZE),
+                            redo_buffer: VecDeque::with_capacity(UNDO_BUFFER_SIZE),
+                            event_phase: EventPhase::null(),
+                        },
+                    );
+                    self.loaded_maps_lookup.insert(path.clone(), id);
                 }
             }
             AppEvent::SetConfigPath { path } => {
@@ -787,12 +817,12 @@ impl AppState {
             AppEvent::SetModules { modules } => {
                 let mut r = modules.lock().unwrap();
                 std::mem::swap(r.deref_mut(), &mut self.modules);
+                self.modules_lookup = build_modules_lookup(&self.modules);
                 self.modules_version += 1;
                 self.omni_palette = trigger_palette_update(
-                    &mut self.palettes,
                     &self.modules,
-                    &self.loaded_maps,
-                    &self.loaded_maps_id_to_path,
+                    &self.modules_lookup,
+                    &mut self.loaded_maps,
                 );
             }
             AppEvent::NewMod => {
@@ -806,18 +836,15 @@ impl AppState {
                         .unwrap()
                         .join("Mods")
                         .join(&name);
-                    for (ident, module) in self.modules.iter() {
-                        if **ident == name.as_str()
-                            || *module.everest_metadata.name == name.as_str()
-                            || path.exists()
-                        {
+                    for module in self.modules.values() {
+                        if module.everest_metadata.name == name || path.exists() {
                             number += 1;
                             continue 'outer;
                         }
                     }
 
                     let everest_data = EverestYaml {
-                        name: name.clone().into(),
+                        name,
                         version: EverestModuleVersion(vec![0, 0, 0]),
                         dll: None,
                         dependencies: vec![],
@@ -828,89 +855,19 @@ impl AppState {
                     let mut module_src = ConfigSource::Dir(FolderSource::new(&path).unwrap());
                     let mut module = CelesteModule::new(Some(path), everest_data);
                     module.load(&mut module_src);
-                    let module_id = name.into();
 
+                    let module_id = ModuleID::new();
+                    step_modules_lookup(
+                        &mut self.modules_lookup,
+                        &self.modules,
+                        module_id,
+                        &module,
+                    );
                     self.modules.insert(module_id, module);
                     self.modules_version += 1;
 
                     cx.emit(AppEvent::OpenModuleOverviewTab { module: module_id });
                     break;
-                }
-            }
-            AppEvent::DeleteMod { project } => {
-                if let Some(path) = self.modules.remove(project).and_then(|m| m.filesystem_root) {
-                    self.modules_version += 1;
-                    std::fs::remove_dir_all(path).expect("Failed to delete mod from filesystem");
-                    self.garbage_collect();
-                }
-            }
-            AppEvent::SetModName { project, name } => {
-                if let Some(module) = self.modules.get_mut(project) {
-                    module.everest_metadata.name = name.clone().into();
-                    module
-                        .everest_metadata
-                        .save(module.filesystem_root.as_ref().unwrap());
-                    self.modules_version += 1;
-                }
-            }
-            AppEvent::SetModVersion { project, version } => {
-                if let Some(module) = self.modules.get_mut(project) {
-                    module.everest_metadata.version = version.clone();
-                    module
-                        .everest_metadata
-                        .save(module.filesystem_root.as_ref().unwrap());
-                    self.modules_version += 1;
-                }
-            }
-            AppEvent::SetModPath { project, path } => {
-                if let Some(module) = self.modules.get_mut(project) {
-                    if let Err(e) = std::fs::rename(module.filesystem_root.as_ref().unwrap(), path)
-                    {
-                        error!(
-                            "Could not move {} to {}: {}",
-                            &module.everest_metadata.name,
-                            path.to_string_lossy(),
-                            e
-                        );
-                    } else {
-                        module.filesystem_root = Some(path.clone());
-                        self.modules_version += 1;
-                    }
-                }
-            }
-            AppEvent::NewMap { project } => {
-                if let Some(module) = self.modules.get_mut(project) {
-                    assert!(matches!(module.module_kind(), CelesteModuleKind::Directory));
-                    let mut new_id = 0;
-                    let new_sid = 'outer2: loop {
-                        new_id += 1;
-                        let new_sid = format!(
-                            "{}/{}/untitled-{}",
-                            self.config.user_name,
-                            module
-                                .filesystem_root
-                                .as_ref()
-                                .unwrap()
-                                .file_name()
-                                .unwrap()
-                                .to_string_lossy(),
-                            new_id
-                        );
-                        for old_sid in module.maps.iter() {
-                            if **old_sid == new_sid {
-                                continue 'outer2;
-                            }
-                        }
-                        break new_sid;
-                    };
-                    module.create_map(new_sid.clone());
-                    cx.emit(AppEvent::OpenMap {
-                        path: MapPath {
-                            module: *project,
-                            sid: new_sid,
-                        },
-                    });
-                    self.modules_version += 1;
                 }
             }
             AppEvent::SelectTool { spec } => {
@@ -1062,120 +1019,226 @@ impl AppState {
                     ctab.error_message = message.to_owned();
                 }
             }
-            AppEvent::MapEvent {
-                map,
-                event,
-                merge_phase,
-            } => {
-                if let Some(event) = event.borrow_mut().take() {
-                    if let Some(map_obj) = self.loaded_maps.get_mut(map) {
-                        match Self::apply_map_event(cx, map_obj, event) {
-                            Ok(undo) => {
-                                cx.needs_redraw();
-                                map_obj.dirty = true;
-                                let buf = self.loaded_maps_undo_buffer.get_mut(map).unwrap();
-                                if buf.len() == UNDO_BUFFER_SIZE {
-                                    buf.pop_front();
-                                }
-                                if buf.back().is_none()
-                                    || self.loaded_maps_event_phase.get(map).unwrap() != merge_phase
-                                {
-                                    buf.push_back(undo);
-                                }
-                                *self.loaded_maps_event_phase.get_mut(map).unwrap() = *merge_phase;
-                                self.loaded_maps_redo_buffer.get_mut(map).unwrap().clear();
-                            }
-                            Err(e) => {
-                                log::error!("Internal error: map event: {}", e);
-                            }
-                        }
-                    } else {
-                        log::error!(
-                            "Internal error: event referred to a map which does not exist {:?}",
-                            map
-                        );
-                    }
+            AppEvent::MapEvent { map, event } => {
+                self.apply_map_event(cx, *map, event);
+            }
+            AppEvent::ProjectEvent { project, event } => {
+                self.apply_project_event(cx, *project, event);
+                self.modules_version += 1;
+            }
+        }
+    }
+
+    pub fn apply_project_event(
+        &mut self,
+        cx: &mut EventContext,
+        project: Option<ModuleID>,
+        event: &ProjectEvent,
+    ) {
+        let project = match project.or_else(|| self.current_project_id()) {
+            Some(project) => project,
+            None => return,
+        };
+        let state = if let Some(state) = self.modules.get_mut(&project) {
+            state
+        } else {
+            log::error!("Internal error: event referring to unloaded map");
+            return;
+        };
+
+        match event {
+            ProjectEvent::SetName { name } => {
+                self.modules_lookup.remove(&state.everest_metadata.name);
+                state.everest_metadata.name = name.clone();
+                step_modules_lookup(
+                    &mut self.modules_lookup,
+                    &self.modules,
+                    project,
+                    self.modules.get(&project).unwrap(),
+                );
+                let state = self.modules.get_mut(&project).unwrap();
+                state
+                    .everest_metadata
+                    .save(state.filesystem_root.as_ref().unwrap());
+            }
+            ProjectEvent::SetVersion { version } => {
+                state.everest_metadata.version = version.clone();
+                state
+                    .everest_metadata
+                    .save(state.filesystem_root.as_ref().unwrap());
+            }
+            ProjectEvent::SetPath { path } => {
+                if let Err(e) = std::fs::rename(state.filesystem_root.as_ref().unwrap(), path) {
+                    error!(
+                        "Could not move {} to {}: {}",
+                        &state.everest_metadata.name,
+                        path.to_string_lossy(),
+                        e
+                    );
                 } else {
-                    log::error!("Internal error: MapEvent being applied twice?");
+                    state.filesystem_root = Some(path.clone());
                 }
             }
-            AppEvent::Undo { map } => {
-                if let Some(map_obj) = self.loaded_maps.get_mut(map) {
-                    let undo_buf = self.loaded_maps_undo_buffer.get_mut(map).unwrap();
-                    let redo_buf = self.loaded_maps_redo_buffer.get_mut(map).unwrap();
-                    if let Some(event) = undo_buf.pop_back() {
-                        match Self::apply_map_event(cx, map_obj, event) {
-                            Ok(opposite) => {
-                                cx.needs_redraw();
-                                map_obj.dirty = true;
-                                redo_buf.push_back(opposite);
-                                self.loaded_maps_event_phase
-                                    .insert(*map, EventPhase::null());
-                            }
-                            Err(e) => {
-                                log::error!("Internal error: Failed to undo: {}", e);
-                            }
+            ProjectEvent::NewMap => {
+                assert!(matches!(state.module_kind(), CelesteModuleKind::Directory));
+                let mut new_id = 0;
+                let new_sid = 'outer2: loop {
+                    new_id += 1;
+                    let new_sid = format!(
+                        "{}/{}/untitled-{}",
+                        self.config.user_name,
+                        state
+                            .filesystem_root
+                            .as_ref()
+                            .unwrap()
+                            .file_name()
+                            .unwrap()
+                            .to_string_lossy(),
+                        new_id
+                    );
+                    for old_sid in state.maps.iter() {
+                        if **old_sid == new_sid {
+                            continue 'outer2;
                         }
                     }
-                }
+                    break new_sid;
+                };
+                state.create_map(new_sid.clone());
+                cx.emit(AppEvent::OpenMap {
+                    path: MapPath {
+                        module: project,
+                        sid: new_sid,
+                    },
+                });
             }
-            AppEvent::Redo { map } => {
-                if let Some(map_obj) = self.loaded_maps.get_mut(map) {
-                    let undo_buf = self.loaded_maps_undo_buffer.get_mut(map).unwrap();
-                    let redo_buf = self.loaded_maps_redo_buffer.get_mut(map).unwrap();
-                    if let Some(event) = redo_buf.pop_back() {
-                        match Self::apply_map_event(cx, map_obj, event) {
-                            Ok(opposite) => {
-                                cx.needs_redraw();
-                                map_obj.dirty = true;
-                                undo_buf.push_back(opposite);
-                                self.loaded_maps_event_phase
-                                    .insert(*map, EventPhase::null());
-                            }
-                            Err(e) => {
-                                log::error!("Internal error: Failed to redo: {}", e);
-                            }
-                        }
-                    }
+            ProjectEvent::Delete => {
+                if !matches!(state.module_kind(), CelesteModuleKind::Builtin) {
+                    let module = self.modules.remove(&project).unwrap();
+                    // TODO can we restore the modules which were cast aside for this one?
+                    self.modules_lookup.remove(&module.everest_metadata.name);
+                    let path = module.filesystem_root.unwrap();
+                    std::fs::remove_dir_all(path).expect("Failed to delete mod from filesystem");
+                    self.garbage_collect();
+                } else {
+                    log::error!("Cannot delete built-in module");
                 }
             }
         }
     }
 
-    pub fn apply_map_event(
+    pub fn apply_map_event(&mut self, cx: &mut EventContext, map: Option<MapID>, event: &MapEvent) {
+        let map = if let Some(map) = map.or_else(|| self.current_map_id()) {
+            map
+        } else {
+            return;
+        };
+        let state = if let Some(state) = self.loaded_maps.get_mut(&map) {
+            state
+        } else {
+            log::error!("Internal error: event referring to unloaded map");
+            return;
+        };
+
+        match event {
+            MapEvent::Action { event, merge_phase } => {
+                if let Some(event) = event.borrow_mut().take() {
+                    match Self::apply_map_action(cx, &mut state.map, event) {
+                        Ok(undo) => {
+                            cx.needs_redraw();
+                            state.map.dirty = true;
+                            if state.undo_buffer.len() == UNDO_BUFFER_SIZE {
+                                state.undo_buffer.pop_front();
+                            }
+                            if state.undo_buffer.back().is_none()
+                                || state.event_phase != *merge_phase
+                            {
+                                state.undo_buffer.push_back(undo);
+                            }
+                            state.event_phase = *merge_phase;
+                            state.redo_buffer.clear();
+                        }
+                        Err(e) => {
+                            log::error!("Internal error: map event: {}", e);
+                        }
+                    }
+                } else {
+                    log::error!("Internal error: MapAction being applied twice?");
+                }
+            }
+            MapEvent::Undo => {
+                if let Some(event) = state.undo_buffer.pop_back() {
+                    match Self::apply_map_action(cx, &mut state.map, event) {
+                        Ok(opposite) => {
+                            cx.needs_redraw();
+                            state.map.dirty = true;
+                            state.redo_buffer.push_back(opposite);
+                            state.event_phase = EventPhase::null();
+                        }
+                        Err(e) => {
+                            log::error!("Internal error: Failed to undo: {}", e);
+                        }
+                    }
+                }
+            }
+            MapEvent::Redo => {
+                if let Some(event) = state.redo_buffer.pop_back() {
+                    match Self::apply_map_action(cx, &mut state.map, event) {
+                        Ok(opposite) => {
+                            cx.needs_redraw();
+                            state.map.dirty = true;
+                            state.undo_buffer.push_back(opposite);
+                            state.event_phase = EventPhase::null();
+                        }
+                        Err(e) => {
+                            log::error!("Internal error: Failed to redo: {}", e);
+                        }
+                    }
+                }
+            }
+            MapEvent::Save => {
+                let state = self.loaded_maps.get(&map).unwrap();
+                match save(self, &state.path, &state.map) {
+                    Ok(_) => self.loaded_maps.get_mut(&map).unwrap().map.dirty = false,
+                    Err(e) => log::error!("Failed to save: {}", e),
+                }
+            }
+        }
+    }
+
+    pub fn apply_map_action(
         cx: &mut EventContext,
         map: &mut CelesteMap,
-        event: MapEvent,
-    ) -> Result<MapEvent, String> {
+        event: MapAction,
+    ) -> Result<MapAction, String> {
         match event {
-            MapEvent::Batched { events } => Ok(MapEvent::Batched {
+            MapAction::Batched { events } => Ok(MapAction::Batched {
                 events: events
                     .into_iter()
-                    .map(|ev| Self::apply_map_event(cx, map, ev))
-                    .collect::<Result<Vec<MapEvent>, String>>()?,
+                    .map(|ev| Self::apply_map_action(cx, map, ev))
+                    .collect::<Result<Vec<MapAction>, String>>()?,
             }),
-            MapEvent::AddStyleground { loc, style } => {
+            MapAction::AddStyleground { loc, style } => {
                 let vec = map.styles_mut(loc.fg);
                 if loc.idx <= vec.len() {
                     vec.insert(loc.idx, *style);
-                    Ok(MapEvent::RemoveStyleground { loc })
+                    Ok(MapAction::RemoveStyleground { loc })
                 } else {
                     Err("Out of range".to_owned())
                 }
             }
-            MapEvent::UpdateStyleground { loc, mut style } => {
+            MapAction::UpdateStyleground { loc, mut style } => {
                 if let Some(style_ref) = map.styles_mut(loc.fg).get_mut(loc.idx) {
                     std::mem::swap(style_ref, &mut style);
-                    Ok(MapEvent::UpdateStyleground { loc, style })
+                    Ok(MapAction::UpdateStyleground { loc, style })
                 } else {
                     Err("Out of range".to_owned())
                 }
             }
-            MapEvent::RemoveStyleground { loc } => {
+            MapAction::RemoveStyleground { loc } => {
                 let vec = map.styles_mut(loc.fg);
                 if loc.idx < vec.len() {
                     let style = vec.remove(loc.idx);
-                    Ok(MapEvent::AddStyleground {
+                    Ok(MapAction::AddStyleground {
                         loc,
                         style: Box::new(style),
                     })
@@ -1183,7 +1246,7 @@ impl AppState {
                     Err("Out of range".to_owned())
                 }
             }
-            MapEvent::MoveStyleground { loc, target } => {
+            MapAction::MoveStyleground { loc, target } => {
                 let vec = map.styles_mut(loc.fg);
                 if loc.idx < vec.len() {
                     let style = vec.remove(loc.idx);
@@ -1191,7 +1254,7 @@ impl AppState {
                     let real_target = if target.idx <= vec.len() { target } else { loc };
                     let vec = map.styles_mut(real_target.fg);
                     vec.insert(real_target.idx, style);
-                    Ok(MapEvent::MoveStyleground {
+                    Ok(MapAction::MoveStyleground {
                         loc: real_target,
                         target: loc,
                     })
@@ -1199,7 +1262,7 @@ impl AppState {
                     Err("Out of range".to_owned())
                 }
             }
-            MapEvent::AddRoom {
+            MapAction::AddRoom {
                 idx,
                 mut room,
                 selectme,
@@ -1217,15 +1280,15 @@ impl AppState {
                         );
                     }
 
-                    Ok(MapEvent::DeleteRoom { idx })
+                    Ok(MapAction::DeleteRoom { idx })
                 } else {
                     Err("Out of range".to_owned())
                 }
             }
-            MapEvent::DeleteRoom { idx } => {
+            MapAction::DeleteRoom { idx } => {
                 if idx <= map.levels.len() {
                     let room = map.levels.remove(idx);
-                    Ok(MapEvent::AddRoom {
+                    Ok(MapAction::AddRoom {
                         idx: Some(idx),
                         room: Box::new(room),
                         selectme: false,
@@ -1234,10 +1297,10 @@ impl AppState {
                     Err("Out of range".to_owned())
                 }
             }
-            MapEvent::RoomEvent { idx, event } => {
+            MapAction::RoomAction { idx, event } => {
                 if let Some(room) = map.levels.get_mut(idx) {
                     room.cache.borrow_mut().render_cache_valid = false;
-                    Ok(MapEvent::RoomEvent {
+                    Ok(MapAction::RoomAction {
                         idx,
                         event: Self::apply_room_event(cx, room, event)?,
                     })
@@ -1251,14 +1314,14 @@ impl AppState {
     fn apply_room_event(
         cx: &mut EventContext,
         room: &mut CelesteMapLevel,
-        event: RoomEvent,
-    ) -> Result<RoomEvent, String> {
+        event: RoomAction,
+    ) -> Result<RoomAction, String> {
         match event {
-            RoomEvent::UpdateRoomMisc { mut update } => {
+            RoomAction::UpdateRoomMisc { mut update } => {
                 room.apply(&mut update);
-                Ok(RoomEvent::UpdateRoomMisc { update })
+                Ok(RoomAction::UpdateRoomMisc { update })
             }
-            RoomEvent::MoveRoom { mut bounds } => {
+            RoomAction::MoveRoom { mut bounds } => {
                 if room.bounds.size != bounds.size {
                     room.solids.resize((bounds.size / 8).cast_unit(), '0');
                     room.bg.resize((bounds.size / 8).cast_unit(), '0');
@@ -1266,22 +1329,22 @@ impl AppState {
                     room.cache.borrow_mut().render_cache = None;
                 }
                 std::mem::swap(&mut room.bounds, &mut bounds);
-                Ok(RoomEvent::MoveRoom { bounds })
+                Ok(RoomAction::MoveRoom { bounds })
             }
-            RoomEvent::TileUpdate {
+            RoomAction::TileUpdate {
                 fg,
                 offset,
                 mut data,
             } => {
                 let target = if fg { &mut room.solids } else { &mut room.bg };
                 apply_tiles(&offset, &mut data, target, '\0');
-                Ok(RoomEvent::TileUpdate { fg, offset, data })
+                Ok(RoomAction::TileUpdate { fg, offset, data })
             }
-            RoomEvent::ObjectTileUpdate { offset, mut data } => {
+            RoomAction::ObjectTileUpdate { offset, mut data } => {
                 apply_tiles(&offset, &mut data, &mut room.object_tiles, -2);
-                Ok(RoomEvent::ObjectTileUpdate { offset, data })
+                Ok(RoomAction::ObjectTileUpdate { offset, data })
             }
-            RoomEvent::EntityAdd {
+            RoomAction::EntityAdd {
                 mut entity,
                 trigger,
                 selectme,
@@ -1307,20 +1370,20 @@ impl AppState {
                             .propagate(Propagation::Subtree),
                     );
                 }
-                Ok(RoomEvent::EntityRemove { id, trigger })
+                Ok(RoomAction::EntityRemove { id, trigger })
             }
-            RoomEvent::EntityUpdate {
+            RoomAction::EntityUpdate {
                 mut entity,
                 trigger,
             } => {
                 if let Some(e) = room.entity_mut(entity.id, trigger) {
                     std::mem::swap(e, &mut entity);
-                    Ok(RoomEvent::EntityUpdate { entity, trigger })
+                    Ok(RoomAction::EntityUpdate { entity, trigger })
                 } else {
                     Err("No such entity".to_owned())
                 }
             }
-            RoomEvent::EntityRemove { id, trigger } => {
+            RoomAction::EntityRemove { id, trigger } => {
                 let entities = if trigger {
                     &mut room.triggers
                 } else {
@@ -1329,7 +1392,7 @@ impl AppState {
                 for (idx, entity) in entities.iter_mut().enumerate() {
                     if entity.id == id {
                         let entity = entities.remove(idx);
-                        return Ok(RoomEvent::EntityAdd {
+                        return Ok(RoomAction::EntityAdd {
                             entity: Box::new(entity),
                             trigger,
                             selectme: false,
@@ -1338,15 +1401,8 @@ impl AppState {
                     }
                 }
                 Err("No such entity".to_owned())
-                // while i < entities.len() {
-                //     if entities[i].id == *id {
-                //         entities.remove(i);
-                //     } else {
-                //         i += 1;
-                //     }
-                // }
             }
-            RoomEvent::DecalAdd {
+            RoomAction::DecalAdd {
                 fg,
                 mut decal,
                 selectme,
@@ -1373,17 +1429,17 @@ impl AppState {
                             .propagate(Propagation::Subtree),
                     );
                 }
-                Ok(RoomEvent::DecalRemove { fg, id })
+                Ok(RoomAction::DecalRemove { fg, id })
             }
-            RoomEvent::DecalUpdate { fg, mut decal } => {
+            RoomAction::DecalUpdate { fg, mut decal } => {
                 if let Some(decal_dest) = room.decal_mut(decal.id, fg) {
                     std::mem::swap(decal_dest, &mut decal);
-                    Ok(RoomEvent::DecalUpdate { fg, decal })
+                    Ok(RoomAction::DecalUpdate { fg, decal })
                 } else {
                     Err("No such decal".to_owned())
                 }
             }
-            RoomEvent::DecalRemove { fg, id } => {
+            RoomAction::DecalRemove { fg, id } => {
                 // tfw drain_filter is unstable
                 let decals = if fg {
                     &mut room.fg_decals
@@ -1393,7 +1449,7 @@ impl AppState {
                 for (idx, decal) in decals.iter_mut().enumerate() {
                     if decal.id == id {
                         let decal = decals.remove(idx);
-                        return Ok(RoomEvent::DecalAdd {
+                        return Ok(RoomAction::DecalAdd {
                             fg,
                             decal: Box::new(decal),
                             selectme: false,
@@ -1402,14 +1458,6 @@ impl AppState {
                     }
                 }
                 Err("No such decal".to_owned())
-                // while i < decals.len() {
-                //     if decals[i].id == *id {
-                //         decals.remove(i);
-                //         any = true;
-                //     } else {
-                //         i += 1;
-                //     }
-                // }
             }
         }
     }
@@ -1429,13 +1477,13 @@ impl AppState {
                     AppTab::ProjectOverview(project) => self.modules.contains_key(project),
                     AppTab::Map(maptab) => self
                         .modules
-                        .contains_key(&self.loaded_maps_id_to_path.get(&maptab.id).unwrap().module),
+                        .contains_key(&self.loaded_maps.get(&maptab.id).unwrap().path.module),
                     _ => true,
                 }
             };
 
             let result = closure(idx, tab);
-            if !result && self.current_tab > idx {
+            if !result && self.current_tab >= idx {
                 current_delta += 1;
             }
             idx += 1;
@@ -1456,67 +1504,60 @@ impl AppState {
             }
         }
         self.loaded_maps.retain(|id, _| open_maps.contains(id));
-        self.loaded_maps_path_to_id
+        self.loaded_maps_lookup
             .retain(|_, id| open_maps.contains(id));
-        self.loaded_maps_id_to_path
-            .retain(|id, _| open_maps.contains(id));
-        self.loaded_maps_undo_buffer
-            .retain(|id, _| open_maps.contains(id));
-        self.loaded_maps_redo_buffer
-            .retain(|id, _| open_maps.contains(id));
-        self.loaded_maps_event_phase
-            .retain(|id, _| open_maps.contains(id));
-        self.palettes.retain(|id, _| open_maps.contains(id));
     }
 
-    pub fn map_event(&self, event: MapEvent, merge_phase: EventPhase) -> AppEvent {
+    pub fn map_action(&self, event: MapAction, merge_phase: EventPhase) -> AppEvent {
         AppEvent::MapEvent {
-            map: self.map_tab_unwrap().id,
-            merge_phase,
-            event: RefCell::new(Some(event)),
+            map: Some(self.map_tab_unwrap().id),
+            event: MapEvent::Action {
+                merge_phase,
+                event: RefCell::new(Some(event)),
+            },
         }
     }
 
-    pub fn map_event_unique(&self, event: MapEvent) -> AppEvent {
-        self.map_event(event, EventPhase::new())
+    pub fn map_action_unique(&self, event: MapAction) -> AppEvent {
+        self.map_action(event, EventPhase::new())
     }
 
-    pub fn room_event(&self, event: RoomEvent, merge_phase: EventPhase) -> AppEvent {
-        self.room_event_explicit(event, merge_phase, self.map_tab_unwrap().current_room)
+    pub fn room_action(&self, event: RoomAction, merge_phase: EventPhase) -> AppEvent {
+        self.room_action_explicit(event, merge_phase, self.map_tab_unwrap().current_room)
     }
 
-    pub fn room_event_explicit(
+    pub fn room_action_explicit(
         &self,
-        event: RoomEvent,
+        event: RoomAction,
         merge_phase: EventPhase,
         room: usize,
     ) -> AppEvent {
-        self.map_event(MapEvent::RoomEvent { idx: room, event }, merge_phase)
+        self.map_action(MapAction::RoomAction { idx: room, event }, merge_phase)
     }
 
-    // pub fn room_event_unique(&self, event: RoomEvent) -> AppEvent {
-    //     self.room_event(event, EventPhase::new())
+    // pub fn room_event_unique(&self, event: RoomAction) -> AppEvent {
+    //     self.room_action(event, EventPhase::new())
     // }
 
-    // pub fn room_event_unique_explicit(&self, event: RoomEvent, room: usize) -> AppEvent {
-    //     self.room_event_explicit(event, EventPhase::new(), room)
+    // pub fn room_event_unique_explicit(&self, event: RoomAction, room: usize) -> AppEvent {
+    //     self.room_action_explicit(event, EventPhase::new(), room)
     // }
 
-    pub fn batch_event(
+    pub fn batch_action(
         &self,
-        events: impl IntoIterator<Item = MapEvent>,
+        events: impl IntoIterator<Item = MapAction>,
         merge_phase: EventPhase,
     ) -> AppEvent {
-        self.map_event(
-            MapEvent::Batched {
+        self.map_action(
+            MapAction::Batched {
                 events: events.into_iter().collect(),
             },
             merge_phase,
         )
     }
 
-    pub fn batch_event_unique(&self, events: impl IntoIterator<Item = MapEvent>) -> AppEvent {
-        self.batch_event(events, EventPhase::new())
+    pub fn batch_action_unique(&self, events: impl IntoIterator<Item = MapAction>) -> AppEvent {
+        self.batch_action(events, EventPhase::new())
     }
 }
 
@@ -1550,7 +1591,7 @@ pub fn apply_tiles<T: Copy + Eq>(
 
 pub fn trigger_module_load(cx: &mut EventContext, path: PathBuf) {
     cx.spawn(move |cx| {
-        let mut result = InternedMap::new();
+        let mut result = HashMap::new();
         discovery::load_all(&path, &mut result, |p, s| {
             cx.emit(AppEvent::Progress {
                 progress: Progress {
@@ -1575,18 +1616,13 @@ pub fn trigger_module_load(cx: &mut EventContext, path: PathBuf) {
 }
 
 pub fn trigger_palette_update(
-    palettes: &mut HashMap<MapID, ModuleAggregate>,
-    modules: &InternedMap<CelesteModule>,
-    maps: &HashMap<MapID, CelesteMap>,
-    map_paths: &HashMap<MapID, MapPath>,
+    modules: &HashMap<ModuleID, CelesteModule>,
+    modules_lookup: &HashMap<String, ModuleID>,
+    maps: &mut HashMap<MapID, MapState>,
 ) -> ModuleAggregate {
-    for (id, pal) in palettes.iter_mut() {
-        *pal = ModuleAggregate::new(
-            modules,
-            maps.get(id).unwrap(),
-            map_paths.get(id).unwrap().module,
-            true,
-        );
+    for state in maps.values_mut() {
+        state.palette =
+            ModuleAggregate::new(modules, modules_lookup, &state.map, state.path.module, true);
     }
     // discard logs here
     ModuleAggregate::new_omni(modules, false)
@@ -1634,6 +1670,98 @@ fn load_map(module_root: &Path, sid: &str) -> Option<CelesteMap> {
                 .show()
                 .unwrap();
             None
+        }
+    }
+}
+
+fn save(app: &AppState, path: &MapPath, map: &CelesteMap) -> Result<(), io::Error> {
+    let module = app.modules.get(&path.module).unwrap();
+    if !matches!(module.module_kind(), CelesteModuleKind::Directory) {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Can only save maps loaded from unpacked mods",
+        ));
+    }
+
+    if let Some(root) = &module.filesystem_root {
+        if root.is_dir() {
+            return save_as(
+                map,
+                &root
+                    .join("Maps")
+                    .join(path.sid.clone())
+                    .with_extension("bin"),
+            );
+        }
+    }
+
+    Err(io::Error::new(
+        io::ErrorKind::Other,
+        "Can only save to mods loaded from directories",
+    ))
+}
+
+pub fn save_as(map: &CelesteMap, path: &Path) -> Result<(), io::Error> {
+    save_to(map, &mut io::BufWriter::new(std::fs::File::create(path)?))
+}
+
+pub fn save_to<W: io::Write>(map: &CelesteMap, writer: &mut W) -> Result<(), io::Error> {
+    let binel: BinEl = map.to_binel();
+    let file = BinFile {
+        root: binel,
+        package: "is this field used? please tell me if it's used".to_string(),
+    };
+
+    celeste::binel::writer::put_file(writer, &file)
+}
+
+fn build_modules_lookup(modules: &HashMap<ModuleID, CelesteModule>) -> HashMap<String, ModuleID> {
+    let mut result = HashMap::new();
+    for (id, module) in modules.iter() {
+        step_modules_lookup(&mut result, modules, *id, module);
+    }
+    result
+}
+
+fn step_modules_lookup(
+    lookup: &mut HashMap<String, ModuleID>,
+    modules: &HashMap<ModuleID, CelesteModule>,
+    id: ModuleID,
+    module: &CelesteModule,
+) {
+    match lookup.entry(module.everest_metadata.name.clone()) {
+        Entry::Occupied(mut e) => {
+            let path_existing = modules.get(e.get()).unwrap().filesystem_root.as_ref();
+            let path_new = module.filesystem_root.as_ref();
+            let ext_existing = path_existing
+                .map(|root| root.extension().unwrap_or_else(|| OsStr::new("")))
+                .and_then(|ext| ext.to_str());
+            let ext_new = path_new
+                .map(|root| root.extension().unwrap_or_else(|| OsStr::new("")))
+                .and_then(|ext| ext.to_str());
+            if ext_existing == Some("zip") && ext_new == Some("") {
+                log::info!(
+                    "Conflict between {} and {}, picked latter",
+                    path_existing.map_or(Cow::from("<builtin>"), |r| r.to_string_lossy()),
+                    path_new.map_or(Cow::from("<builtin>"), |r| r.to_string_lossy()),
+                );
+                e.insert(id);
+            } else if ext_existing == Some("") && ext_new == Some("zip") {
+                log::info!(
+                    "Conflict between {} and {}, picked former",
+                    path_existing.map_or(Cow::from("<builtin>"), |r| r.to_string_lossy()),
+                    path_new.map_or(Cow::from("<builtin>"), |r| r.to_string_lossy()),
+                );
+            } else {
+                log::warn!(
+                    "Conflict between {} and {}, picked latter",
+                    path_existing.map_or(Cow::from("<builtin>"), |r| r.to_string_lossy()),
+                    path_new.map_or(Cow::from("<builtin>"), |r| r.to_string_lossy()),
+                );
+            }
+        }
+        Entry::Vacant(v) => {
+            v.insert(id);
         }
     }
 }

@@ -4,7 +4,7 @@ use vizia::vg;
 
 use crate::app_state::{
     AppEvent, AppInRoomSelectable, AppInternalEvent, AppSelectable, AppSelection, AppState,
-    EventPhase, Layer, MapEvent, RoomEvent,
+    EventPhase, Layer, MapAction, RoomAction,
 };
 use crate::autotiler::{TextureTile, TileReference};
 use crate::map_struct::{CelesteMapLevel, Node};
@@ -115,7 +115,7 @@ impl ResizeSide {
     }
 }
 
-pub struct AppEventStaging(Vec<AppEvent>, Vec<MapEvent>, Vec<RoomEvent>);
+pub struct AppEventStaging(Vec<AppEvent>, Vec<MapAction>, Vec<RoomAction>);
 
 #[allow(unused)] // this guy is in a trial period. if we like it we might move it to app_state
 impl AppEventStaging {
@@ -133,22 +133,22 @@ impl AppEventStaging {
         self.0.push(event);
     }
 
-    pub fn push_map(&mut self, event: MapEvent) {
+    pub fn push_map(&mut self, event: MapAction) {
         self.1.push(event);
     }
 
-    pub fn push_room(&mut self, event: RoomEvent) {
+    pub fn push_room(&mut self, event: RoomAction) {
         self.2.push(event);
     }
 
     pub fn finalize(mut self, app: &AppState, draw_phase: EventPhase) -> Vec<AppEvent> {
         self.1
-            .extend(self.2.into_iter().map(|r| MapEvent::RoomEvent {
+            .extend(self.2.into_iter().map(|r| MapAction::RoomAction {
                 idx: app.map_tab_unwrap().current_room,
                 event: r,
             }));
         if !self.1.is_empty() {
-            self.0.push(app.batch_event(self.1, draw_phase));
+            self.0.push(app.batch_action(self.1, draw_phase));
         }
         self.0
     }
@@ -814,21 +814,21 @@ impl SelectionTool {
         self.current_selection.clear();
         let mut result = self.notify_selection(app);
         if let Some((offset, data)) = self.fg_float.take() {
-            result.push_room(RoomEvent::TileUpdate {
+            result.push_room(RoomAction::TileUpdate {
                 fg: true,
                 offset,
                 data,
             });
         }
         if let Some((offset, data)) = self.bg_float.take() {
-            result.push_room(RoomEvent::TileUpdate {
+            result.push_room(RoomAction::TileUpdate {
                 fg: false,
                 offset,
                 data,
             });
         }
         if let Some((offset, data)) = self.obj_float.take() {
-            result.push_room(RoomEvent::ObjectTileUpdate { offset, data })
+            result.push_room(RoomAction::ObjectTileUpdate { offset, data })
         }
         result
     }
@@ -911,7 +911,7 @@ impl SelectionTool {
                         let new = base + nudge;
                         decal.x = new.x;
                         decal.y = new.y;
-                        result.push_room(RoomEvent::DecalUpdate {
+                        result.push_room(RoomAction::DecalUpdate {
                             fg: *fg,
                             decal: Box::new(decal),
                         });
@@ -921,13 +921,13 @@ impl SelectionTool {
         }
 
         for entity in entity_updates.into_values() {
-            result.push_room(RoomEvent::EntityUpdate {
+            result.push_room(RoomAction::EntityUpdate {
                 entity: Box::new(entity),
                 trigger: false,
             });
         }
         for entity in trigger_updates.into_values() {
-            result.push_room(RoomEvent::EntityUpdate {
+            result.push_room(RoomAction::EntityUpdate {
                 entity: Box::new(entity),
                 trigger: true,
             });
@@ -1003,7 +1003,7 @@ impl SelectionTool {
                     e.y = new_rect.origin.y;
                     e.width = new_rect.size.width.max(config.minimum_size_x as i32) as u32;
                     e.height = new_rect.size.height.max(config.minimum_size_y as i32) as u32;
-                    result.push_room(RoomEvent::EntityUpdate {
+                    result.push_room(RoomAction::EntityUpdate {
                         entity: Box::new(e),
                         trigger: *trigger,
                     });
@@ -1039,7 +1039,7 @@ impl SelectionTool {
                         d.y = new_rect.center().y;
                         d.scale_x = new_stretch.x;
                         d.scale_y = new_stretch.y;
-                        result.push_room(RoomEvent::DecalUpdate {
+                        result.push_room(RoomAction::DecalUpdate {
                             fg: *fg,
                             decal: Box::new(d),
                         })
@@ -1060,7 +1060,7 @@ impl SelectionTool {
             match sel {
                 AppSelection::FgTile(pt) => {
                     add_to_float(&mut self.fg_float, pt, &room.solids, '\0');
-                    result.push_room(RoomEvent::TileUpdate {
+                    result.push_room(RoomAction::TileUpdate {
                         fg: true,
                         offset: pt,
                         data: TileGrid {
@@ -1073,7 +1073,7 @@ impl SelectionTool {
                 }
                 AppSelection::BgTile(pt) => {
                     add_to_float(&mut self.bg_float, pt, &room.bg, '\0');
-                    result.push_room(RoomEvent::TileUpdate {
+                    result.push_room(RoomAction::TileUpdate {
                         fg: false,
                         offset: pt,
                         data: TileGrid {
@@ -1086,7 +1086,7 @@ impl SelectionTool {
                 }
                 AppSelection::ObjectTile(pt) => {
                     add_to_float(&mut self.obj_float, pt, &room.object_tiles, -2);
-                    result.push_room(RoomEvent::ObjectTileUpdate {
+                    result.push_room(RoomAction::ObjectTileUpdate {
                         offset: pt,
                         data: TileGrid {
                             tiles: vec![-1],
@@ -1309,7 +1309,7 @@ impl SelectionTool {
                     unreachable!()
                 }
                 AppSelection::EntityBody(id, trigger) => {
-                    result.push_room(RoomEvent::EntityRemove {
+                    result.push_room(RoomAction::EntityRemove {
                         id: *id,
                         trigger: *trigger,
                     });
@@ -1331,7 +1331,7 @@ impl SelectionTool {
                     e.insert(node_idx);
                 }
                 AppSelection::Decal(id, fg) => {
-                    result.push_room(RoomEvent::DecalRemove { id: *id, fg: *fg });
+                    result.push_room(RoomAction::DecalRemove { id: *id, fg: *fg });
                 }
             }
         }
@@ -1345,7 +1345,7 @@ impl SelectionTool {
                             entity.nodes.remove(idx);
                         }
                     }
-                    result.push_room(RoomEvent::EntityUpdate {
+                    result.push_room(RoomAction::EntityUpdate {
                         entity: Box::new(entity),
                         trigger: false,
                     });
@@ -1362,7 +1362,7 @@ impl SelectionTool {
                             entity.nodes.remove(idx);
                         }
                     }
-                    result.push_room(RoomEvent::EntityUpdate {
+                    result.push_room(RoomAction::EntityUpdate {
                         entity: Box::new(entity),
                         trigger: true,
                     });
@@ -1514,7 +1514,7 @@ impl SelectionTool {
                         node.x += vector_tile_to_room(&offset).x;
                         node.y += vector_tile_to_room(&offset).y;
                     }
-                    result.push_room(RoomEvent::EntityAdd {
+                    result.push_room(RoomAction::EntityAdd {
                         entity: Box::new(entity),
                         trigger,
                         selectme: true,
@@ -1524,7 +1524,7 @@ impl SelectionTool {
                 AppInRoomSelectable::Decal(mut decal, fg) => {
                     decal.x += vector_tile_to_room(&offset).x;
                     decal.y += vector_tile_to_room(&offset).y;
-                    result.push_room(RoomEvent::DecalAdd {
+                    result.push_room(RoomAction::DecalAdd {
                         decal: Box::new(decal),
                         fg,
                         selectme: true,

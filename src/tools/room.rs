@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use vizia::prelude::*;
 use vizia::vg::{Color, Paint, Path};
 
-use crate::app_state::{AppInternalEvent, AppSelectable, EventPhase, MapEvent, RoomEvent};
+use crate::app_state::{AppInternalEvent, AppSelectable, EventPhase, MapAction, RoomAction};
 use crate::map_struct::{CelesteMap, CelesteMapLevel, MapID};
 use crate::tools::selection::ResizeSide;
 use crate::tools::{generic_nav, Tool};
@@ -78,7 +78,7 @@ impl Tool for RoomTool {
                         pointer_reference_point,
                         ..
                     }) => {
-                        vec![app.batch_event(
+                        vec![app.batch_action(
                             self.resize(map, map_pos - pointer_reference_point),
                             self.draw_phase,
                         )]
@@ -144,7 +144,7 @@ impl Tool for RoomTool {
                         selection_reference_points: HashMap::from([(map.levels.len(), map_pos)]),
                     });
                     let mut events = self.notify_selection(app);
-                    events.push(app.map_event_unique(MapEvent::AddRoom {
+                    events.push(app.map_action_unique(MapAction::AddRoom {
                         idx: None,
                         room: Box::new(result),
                         selectme: false,
@@ -290,8 +290,8 @@ impl Tool for RoomTool {
         {
             let mut path = Path::new();
             for fake_event in self.resize(map, map_pos - pointer_reference_point) {
-                if let MapEvent::RoomEvent {
-                    event: RoomEvent::MoveRoom { bounds, .. },
+                if let MapAction::RoomAction {
+                    event: RoomAction::MoveRoom { bounds, .. },
                     ..
                 } = fake_event
                 {
@@ -373,18 +373,18 @@ impl RoomTool {
             let base = dragging
                 .map(|d| d.selection_reference_points[room])
                 .unwrap_or_else(|| map.levels[*room].bounds.origin);
-            events.push(MapEvent::RoomEvent {
-                event: RoomEvent::MoveRoom {
+            events.push(MapAction::RoomAction {
+                event: RoomAction::MoveRoom {
                     bounds: MapRectStrict::new(base + nudge, map.levels[*room].bounds.size),
                 },
                 idx: *room,
             });
         }
 
-        vec![app.batch_event(events, self.draw_phase)]
+        vec![app.batch_action(events, self.draw_phase)]
     }
 
-    fn resize(&self, map: &CelesteMap, resize: MapVectorStrict) -> Vec<MapEvent> {
+    fn resize(&self, map: &CelesteMap, resize: MapVectorStrict) -> Vec<MapAction> {
         let dragging = if let SelectionStatus::Resizing(dragging) = &self.status {
             Some(dragging)
         } else {
@@ -428,8 +428,8 @@ impl RoomTool {
             );
             new_rect.size.width = new_rect.size.width.max(8);
             new_rect.size.height = new_rect.size.height.max(8);
-            events.push(MapEvent::RoomEvent {
-                event: RoomEvent::MoveRoom { bounds: new_rect },
+            events.push(MapAction::RoomAction {
+                event: RoomAction::MoveRoom { bounds: new_rect },
                 idx: *room,
             });
         }
@@ -493,7 +493,7 @@ impl RoomTool {
         let phase = EventPhase::new();
         self.current_selection
             .iter()
-            .map(|idx| app.map_event(MapEvent::DeleteRoom { idx: *idx }, phase))
+            .map(|idx| app.map_action(MapAction::DeleteRoom { idx: *idx }, phase))
             .collect()
     }
 
@@ -506,7 +506,7 @@ impl RoomTool {
             contents: serde_yaml::to_string(&AppSelectable::Rooms(
                 self.current_selection
                     .iter()
-                    .map(|roomid| map.levels.get(*roomid).unwrap().clone())
+                    .map(|roomid| map.map.levels.get(*roomid).unwrap().clone())
                     .collect(),
             ))
             .unwrap(),
@@ -542,18 +542,16 @@ impl RoomTool {
         );
         let offset = real_center - center;
         result.push(
-            app.batch_event_unique(
-                clipboard_data
-                    .into_iter()
-                    .map(|mut room| MapEvent::AddRoom {
-                        idx: None,
-                        room: Box::new({
-                            room.bounds.origin += offset;
-                            room
-                        }),
-                        selectme: true,
+            app.batch_action_unique(clipboard_data.into_iter().map(|mut room| {
+                MapAction::AddRoom {
+                    idx: None,
+                    room: Box::new({
+                        room.bounds.origin += offset;
+                        room
                     }),
-            ),
+                    selectme: true,
+                }
+            })),
         );
         result
     }

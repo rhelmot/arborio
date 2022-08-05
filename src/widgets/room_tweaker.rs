@@ -1,13 +1,12 @@
-use std::cell::RefCell;
 use vizia::prelude::*;
 
 use super::common::*;
-use crate::app_state::{EventPhase, MapEvent, RoomEvent};
+use crate::app_state::{EventPhase, RoomAction};
 use crate::lenses::{
     CurrentRoomLens, RectHLens, RectWLens, RectXLens, RectYLens, RoomTweakerScopeLens,
 };
 use crate::map_struct::{CelesteMapLevel, CelesteMapLevelUpdate};
-use crate::{AppEvent, AppState, AppTab};
+use crate::{AppState, AppTab};
 
 pub struct RoomTweakerWidget {}
 
@@ -74,7 +73,7 @@ impl RoomTweakerWidget {
                 } else {
                     panic!()
                 };
-                let map = app.loaded_maps.get(&maptab.id).unwrap();
+                let map = &app.loaded_maps.get(&maptab.id).unwrap().map;
                 if map
                     .levels
                     .iter()
@@ -212,17 +211,13 @@ impl View for RoomTweakerWidget {
 fn emit(cx: &mut EventContext, update: CelesteMapLevelUpdate) {
     let app = cx.data::<AppState>().unwrap();
     let tab = app.map_tab_unwrap();
-    let event = AppEvent::MapEvent {
-        map: tab.id,
-        event: RefCell::new(Some(MapEvent::RoomEvent {
-            idx: tab.current_room,
-            event: RoomEvent::UpdateRoomMisc {
-                update: Box::new(update),
-            },
-        })),
-        merge_phase: EventPhase::new(), // TODO proper batching
-    };
-    cx.emit(event);
+    cx.emit(tab.id.room_action(
+        tab.current_room,
+        EventPhase::new(),
+        RoomAction::UpdateRoomMisc {
+            update: Box::new(update),
+        },
+    )); // TODO batch correctly
 }
 
 fn emit_bounds(
@@ -234,7 +229,7 @@ fn emit_bounds(
 ) {
     let app = cx.data::<AppState>().unwrap();
     let tab = app.map_tab_unwrap();
-    let mut bounds = app.loaded_maps.get(&tab.id).unwrap().levels[tab.current_room].bounds;
+    let mut bounds = app.loaded_maps.get(&tab.id).unwrap().map.levels[tab.current_room].bounds;
     if let Some(x) = update_x {
         bounds.origin.x = x;
     }
@@ -247,13 +242,9 @@ fn emit_bounds(
     if let Some(h) = update_h {
         bounds.size.height = h;
     }
-    let event = AppEvent::MapEvent {
-        map: tab.id,
-        event: RefCell::new(Some(MapEvent::RoomEvent {
-            idx: tab.current_room,
-            event: RoomEvent::MoveRoom { bounds },
-        })),
-        merge_phase: EventPhase::new(), // TODO proper batching
-    };
-    cx.emit(event);
+    cx.emit(tab.id.room_action(
+        tab.current_room,
+        EventPhase::new(),
+        RoomAction::MoveRoom { bounds },
+    )); // TODO batch correctly
 }

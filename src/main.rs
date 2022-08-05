@@ -16,21 +16,12 @@ mod tools;
 mod units;
 mod widgets;
 
-use celeste::binel::{BinEl, BinFile};
-use dialog::DialogBox;
 use std::error::Error;
-use std::path::Path;
-use std::{fs, io};
 use vizia::prelude::*;
 
-use crate::app_state::{AppEvent, AppState, AppTab, Layer};
-use crate::celeste_mod::aggregate::ModuleAggregate;
-use crate::from_binel::TryFromBinEl;
+use crate::app_state::{AppEvent, AppState, AppTab, MapEvent};
 use crate::lenses::{CurrentTabImplLens, IsFailedLens};
-use crate::map_struct::{CelesteMap, MapPath};
 use crate::widgets::tabs::{build_tab_bar, build_tabs};
-use widgets::entity_tweaker::EntityTweakerWidget;
-use widgets::list_palette::PaletteWidget;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let icon_img = image::load_from_memory(include_bytes!("../img/icon.png")).unwrap();
@@ -38,21 +29,26 @@ fn main() -> Result<(), Box<dyn Error>> {
     let app = Application::new(|cx| {
         app_state::AppState::new().build(cx);
         cx.add_global_listener(|cx, event| {
-            event.map(|window_event, _| {
-                let app = cx.data::<AppState>().unwrap();
-                match window_event {
-                    WindowEvent::KeyDown(Code::KeyZ, _) if cx.modifiers == &Modifiers::CTRL => {
-                        if let Some(AppTab::Map(maptab)) = app.tabs.get(app.current_tab) {
-                            cx.emit(AppEvent::Undo { map: maptab.id });
-                        }
-                    }
-                    WindowEvent::KeyDown(Code::KeyY, _) if cx.modifiers == &Modifiers::CTRL => {
-                        if let Some(AppTab::Map(maptab)) = app.tabs.get(app.current_tab) {
-                            cx.emit(AppEvent::Redo { map: maptab.id });
-                        }
-                    }
-                    _ => {}
+            event.map(|window_event, _| match window_event {
+                WindowEvent::KeyDown(Code::KeyZ, _) if cx.modifiers == &Modifiers::CTRL => {
+                    cx.emit(AppEvent::MapEvent {
+                        map: None,
+                        event: MapEvent::Undo,
+                    });
                 }
+                WindowEvent::KeyDown(Code::KeyY, _) if cx.modifiers == &Modifiers::CTRL => {
+                    cx.emit(AppEvent::MapEvent {
+                        map: None,
+                        event: MapEvent::Redo,
+                    });
+                }
+                WindowEvent::KeyDown(Code::KeyS, _) if cx.modifiers == &Modifiers::CTRL => {
+                    cx.emit(AppEvent::MapEvent {
+                        map: None,
+                        event: MapEvent::Save,
+                    });
+                }
+                _ => {}
             });
         });
         log::info!("Hello world!");
@@ -100,33 +96,60 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn is_map() -> impl Lens<Target = bool> {
+    IsFailedLens::new(CurrentTabImplLens {}.then(AppTab::map)).map(|b| !b)
+}
+
 fn build_menu_bar(cx: &mut Context) {
-    let lens = CurrentTabImplLens {};
     Menu::new(
         cx,
         |cx| Label::new(cx, "File"),
-        move |cx| {
+        |cx| {
             MenuButton::new(
                 cx,
                 move |cx| {
-                    Label::new(cx, "Save");
+                    Label::new(cx, "Save Map");
                 },
                 move |cx| {
-                    let app = cx.data::<AppState>().unwrap();
-                    let map = app.current_map_ref().unwrap();
-                    let path = app
-                        .loaded_maps_id_to_path
-                        .get(&app.map_tab_unwrap().id)
-                        .unwrap();
-                    save(app, path, map).unwrap_or_else(|err| {
-                        dialog::Message::new(err.to_string())
-                            .title("Failed to save")
-                            .show()
-                            .unwrap()
+                    cx.emit(AppEvent::MapEvent {
+                        map: None,
+                        event: MapEvent::Save,
                     });
                 },
             )
-            .display(IsFailedLens::new(lens.then(AppTab::map)).map(|b| !b));
+            .display(is_map());
+        },
+    );
+    Menu::new(
+        cx,
+        |cx| Label::new(cx, "Edit"),
+        |cx| {
+            MenuButton::new(
+                cx,
+                move |cx| {
+                    Label::new(cx, "Undo");
+                },
+                move |cx| {
+                    cx.emit(AppEvent::MapEvent {
+                        map: None,
+                        event: MapEvent::Undo,
+                    });
+                },
+            )
+            .display(is_map());
+            MenuButton::new(
+                cx,
+                move |cx| {
+                    Label::new(cx, "Redo");
+                },
+                move |cx| {
+                    cx.emit(AppEvent::MapEvent {
+                        map: None,
+                        event: MapEvent::Redo,
+                    });
+                },
+            )
+            .display(is_map());
         },
     );
     Menu::new(
@@ -162,45 +185,4 @@ fn build_menu_bar(cx: &mut Context) {
             );
         },
     );
-}
-
-fn save(app: &AppState, path: &MapPath, map: &CelesteMap) -> Result<(), io::Error> {
-    let module = app.modules.get(&path.module).unwrap();
-    if *module.everest_metadata.name == "Celeste" {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            "Cannot overwrite Celeste files",
-        ));
-    }
-
-    if let Some(root) = &module.filesystem_root {
-        if root.is_dir() {
-            return save_as(
-                map,
-                &root
-                    .join("Maps")
-                    .join(path.sid.clone())
-                    .with_extension("bin"),
-            );
-        }
-    }
-
-    Err(io::Error::new(
-        io::ErrorKind::Other,
-        "Can only save to mods loaded from directories",
-    ))
-}
-
-fn save_as(map: &CelesteMap, path: &Path) -> Result<(), io::Error> {
-    save_to(map, &mut io::BufWriter::new(fs::File::create(path)?))
-}
-
-fn save_to<W: io::Write>(map: &CelesteMap, writer: &mut W) -> Result<(), io::Error> {
-    let binel: BinEl = map.to_binel();
-    let file = BinFile {
-        root: binel,
-        package: "is this field used? please tell me if it's used".to_string(),
-    };
-
-    celeste::binel::writer::put_file(writer, &file)
 }

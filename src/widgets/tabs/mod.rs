@@ -6,7 +6,7 @@ pub mod project;
 
 use crate::app_state::AppState;
 use crate::app_state::AppTab;
-use crate::lenses::VecIndexWithLens;
+use crate::lenses::{TabTextLens, VecIndexWithLens};
 use crate::AppEvent;
 use vizia::prelude::*;
 
@@ -35,9 +35,9 @@ pub fn build_tabs(cx: &mut Context) {
 }
 
 pub fn build_tab_bar(cx: &mut Context) {
-    List::new(cx, AppState::tabs, move |cx, tab_index, tab| {
+    List::new(cx, AppState::tabs, move |cx, tab_index, _tab| {
         HStack::new(cx, move |cx| {
-            Label::new(cx, &tab.get(cx).to_string());
+            Label::new(cx, TabTextLens(tab_index));
             Label::new(cx, "\u{e5cd}")
                 .class("icon")
                 .class("close_btn")

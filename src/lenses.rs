@@ -7,10 +7,10 @@ use vizia::prelude::*;
 
 use crate::app_state::{AppSelection, AppState, AppTab, MapTab, StylegroundSelection};
 use crate::auto_saver::AutoSaver;
+use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::map_struct::{
-    Attribute, CelesteMapEntity, CelesteMapLevel, CelesteMapStyleground, MapID,
+    Attribute, CelesteMap, CelesteMapEntity, CelesteMapLevel, CelesteMapStyleground, MapID,
 };
-use crate::{CelesteMap, ModuleAggregate};
 
 #[derive(Debug, Copy, Clone)]
 pub struct CurrentMapLens {}
@@ -42,7 +42,7 @@ impl Lens for CurrentMapImplLens {
             _ => None,
         };
 
-        map(data.and_then(|id| source.loaded_maps.get(id)))
+        map(data.map(|id| &source.loaded_maps.get(id).unwrap().map))
     }
 }
 
@@ -66,7 +66,7 @@ impl Lens for CurrentRoomLens {
             return map(None);
         };
 
-        map(the_map.levels.get(maptab.current_room))
+        map(the_map.map.levels.get(maptab.current_room))
     }
 }
 
@@ -104,6 +104,7 @@ impl Lens for CurrentSelectedEntityLens {
             return map(None);
         };
         let data = cmap
+            .map
             .levels
             .get(*current_room)
             .and_then(|room| room.entity(*entity_id, *trigger));
@@ -130,7 +131,7 @@ impl Lens for CurrentPaletteLens {
             return map(None);
         };
 
-        let data = source.palettes.get(map_id);
+        let data = source.loaded_maps.get(map_id).map(|state| &state.palette);
         map(data)
     }
 }
@@ -644,7 +645,7 @@ impl Lens for CurrentStylegroundImplLens {
             None => return map(None),
         };
         let cmap = match source.loaded_maps.get(&maptab.id) {
-            Some(map) => map,
+            Some(map) => &map.map,
             None => return map(None),
         };
         let styles = if stysel.fg {
@@ -694,5 +695,39 @@ impl<T: Clone> Lens for StaticerLens<T> {
 impl<T> StaticerLens<T> {
     pub fn new(data: T) -> Self {
         StaticerLens { data }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct TabTextLens(pub usize);
+
+impl Lens for TabTextLens {
+    type Source = AppState;
+    type Target = String;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        if let Some(tab) = source.tabs.get(self.0) {
+            map(Some(&match tab {
+                AppTab::CelesteOverview => "All Mods".to_owned(),
+                AppTab::ProjectOverview(s) => source
+                    .modules
+                    .get(s)
+                    .unwrap()
+                    .everest_metadata
+                    .name
+                    .to_string(),
+                AppTab::Map(maptab) => {
+                    let mut name = source.loaded_maps.get(&maptab.id).unwrap().path.sid.clone();
+                    if source.loaded_maps.get(&maptab.id).unwrap().map.dirty {
+                        name.insert(0, '*');
+                    }
+                    name
+                }
+                AppTab::ConfigEditor(_) => "Config Editor".to_owned(),
+                AppTab::Logs => "Logs".to_owned(),
+            }))
+        } else {
+            map(None)
+        }
     }
 }

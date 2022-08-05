@@ -4,8 +4,7 @@ use vizia::prelude::*;
 use vizia::state::UnwrapLens;
 
 use crate::app_state::{AppConfig, AppState};
-use crate::assets::Interned;
-use crate::celeste_mod::module::CelesteModuleKind;
+use crate::celeste_mod::module::{CelesteModuleKind, ModuleID};
 use crate::lenses::AutoSaverLens;
 use crate::AppEvent;
 
@@ -29,12 +28,12 @@ pub fn build_installation_tab(cx: &mut Context) {
                                     (
                                         *name,
                                         module.maps.len(),
-                                        module.everest_metadata.name,
+                                        module.everest_metadata.name.clone(),
                                         module.module_kind(),
                                     )
                                 })
                                 .collect::<Vec<_>>();
-                            modules_list.sort_by_key(|(_, _, name, _)| *name);
+                            modules_list.sort_by_key(|(_, _, name, _)| name.clone()); // TODO why clone????
 
                             let mut idx = 0usize;
                             Label::new(cx, "My Mods").class("module_category");
@@ -48,7 +47,7 @@ pub fn build_installation_tab(cx: &mut Context) {
                             while idx < modules_list.len() {
                                 if matches!(modules_list[idx].3, CelesteModuleKind::Directory) {
                                     let (sid, num_maps, name, _) = modules_list.remove(idx);
-                                    build_project_overview_card(cx, sid, name, num_maps);
+                                    build_project_overview_card(cx, sid, &name, num_maps);
                                 } else {
                                     idx += 1;
                                 }
@@ -63,7 +62,7 @@ pub fn build_installation_tab(cx: &mut Context) {
                                         first = false;
                                         Label::new(cx, "Builtin Modules").class("module_category");
                                     }
-                                    build_project_overview_card(cx, sid, name, num_maps);
+                                    build_project_overview_card(cx, sid, &name, num_maps);
                                 } else {
                                     idx += 1;
                                 }
@@ -78,7 +77,7 @@ pub fn build_installation_tab(cx: &mut Context) {
                                         first = false;
                                         Label::new(cx, "Downloaded Mods").class("module_category");
                                     }
-                                    build_project_overview_card(cx, sid, name, num_maps);
+                                    build_project_overview_card(cx, sid, &name, num_maps);
                                 } else {
                                     idx += 1;
                                 }
@@ -113,9 +112,9 @@ pub fn build_installation_tab(cx: &mut Context) {
     )
 }
 
-fn build_project_overview_card(cx: &mut Context, sid: Interned, name: Interned, num_maps: usize) {
+fn build_project_overview_card(cx: &mut Context, module: ModuleID, name: &str, num_maps: usize) {
     VStack::new(cx, move |cx| {
-        Label::new(cx, *name).class("module_title");
+        Label::new(cx, name).class("module_title");
         Label::new(
             cx,
             &format!("{} map{}", num_maps, if num_maps == 1 { "" } else { "s" }),
@@ -123,5 +122,5 @@ fn build_project_overview_card(cx: &mut Context, sid: Interned, name: Interned, 
     })
     .class("module_overview_card")
     .class("btn_highlight")
-    .on_press(move |cx| cx.emit(AppEvent::OpenModuleOverviewTab { module: sid }));
+    .on_press(move |cx| cx.emit(AppEvent::OpenModuleOverviewTab { module }));
 }

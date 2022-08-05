@@ -1,5 +1,5 @@
 use super::common::*;
-use crate::app_state::{EventPhase, MapEvent, StylegroundSelection};
+use crate::app_state::{EventPhase, MapAction, StylegroundSelection};
 use crate::celeste_mod::config::AttributeType;
 use crate::lenses::{
     CurrentMapImplLens, CurrentMapLens, CurrentStylegroundImplLens, CurrentStylegroundLens,
@@ -7,7 +7,6 @@ use crate::lenses::{
 };
 use crate::map_struct::{Attribute, CelesteMap, CelesteMapStyleground};
 use crate::{AppEvent, AppState};
-use std::cell::RefCell;
 use std::rc::Rc;
 use vizia::fonts::icons_names::DOWN;
 use vizia::prelude::*;
@@ -129,14 +128,13 @@ impl StyleTweakerWidget {
                         cx,
                         |cx| {
                             if (CurrentStylegroundLens {}).get_fallible(cx).is_some() {
-                                cx.emit(AppEvent::MapEvent {
-                                    event: RefCell::new(Some(MapEvent::AddStyleground {
+                                cx.emit(CurrentMapLens {}.get(cx).action(
+                                    EventPhase::new(),
+                                    MapAction::AddStyleground {
                                         loc: CurrentStylegroundLens {}.get(cx),
                                         style: Box::new(CelesteMapStyleground::default()),
-                                    })),
-                                    map: CurrentMapLens {}.get(cx),
-                                    merge_phase: EventPhase::new(),
-                                });
+                                    },
+                                ));
                             }
                         },
                         |cx| Label::new(cx, "\u{e145}").class("icon"),
@@ -145,13 +143,12 @@ impl StyleTweakerWidget {
                         cx,
                         |cx| {
                             if (CurrentStylegroundLens {}).get_fallible(cx).is_some() {
-                                cx.emit(AppEvent::MapEvent {
-                                    event: RefCell::new(Some(MapEvent::RemoveStyleground {
+                                cx.emit(CurrentMapLens {}.get(cx).action(
+                                    EventPhase::new(),
+                                    MapAction::RemoveStyleground {
                                         loc: CurrentStylegroundLens {}.get(cx),
-                                    })),
-                                    map: CurrentMapLens {}.get(cx),
-                                    merge_phase: EventPhase::new(),
-                                });
+                                    },
+                                ));
                             }
                         },
                         |cx| Label::new(cx, "\u{e15b}").class("icon"),
@@ -179,14 +176,10 @@ impl StyleTweakerWidget {
                                     idx: sel.idx + 1,
                                 }
                             };
-                            cx.emit(AppEvent::MapEvent {
-                                event: RefCell::new(Some(MapEvent::MoveStyleground {
-                                    loc: sel,
-                                    target,
-                                })),
-                                map: CurrentMapLens {}.get(cx),
-                                merge_phase: EventPhase::new(),
-                            });
+                            cx.emit(CurrentMapLens {}.get(cx).action(
+                                EventPhase::new(),
+                                MapAction::MoveStyleground { loc: sel, target },
+                            ));
                             cx.emit(AppEvent::SelectStyleground {
                                 tab: cx.data::<AppState>().unwrap().current_tab,
                                 styleground: Some(target),
@@ -220,14 +213,10 @@ impl StyleTweakerWidget {
                                     idx: sel.idx - 1,
                                 }
                             };
-                            cx.emit(AppEvent::MapEvent {
-                                event: RefCell::new(Some(MapEvent::MoveStyleground {
-                                    loc: sel,
-                                    target,
-                                })),
-                                map: CurrentMapLens {}.get(cx),
-                                merge_phase: EventPhase::new(),
-                            });
+                            cx.emit(CurrentMapLens {}.get(cx).action(
+                                EventPhase::new(),
+                                MapAction::MoveStyleground { loc: sel, target },
+                            ));
                             cx.emit(AppEvent::SelectStyleground {
                                 tab: cx.data::<AppState>().unwrap().current_tab,
                                 styleground: Some(target),
@@ -334,14 +323,13 @@ impl View for StyleTweakerWidget {
 }
 
 fn emit(cx: &mut EventContext, style: CelesteMapStyleground) {
-    cx.emit(AppEvent::MapEvent {
-        event: RefCell::new(Some(MapEvent::UpdateStyleground {
+    cx.emit(CurrentMapLens {}.get(cx).action(
+        EventPhase::new(),
+        MapAction::UpdateStyleground {
             loc: CurrentStylegroundLens {}.get(cx),
             style: Box::new(style),
-        })),
-        map: CurrentMapLens {}.get(cx),
-        merge_phase: EventPhase::new(),
-    });
+        },
+    ));
 }
 
 fn tweak_attr_picker<T: Data>(

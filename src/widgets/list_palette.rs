@@ -38,7 +38,7 @@ where
                     let item3 = item.clone();
                     HStack::new(cx, move |cx| {
                         Label::new(cx, "").bind(item2, |handle, item| {
-                            let app = handle.cx.data().unwrap();
+                            let app = handle.cx.data::<AppState>().unwrap();
                             let text = item.get(handle.cx).display_name(app);
                             handle.text(&text);
                         });

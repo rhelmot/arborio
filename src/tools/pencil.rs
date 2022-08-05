@@ -1,7 +1,7 @@
 use vizia::prelude::*;
 use vizia::vg::{Color, Paint, Path};
 
-use crate::app_state::{AppEvent, AppState, EventPhase, Layer, RoomEvent};
+use crate::app_state::{AppEvent, AppState, EventPhase, Layer, RoomAction};
 use crate::celeste_mod::config::PencilBehavior;
 use crate::map_struct::{CelesteMapDecal, CelesteMapEntity, Node};
 use crate::tools::{generic_nav, Tool};
@@ -209,8 +209,8 @@ impl PencilTool {
 
         match app.current_layer {
             Layer::ObjectTiles => {
-                vec![app.room_event(
-                    RoomEvent::ObjectTileUpdate {
+                vec![app.room_action(
+                    RoomAction::ObjectTileUpdate {
                         offset: tile_pos,
                         data: TileGrid {
                             tiles: vec![app.current_objtile as i32],
@@ -227,8 +227,8 @@ impl PencilTool {
                 } else {
                     app.current_bg_tile
                 };
-                vec![app.room_event(
-                    RoomEvent::TileUpdate {
+                vec![app.room_action(
+                    RoomAction::TileUpdate {
                         fg,
                         offset: tile_pos,
                         data: TileGrid {
@@ -245,8 +245,8 @@ impl PencilTool {
                         let diff = (room_pos - last_draw).cast::<f32>().length();
                         if diff > app.draw_interval {
                             self.reference_point = Some(room_pos);
-                            vec![app.room_event(
-                                RoomEvent::EntityAdd {
+                            vec![app.room_action(
+                                RoomAction::EntityAdd {
                                     entity: Box::new(self.get_terminal_entity(
                                         app,
                                         app.current_entity,
@@ -264,8 +264,8 @@ impl PencilTool {
                     }
                     None => {
                         self.reference_point = Some(room_pos);
-                        vec![app.room_event(
-                            RoomEvent::EntityAdd {
+                        vec![app.room_action(
+                            RoomAction::EntityAdd {
                                 entity: Box::new(self.get_terminal_entity(
                                     app,
                                     app.current_entity,
@@ -306,8 +306,8 @@ impl PencilTool {
                             } else {
                                 self.get_terminal_entity(app, app.current_entity, room_pos)
                             };
-                            vec![app.room_event(
-                                RoomEvent::EntityAdd {
+                            vec![app.room_action(
+                                RoomAction::EntityAdd {
                                     entity: Box::new(entity),
                                     trigger: app.current_layer == Layer::Triggers,
                                     selectme: false,
@@ -322,8 +322,8 @@ impl PencilTool {
                 }
             }
             Layer::FgDecals | Layer::BgDecals => {
-                vec![app.room_event(
-                    RoomEvent::DecalAdd {
+                vec![app.room_action(
+                    RoomAction::DecalAdd {
                         fg: app.current_layer == Layer::FgDecals,
                         decal: Box::new(CelesteMapDecal {
                             id: 0,

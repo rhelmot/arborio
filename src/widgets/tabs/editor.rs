@@ -1,14 +1,17 @@
 use enum_iterator::IntoEnumIterator;
 use vizia::prelude::*;
 
-use crate::app_state::AppState;
+use crate::app_state::{AppState, Layer};
+use crate::celeste_mod::aggregate::ModuleAggregate;
 use crate::lenses::{AnotherLens, CurrentMapLens, CurrentPaletteLens};
 use crate::tools::ToolSpec;
 use crate::widgets::editor::EditorWidget;
+use crate::widgets::entity_tweaker::EntityTweakerWidget;
+use crate::widgets::list_palette::PaletteWidget;
 use crate::widgets::room_tweaker::RoomTweakerWidget;
 use crate::widgets::style_tweaker::{StyleListWidget, StyleTweakerWidget};
 use crate::widgets::tile_palette::TilePaletteWidget;
-use crate::{AppEvent, EntityTweakerWidget, Layer, ModuleAggregate, PaletteWidget};
+use crate::AppEvent;
 
 pub fn build_editor(cx: &mut Context) {
     HStack::new(cx, |cx| {
@@ -81,6 +84,7 @@ pub fn build_layer_picker(cx: &mut Context) {
 }
 
 pub fn build_palette_widgets(cx: &mut Context) {
+    println!("flag 2");
     let pair = AnotherLens::new(AppState::current_toolspec, AppState::current_layer);
     PaletteWidget::new(
         cx,

@@ -129,7 +129,7 @@ impl View for EditorWidget {
         let t = &app.map_tab_unwrap().transform;
         canvas.set_transform(t.m11, t.m12, t.m21, t.m22, t.m31.round(), t.m32.round());
 
-        let map = app.loaded_maps.get(&app.map_tab_unwrap().id).unwrap();
+        let map = &app.loaded_maps.get(&app.map_tab_unwrap().id).unwrap().map;
         if *PERF_MONITOR {
             let now = time::Instant::now();
             println!("Drew {}ms ago", (now - *app.last_draw.borrow()).as_millis());

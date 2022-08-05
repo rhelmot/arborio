@@ -1,28 +1,35 @@
-use crate::assets::{intern_str, InternedMap};
+use crate::app_state::save_as;
 use std::ffi::{OsStr, OsString};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use crate::assets::{intern_str, InternedMap};
 use crate::atlas_img::Atlas;
-use crate::autotiler::Tileset;
+use crate::autotiler::{Autotiler, Tileset};
 use crate::celeste_mod::config::{EntityConfig, StylegroundConfig, TriggerConfig};
 use crate::celeste_mod::everest_yaml::EverestYaml;
 use crate::celeste_mod::walker::ConfigSourceTrait;
 use crate::celeste_mod::walker::{open_module, ConfigSource};
-use crate::map_struct::from_reader;
-use crate::{autotiler, save_as, CelesteMap};
+use crate::map_struct::{from_reader, CelesteMap};
 
 #[derive(Debug, Clone)] // Clone should just increase the refcount on each arc, right?
 pub struct CelesteModule {
     pub filesystem_root: Option<PathBuf>,
     pub everest_metadata: EverestYaml,
     pub gameplay_atlas: Atlas,
-    pub tilers: InternedMap<Arc<autotiler::Autotiler>>,
+    pub tilers: InternedMap<Arc<Autotiler>>,
     pub entity_config: InternedMap<Arc<EntityConfig>>,
     pub trigger_config: InternedMap<Arc<TriggerConfig>>,
     pub styleground_config: InternedMap<Arc<StylegroundConfig>>,
     pub maps: Vec<String>,
+}
+
+uuid_cls!(ModuleID);
+
+lazy_static::lazy_static! {
+    pub static ref CELESTE_MODULE_ID: ModuleID = ModuleID::new();
+    pub static ref ARBORIO_MODULE_ID: ModuleID = ModuleID::new();
 }
 
 impl CelesteModule {
@@ -134,7 +141,7 @@ impl CelesteModule {
     }
 
     pub fn module_kind(&self) -> CelesteModuleKind {
-        if *self.everest_metadata.name == "Celeste" {
+        if self.everest_metadata.name == "Celeste" {
             return CelesteModuleKind::Builtin;
         }
 

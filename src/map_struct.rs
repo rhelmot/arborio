@@ -1,5 +1,7 @@
 #![allow(unused_parens)] // TODO: ???
 
+use crate::app_state::{EventPhase, MapAction, RoomAction};
+use crate::{AppEvent, MapEvent};
 use celeste::binel::*;
 use euclid::{Point2D, Size2D};
 use itertools::Itertools;
@@ -12,17 +14,16 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::mem::swap;
 use std::str::FromStr;
-use vizia::prelude::Data;
 use vizia::prelude::*;
 use vizia::vg;
 
-use crate::assets::{next_uuid, Interned};
+use crate::assets::next_uuid;
 use crate::from_binel::{GetAttrOrChild, TryFromBinEl, TwoWayConverter};
 use crate::units::*;
 
-#[derive(Eq, PartialEq, Hash, Debug, Clone, Default)]
+#[derive(Eq, PartialEq, Hash, Debug, Clone)]
 pub struct MapPath {
-    pub module: Interned,
+    pub module: ModuleID,
     pub sid: String,
 }
 
@@ -33,6 +34,31 @@ impl Data for MapPath {
 }
 
 uuid_cls!(MapID);
+
+impl MapID {
+    pub fn action(&self, phase: EventPhase, action: MapAction) -> AppEvent {
+        AppEvent::MapEvent {
+            map: Some(*self),
+            event: MapEvent::Action {
+                event: RefCell::new(Some(action)),
+                merge_phase: phase,
+            },
+        }
+    }
+
+    pub fn room_action(&self, room: usize, phase: EventPhase, action: RoomAction) -> AppEvent {
+        AppEvent::MapEvent {
+            map: Some(*self),
+            event: MapEvent::Action {
+                event: RefCell::new(Some(MapAction::RoomAction {
+                    idx: room,
+                    event: action,
+                })),
+                merge_phase: phase,
+            },
+        }
+    }
+}
 
 #[derive(Clone, Debug, TryFromBinEl)]
 #[convert_with(MapComponentConverter)]
@@ -875,6 +901,8 @@ impl CelesteMap {
 }
 
 use crate::celeste_mod::config::expression::Const;
+use crate::celeste_mod::module::ModuleID;
+
 impl CelesteMapEntity {
     pub fn make_env(&self) -> HashMap<&str, Const> {
         let mut env: HashMap<&str, Const> = HashMap::new();

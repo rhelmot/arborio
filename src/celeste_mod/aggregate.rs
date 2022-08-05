@@ -8,12 +8,12 @@ use crate::assets::{intern_str, Interned, InternedMap};
 use crate::atlas_img::MultiAtlas;
 use crate::autotiler::{Autotiler, Tileset};
 use crate::celeste_mod::config::{EntityConfig, StylegroundConfig, TriggerConfig};
-use crate::celeste_mod::module::CelesteModule;
+use crate::celeste_mod::module::{CelesteModule, ModuleID};
 use crate::celeste_mod::walker::{open_module, ConfigSourceTrait};
+use crate::map_struct::CelesteMap;
 use crate::widgets::list_palette::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
 };
-use crate::CelesteMap;
 
 #[derive(Lens, Clone)]
 pub struct ModuleAggregate {
@@ -34,29 +34,40 @@ impl Model for ModuleAggregate {}
 
 impl ModuleAggregate {
     pub fn new(
-        modules: &InternedMap<CelesteModule>,
+        modules: &HashMap<ModuleID, CelesteModule>,
+        modules_lookup: &HashMap<String, ModuleID>,
         map: &CelesteMap,
-        current_module: Interned,
+        current_module: ModuleID,
         emit_logs: bool,
     ) -> Self {
         if let Some(mymod) = modules.get(&current_module) {
             for dep in mymod.everest_metadata.dependencies.iter() {
-                if *dep.name == "Everest" {
+                if dep.name == "Everest" {
                     continue;
                 }
-                if modules.get(&dep.name).is_none() {
-                    log::warn!("{} missing dependency {}", current_module, &dep.name);
+                if modules_lookup.get(&dep.name).is_none() {
+                    log::warn!(
+                        "{} missing dependency {}",
+                        &modules.get(&current_module).unwrap().everest_metadata.name,
+                        &dep.name
+                    );
                 }
             }
         }
 
-        Self::new_core(map, dep_mods(modules, current_module), emit_logs)
+        Self::new_core(
+            map,
+            dep_mods(modules, modules_lookup, current_module),
+            emit_logs,
+        )
     }
 
-    pub fn new_omni(modules: &InternedMap<CelesteModule>, emit_logs: bool) -> Self {
+    pub fn new_omni(modules: &HashMap<ModuleID, CelesteModule>, emit_logs: bool) -> Self {
         Self::new_core(
             &CelesteMap::new(),
-            modules.iter().map(|(x, y)| (**x, y)),
+            modules
+                .values()
+                .map(|y| (y.everest_metadata.name.as_str(), y)),
             emit_logs,
         )
     }
@@ -246,23 +257,35 @@ fn extract_triggers_palette(config: &InternedMap<Arc<TriggerConfig>>) -> Vec<Tri
         .collect()
 }
 
-fn dep_mods(
-    modules: &InternedMap<CelesteModule>,
-    current_module: Interned,
-) -> impl Clone + Iterator<Item = (&str, &CelesteModule)> {
-    let a = modules.get("Arborio").into_iter().map(|m| ("Arborio", m));
-    let b = modules.get("Celeste").into_iter().map(|m| ("Celeste", m));
-    let c = modules.get(&current_module).into_iter().flat_map(|m| {
+fn dep_mods<'a>(
+    modules: &'a HashMap<ModuleID, CelesteModule>,
+    modules_lookup: &'a HashMap<String, ModuleID>,
+    current_module: ModuleID,
+) -> impl Clone + Iterator<Item = (&'a str, &'a CelesteModule)> {
+    let x = modules_lookup;
+    let y = modules;
+    fn get<'a>(
+        x: &'a HashMap<String, ModuleID>,
+        y: &'a HashMap<ModuleID, CelesteModule>,
+        s: &str,
+    ) -> Option<&'a CelesteModule> {
+        x.get(s).and_then(|id| y.get(id))
+    }
+    let a = get(x, y, "Arborio").into_iter().map(|m| ("Arborio", m));
+    let b = get(x, y, "Celeste").into_iter().map(|m| ("Celeste", m));
+    let c = modules.get(&current_module).into_iter().flat_map(move |m| {
         m.everest_metadata
             .dependencies
             .iter()
-            .filter(|dep| *dep.name != "Celeste" && *dep.name != "Everest")
-            .filter_map(|dep| modules.get(&dep.name).map(|module| (*dep.name, module)))
+            .filter(|dep| dep.name != "Celeste" && dep.name != "Everest")
+            .filter_map(move |dep| {
+                get(x, y, &dep.name).map(|module| (module.everest_metadata.name.as_str(), module))
+            })
     });
     let d = modules
         .get(&current_module)
         .into_iter()
-        .map(move |m| (*current_module, m));
+        .map(|m| (m.everest_metadata.name.as_str(), m));
 
     a.chain(b).chain(c).chain(d)
 }

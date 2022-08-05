@@ -115,7 +115,7 @@ pub fn generic_nav(
                         .unwrap()
                         .transform_point(screen_pt)
                         .cast();
-                    if let Some(idx) = map.level_at(map_pt) {
+                    if let Some(idx) = map.map.level_at(map_pt) {
                         if idx != state.map_tab_unwrap().current_room {
                             return vec![AppEvent::SelectRoom {
                                 tab: state.current_tab,
