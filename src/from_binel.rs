@@ -521,8 +521,7 @@ mod test {
     use crate::celeste_mod::discovery;
     use crate::celeste_mod::walker::{ConfigSourceTrait, FolderSource};
     use crate::from_binel::{bin_el_fuzzy_equal, TryFromBinEl};
-    use crate::map_struct::from_reader;
-    use crate::{CelesteMap, MapPath};
+    use crate::map_struct::{from_reader, CelesteMap};
     use celeste::binel::BinEl;
     use std::ffi::OsStr;
     use std::path::Path;
