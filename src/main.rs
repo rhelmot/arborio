@@ -21,6 +21,7 @@ use vizia::prelude::*;
 
 use crate::app_state::{AppEvent, AppState, AppTab, MapEvent};
 use crate::lenses::{CurrentTabImplLens, IsFailedLens};
+use crate::logging::setup_logger_thread;
 use crate::widgets::tabs::{build_tab_bar, build_tabs};
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -51,6 +52,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 _ => {}
             });
         });
+        setup_logger_thread(cx);
         log::info!("Hello world!");
         if let Some(path) = &cx.data::<AppState>().unwrap().config.celeste_root {
             let path = path.clone();
@@ -84,7 +86,17 @@ fn main() -> Result<(), Box<dyn Error>> {
                     })
                     .id("progress_bar_container");
                 }
-            })
+            });
+            Binding::new(cx, AppState::error_message, move |cx, error_message| {
+                let error_message = error_message.get(cx);
+                if !error_message.is_empty() {
+                    Label::new(cx, &error_message)
+                        .id("error_message_bar")
+                        .on_press(|cx| {
+                            cx.emit(AppEvent::OpenLogsTab);
+                        });
+                }
+            });
         })
         .id("main");
     })

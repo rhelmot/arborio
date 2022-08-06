@@ -114,6 +114,14 @@ menubutton:over {
     text-wrap: false;
 }
 
+#error_message_bar {
+    height: 22px;
+    color: white;
+    background-color: red;
+    child-left: 10px;
+    width: 100%;
+}
+
 
 /* installation tab */
 
@@ -307,6 +315,44 @@ style_list list {
     width: 1s;
     height: 1s;
     min-height: 50px;
+}
+
+/* logs */
+
+.log_entry {
+    child-top: 2px;
+    child-bottom: 2px;
+    child-left: 10px;
+    child-right: 10px;
+    col-between: 10px;
+}
+
+.log_entry .log_text {
+}
+
+.log_entry .log_icon {
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    color: black;
+    child-space: 1s;
+    font-size: 10px;
+}
+
+.log_entry.error .log_icon {
+    background-color: #ff8888;
+}
+.log_entry.warning .log_icon {
+    background-color: #ffff88;
+}
+.log_entry.info .log_icon {
+    background-color: #8888ff;
+}
+.log_entry.debug .log_icon {
+    background-color: #88ff88;
+}
+.log_entry.trace .log_icon {
+    background-color: #cccccc;
 }
 
 /* controls */

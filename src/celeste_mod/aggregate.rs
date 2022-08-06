@@ -285,6 +285,7 @@ fn dep_mods<'a>(
     let d = modules
         .get(&current_module)
         .into_iter()
+        .filter(|m| m.everest_metadata.name != "Celeste")
         .map(|m| (m.everest_metadata.name.as_str(), m));
 
     a.chain(b).chain(c).chain(d)

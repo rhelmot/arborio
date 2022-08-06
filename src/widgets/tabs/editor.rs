@@ -84,7 +84,6 @@ pub fn build_layer_picker(cx: &mut Context) {
 }
 
 pub fn build_palette_widgets(cx: &mut Context) {
-    println!("flag 2");
     let pair = AnotherLens::new(AppState::current_toolspec, AppState::current_layer);
     PaletteWidget::new(
         cx,

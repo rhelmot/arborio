@@ -322,8 +322,8 @@ impl TextureTile {
                 return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tile declaration (\"{}\") must be semicolon-separated sets of two comma-separated integers", text)));
             }
 
-            let x = coords[0].parse::<u32>();
-            let y = coords[1].parse::<u32>();
+            let x = coords[0].trim().parse::<u32>();
+            let y = coords[1].trim().parse::<u32>();
             if x.is_err() || y.is_err() {
                 return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tile declaration (\"{}\") must be semicolon-separated sets of two comma-separated integers", text)));
             }

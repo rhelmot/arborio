@@ -1,6 +1,6 @@
 use celeste::binel::{BinEl, BinFile};
 use dialog::DialogBox;
-use log::error;
+use log::{error, Level};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -22,6 +22,7 @@ use crate::celeste_mod::everest_yaml::{EverestModuleVersion, EverestYaml};
 use crate::celeste_mod::module::{CelesteModule, CelesteModuleKind, ModuleID, CELESTE_MODULE_ID};
 use crate::celeste_mod::walker::{ConfigSource, FolderSource};
 use crate::from_binel::TryFromBinEl;
+use crate::logging::ArborioRecord;
 use crate::map_struct::{
     CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapLevelUpdate,
     CelesteMapStyleground, MapID, MapPath,
@@ -68,6 +69,8 @@ pub struct AppState {
 
     pub last_draw: RefCell<time::Instant>, // mutable to draw
     pub progress: Progress,
+    pub logs: Vec<ArborioRecord>,
+    pub error_message: String,
 }
 
 #[derive(Lens)]
@@ -308,6 +311,9 @@ impl Data for Progress {
 
 #[derive(Debug)]
 pub enum AppEvent {
+    Log {
+        message: ArborioRecord,
+    },
     Progress {
         progress: Progress,
     },
@@ -617,6 +623,8 @@ impl AppState {
                 progress: 100,
                 status: "".to_owned(),
             },
+            logs: vec![],
+            error_message: "".to_owned(),
         }
     }
 
@@ -688,6 +696,12 @@ impl AppState {
     pub fn apply(&mut self, cx: &mut EventContext, event: &AppEvent) {
         match event {
             // global events
+            AppEvent::Log { message } => {
+                self.logs.push(message.clone());
+                if message.level <= Level::Error {
+                    self.error_message = message.message.clone();
+                }
+            }
             AppEvent::Progress { progress } => {
                 self.progress = progress.clone();
             }
@@ -720,6 +734,7 @@ impl AppState {
                 });
             }
             AppEvent::OpenLogsTab => {
+                self.error_message.clear();
                 for (i, tab) in self.tabs.iter().enumerate() {
                     if matches!(tab, AppTab::Logs) {
                         cx.emit(AppEvent::SelectTab { idx: i });
@@ -849,7 +864,10 @@ impl AppState {
                         dll: None,
                         dependencies: vec![],
                     };
-                    std::fs::create_dir(&path).unwrap();
+                    if let Err(e) = std::fs::create_dir(&path) {
+                        log::error!("Could not create mod: {}", e);
+                        break;
+                    }
                     everest_data.save(&path);
 
                     let mut module_src = ConfigSource::Dir(FolderSource::new(&path).unwrap());
@@ -1080,7 +1098,13 @@ impl AppState {
                 }
             }
             ProjectEvent::NewMap => {
-                assert!(matches!(state.module_kind(), CelesteModuleKind::Directory));
+                if !matches!(state.module_kind(), CelesteModuleKind::Directory) {
+                    log::error!(
+                        "Cannot make a new map in {}: not a directory-loaded mod",
+                        &state.everest_metadata.name
+                    );
+                    return;
+                }
                 let mut new_id = 0;
                 let new_sid = 'outer2: loop {
                     new_id += 1;
