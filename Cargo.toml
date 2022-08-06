@@ -8,58 +8,41 @@ rust-version = "1.60"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace]
-members = ["derive"]
+members = [
+    "crates/derive",
+    "crates/modloader",
+    "crates/maploader",
+    "crates/gfxloader",
+    "crates/widgets",
+    "crates/state",
+    "crates/utils",
+]
 
 [features]
 default = ["x11", "wayland"]
-x11 = ["vizia/x11"]
-wayland = ["vizia/wayland"]
+x11 = ["arborio-utils/x11"]
+wayland = ["arborio-utils/wayland"]
 
 [dependencies]
 # celeste deps
-arborio-derive = { path = "./derive" }
-celeste = "^2"
+arborio-derive = { path = "./crates/derive", default-features = false }
+arborio-modloader = { path = "./crates/modloader", default-features = false }
+arborio-maploader = { path = "./crates/maploader", default-features = false }
+arborio-gfxloader = { path = "./crates/gfxloader", default-features = false }
+arborio-widgets = { path = "./crates/widgets", default-features = false }
+arborio-state = { path = "./crates/state", default-features = false }
+arborio-utils = { path = "./crates/utils", default-features = false }
+arborio-walker = { path = "./crates/walker", default-features = false }
 
-# language features and data structures
-lazy_static = "^1.4"
-byteorder = "^1.4"
-include_dir = "^0.7"
-itertools = "^0.10"
-enum-iterator = "^0.7"
-parking_lot = "^0.12"
-lru = "^0.7"
-enum_dispatch = "^0.3"
-rand = "0.8.5"
 log = "0.4.16"
-
-# system interaction
-confy = "^0.4"
-dialog = "^0.3"
-copypasta = { version = "0.7.1", default-features = false }  # inherit from vizia
-
-# configuration and parsing
-serde = { version = "^1.0", features = ["derive" ] }
-serde-xml-rs = "^0.5"
-serde_yaml = "^0.8"
-nom = "^7.1"
-zip = "^0.5"
-walkdir = "^2"
-regex = { version = "^1.5", default-features = false, features = ["std"] }
-
-# graphics
-#vizia = { path = "../../rust/vizia", default-features = false, features = ["winit", "clipboard"] }
-vizia = {git = "https://github.com/vizia/vizia", rev = "902c821e4dbde2876558c186185dcc60bbb94e16", default-features = false, features = ["winit", "clipboard"] }
 image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
-imgref = "1.6.1"  # inherit from femtovg
-rgb = "0.8.20"  # inherit from femtovg
-euclid = { version = "^0.22", features = ["serde"] }
-
-# misc
-Inflector = { version = "^0.11", default-features = false }
 
 [profile.dev]
 opt-level = 1
 lto = false
+debug = 0
+[profile.dev.package.arborio-widgets]
+debug = 0
 [profile.dev.package.vizia_core]
 opt-level = 2
 [profile.dev.package.femtovg]

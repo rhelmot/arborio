@@ -30,17 +30,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aae1277d39aeec15cb388266ecc24b11c80469deae6067e17a1a7aa9e5c1f234"
 
 [[package]]
-name = "ahash"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
-dependencies = [
- "getrandom 0.2.6",
- "once_cell",
- "version_check 0.9.4",
-]
-
-[[package]]
 name = "aliasable"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -56,34 +45,16 @@ checksum = "000444226fcff248f2bc4c7625be32c63caccfecc2723a2b9f78a7487a49c407"
 name = "arborio"
 version = "0.1.0"
 dependencies = [
- "Inflector",
  "arborio-derive",
- "byteorder",
- "celeste",
- "confy",
- "copypasta",
- "dialog",
- "enum-iterator",
- "enum_dispatch",
- "euclid",
+ "arborio-gfxloader",
+ "arborio-maploader",
+ "arborio-modloader",
+ "arborio-state",
+ "arborio-utils",
+ "arborio-walker",
+ "arborio-widgets",
  "image",
- "imgref",
- "include_dir",
- "itertools 0.10.3",
- "lazy_static",
  "log",
- "lru",
- "nom 7.1.1",
- "parking_lot 0.12.0",
- "rand 0.8.5",
- "regex",
- "rgb",
- "serde",
- "serde-xml-rs",
- "serde_yaml",
- "vizia",
- "walkdir",
- "zip",
 ]
 
 [[package]]
@@ -94,6 +65,107 @@ dependencies = [
  "proc-macro2 1.0.37",
  "quote 1.0.18",
  "syn 1.0.91",
+]
+
+[[package]]
+name = "arborio-gfxloader"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "arborio-utils",
+ "arborio-walker",
+ "byteorder",
+ "image",
+ "imgref",
+ "log",
+ "rgb",
+ "serde",
+ "serde-xml-rs",
+]
+
+[[package]]
+name = "arborio-maploader"
+version = "0.1.0"
+dependencies = [
+ "arborio-derive",
+ "arborio-utils",
+ "celeste",
+ "itertools 0.10.3",
+ "lazy_static",
+ "regex",
+ "serde",
+]
+
+[[package]]
+name = "arborio-modloader"
+version = "0.1.0"
+dependencies = [
+ "arborio-gfxloader",
+ "arborio-maploader",
+ "arborio-utils",
+ "arborio-walker",
+ "itertools 0.10.3",
+ "lazy_static",
+ "log",
+ "nom 7.1.1",
+ "serde",
+ "serde_yaml",
+ "walkdir",
+]
+
+[[package]]
+name = "arborio-state"
+version = "0.1.0"
+dependencies = [
+ "arborio-gfxloader",
+ "arborio-maploader",
+ "arborio-modloader",
+ "arborio-utils",
+ "arborio-walker",
+ "confy",
+ "enum-iterator",
+ "log",
+ "parking_lot 0.12.0",
+ "serde",
+ "serde_yaml",
+]
+
+[[package]]
+name = "arborio-utils"
+version = "0.1.0"
+dependencies = [
+ "euclid",
+ "lazy_static",
+ "parking_lot 0.12.0",
+ "serde",
+ "vizia",
+]
+
+[[package]]
+name = "arborio-walker"
+version = "0.1.0"
+dependencies = [
+ "enum_dispatch",
+ "include_dir",
+ "walkdir",
+ "zip",
+]
+
+[[package]]
+name = "arborio-widgets"
+version = "0.1.0"
+dependencies = [
+ "arborio-gfxloader",
+ "arborio-maploader",
+ "arborio-modloader",
+ "arborio-state",
+ "arborio-utils",
+ "dialog",
+ "enum-iterator",
+ "lazy_static",
+ "log",
+ "parking_lot 0.12.0",
+ "rand 0.8.5",
 ]
 
 [[package]]
@@ -855,9 +927,6 @@ name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
-dependencies = [
- "ahash",
-]
 
 [[package]]
 name = "heck"
@@ -1078,9 +1147,6 @@ name = "lru"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32613e41de4c47ab04970c348ca7ae7382cf116625755af070b008a15516a889"
-dependencies = [
- "hashbrown",
-]
 
 [[package]]
 name = "malloc_buf"
