@@ -1,5 +1,6 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::env::var;
 use std::path::Path;
 use walkdir::WalkDir;
 
@@ -8,11 +9,17 @@ use crate::module::{CelesteModule, ModuleID, ARBORIO_MODULE_ID, CELESTE_MODULE_I
 use arborio_walker::{open_module, ConfigSource, ConfigSourceTrait, EmbeddedSource, FolderSource};
 
 pub fn for_each_mod<F: FnMut(usize, usize, &str, ConfigSource)>(root: &Path, mut callback: F) {
+    let blacklist_str = var("ARBORIO_BLACKLIST");
+    let blacklist: Vec<_> = blacklist_str
+        .as_ref()
+        .map(|s| s.split(':').collect())
+        .unwrap_or_default();
     let to_load = WalkDir::new(root.join("Mods"))
         .min_depth(1)
         .max_depth(1)
         .into_iter()
         .filter_map(|e| e.ok())
+        .filter(|e| !blacklist.contains(&e.file_name().to_string_lossy().as_ref()))
         .collect::<Vec<_>>();
     let total = to_load.len();
 
