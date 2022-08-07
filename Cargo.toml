@@ -43,6 +43,10 @@ arborio-walker = { path = "./crates/walker", default-features = false }
 log = "0.4.16"
 image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
 
+[dev-dependencies]
+celeste = "^2"
+confy = "^0.4"
+
 [profile.dev]
 opt-level = 0
 lto = "off"

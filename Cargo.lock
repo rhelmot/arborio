@@ -53,6 +53,8 @@ dependencies = [
  "arborio-utils",
  "arborio-walker",
  "arborio-widgets",
+ "celeste",
+ "confy",
  "image",
  "log",
 ]

@@ -1,6 +1,5 @@
-use crate::assets::InternedMap;
 use arborio_maploader::from_binel::{bin_el_fuzzy_equal, TryFromBinEl};
-use arborio_maploader::map_struct::{from_reader, CelesteMap};
+use arborio_maploader::map_struct::CelesteMap;
 use arborio_modloader::discovery;
 use arborio_state::data::AppConfig;
 use arborio_walker::{ConfigSourceTrait, FolderSource};
@@ -10,7 +9,7 @@ use std::path::Path;
 
 #[test]
 fn test_saving_all_mods() {
-    let mut cfg: AppConfig = confy::load("arborio").unwrap_or_default();
+    let cfg: AppConfig = confy::load("arborio").unwrap_or_default();
     if let Some(root) = &cfg.celeste_root {
         println!("Beginning test.");
         assert!(root.is_dir(), "Arborio is misconfigured");
