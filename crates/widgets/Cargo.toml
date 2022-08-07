@@ -1,0 +1,26 @@
+[package]
+name = "arborio-widgets"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+arborio-utils = { path = "../utils", default-features = false }
+arborio-state = { path = "../state", default-features = false }
+arborio-modloader = { path = "../modloader", default-features = false }
+arborio-maploader = { path = "../maploader", default-features = false }
+arborio-gfxloader = { path = "../gfxloader", default-features = false }
+arborio-widgets-common = { path = "../widgets-common", default-features = false }
+arborio-widgets-editor = { path = "../widgets-editor", default-features = false }
+arborio-widgets-editor-entity = { path = "../widgets-editor-entity", default-features = false }
+arborio-widgets-editor-style = { path = "../widgets-editor-style", default-features = false }
+arborio-widgets-editor-room = { path = "../widgets-editor-room", default-features = false }
+arborio-widgets-tilepicker = { path = "../widgets-tilepicker", default-features = false }
+
+rand = "0.8.5"
+log = "0.4.16"
+parking_lot = "^0.12"
+dialog = "^0.3"
+lazy_static = "^1.4"
+enum-iterator = "^0.7"

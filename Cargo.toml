@@ -44,9 +44,11 @@ log = "0.4.16"
 image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
 
 [profile.dev]
-opt-level = 1
+opt-level = 0
 lto = "off"
 debug = 0
+[profile.dev.package.arborio-gfxloader]
+opt-level = 2
 [profile.dev.package.vizia_core]
 opt-level = 2
 [profile.dev.package.femtovg]

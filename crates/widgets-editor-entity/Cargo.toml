@@ -1,0 +1,14 @@
+[package]
+name = "arborio-widgets-editor-entity"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+arborio-utils = { path = "../utils", default-features = false }
+arborio-state = { path = "../state", default-features = false }
+arborio-modloader = { path = "../modloader", default-features = false }
+arborio-maploader = { path = "../maploader", default-features = false }
+arborio-gfxloader = { path = "../gfxloader", default-features = false }
+arborio-widgets-common = { path = "../widgets-common", default-features = false }

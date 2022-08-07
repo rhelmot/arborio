@@ -1,0 +1,20 @@
+[package]
+name = "arborio-state"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+arborio-utils = { path = "../utils", default-features = false }
+arborio-modloader = { path = "../modloader", default-features = false }
+arborio-maploader = { path = "../maploader", default-features = false }
+arborio-gfxloader = { path = "../gfxloader", default-features = false }
+arborio-walker = { path = "../walker", default-features = false }
+
+serde = { version = "^1.0", features = ["derive"] }  # TODO: how can we not duplicate this dep and instead re-export it from utils?
+confy = "^0.4"
+log = "0.4.16"
+parking_lot = "^0.12"
+serde_yaml = "^0.8"
+enum-iterator = "^0.7"
