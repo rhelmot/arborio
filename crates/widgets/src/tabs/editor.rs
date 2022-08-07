@@ -7,12 +7,12 @@ use arborio_state::lenses::{AnotherLens, CurrentMapLens, CurrentPaletteLens};
 use arborio_state::tools::ToolSpec;
 use arborio_utils::vizia::prelude::*;
 
-use crate::editor::EditorWidget;
-use crate::entity_tweaker::EntityTweakerWidget;
-use crate::list_palette::PaletteWidget;
-use crate::room_tweaker::RoomTweakerWidget;
-use crate::style_tweaker::{StyleListWidget, StyleTweakerWidget};
-use crate::tile_palette::TilePaletteWidget;
+use arborio_widgets_common::list_palette::PaletteWidget;
+use arborio_widgets_editor::editor::EditorWidget;
+use arborio_widgets_editor_entity::entity_tweaker::EntityTweakerWidget;
+use arborio_widgets_editor_room::room_tweaker::RoomTweakerWidget;
+use arborio_widgets_editor_style::style_tweaker::{StyleListWidget, StyleTweakerWidget};
+use arborio_widgets_tilepicker::tile_palette::TilePaletteWidget;
 
 pub fn build_editor(cx: &mut Context) {
     HStack::new(cx, |cx| {

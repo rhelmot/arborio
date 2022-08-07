@@ -1,9 +1,8 @@
 use arborio_state::data::app::{AppEvent, AppState};
-use arborio_utils::vizia::prelude::*;
-use arborio_utils::vizia::vg::{Color, Paint, Path};
-
 use arborio_state::tools::SCROLL_SENSITIVITY;
 use arborio_utils::units::*;
+use arborio_utils::vizia::prelude::*;
+use arborio_utils::vizia::vg::{Color, Paint, Path};
 
 pub struct TilePaletteWidget {
     selected: u32,

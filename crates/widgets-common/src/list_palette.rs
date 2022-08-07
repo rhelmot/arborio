@@ -1,9 +1,9 @@
-use arborio_utils::vizia::prelude::*;
-use arborio_utils::vizia::vg::{Paint, Path};
 use std::marker::PhantomData;
 
 use arborio_state::data::app::AppState;
 use arborio_state::palette_item::PaletteItem;
+use arborio_utils::vizia::prelude::*;
+use arborio_utils::vizia::vg::{Paint, Path};
 
 pub struct PaletteWidget<T, L> {
     lens: L,
@@ -94,5 +94,15 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
 
         data.draw(cx.data::<AppState>().unwrap(), canvas);
         canvas.restore();
+    }
+
+    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+        event.map(|window_event, _| {
+            if let WindowEvent::CharInput(ch) = window_event {
+                if *ch == '\u{1b}' {
+                    println!("Escape");
+                }
+            }
+        });
     }
 }

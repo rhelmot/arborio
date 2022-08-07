@@ -16,6 +16,12 @@ members = [
     "crates/widgets",
     "crates/state",
     "crates/utils",
+    "crates/widgets-common",
+    "crates/widgets-editor",
+    "crates/widgets-editor-room",
+    "crates/widgets-editor-style",
+    "crates/widgets-editor-entity",
+    "crates/widgets-tilepicker",
 ]
 
 [features]
@@ -39,9 +45,7 @@ image = { version = "0.24.0", default-features = false, features = ["png"] } # i
 
 [profile.dev]
 opt-level = 1
-lto = false
-debug = 0
-[profile.dev.package.arborio-widgets]
+lto = "off"
 debug = 0
 [profile.dev.package.vizia_core]
 opt-level = 2

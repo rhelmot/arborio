@@ -1,4 +1,5 @@
-use crate::common::*;
+use std::rc::Rc;
+
 use arborio_maploader::action::{MapAction, StylegroundSelection};
 use arborio_maploader::map_struct::{Attribute, CelesteMap, CelesteMapStyleground};
 use arborio_modloader::config::AttributeType;
@@ -11,7 +12,7 @@ use arborio_state::lenses::{
 use arborio_utils::vizia::fonts::icons_names::DOWN;
 use arborio_utils::vizia::prelude::*;
 use arborio_utils::vizia::state::UnwrapLens;
-use std::rc::Rc;
+use arborio_widgets_common::common::*;
 
 macro_rules! edit_text {
     ($cx: expr, $label:expr, $attr:ident) => {

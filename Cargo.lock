@@ -160,12 +160,92 @@ dependencies = [
  "arborio-modloader",
  "arborio-state",
  "arborio-utils",
+ "arborio-widgets-common",
+ "arborio-widgets-editor",
+ "arborio-widgets-editor-entity",
+ "arborio-widgets-editor-room",
+ "arborio-widgets-editor-style",
+ "arborio-widgets-tilepicker",
  "dialog",
  "enum-iterator",
  "lazy_static",
  "log",
  "parking_lot 0.12.0",
  "rand 0.8.5",
+]
+
+[[package]]
+name = "arborio-widgets-common"
+version = "0.1.0"
+dependencies = [
+ "arborio-maploader",
+ "arborio-modloader",
+ "arborio-state",
+ "arborio-utils",
+]
+
+[[package]]
+name = "arborio-widgets-editor"
+version = "0.1.0"
+dependencies = [
+ "arborio-gfxloader",
+ "arborio-maploader",
+ "arborio-modloader",
+ "arborio-state",
+ "arborio-utils",
+ "arborio-widgets-common",
+ "arborio-widgets-tilepicker",
+ "lazy_static",
+ "log",
+]
+
+[[package]]
+name = "arborio-widgets-editor-entity"
+version = "0.1.0"
+dependencies = [
+ "arborio-gfxloader",
+ "arborio-maploader",
+ "arborio-modloader",
+ "arborio-state",
+ "arborio-utils",
+ "arborio-widgets-common",
+]
+
+[[package]]
+name = "arborio-widgets-editor-room"
+version = "0.1.0"
+dependencies = [
+ "arborio-gfxloader",
+ "arborio-maploader",
+ "arborio-modloader",
+ "arborio-state",
+ "arborio-utils",
+ "arborio-widgets-common",
+]
+
+[[package]]
+name = "arborio-widgets-editor-style"
+version = "0.1.0"
+dependencies = [
+ "arborio-gfxloader",
+ "arborio-maploader",
+ "arborio-modloader",
+ "arborio-state",
+ "arborio-utils",
+ "arborio-widgets-common",
+]
+
+[[package]]
+name = "arborio-widgets-tilepicker"
+version = "0.1.0"
+dependencies = [
+ "arborio-gfxloader",
+ "arborio-maploader",
+ "arborio-modloader",
+ "arborio-state",
+ "arborio-utils",
+ "arborio-widgets-common",
+ "log",
 ]
 
 [[package]]

@@ -1,3 +1,7 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::str::FromStr;
+
 use arborio_maploader::map_struct::Attribute;
 use arborio_modloader::config::AttributeType;
 use arborio_state::lenses::{
@@ -5,9 +9,6 @@ use arborio_state::lenses::{
 };
 use arborio_utils::vizia::fonts::icons_names::DOWN;
 use arborio_utils::vizia::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::str::FromStr;
 
 #[derive(Lens)]
 pub struct NewAttributeData {

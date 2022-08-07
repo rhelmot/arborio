@@ -1,9 +1,9 @@
-use crate::common::label_with_pencil;
 use arborio_modloader::module::{CelesteModuleKind, MapPath, ModuleID};
 use arborio_state::data::app::{AppEvent, AppState};
 use arborio_state::data::project_map::ProjectEvent;
 use arborio_state::lenses::StaticerLens;
 use arborio_utils::vizia::prelude::*;
+use arborio_widgets_common::common::label_with_pencil;
 
 pub fn build_project_tab(cx: &mut Context, project: ModuleID) {
     ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {

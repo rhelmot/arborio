@@ -1,6 +1,3 @@
-use arborio_utils::vizia::prelude::*;
-
-use crate::common::*;
 use arborio_maploader::action::RoomAction;
 use arborio_maploader::map_struct::{CelesteMapLevel, CelesteMapLevelUpdate};
 use arborio_state::data::app::AppState;
@@ -9,6 +6,8 @@ use arborio_state::data::EventPhase;
 use arborio_state::lenses::{
     CurrentRoomLens, RectHLens, RectWLens, RectXLens, RectYLens, RoomTweakerScopeLens,
 };
+use arborio_utils::vizia::prelude::*;
+use arborio_widgets_common::common::*;
 
 pub struct RoomTweakerWidget {}
 
