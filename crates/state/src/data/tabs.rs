@@ -17,6 +17,7 @@ pub enum AppTab {
     Map(MapTab),
     ConfigEditor(ConfigEditorTab),
     Logs,
+    MapMeta(MapID),
 }
 
 #[derive(Debug, Lens, Clone)]

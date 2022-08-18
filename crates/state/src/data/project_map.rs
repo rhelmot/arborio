@@ -1,4 +1,5 @@
 use crate::data::app::{step_modules_lookup, AppEvent, AppState};
+use crate::data::tabs::AppTab;
 use crate::data::{save, EventPhase, MapID, UNDO_BUFFER_SIZE};
 use arborio_maploader::action::{apply_map_action, MapAction, RoomAction};
 use arborio_maploader::map_struct::CelesteMap;
@@ -59,6 +60,12 @@ impl AppState {
             log::error!("Internal error: event referring to unloaded map");
             return;
         };
+        let module = if let Some(module) = self.modules.get_mut(&state.path.module) {
+            module
+        } else {
+            log::error!("Internal error: loaded map referrring to unloaded module");
+            return;
+        };
 
         match event {
             MapEvent::Action { event, merge_phase } => {
@@ -116,11 +123,92 @@ impl AppState {
                     }
                 }
             }
-            MapEvent::Save => {
-                let state = self.loaded_maps.get(&map).unwrap();
-                match save(self, &state.path, &state.map) {
-                    Ok(_) => self.loaded_maps.get_mut(&map).unwrap().map.dirty = false,
-                    Err(e) => log::error!("Failed to save: {}", e),
+            MapEvent::Save => match save(module, &state.path, &state.map) {
+                Ok(_) => state.map.dirty = false,
+                Err(e) => log::error!("Failed to save: {}", e),
+            },
+            MapEvent::SetName { sid } => {
+                let current_sid = &state.path.sid;
+                let root = if let Some(root) = module.unpacked() {
+                    root
+                } else {
+                    log::error!("Internal error: tried to rename a packed map");
+                    return;
+                };
+
+                let old_path = root.join("Maps").join(current_sid).with_extension("bin");
+                let new_path = root.join("Maps").join(sid).with_extension("bin");
+                let mut index = None;
+                for (idx, other_sid) in module.maps.iter().enumerate() {
+                    if other_sid == current_sid {
+                        index = Some(idx);
+                        break;
+                    }
+                }
+                let index = if let Some(index) = index {
+                    index
+                } else {
+                    log::error!("Internal error: rename map: maps list desync");
+                    return;
+                };
+                if let Err(e) = std::fs::create_dir_all(new_path.parent().unwrap()) {
+                    log::error!("Internal error: rename map: create_dir_all: {}", e);
+                    return;
+                }
+                if let Err(e) = std::fs::rename(old_path, new_path) {
+                    log::error!("Internal error: rename map: rename: {}", e);
+                    return;
+                }
+
+                module.maps[index] = sid.clone();
+                state.path.sid = sid.clone();
+                self.modules_version += 1;
+            }
+            MapEvent::OpenMeta => {
+                for (idx, tab) in self.tabs.iter().enumerate() {
+                    if matches!(tab, AppTab::MapMeta(m) if *m == map) {
+                        cx.emit(AppEvent::SelectTab { idx });
+                        return;
+                    }
+                }
+                cx.emit(AppEvent::SelectTab {
+                    idx: self.tabs.len(),
+                });
+                self.tabs.push(AppTab::MapMeta(map));
+            }
+            MapEvent::Delete => {
+                if let Some(root) = module.unpacked() {
+                    // TODO: there's no fucking way this is the best way to do this
+                    let idx = match module
+                        .maps
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(i, sid)| (sid == &state.path.sid).then_some(i))
+                        .next()
+                    {
+                        Some(i) => i,
+                        None => {
+                            log::error!(
+                                "Internal error: map to delete is not part of parent module"
+                            );
+                            return;
+                        }
+                    };
+                    let old_path = root
+                        .join("Maps")
+                        .join(&state.path.sid)
+                        .with_extension("bin");
+                    if let Err(e) = std::fs::remove_file(old_path) {
+                        log::error!("Failed to delete map: {}", e);
+                        return;
+                    }
+                    module.maps.remove(idx);
+                    self.loaded_maps.remove(&map);
+                    self.modules_version += 1;
+
+                    self.garbage_collect();
+                } else {
+                    log::error!("Internal error: tried to delete a packed map");
                 }
             }
         }
@@ -188,7 +276,7 @@ impl AppState {
                 let new_sid = 'outer2: loop {
                     new_id += 1;
                     let new_sid = format!(
-                        "{}/{}/untitled-{}",
+                        "{}/{}/{}-untitled",
                         self.config.user_name,
                         state
                             .filesystem_root
@@ -244,7 +332,11 @@ pub enum MapEvent {
     Undo,
     Redo,
     Save,
-    //Delete,
+    OpenMeta,
+    Delete,
+    SetName {
+        sid: String,
+    },
     Action {
         event: RefCell<Option<MapAction>>,
         merge_phase: EventPhase,

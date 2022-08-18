@@ -170,6 +170,14 @@ impl CelesteModule {
         }
     }
 
+    pub fn unpacked(&self) -> Option<&Path> {
+        if matches!(self.module_kind(), CelesteModuleKind::Directory) {
+            self.filesystem_root.as_deref()
+        } else {
+            None
+        }
+    }
+
     pub fn load_map_static(root: &Path, sid: &str) -> Result<CelesteMap, io::Error> {
         let mut config = match open_module(root) {
             None => {

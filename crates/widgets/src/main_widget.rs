@@ -6,6 +6,35 @@ use arborio_state::lenses::{CurrentTabImplLens, IsFailedLens};
 use arborio_utils::vizia::prelude::*;
 
 pub fn main_widget(cx: &mut Context) {
+    cx.add_global_listener(|cx, event| {
+        event.map(|window_event, _| match window_event {
+            WindowEvent::KeyDown(Code::KeyZ, _) if cx.modifiers == &Modifiers::CTRL => {
+                cx.emit(AppEvent::MapEvent {
+                    map: None,
+                    event: MapEvent::Undo,
+                });
+            }
+            WindowEvent::KeyDown(Code::KeyY, _) if cx.modifiers == &Modifiers::CTRL => {
+                cx.emit(AppEvent::MapEvent {
+                    map: None,
+                    event: MapEvent::Redo,
+                });
+            }
+            WindowEvent::KeyDown(Code::KeyS, _) if cx.modifiers == &Modifiers::CTRL => {
+                cx.emit(AppEvent::MapEvent {
+                    map: None,
+                    event: MapEvent::Save,
+                });
+            }
+            WindowEvent::KeyDown(Code::KeyM, _) if cx.modifiers == &Modifiers::ALT => {
+                cx.emit(AppEvent::MapEvent {
+                    map: None,
+                    event: MapEvent::OpenMeta,
+                });
+            }
+            _ => {}
+        });
+    });
     VStack::new(cx, move |cx| {
         MenuController::new(cx, false, |cx| {
             MenuStack::new_horizontal(cx, build_menu_bar).id("menu_bar");
@@ -93,6 +122,19 @@ fn build_menu_bar(cx: &mut Context) {
                     cx.emit(AppEvent::MapEvent {
                         map: None,
                         event: MapEvent::Redo,
+                    });
+                },
+            )
+            .display(is_map());
+            MenuButton::new(
+                cx,
+                move |cx| {
+                    Label::new(cx, "Map Metadata");
+                },
+                move |cx| {
+                    cx.emit(AppEvent::MapEvent {
+                        map: None,
+                        event: MapEvent::OpenMeta,
                     });
                 },
             )

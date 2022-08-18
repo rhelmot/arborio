@@ -78,12 +78,12 @@ enum EditingStateEvent {
 }
 
 #[derive(Debug, Clone, Lens)]
-struct ModelContainer<T: 'static + Clone + Send + Sync> {
-    val: T,
+pub struct ModelContainer<T: 'static + Clone + Send + Sync> {
+    pub val: T,
 }
 
 #[derive(Debug)]
-enum ModelEvent<T> {
+pub enum ModelEvent<T> {
     Set(RefCell<Option<T>>), // only an option so the data can be taken out
 }
 

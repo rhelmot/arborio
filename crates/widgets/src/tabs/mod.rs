@@ -2,6 +2,7 @@ pub mod config_editor;
 pub mod editor;
 pub mod installation;
 pub mod logs;
+pub mod map_meta;
 pub mod project;
 
 use arborio_state::data::app::AppEvent;
@@ -27,6 +28,9 @@ pub fn build_tabs(cx: &mut Context) {
                 }
                 AppTab::Logs => {
                     logs::build_logs(cx);
+                }
+                AppTab::MapMeta(id) => {
+                    map_meta::build_map_meta_tab(cx, id);
                 }
             })
             .class("tab_container");

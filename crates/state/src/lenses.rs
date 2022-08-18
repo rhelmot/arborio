@@ -732,6 +732,14 @@ impl Lens for TabTextLens {
                 }
                 AppTab::ConfigEditor(_) => "Config Editor".to_owned(),
                 AppTab::Logs => "Logs".to_owned(),
+                AppTab::MapMeta(id) => {
+                    let mut name = source.loaded_maps.get(id).unwrap().path.sid.clone();
+                    if source.loaded_maps.get(id).unwrap().map.dirty {
+                        name.insert(0, '*');
+                    }
+                    name.push_str(" - Meta");
+                    name
+                }
             }))
         } else {
             map(None)

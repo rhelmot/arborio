@@ -5,7 +5,7 @@ pub mod project_map;
 pub mod selection;
 pub mod tabs;
 
-use app::{AppEvent, AppState};
+use app::AppEvent;
 use log::Level;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -127,8 +127,7 @@ fn load_map(module_root: &Path, sid: &str) -> Option<CelesteMap> {
     }
 }
 
-fn save(app: &AppState, path: &MapPath, map: &CelesteMap) -> Result<(), io::Error> {
-    let module = app.modules.get(&path.module).unwrap();
+fn save(module: &CelesteModule, path: &MapPath, map: &CelesteMap) -> Result<(), io::Error> {
     if !matches!(module.module_kind(), CelesteModuleKind::Directory) {
         return Err(io::Error::new(
             io::ErrorKind::Other,
@@ -148,10 +147,7 @@ fn save(app: &AppState, path: &MapPath, map: &CelesteMap) -> Result<(), io::Erro
         }
     }
 
-    Err(io::Error::new(
-        io::ErrorKind::Other,
-        "Can only save to mods loaded from directories",
-    ))
+    Err(io::Error::new(io::ErrorKind::Other, "Unknown error???"))
 }
 
 uuid_cls!(MapID);

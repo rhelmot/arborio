@@ -354,9 +354,13 @@ impl AppState {
 
                 match tab {
                     AppTab::ProjectOverview(project) => self.modules.contains_key(project),
-                    AppTab::Map(maptab) => self
-                        .modules
-                        .contains_key(&self.loaded_maps.get(&maptab.id).unwrap().path.module),
+                    AppTab::Map(MapTab { id, .. }) | AppTab::MapMeta(id) => {
+                        if let Some(x) = self.loaded_maps.get(id) {
+                            self.modules.contains_key(&x.path.module)
+                        } else {
+                            false
+                        }
+                    }
                     _ => true,
                 }
             };
@@ -374,10 +378,12 @@ impl AppState {
         // collect a list of maps which need to be retained in memory based on open tabs
         let mut open_maps = HashSet::new();
         for tab in &self.tabs {
-            #[allow(clippy::single_match)] // we will want more arms in the future
             match tab {
-                AppTab::Map(maptab) => {
-                    open_maps.insert(maptab.id);
+                AppTab::Map(MapTab { id, .. }) => {
+                    open_maps.insert(*id);
+                }
+                AppTab::MapMeta(id) => {
+                    open_maps.insert(*id);
                 }
                 _ => {}
             }

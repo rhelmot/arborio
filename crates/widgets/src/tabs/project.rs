@@ -4,6 +4,7 @@ use arborio_state::data::project_map::ProjectEvent;
 use arborio_state::lenses::StaticerLens;
 use arborio_utils::vizia::prelude::*;
 use arborio_widgets_common::common::label_with_pencil;
+use arborio_widgets_common::confirm_delete::deleter;
 
 pub fn build_project_tab(cx: &mut Context, project: ModuleID) {
     ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
@@ -134,29 +135,6 @@ fn build_map_list(cx: &mut Context, project: ModuleID) {
     }
 }
 
-#[derive(Debug, Clone, Lens)]
-struct DeleteState {
-    started: bool,
-    validated: bool,
-}
-
-#[derive(Debug)]
-enum DeleteEvent {
-    Start,
-    Cancel,
-    Validate(bool),
-}
-
-impl Model for DeleteState {
-    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
-        event.map(|msg, _| match msg {
-            DeleteEvent::Start => self.started = true,
-            DeleteEvent::Cancel => self.started = false,
-            DeleteEvent::Validate(b) => self.validated = *b,
-        });
-    }
-}
-
 fn build_controls(cx: &mut Context, project: ModuleID) {
     let module = cx
         .data::<AppState>()
@@ -168,54 +146,18 @@ fn build_controls(cx: &mut Context, project: ModuleID) {
     let editing = matches!(module.module_kind(), CelesteModuleKind::Directory);
     VStack::new(cx, move |cx| {
         if editing {
-            DeleteState {
-                started: false,
-                validated: false,
-            }
-            .build(cx);
-            Binding::new(cx, DeleteState::started, move |cx, started| {
-                let module_name = module_name.clone();
-                if started.get(cx) {
-                    VStack::new(cx, move |cx| {
-                        Label::new(
-                            cx,
-                            "Type the name of the mod to continue. This cannot be undone!",
-                        );
-                        HStack::new(cx, move |cx| {
-                            Textbox::new(cx, StaticerLens::new("")).on_edit(move |cx, value| {
-                                cx.emit(DeleteEvent::Validate(value == module_name))
-                            });
-                            Label::new(cx, "Delete Project")
-                                .class("btn_highlight")
-                                .class("danger")
-                                .id("delete_project_confirm")
-                                .on_press(move |cx| {
-                                    if DeleteState::validated.get(cx) {
-                                        cx.emit(AppEvent::ProjectEvent {
-                                            project: Some(project),
-                                            event: ProjectEvent::Delete,
-                                        });
-                                    }
-                                });
-                            Label::new(cx, "Cancel")
-                                .class("btn_highlight")
-                                .id("delete_project_cancel")
-                                .on_press(move |cx| {
-                                    cx.emit(DeleteEvent::Cancel);
-                                });
-                        });
+            deleter(
+                cx,
+                "Delete Project",
+                "Type the name of the mod to continue. This cannot be undone!",
+                move |_, text| text == module_name,
+                move |cx| {
+                    cx.emit(AppEvent::ProjectEvent {
+                        project: Some(project),
+                        event: ProjectEvent::Delete,
                     })
-                    .id("delete_project_confirm_controls");
-                } else {
-                    Label::new(cx, "Delete Project")
-                        .class("btn_highlight")
-                        .class("danger")
-                        .id("delete_project_start")
-                        .on_press(move |cx| {
-                            cx.emit(DeleteEvent::Start);
-                        });
-                }
-            });
+                },
+            );
         }
     })
     .id("project_controls");
