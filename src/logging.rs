@@ -22,7 +22,7 @@ struct ViziaLogger {
 
 impl Log for ViziaLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
-        if metadata.level() == Level::Debug && !metadata.target().starts_with("arborio::") {
+        if metadata.level() == Level::Debug && !metadata.target().starts_with("arborio") {
             return false;
         }
         #[cfg(debug_assertions)]
