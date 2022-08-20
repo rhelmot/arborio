@@ -93,7 +93,7 @@ pub fn generic_nav(
             } else {
                 (x, y)
             };
-            let screen_vec = ScreenVector::new(-*x, *y) * SCROLL_SENSITIVITY;
+            let screen_vec = ScreenVector::new(*x, *y) * SCROLL_SENSITIVITY;
             let map_vec = state
                 .map_tab_unwrap()
                 .transform

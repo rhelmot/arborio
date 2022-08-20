@@ -8,7 +8,7 @@ pub fn next_uuid() -> u32 {
 #[macro_export]
 macro_rules! uuid_cls {
     ($name:ident) => {
-        #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone, Data)]
+        #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone, $crate::vizia::prelude::Data)]
         pub struct $name(u32);
         #[allow(unused)]
         impl $name {

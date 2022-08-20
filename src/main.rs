@@ -10,7 +10,7 @@ use arborio_utils::vizia::prelude::*;
 use arborio_widgets::main_widget::main_widget;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let icon_img = image::load_from_memory(include_bytes!("../img/icon.png")).unwrap();
+    let icon_img = image::load_from_memory(include_bytes!("../icon.png")).unwrap();
     let (width, height) = (icon_img.width(), icon_img.height());
     let app = Application::new(|cx| {
         AppState::new().build(cx);
@@ -20,7 +20,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             let path = path.clone();
             cx.emit(AppEvent::SetConfigPath { path });
         }
-        //cx.add_theme(include_str!("style.css"));
+        #[cfg(not(debug_assertions))]
+        cx.add_theme(include_str!("style.css"));
+        #[cfg(debug_assertions)]
         cx.add_stylesheet("src/style.css")
             .expect("Could not load stylesheet. Are you running me in the right directory?");
 
