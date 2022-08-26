@@ -1,5 +1,5 @@
-use arborio_maploader::action::{MapAction, RoomAction, StylegroundSelection};
-use arborio_maploader::map_struct::{CelesteMap, CelesteMapLevel};
+use crate::data::action::{MapAction, RoomAction, StylegroundSelection};
+use arborio_maploader::map_struct::CelesteMap;
 use arborio_modloader::aggregate::ModuleAggregate;
 use arborio_modloader::module::{CelesteModule, MapPath, ModuleID, CELESTE_MODULE_ID};
 use arborio_modloader::selectable::{
@@ -20,7 +20,7 @@ use crate::auto_saver::AutoSaver;
 use crate::data::config_editor::{
     AnyConfig, ConfigSearchFilter, ConfigSearchResult, ConfigSearchType, SearchScope,
 };
-use crate::data::project_map::{MapEvent, MapState, ProjectEvent};
+use crate::data::project_map::{LevelState, MapEvent, MapState, ProjectEvent};
 use crate::data::selection::AppSelection;
 use crate::data::tabs::{AppTab, MapTab};
 use crate::data::{AppConfig, ArborioRecord, EventPhase, Layer, MapID, Progress};
@@ -263,7 +263,7 @@ impl AppState {
             omni_palette: ModuleAggregate::new(
                 &HashMap::new(),
                 &HashMap::new(),
-                &CelesteMap::default(),
+                &None,
                 *CELESTE_MODULE_ID,
                 false,
             ),
@@ -294,7 +294,7 @@ impl AppState {
         match self.tabs.get(self.current_tab) {
             Some(AppTab::ProjectOverview(id)) => Some(*id),
             Some(AppTab::Map(maptab)) => {
-                Some(self.loaded_maps.get(&maptab.id).unwrap().path.module)
+                Some(self.loaded_maps.get(&maptab.id).unwrap().cache.path.module)
             }
             _ => None,
         }
@@ -306,6 +306,7 @@ impl AppState {
                 .loaded_maps
                 .get(&result.id)
                 .expect("stale reference")
+                .cache
                 .palette
         } else {
             panic!("misuse of current_palette_unwrap");
@@ -323,19 +324,19 @@ impl AppState {
         }
     }
 
-    pub fn current_map_ref(&self) -> Option<&CelesteMap> {
+    pub fn current_map_ref(&self) -> Option<&MapState> {
         if let Some(AppTab::Map(maptab)) = self.tabs.get(self.current_tab) {
-            self.loaded_maps.get(&maptab.id).map(|s| &s.map)
+            self.loaded_maps.get(&maptab.id)
         } else {
             None
         }
     }
 
-    pub fn current_room_ref(&self) -> Option<&CelesteMapLevel> {
+    pub fn current_room_ref(&self) -> Option<&LevelState> {
         if let Some(AppTab::Map(maptab)) = self.tabs.get(self.current_tab) {
             self.loaded_maps
                 .get(&maptab.id)
-                .and_then(|map| map.map.levels.get(maptab.current_room))
+                .and_then(|map| map.data.levels.get(maptab.current_room))
         } else {
             None
         }
@@ -356,7 +357,7 @@ impl AppState {
                     AppTab::ProjectOverview(project) => self.modules.contains_key(project),
                     AppTab::Map(MapTab { id, .. }) | AppTab::MapMeta(id) => {
                         if let Some(x) = self.loaded_maps.get(id) {
-                            self.modules.contains_key(&x.path.module)
+                            self.modules.contains_key(&x.cache.path.module)
                         } else {
                             false
                         }

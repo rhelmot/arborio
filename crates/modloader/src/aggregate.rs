@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use arborio_gfxloader::atlas_img::MultiAtlas;
 use arborio_gfxloader::autotiler::{Autotiler, Tileset};
-use arborio_maploader::map_struct::CelesteMap;
+use arborio_maploader::map_struct::CelesteMapMeta;
 use arborio_utils::interned::{intern_str, Interned, InternedMap};
 use arborio_walker::{open_module, ConfigSourceTrait};
 
@@ -35,7 +35,7 @@ impl ModuleAggregate {
     pub fn new(
         modules: &HashMap<ModuleID, CelesteModule>,
         modules_lookup: &HashMap<String, ModuleID>,
-        map: &CelesteMap,
+        map_meta: &Option<CelesteMapMeta>,
         current_module: ModuleID,
         emit_logs: bool,
     ) -> Self {
@@ -55,7 +55,7 @@ impl ModuleAggregate {
         }
 
         Self::new_core(
-            map,
+            map_meta,
             dep_mods(modules, modules_lookup, current_module),
             emit_logs,
         )
@@ -63,7 +63,7 @@ impl ModuleAggregate {
 
     pub fn new_omni(modules: &HashMap<ModuleID, CelesteModule>, emit_logs: bool) -> Self {
         Self::new_core(
-            &CelesteMap::default(),
+            &None,
             modules
                 .values()
                 .map(|y| (y.everest_metadata.name.as_str(), y)),
@@ -72,7 +72,7 @@ impl ModuleAggregate {
     }
 
     fn new_core<'a>(
-        map: &CelesteMap,
+        map_meta: &Option<CelesteMapMeta>,
         deps: impl Clone + Iterator<Item = (&'a str, &'a CelesteModule)>,
         emit_logs: bool,
     ) -> Self {
@@ -107,14 +107,12 @@ impl ModuleAggregate {
             emit_logs,
         );
 
-        let fg_xml = map
-            .meta
+        let fg_xml = map_meta
             .as_ref()
             .and_then(|meta| meta.fg_tiles.as_ref())
             .map(|s| s.as_str())
             .unwrap_or("Graphics/ForegroundTiles.xml");
-        let bg_xml = map
-            .meta
+        let bg_xml = map_meta
             .as_ref()
             .and_then(|meta| meta.bg_tiles.as_ref())
             .map(|s| s.as_str())

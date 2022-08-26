@@ -1,9 +1,9 @@
+use crate::data::action::StylegroundSelection;
 use crate::data::config_editor::{
     AnyConfig, ConfigSearchFilter, ConfigSearchResult, ConfigSearchType, SearchScope,
 };
 use crate::data::selection::AppSelection;
 use crate::data::MapID;
-use arborio_maploader::action::StylegroundSelection;
 use arborio_modloader::module::ModuleID;
 use arborio_utils::units::{MapPointStrict, MapToScreen};
 use arborio_utils::uuid::next_uuid;

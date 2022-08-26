@@ -1,9 +1,10 @@
 use std::rc::Rc;
 
-use arborio_maploader::action::{MapAction, StylegroundSelection};
-use arborio_maploader::map_struct::{Attribute, CelesteMap, CelesteMapStyleground};
+use arborio_maploader::map_struct::{Attribute, CelesteMapStyleground};
 use arborio_modloader::config::AttributeType;
+use arborio_state::data::action::{MapAction, StylegroundSelection};
 use arborio_state::data::app::{AppEvent, AppState};
+use arborio_state::data::project_map::MapStateData;
 use arborio_state::data::EventPhase;
 use arborio_state::lenses::{
     CurrentMapImplLens, CurrentMapLens, CurrentStylegroundImplLens, CurrentStylegroundLens,
@@ -71,13 +72,13 @@ impl StyleListWidget {
                 build_active_style_list(
                     cx,
                     true,
-                    CurrentMapImplLens {}.then(CelesteMap::foregrounds),
+                    CurrentMapImplLens {}.then(MapStateData::foregrounds),
                 );
                 Label::new(cx, "Backgrounds").class("style_category");
                 build_active_style_list(
                     cx,
                     false,
-                    CurrentMapImplLens {}.then(CelesteMap::backgrounds),
+                    CurrentMapImplLens {}.then(MapStateData::backgrounds),
                 );
             });
         })

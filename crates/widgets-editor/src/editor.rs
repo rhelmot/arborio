@@ -121,7 +121,7 @@ impl View for EditorWidget {
         let t = &app.map_tab_unwrap().transform;
         canvas.set_transform(t.m11, t.m12, t.m21, t.m22, t.m31.round(), t.m32.round());
 
-        let map = &app.loaded_maps.get(&app.map_tab_unwrap().id).unwrap().map;
+        let map = app.loaded_maps.get(&app.map_tab_unwrap().id).unwrap();
         if *PERF_MONITOR {
             let now = time::Instant::now();
             println!("Drew {}ms ago", (now - *app.last_draw.borrow()).as_millis());
@@ -132,12 +132,12 @@ impl View for EditorWidget {
         let preview = app.map_tab_unwrap().preview_pos;
 
         let mut path = Path::new();
-        for room in &map.levels {
+        for room in &map.data.levels {
             path.rect(
-                room.bounds.origin.x as f32,
-                room.bounds.origin.y as f32,
-                room.bounds.width() as f32,
-                room.bounds.height() as f32,
+                room.data.bounds.origin.x as f32,
+                room.data.bounds.origin.y as f32,
+                room.data.bounds.width() as f32,
+                room.data.bounds.height() as f32,
             );
         }
         canvas.fill_path(&mut path, Paint::color(ROOM_EMPTY_COLOR));
@@ -152,17 +152,18 @@ impl View for EditorWidget {
             app,
             canvas,
             preview,
-            map.backgrounds.as_slice(),
-            map.levels
+            map.data.backgrounds.as_slice(),
+            map.data
+                .levels
                 .get(current_room)
-                .map_or("", |lvl| lvl.name.as_str()),
+                .map_or("", |lvl| lvl.data.name.as_str()),
             &HashSet::new(),
             false,
         );
         canvas.restore();
 
         let mut path = Path::new();
-        for filler in &map.filler {
+        for filler in &map.data.filler {
             path.rect(
                 filler.origin.x as f32,
                 filler.origin.y as f32,
@@ -172,17 +173,20 @@ impl View for EditorWidget {
         }
         canvas.fill_path(&mut path, Paint::color(FILLER_COLOR));
 
-        for (idx, room) in map.levels.iter().enumerate() {
+        for (idx, room) in map.data.levels.iter().enumerate() {
             canvas.save();
-            canvas.translate(room.bounds.min_x() as f32, room.bounds.min_y() as f32);
+            canvas.translate(
+                room.data.bounds.min_x() as f32,
+                room.data.bounds.min_y() as f32,
+            );
             let mut cache = room.cache.borrow_mut();
             let target = if let Some(target) = cache.render_cache {
                 target
             } else {
                 canvas
                     .create_image_empty(
-                        room.bounds.width() as usize,
-                        room.bounds.height() as usize,
+                        room.data.bounds.width() as usize,
+                        room.data.bounds.height() as usize,
                         PixelFormat::Rgba8,
                         ImageFlags::NEAREST | ImageFlags::FLIP_Y,
                     )
@@ -198,16 +202,16 @@ impl View for EditorWidget {
                 canvas.clear_rect(
                     0,
                     0,
-                    room.bounds.width() as u32,
-                    room.bounds.height() as u32,
+                    room.data.bounds.width() as u32,
+                    room.data.bounds.height() as u32,
                     Color::rgba(0, 0, 0, 0),
                 );
-                rendering::draw_tiles(app, canvas, room, false);
-                rendering::draw_decals(app, canvas, room, false);
+                rendering::draw_tiles(app, canvas, &room.data, false);
+                rendering::draw_decals(app, canvas, &room.data, false);
                 rendering::draw_triggers(
                     app,
                     canvas,
-                    room,
+                    &room.data,
                     if idx == app.map_tab_unwrap().current_room {
                         app.map_tab_unwrap().current_selected
                     } else {
@@ -217,15 +221,15 @@ impl View for EditorWidget {
                 rendering::draw_entities(
                     app,
                     canvas,
-                    room,
+                    &room.data,
                     if idx == app.map_tab_unwrap().current_room {
                         app.map_tab_unwrap().current_selected
                     } else {
                         None
                     },
                 );
-                rendering::draw_tiles(app, canvas, room, true);
-                rendering::draw_decals(app, canvas, room, true);
+                rendering::draw_tiles(app, canvas, &room.data, true);
+                rendering::draw_decals(app, canvas, &room.data, true);
 
                 canvas.restore();
                 canvas.set_render_target(RenderTarget::Screen);
@@ -236,15 +240,15 @@ impl View for EditorWidget {
             path.rect(
                 0.0,
                 0.0,
-                room.bounds.width() as f32,
-                room.bounds.height() as f32,
+                room.data.bounds.width() as f32,
+                room.data.bounds.height() as f32,
             );
             let paint = Paint::image(
                 target,
                 0.0,
                 0.0,
-                room.bounds.width() as f32,
-                room.bounds.height() as f32,
+                room.data.bounds.width() as f32,
+                room.data.bounds.height() as f32,
                 0.0,
                 1.0,
             );
@@ -261,10 +265,11 @@ impl View for EditorWidget {
             app,
             canvas,
             preview,
-            map.foregrounds.as_slice(),
-            map.levels
+            map.data.foregrounds.as_slice(),
+            map.data
+                .levels
                 .get(current_room)
-                .map_or("", |lvl| lvl.name.as_str()),
+                .map_or("", |lvl| lvl.data.name.as_str()),
             &HashSet::new(),
             false,
         );

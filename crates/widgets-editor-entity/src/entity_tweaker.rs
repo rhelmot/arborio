@@ -1,6 +1,6 @@
-use arborio_maploader::action::RoomAction;
 use arborio_maploader::map_struct::{Attribute, CelesteMapEntity};
 use arborio_modloader::config::AttributeType;
+use arborio_state::data::action::RoomAction;
 use arborio_state::data::app::{AppEvent, AppState};
 use arborio_state::data::selection::AppSelection;
 use arborio_state::data::tabs::AppTab;

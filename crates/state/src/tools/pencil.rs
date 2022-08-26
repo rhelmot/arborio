@@ -1,12 +1,12 @@
 use arborio_utils::vizia::prelude::*;
 use arborio_utils::vizia::vg::{Color, Paint, Path};
 
+use crate::data::action::RoomAction;
 use crate::data::app::{AppEvent, AppState};
 use crate::data::{EventPhase, Layer};
 use crate::palette_item::{get_entity_config, instantiate_entity, instantiate_trigger};
 use crate::rendering;
 use crate::tools::{generic_nav, Tool};
-use arborio_maploader::action::RoomAction;
 use arborio_maploader::map_struct::{CelesteMapDecal, CelesteMapEntity, Node};
 use arborio_modloader::config::PencilBehavior;
 use arborio_modloader::selectable::{EntitySelectable, TriggerSelectable};
@@ -53,7 +53,7 @@ impl Tool for PencilTool {
             .unwrap()
             .transform_point(screen_pos)
             .cast();
-        let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
+        let room_pos = (map_pos - room.data.bounds.origin).to_point().cast_unit();
         match event {
             WindowEvent::MouseDown(MouseButton::Left) => {
                 self.do_draw_start(app, room_pos);
@@ -81,7 +81,7 @@ impl Tool for PencilTool {
             .unwrap()
             .transform_point(screen_pos)
             .cast();
-        let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
+        let room_pos = (map_pos - room.data.bounds.origin).to_point().cast_unit();
 
         self.do_draw_finish(app, room_pos)
     }
@@ -93,12 +93,15 @@ impl Tool for PencilTool {
             return;
         };
         canvas.save();
-        canvas.translate(room.bounds.origin.x as f32, room.bounds.origin.y as f32);
+        canvas.translate(
+            room.data.bounds.origin.x as f32,
+            room.data.bounds.origin.y as f32,
+        );
         canvas.intersect_scissor(
             0.0,
             0.0,
-            room.bounds.size.width as f32,
-            room.bounds.size.height as f32,
+            room.data.bounds.size.width as f32,
+            room.data.bounds.size.height as f32,
         );
 
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
@@ -109,7 +112,7 @@ impl Tool for PencilTool {
             .unwrap()
             .transform_point(screen_pos)
             .cast();
-        let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
+        let room_pos = (map_pos - room.data.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
         let room_pos = if state.snap {
@@ -139,7 +142,7 @@ impl Tool for PencilTool {
                     &TileGrid::empty(),
                     false,
                     false,
-                    &room.object_tiles,
+                    &room.data.object_tiles,
                 );
             }
             Layer::Triggers => {

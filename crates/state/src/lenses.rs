@@ -9,13 +9,14 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 
 use crate::auto_saver::AutoSaver;
+use crate::data::action::StylegroundSelection;
 use crate::data::app::AppState;
+use crate::data::project_map::MapStateData;
 use crate::data::selection::AppSelection;
 use crate::data::tabs::{AppTab, MapTab};
 use crate::data::MapID;
-use arborio_maploader::action::StylegroundSelection;
 use arborio_maploader::map_struct::{
-    Attribute, CelesteMap, CelesteMapEntity, CelesteMapLevel, CelesteMapStyleground,
+    Attribute, CelesteMapEntity, CelesteMapLevel, CelesteMapStyleground,
 };
 use arborio_modloader::aggregate::ModuleAggregate;
 
@@ -41,7 +42,7 @@ pub struct CurrentMapImplLens {}
 
 impl Lens for CurrentMapImplLens {
     type Source = AppState;
-    type Target = CelesteMap;
+    type Target = MapStateData;
 
     fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
         let data = match source.tabs.get(source.current_tab) {
@@ -49,7 +50,7 @@ impl Lens for CurrentMapImplLens {
             _ => None,
         };
 
-        map(data.map(|id| &source.loaded_maps.get(id).unwrap().map))
+        map(data.map(|id| &source.loaded_maps.get(id).unwrap().data))
     }
 }
 
@@ -73,7 +74,11 @@ impl Lens for CurrentRoomLens {
             return map(None);
         };
 
-        map(the_map.map.levels.get(maptab.current_room))
+        map(the_map
+            .data
+            .levels
+            .get(maptab.current_room)
+            .map(|x| &x.data))
     }
 }
 
@@ -111,7 +116,7 @@ impl Lens for CurrentSelectedEntityLens {
             return map(None);
         };
         let data = cmap
-            .map
+            .data
             .levels
             .get(*current_room)
             .and_then(|room| room.entity(*entity_id, *trigger));
@@ -138,7 +143,10 @@ impl Lens for CurrentPaletteLens {
             return map(None);
         };
 
-        let data = source.loaded_maps.get(map_id).map(|state| &state.palette);
+        let data = source
+            .loaded_maps
+            .get(map_id)
+            .map(|state| &state.cache.palette);
         map(data)
     }
 }
@@ -651,16 +659,11 @@ impl Lens for CurrentStylegroundImplLens {
             Some(stysel) => stysel,
             None => return map(None),
         };
-        let cmap = match source.loaded_maps.get(&maptab.id) {
-            Some(map) => &map.map,
+        let mapstate = match source.loaded_maps.get(&maptab.id) {
+            Some(map) => map,
             None => return map(None),
         };
-        let styles = if stysel.fg {
-            &cmap.foregrounds
-        } else {
-            &cmap.backgrounds
-        };
-        map(styles.get(stysel.idx))
+        map(mapstate.styles(stysel.fg).get(stysel.idx))
     }
 }
 
@@ -724,8 +727,15 @@ impl Lens for TabTextLens {
                     .name
                     .to_string(),
                 AppTab::Map(maptab) => {
-                    let mut name = source.loaded_maps.get(&maptab.id).unwrap().path.sid.clone();
-                    if source.loaded_maps.get(&maptab.id).unwrap().map.dirty {
+                    let mut name = source
+                        .loaded_maps
+                        .get(&maptab.id)
+                        .unwrap()
+                        .cache
+                        .path
+                        .sid
+                        .clone();
+                    if source.loaded_maps.get(&maptab.id).unwrap().cache.dirty {
                         name.insert(0, '*');
                     }
                     name
@@ -733,8 +743,8 @@ impl Lens for TabTextLens {
                 AppTab::ConfigEditor(_) => "Config Editor".to_owned(),
                 AppTab::Logs => "Logs".to_owned(),
                 AppTab::MapMeta(id) => {
-                    let mut name = source.loaded_maps.get(id).unwrap().path.sid.clone();
-                    if source.loaded_maps.get(id).unwrap().map.dirty {
+                    let mut name = source.loaded_maps.get(id).unwrap().cache.path.sid.clone();
+                    if source.loaded_maps.get(id).unwrap().cache.dirty {
                         name.insert(0, '*');
                     }
                     name.push_str(" - Meta");

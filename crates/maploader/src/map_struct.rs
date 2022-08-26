@@ -3,11 +3,10 @@
 use celeste::binel::*;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 use std::mem::swap;
 use std::path::Path;
 use std::str::FromStr;
@@ -16,7 +15,6 @@ use std::{fmt, io};
 use arborio_utils::units::*;
 use arborio_utils::uuid::next_uuid;
 use arborio_utils::vizia::prelude::*;
-use arborio_utils::vizia::vg;
 
 use crate::from_binel::{GetAttrOrChild, TryFromBinEl, TwoWayConverter};
 
@@ -34,9 +32,6 @@ pub struct Rect {
 #[derive(Debug, TryFromBinEl, Lens, Default)]
 #[name("Map")]
 pub struct CelesteMap {
-    #[bin_el_skip]
-    pub dirty: bool,
-
     #[name("Filler")]
     pub filler: Vec<MapRectStrict>,
     #[optional]
@@ -123,11 +118,13 @@ pub struct CelesteMapMeta {
     #[optional]
     pub postcard_sound_id: Option<String>,
     // TODO more fields that ahorn doesn't let you change but everest will read from map.meta.yaml
-    #[children]
-    pub modes: Vec<CelesteMapMetaMode>, // [Option<_>; 3] perhaps?
+    #[optional]
+    pub mode: Option<CelesteMapMetaMode>,
+    #[optional]
+    pub modes: Option<Vec<CelesteMapMetaMode>>,
 }
 
-#[derive(Debug, TryFromBinEl)]
+#[derive(Debug, TryFromBinEl, Default)]
 #[name("mode")]
 pub struct CelesteMapMetaMode {
     #[name("HeartIsEnd")]
@@ -162,7 +159,7 @@ pub struct CelesteMapMetaAudioState {
     pub music: String,
 }
 
-#[derive(Debug, Lens, Serialize, Deserialize)]
+#[derive(Debug, Lens, Serialize, Deserialize, Clone)]
 pub struct CelesteMapLevel {
     pub name: String,
     pub bounds: MapRectStrict,
@@ -194,46 +191,6 @@ pub struct CelesteMapLevel {
     pub bg_decals: Vec<CelesteMapDecal>,
     pub fg_tiles: TileGrid<i32>,
     pub bg_tiles: TileGrid<i32>,
-
-    #[serde(skip)]
-    pub cache: RefCell<CelesteMapLevelCache>,
-}
-
-// totally normal clone except wipe the cache
-impl Clone for CelesteMapLevel {
-    fn clone(&self) -> Self {
-        Self {
-            name: self.name.clone(),
-            bounds: self.bounds,
-            color: self.color,
-            camera_offset_x: self.camera_offset_x,
-            camera_offset_y: self.camera_offset_y,
-            wind_pattern: self.wind_pattern.clone(),
-            space: self.space,
-            underwater: self.underwater,
-            whisper: self.whisper,
-            dark: self.dark,
-            disable_down_transition: self.disable_down_transition,
-            enforce_dash_number: self.enforce_dash_number,
-            music: self.music.clone(),
-            alt_music: self.alt_music.clone(),
-            ambience: self.ambience.clone(),
-            music_layers: self.music_layers,
-            music_progress: self.music_progress.clone(),
-            ambience_progress: self.ambience_progress.clone(),
-            delay_alt_music_fade: self.delay_alt_music_fade,
-            solids: self.solids.clone(),
-            bg: self.bg.clone(),
-            object_tiles: self.object_tiles.clone(),
-            entities: self.entities.clone(),
-            triggers: self.triggers.clone(),
-            fg_decals: self.fg_decals.clone(),
-            bg_decals: self.bg_decals.clone(),
-            fg_tiles: self.fg_tiles.clone(),
-            bg_tiles: self.bg_tiles.clone(),
-            cache: RefCell::new(Default::default()),
-        }
-    }
 }
 
 impl Default for CelesteMapLevel {
@@ -268,7 +225,6 @@ impl Default for CelesteMapLevel {
             bg_decals: vec![],
             fg_tiles: TileGrid::new(tile_size, -1),
             bg_tiles: TileGrid::new(tile_size, -1),
-            cache: RefCell::new(Default::default()),
         }
     }
 }
@@ -355,14 +311,6 @@ impl CelesteMapLevel {
             swap(&mut self.enforce_dash_number, x);
         };
     }
-}
-
-#[derive(Default)]
-pub struct CelesteMapLevelCache {
-    pub render_cache_valid: bool,
-    pub render_cache: Option<vg::ImageId>,
-    pub last_entity_idx: usize,
-    pub last_decal_idx: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, TryFromBinEl, Lens, Serialize, Deserialize)]
@@ -567,15 +515,6 @@ impl Data for CelesteMapEntity {
     }
 }
 
-impl Debug for CelesteMapLevelCache {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CelesteMapLevelCache")
-            .field("render_cache_valid", &self.render_cache_valid)
-            .field("last_entity_idx", &self.last_entity_idx)
-            .finish()
-    }
-}
-
 impl fmt::Display for CelesteMapError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}: {}", self.kind, self.description)
@@ -659,112 +598,6 @@ impl CelesteMapLevel {
         let tiles = if foreground { &self.solids } else { &self.bg };
 
         tiles.get(pt).copied()
-    }
-
-    pub fn entity(&self, id: i32, trigger: bool) -> Option<&CelesteMapEntity> {
-        let entities = if trigger {
-            &self.triggers
-        } else {
-            &self.entities
-        };
-        if let Some(e) = entities.get(self.cache.borrow().last_entity_idx) {
-            if e.id == id {
-                return Some(e);
-            }
-        }
-        for (idx, e) in entities.iter().enumerate() {
-            if e.id == id {
-                self.cache.borrow_mut().last_entity_idx = idx;
-                return Some(e);
-            }
-        }
-        None
-    }
-
-    pub fn entity_mut(&mut self, id: i32, trigger: bool) -> Option<&mut CelesteMapEntity> {
-        let entities = if trigger {
-            &mut self.triggers
-        } else {
-            &mut self.entities
-        };
-        if let Some(e) = entities.get_mut(self.cache.borrow().last_entity_idx) {
-            if e.id == id {
-                // hack around borrow checker
-                let entities = if trigger {
-                    &mut self.triggers
-                } else {
-                    &mut self.entities
-                };
-                return entities.get_mut(self.cache.borrow().last_entity_idx);
-            }
-        }
-        let entities = if trigger {
-            &mut self.triggers
-        } else {
-            &mut self.entities
-        };
-        for (idx, e) in entities.iter_mut().enumerate() {
-            if e.id == id {
-                self.cache.borrow_mut().last_entity_idx = idx;
-                return Some(e);
-            }
-        }
-        None
-    }
-
-    pub fn decal(&self, id: u32, fg: bool) -> Option<&CelesteMapDecal> {
-        let decals = if fg { &self.fg_decals } else { &self.bg_decals };
-        if let Some(e) = decals.get(self.cache.borrow().last_entity_idx) {
-            if e.id == id {
-                return Some(e);
-            }
-        }
-        for (idx, e) in decals.iter().enumerate() {
-            if e.id == id {
-                self.cache.borrow_mut().last_decal_idx = idx;
-                return Some(e);
-            }
-        }
-        None
-    }
-
-    pub fn decal_mut(&mut self, id: u32, fg: bool) -> Option<&mut CelesteMapDecal> {
-        let decals = if fg {
-            &mut self.fg_decals
-        } else {
-            &mut self.bg_decals
-        };
-        if let Some(e) = decals.get_mut(self.cache.borrow().last_decal_idx) {
-            if e.id == id {
-                // hack around borrow checker
-                let decals = if fg {
-                    &mut self.fg_decals
-                } else {
-                    &mut self.bg_decals
-                };
-                return decals.get_mut(self.cache.borrow().last_decal_idx);
-            }
-        }
-        let decals = if fg {
-            &mut self.fg_decals
-        } else {
-            &mut self.bg_decals
-        };
-        for (idx, e) in decals.iter_mut().enumerate() {
-            if e.id == id {
-                self.cache.borrow_mut().last_decal_idx = idx;
-                return Some(e);
-            }
-        }
-        None
-    }
-
-    pub fn cache_entity_idx(&self, idx: usize) {
-        self.cache.borrow_mut().last_entity_idx = idx;
-    }
-
-    pub fn cache_decal_idx(&self, idx: usize) {
-        self.cache.borrow_mut().last_decal_idx = idx;
     }
 
     pub fn next_id(&self) -> i32 {
@@ -965,8 +798,6 @@ impl TryFromBinEl for CelesteMapLevel {
         let entities = DefaultConverter::from_bin_el(elem, "entities")?;
         let triggers = TryFromBinEl::try_from_bin_el(get_child(elem, "triggers")?)?;
 
-        let cache = Default::default();
-
         Ok(CelesteMapLevel {
             bounds,
             name,
@@ -998,8 +829,6 @@ impl TryFromBinEl for CelesteMapLevel {
             bg_decals,
             fg_tiles,
             bg_tiles,
-
-            cache,
         })
     }
 

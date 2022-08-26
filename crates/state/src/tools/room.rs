@@ -2,13 +2,14 @@ use arborio_utils::vizia::prelude::*;
 use arborio_utils::vizia::vg::{Color, Paint, Path};
 use std::collections::{HashMap, HashSet};
 
+use crate::data::action::{MapAction, RoomAction};
 use crate::data::app::{AppEvent, AppInternalEvent, AppState};
+use crate::data::project_map::MapState;
 use crate::data::selection::AppSelectable;
 use crate::data::{EventPhase, MapID};
 use crate::tools::selection::ResizeSide;
 use crate::tools::{generic_nav, Tool};
-use arborio_maploader::action::{MapAction, RoomAction};
-use arborio_maploader::map_struct::{CelesteMap, CelesteMapLevel};
+use arborio_maploader::map_struct::CelesteMapLevel;
 use arborio_utils::units::*;
 
 pub struct RoomTool {
@@ -140,10 +141,13 @@ impl Tool for RoomTool {
                 if self.status == SelectionStatus::None {
                     let mut result = CelesteMapLevel::default();
                     result.bounds.origin = map_pos;
-                    self.current_selection = HashSet::from([map.levels.len()]);
+                    self.current_selection = HashSet::from([map.data.levels.len()]);
                     self.status = SelectionStatus::Dragging(DraggingStatus {
                         pointer_reference_point: map_pos,
-                        selection_reference_points: HashMap::from([(map.levels.len(), map_pos)]),
+                        selection_reference_points: HashMap::from([(
+                            map.data.levels.len(),
+                            map_pos,
+                        )]),
                     });
                     let mut events = self.notify_selection(app);
                     events.push(app.map_action_unique(MapAction::AddRoom {
@@ -253,8 +257,8 @@ impl Tool for RoomTool {
             .iter()
             .chain(self.current_selection.iter())
         {
-            if let Some(room) = map.levels.get(*room) {
-                let rect = &room.bounds;
+            if let Some(room) = map.data.levels.get(*room) {
+                let rect = &room.data.bounds;
                 path.rect(
                     rect.min_x() as f32,
                     rect.min_y() as f32,
@@ -270,8 +274,8 @@ impl Tool for RoomTool {
             if let Some(room) = room_at(map, map_pos_unsnapped) {
                 if !self.current_selection.contains(&room) {
                     let mut path = Path::new();
-                    if let Some(room) = map.levels.get(room) {
-                        let rect = &room.bounds;
+                    if let Some(room) = map.data.levels.get(room) {
+                        let rect = &room.data.bounds;
                         path.rect(
                             rect.min_x() as f32,
                             rect.min_y() as f32,
@@ -361,7 +365,7 @@ impl RoomTool {
         self.notify_selection(app)
     }
 
-    fn nudge(&self, app: &AppState, map: &CelesteMap, nudge: MapVectorStrict) -> Vec<AppEvent> {
+    fn nudge(&self, app: &AppState, map: &MapState, nudge: MapVectorStrict) -> Vec<AppEvent> {
         let dragging = if let SelectionStatus::Dragging(dragging) = &self.status {
             Some(dragging)
         } else {
@@ -373,10 +377,13 @@ impl RoomTool {
         for room in self.current_selection.iter() {
             let base = dragging
                 .map(|d| d.selection_reference_points[room])
-                .unwrap_or_else(|| map.levels[*room].bounds.origin);
+                .unwrap_or_else(|| map.data.levels[*room].data.bounds.origin);
             events.push(MapAction::RoomAction {
                 event: RoomAction::MoveRoom {
-                    bounds: MapRectStrict::new(base + nudge, map.levels[*room].bounds.size),
+                    bounds: MapRectStrict::new(
+                        base + nudge,
+                        map.data.levels[*room].data.bounds.size,
+                    ),
                 },
                 idx: *room,
             });
@@ -385,7 +392,7 @@ impl RoomTool {
         vec![app.batch_action(events, self.draw_phase)]
     }
 
-    fn resize(&self, map: &CelesteMap, resize: MapVectorStrict) -> Vec<MapAction> {
+    fn resize(&self, map: &MapState, resize: MapVectorStrict) -> Vec<MapAction> {
         let dragging = if let SelectionStatus::Resizing(dragging) = &self.status {
             Some(dragging)
         } else {
@@ -422,7 +429,7 @@ impl RoomTool {
         for room in self.current_selection.iter() {
             let start_rect = dragging
                 .map(|d| d.selection_reference_sizes[room])
-                .unwrap_or_else(|| map.levels[*room].bounds);
+                .unwrap_or_else(|| map.data.levels[*room].data.bounds);
             let mut new_rect = MapRectStrict::new(
                 start_rect.origin + pos_vec,
                 start_rect.size + size_vec.to_size(),
@@ -438,18 +445,18 @@ impl RoomTool {
         events
     }
 
-    fn begin_dragging(
-        &mut self,
-        map: &CelesteMap,
-        pt: MapPointStrict,
-        pt_unsnapped: MapPointStrict,
-    ) {
+    fn begin_dragging(&mut self, map: &MapState, pt: MapPointStrict, pt_unsnapped: MapPointStrict) {
         let side = self.can_resize(map, pt_unsnapped);
         if side != ResizeSide::None {
             let selection_reference_sizes = self
                 .current_selection
                 .iter()
-                .filter_map(|idx| map.levels.get(*idx).map(|room| (*idx, room.bounds)))
+                .filter_map(|idx| {
+                    map.data
+                        .levels
+                        .get(*idx)
+                        .map(|room| (*idx, room.data.bounds))
+                })
                 .collect::<HashMap<_, _>>();
 
             self.status = SelectionStatus::Resizing(ResizingStatus {
@@ -461,7 +468,12 @@ impl RoomTool {
             let selection_reference_points = self
                 .current_selection
                 .iter()
-                .filter_map(|idx| map.levels.get(*idx).map(|room| (*idx, room.bounds.origin)))
+                .filter_map(|idx| {
+                    map.data
+                        .levels
+                        .get(*idx)
+                        .map(|room| (*idx, room.data.bounds.origin))
+                })
                 .collect::<HashMap<_, _>>();
 
             self.status = SelectionStatus::Dragging(DraggingStatus {
@@ -471,10 +483,10 @@ impl RoomTool {
         }
     }
 
-    fn can_resize(&self, map: &CelesteMap, pointer: MapPointStrict) -> ResizeSide {
+    fn can_resize(&self, map: &MapState, pointer: MapPointStrict) -> ResizeSide {
         for idx in self.current_selection.iter() {
-            if let Some(room) = map.levels.get(*idx) {
-                let rect = &room.bounds;
+            if let Some(room) = map.data.levels.get(*idx) {
+                let rect = &room.data.bounds;
                 if rect.contains(pointer) {
                     let smaller_rect = rect.inflate(-2, -2);
                     let at_top = pointer.y < smaller_rect.min_y();
@@ -507,7 +519,7 @@ impl RoomTool {
             contents: serde_yaml::to_string(&AppSelectable::Rooms(
                 self.current_selection
                     .iter()
-                    .map(|roomid| map.map.levels.get(*roomid).unwrap().clone())
+                    .map(|roomid| map.data.levels.get(*roomid).unwrap().data.clone())
                     .collect(),
             ))
             .unwrap(),
@@ -557,18 +569,18 @@ impl RoomTool {
     }
 }
 
-fn room_at(map: &CelesteMap, pos: MapPointStrict) -> Option<usize> {
+fn room_at(map: &MapState, pos: MapPointStrict) -> Option<usize> {
     rooms_in(map, MapRectStrict::new(pos, MapSizeStrict::new(1, 1)))
         .iter()
         .next()
         .cloned()
 }
 
-fn rooms_in(map: &CelesteMap, rect: MapRectStrict) -> HashSet<usize> {
+fn rooms_in(map: &MapState, rect: MapRectStrict) -> HashSet<usize> {
     let rect = rect_normalize(&rect);
     let mut result = HashSet::new();
-    for (idx, room) in map.levels.iter().enumerate() {
-        if room.bounds.intersects(&rect) {
+    for (idx, room) in map.data.levels.iter().enumerate() {
+        if room.data.bounds.intersects(&rect) {
             result.insert(idx);
         }
     }

@@ -1,10 +1,12 @@
 use arborio_utils::units::{MapRectStrict, TileGrid, TilePoint, TileVector};
 use arborio_utils::uuid::next_uuid;
 use arborio_utils::vizia::prelude::*;
+use std::cell::RefCell;
 use std::collections::HashSet;
 
-use crate::map_struct::{
-    CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapLevelUpdate,
+use crate::data::project_map::{LevelState, MapState};
+use arborio_maploader::map_struct::{
+    CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapLevelUpdate,
     CelesteMapStyleground,
 };
 
@@ -18,7 +20,7 @@ use crate::map_struct::{
 
 pub fn apply_map_action(
     cx: &mut EventContext,
-    map: &mut CelesteMap,
+    map: &mut MapState,
     event: MapAction,
 ) -> Result<MapAction, String> {
     match event {
@@ -74,30 +76,42 @@ pub fn apply_map_action(
             }
         }
         MapAction::AddRoom { idx, mut room } => {
-            let idx = idx.unwrap_or(map.levels.len());
-            if room.name.is_empty() || map.levels.iter().any(|iroom| room.name == iroom.name) {
+            let idx = idx.unwrap_or(map.data.levels.len());
+            if room.name.is_empty()
+                || map
+                    .data
+                    .levels
+                    .iter()
+                    .any(|iroom| room.name == iroom.data.name)
+            {
                 room.name = pick_new_name(map);
             }
-            if idx <= map.levels.len() {
-                map.levels.insert(idx, *room);
+            if idx <= map.data.levels.len() {
+                map.data.levels.insert(
+                    idx,
+                    LevelState {
+                        data: *room,
+                        cache: RefCell::new(Default::default()),
+                    },
+                );
                 Ok(MapAction::DeleteRoom { idx })
             } else {
                 Err("Out of range".to_owned())
             }
         }
         MapAction::DeleteRoom { idx } => {
-            if idx <= map.levels.len() {
-                let room = map.levels.remove(idx);
+            if idx <= map.data.levels.len() {
+                let room = map.data.levels.remove(idx);
                 Ok(MapAction::AddRoom {
                     idx: Some(idx),
-                    room: Box::new(room),
+                    room: Box::new(room.data),
                 })
             } else {
                 Err("Out of range".to_owned())
             }
         }
         MapAction::RoomAction { idx, event } => {
-            if let Some(room) = map.levels.get_mut(idx) {
+            if let Some(room) = map.data.levels.get_mut(idx) {
                 room.cache.borrow_mut().render_cache_valid = false;
                 Ok(MapAction::RoomAction {
                     idx,
@@ -110,20 +124,22 @@ pub fn apply_map_action(
     }
 }
 
-fn apply_room_event(room: &mut CelesteMapLevel, event: RoomAction) -> Result<RoomAction, String> {
+fn apply_room_event(room: &mut LevelState, event: RoomAction) -> Result<RoomAction, String> {
     match event {
         RoomAction::UpdateRoomMisc { mut update } => {
-            room.apply(&mut update);
+            room.data.apply(&mut update);
             Ok(RoomAction::UpdateRoomMisc { update })
         }
         RoomAction::MoveRoom { mut bounds } => {
-            if room.bounds.size != bounds.size {
-                room.solids.resize((bounds.size / 8).cast_unit(), '0');
-                room.bg.resize((bounds.size / 8).cast_unit(), '0');
-                room.object_tiles.resize((bounds.size / 8).cast_unit(), -1);
+            if room.data.bounds.size != bounds.size {
+                room.data.solids.resize((bounds.size / 8).cast_unit(), '0');
+                room.data.bg.resize((bounds.size / 8).cast_unit(), '0');
+                room.data
+                    .object_tiles
+                    .resize((bounds.size / 8).cast_unit(), -1);
                 room.cache.borrow_mut().render_cache = None;
             }
-            std::mem::swap(&mut room.bounds, &mut bounds);
+            std::mem::swap(&mut room.data.bounds, &mut bounds);
             Ok(RoomAction::MoveRoom { bounds })
         }
         RoomAction::TileUpdate {
@@ -131,12 +147,16 @@ fn apply_room_event(room: &mut CelesteMapLevel, event: RoomAction) -> Result<Roo
             offset,
             mut data,
         } => {
-            let target = if fg { &mut room.solids } else { &mut room.bg };
+            let target = if fg {
+                &mut room.data.solids
+            } else {
+                &mut room.data.bg
+            };
             apply_tiles(&offset, &mut data, target, '\0');
             Ok(RoomAction::TileUpdate { fg, offset, data })
         }
         RoomAction::ObjectTileUpdate { offset, mut data } => {
-            apply_tiles(&offset, &mut data, &mut room.object_tiles, -2);
+            apply_tiles(&offset, &mut data, &mut room.data.object_tiles, -2);
             Ok(RoomAction::ObjectTileUpdate { offset, data })
         }
         RoomAction::EntityAdd {
@@ -145,7 +165,7 @@ fn apply_room_event(room: &mut CelesteMapLevel, event: RoomAction) -> Result<Roo
             genid,
         } => {
             let id = if genid {
-                let id = room.next_id();
+                let id = room.data.next_id();
                 entity.id = id;
                 id
             } else if room.entity(entity.id, trigger).is_some() {
@@ -154,9 +174,9 @@ fn apply_room_event(room: &mut CelesteMapLevel, event: RoomAction) -> Result<Roo
                 entity.id
             };
             if trigger {
-                room.triggers.push(*entity);
+                room.data.triggers.push(*entity);
             } else {
-                room.entities.push(*entity)
+                room.data.entities.push(*entity)
             }
             Ok(RoomAction::EntityRemove { id, trigger })
         }
@@ -173,9 +193,9 @@ fn apply_room_event(room: &mut CelesteMapLevel, event: RoomAction) -> Result<Roo
         }
         RoomAction::EntityRemove { id, trigger } => {
             let entities = if trigger {
-                &mut room.triggers
+                &mut room.data.triggers
             } else {
-                &mut room.entities
+                &mut room.data.entities
             };
             for (idx, entity) in entities.iter_mut().enumerate() {
                 if entity.id == id {
@@ -204,9 +224,9 @@ fn apply_room_event(room: &mut CelesteMapLevel, event: RoomAction) -> Result<Roo
                 decal.id
             };
             let decals = if fg {
-                &mut room.fg_decals
+                &mut room.data.fg_decals
             } else {
-                &mut room.bg_decals
+                &mut room.data.bg_decals
             };
             decals.push(*decal);
             Ok(RoomAction::DecalRemove { fg, id })
@@ -222,9 +242,9 @@ fn apply_room_event(room: &mut CelesteMapLevel, event: RoomAction) -> Result<Roo
         RoomAction::DecalRemove { fg, id } => {
             // tfw drain_filter is unstable
             let decals = if fg {
-                &mut room.fg_decals
+                &mut room.data.fg_decals
             } else {
-                &mut room.bg_decals
+                &mut room.data.bg_decals
             };
             for (idx, decal) in decals.iter_mut().enumerate() {
                 if decal.id == id {
@@ -347,11 +367,12 @@ pub fn apply_tiles<T: Copy + Eq>(
     dirty
 }
 
-pub fn pick_new_name(map: &CelesteMap) -> String {
+pub fn pick_new_name(map: &MapState) -> String {
     let all_names = map
+        .data
         .levels
         .iter()
-        .map(|room| &room.name)
+        .map(|room| &room.data.name)
         .collect::<HashSet<_>>();
     for ch in 'a'..='z' {
         if !all_names.contains(&format!("{}-00", ch)) {

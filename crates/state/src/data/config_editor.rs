@@ -1,4 +1,4 @@
-use arborio_maploader::action::StylegroundSelection;
+use crate::data::action::StylegroundSelection;
 use arborio_maploader::map_struct::{Attribute, CelesteMapEntity, CelesteMapStyleground};
 use arborio_modloader::aggregate::ModuleAggregate;
 use arborio_modloader::config::{EntityConfig, StylegroundConfig, TriggerConfig};

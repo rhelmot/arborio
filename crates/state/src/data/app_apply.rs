@@ -1,9 +1,7 @@
 use crate::data::app::{build_modules_lookup, step_modules_lookup, AppEvent, AppState};
 use crate::data::project_map::MapState;
 use crate::data::tabs::{AppTab, ConfigEditorTab, MapTab};
-use crate::data::{
-    load_map, trigger_module_load, trigger_palette_update, EventPhase, MapID, UNDO_BUFFER_SIZE,
-};
+use crate::data::{load_map, trigger_module_load, trigger_palette_update, MapID};
 use arborio_modloader::aggregate::ModuleAggregate;
 use arborio_modloader::everest_yaml::{EverestModuleVersion, EverestYaml};
 use arborio_modloader::module::{CelesteModule, ModuleID};
@@ -13,7 +11,6 @@ use arborio_utils::vizia::prelude::*;
 use arborio_walker::{ConfigSource, FolderSource};
 use log::Level;
 use std::cell::RefCell;
-use std::collections::VecDeque;
 use std::ops::DerefMut;
 
 impl AppState {
@@ -80,7 +77,7 @@ impl AppState {
             AppEvent::OpenMap { path } => {
                 let mut found = false;
                 for (idx, tab) in self.tabs.iter().enumerate() {
-                    if matches!(tab, AppTab::Map(maptab) if &self.loaded_maps.get(&maptab.id).unwrap().path == path)
+                    if matches!(tab, AppTab::Map(maptab) if &self.loaded_maps.get(&maptab.id).unwrap().cache.path == path)
                     {
                         cx.emit(AppEvent::SelectTab { idx });
                         found = true;
@@ -126,23 +123,16 @@ impl AppState {
                         });
                     }
 
-                    self.loaded_maps.insert(
-                        id,
-                        MapState {
-                            palette: ModuleAggregate::new(
-                                &self.modules,
-                                &self.modules_lookup,
-                                &map,
-                                path.module,
-                                true,
-                            ),
-                            map: *map,
-                            path: path.clone(),
-                            undo_buffer: VecDeque::with_capacity(UNDO_BUFFER_SIZE),
-                            redo_buffer: VecDeque::with_capacity(UNDO_BUFFER_SIZE),
-                            event_phase: EventPhase::null(),
-                        },
+                    let palette = ModuleAggregate::new(
+                        &self.modules,
+                        &self.modules_lookup,
+                        &map.meta,
+                        path.module,
+                        true,
                     );
+
+                    self.loaded_maps
+                        .insert(id, MapState::new(*map, path.clone(), palette));
                     self.loaded_maps_lookup.insert(path.clone(), id);
                 }
             }

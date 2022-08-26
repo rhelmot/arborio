@@ -1,18 +1,19 @@
 use std::collections::{HashMap, HashSet};
 
 use arborio_gfxloader::autotiler::{TextureTile, TileReference};
-use arborio_maploader::map_struct::{CelesteMapLevel, Node};
+use arborio_maploader::map_struct::Node;
 use arborio_modloader::mapstruct_plus_config::{make_entity_env, make_node_env};
 use arborio_utils::units::*;
 use arborio_utils::vizia::prelude::*;
 use arborio_utils::vizia::vg;
 
+use crate::data::action::{MapAction, RoomAction};
 use crate::data::app::{AppEvent, AppInternalEvent, AppState};
+use crate::data::project_map::LevelState;
 use crate::data::selection::{AppInRoomSelectable, AppSelectable, AppSelection};
 use crate::data::{EventPhase, Layer};
 use crate::rendering::decal_texture;
 use crate::tools::{generic_nav, Tool};
-use arborio_maploader::action::{MapAction, RoomAction};
 
 pub struct SelectionTool {
     current_selection: HashSet<AppSelection>,
@@ -198,7 +199,7 @@ impl Tool for SelectionTool {
             .unwrap()
             .transform_point(screen_pos);
         let map_pos = point_lose_precision(&map_pos_precise);
-        let room_pos_unsnapped = (map_pos - room.bounds.origin).to_point().cast_unit();
+        let room_pos_unsnapped = (map_pos - room.data.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos_unsnapped);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
         let room_pos = if app.snap {
@@ -356,7 +357,10 @@ impl Tool for SelectionTool {
             return;
         };
         canvas.save();
-        canvas.translate(room.bounds.origin.x as f32, room.bounds.origin.y as f32);
+        canvas.translate(
+            room.data.bounds.origin.x as f32,
+            room.data.bounds.origin.y as f32,
+        );
         // no scissor!
 
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
@@ -368,7 +372,7 @@ impl Tool for SelectionTool {
             .transform_point(screen_pos)
             .cast();
         let map_pos = point_lose_precision(&map_pos_precise);
-        let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
+        let room_pos = (map_pos - room.data.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
         let room_pos = if state.snap {
@@ -541,7 +545,7 @@ impl Tool for SelectionTool {
             .transform_point(screen_pos)
             .cast();
         let map_pos = point_lose_precision(&map_pos_precise);
-        let room_pos = (map_pos - room.bounds.origin).to_point().cast_unit();
+        let room_pos = (map_pos - room.data.bounds.origin).to_point().cast_unit();
         // let tile_pos = point_room_to_tile(&room_pos);
         // let room_pos_snapped = point_tile_to_room(&tile_pos);
         // let room_pos = if state.snap { room_pos_snapped } else { room_pos };
@@ -608,7 +612,7 @@ impl SelectionTool {
     fn rects_of(
         &self,
         app: &AppState,
-        room: &CelesteMapLevel,
+        room: &LevelState,
         selectable: AppSelection,
     ) -> Vec<RoomRect> {
         match selectable {
@@ -697,7 +701,7 @@ impl SelectionTool {
     fn selectable_at(
         &self,
         app: &AppState,
-        room: &CelesteMapLevel,
+        room: &LevelState,
         layer: Layer,
         room_pos: RoomPoint,
     ) -> Option<AppSelection> {
@@ -715,7 +719,7 @@ impl SelectionTool {
     fn selectables_in(
         &self,
         app: &AppState,
-        room: &CelesteMapLevel,
+        room: &LevelState,
         layer: Layer,
         room_rect: RoomRect,
     ) -> HashSet<AppSelection> {
@@ -723,11 +727,11 @@ impl SelectionTool {
         let mut result = HashSet::new();
         let room_rect_cropped = room_rect.intersection(&RoomRect::new(
             RoomPoint::zero(),
-            room.bounds.size.cast_unit(),
+            room.data.bounds.size.cast_unit(),
         ));
 
         if layer == Layer::FgDecals || layer == Layer::All {
-            for (idx, decal) in room.fg_decals.iter().enumerate().rev() {
+            for (idx, decal) in room.data.fg_decals.iter().enumerate().rev() {
                 room.cache_decal_idx(idx);
                 let sel = AppSelection::Decal(decal.id, true);
                 if intersects_any(&self.rects_of(app, room, sel), &room_rect) {
@@ -739,7 +743,7 @@ impl SelectionTool {
             if let Some(room_rect_cropped) = room_rect_cropped {
                 for tile_pos_unaligned in rect_point_iter(room_rect_cropped, 8) {
                     let tile_pos = point_room_to_tile(&tile_pos_unaligned);
-                    if room.object_tiles.get(tile_pos).cloned().unwrap_or(-1) != -1 {
+                    if room.data.object_tiles.get(tile_pos).cloned().unwrap_or(-1) != -1 {
                         result.insert(AppSelection::ObjectTile(tile_pos));
                     }
                 }
@@ -756,7 +760,7 @@ impl SelectionTool {
             }
         }
         if layer == Layer::Entities || layer == Layer::All {
-            for (idx, entity) in room.entities.iter().enumerate().rev() {
+            for (idx, entity) in room.data.entities.iter().enumerate().rev() {
                 room.cache_entity_idx(idx);
                 for node_idx in 0..entity.nodes.len() {
                     let sel = AppSelection::EntityNode(entity.id, node_idx, false);
@@ -771,7 +775,7 @@ impl SelectionTool {
             }
         }
         if layer == Layer::Triggers || layer == Layer::All {
-            for (idx, entity) in room.triggers.iter().enumerate().rev() {
+            for (idx, entity) in room.data.triggers.iter().enumerate().rev() {
                 room.cache_entity_idx(idx);
                 for node_idx in 0..entity.nodes.len() {
                     let sel = AppSelection::EntityNode(entity.id, node_idx, true);
@@ -786,7 +790,7 @@ impl SelectionTool {
             }
         }
         if layer == Layer::BgDecals || layer == Layer::All {
-            for (idx, decal) in room.bg_decals.iter().enumerate().rev() {
+            for (idx, decal) in room.data.bg_decals.iter().enumerate().rev() {
                 room.cache_decal_idx(idx);
                 let sel = AppSelection::Decal(decal.id, false);
                 if intersects_any(&self.rects_of(app, room, sel), &room_rect) {
@@ -835,7 +839,7 @@ impl SelectionTool {
     /// This function interprets nudge as relative to the reference positions in Dragging mode and
     /// relative to the current position in other modes.
     #[must_use]
-    fn nudge(&mut self, room: &CelesteMapLevel, nudge: RoomVector) -> AppEventStaging {
+    fn nudge(&mut self, room: &LevelState, nudge: RoomVector) -> AppEventStaging {
         let mut result = self.float_tiles(room);
         let dragging = if let SelectionStatus::Dragging(dragging) = &self.status {
             Some(dragging)
@@ -935,12 +939,7 @@ impl SelectionTool {
     }
 
     #[must_use]
-    fn resize(
-        &mut self,
-        app: &AppState,
-        room: &CelesteMapLevel,
-        resize: RoomVector,
-    ) -> AppEventStaging {
+    fn resize(&mut self, app: &AppState, room: &LevelState, resize: RoomVector) -> AppEventStaging {
         let mut result = AppEventStaging::default();
 
         let dragging = if let SelectionStatus::Resizing(dragging) = &self.status {
@@ -1052,13 +1051,13 @@ impl SelectionTool {
     }
 
     #[must_use]
-    fn float_tiles(&mut self, room: &CelesteMapLevel) -> AppEventStaging {
+    fn float_tiles(&mut self, room: &LevelState) -> AppEventStaging {
         // TODO: do this in an efficient order to avoid frequent reallocations of the float
         let mut result = AppEventStaging::default();
         for sel in self.current_selection.iter().cloned().collect::<Vec<_>>() {
             match sel {
                 AppSelection::FgTile(pt) => {
-                    add_to_float(&mut self.fg_float, pt, &room.solids, '\0');
+                    add_to_float(&mut self.fg_float, pt, &room.data.solids, '\0');
                     result.push_room(RoomAction::TileUpdate {
                         fg: true,
                         offset: pt,
@@ -1071,7 +1070,7 @@ impl SelectionTool {
                     continue;
                 }
                 AppSelection::BgTile(pt) => {
-                    add_to_float(&mut self.bg_float, pt, &room.bg, '\0');
+                    add_to_float(&mut self.bg_float, pt, &room.data.bg, '\0');
                     result.push_room(RoomAction::TileUpdate {
                         fg: false,
                         offset: pt,
@@ -1084,7 +1083,7 @@ impl SelectionTool {
                     continue;
                 }
                 AppSelection::ObjectTile(pt) => {
-                    add_to_float(&mut self.obj_float, pt, &room.object_tiles, -2);
+                    add_to_float(&mut self.obj_float, pt, &room.data.object_tiles, -2);
                     result.push_room(RoomAction::ObjectTileUpdate {
                         offset: pt,
                         data: TileGrid {
@@ -1102,7 +1101,7 @@ impl SelectionTool {
         result
     }
 
-    fn elaborate_nodes(&mut self, room: &CelesteMapLevel) {
+    fn elaborate_nodes(&mut self, room: &LevelState) {
         for sel in self
             .current_selection
             .iter()
@@ -1120,7 +1119,7 @@ impl SelectionTool {
         }
     }
 
-    fn can_resize(&self, app: &AppState, room: &CelesteMapLevel, pointer: RoomPoint) -> ResizeSide {
+    fn can_resize(&self, app: &AppState, room: &LevelState, pointer: RoomPoint) -> ResizeSide {
         // get which side of the rectangle we're on
         let mut side = ResizeSide::None;
         'outer: for sel in self.current_selection.iter() {
@@ -1180,7 +1179,7 @@ impl SelectionTool {
     fn begin_dragging(
         &mut self,
         app: &AppState,
-        room: &CelesteMapLevel,
+        room: &LevelState,
         pointer_reference_point: RoomPoint,
         pointer_reference_point_unsnapped: RoomPoint,
     ) -> AppEventStaging {
@@ -1292,7 +1291,7 @@ impl SelectionTool {
     }
 
     #[must_use]
-    fn delete_all(&mut self, app: &AppState, room: &CelesteMapLevel) -> AppEventStaging {
+    fn delete_all(&mut self, app: &AppState, room: &LevelState) -> AppEventStaging {
         let mut result = self.float_tiles(room);
         self.fg_float = None;
         self.bg_float = None;
@@ -1375,7 +1374,7 @@ impl SelectionTool {
         result
     }
 
-    pub fn clipboard_copy(&mut self, app: &AppState, room: &CelesteMapLevel) -> AppEventStaging {
+    pub fn clipboard_copy(&mut self, app: &AppState, room: &LevelState) -> AppEventStaging {
         let mut result = self.float_tiles(room);
         self.elaborate_nodes(room);
         result.accumulate(self.notify_selection(app));
@@ -1493,7 +1492,7 @@ impl SelectionTool {
         }
         let center = (min_tile.to_vector() + max_tile.to_vector()) / 2;
         let real_center =
-            (size_room_to_tile(&room.bounds.size.cast_unit::<RoomSpace>()) / 2).to_vector();
+            (size_room_to_tile(&room.data.bounds.size.cast_unit::<RoomSpace>()) / 2).to_vector();
         let offset = real_center - center;
         for obj in clipboard_data {
             match obj {

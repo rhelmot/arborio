@@ -120,8 +120,10 @@ dependencies = [
  "arborio-walker",
  "confy",
  "enum-iterator",
+ "lazy_static",
  "log",
  "parking_lot",
+ "regex",
  "serde",
  "serde_yaml",
 ]

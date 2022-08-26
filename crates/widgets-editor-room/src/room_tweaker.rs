@@ -1,5 +1,5 @@
-use arborio_maploader::action::RoomAction;
 use arborio_maploader::map_struct::{CelesteMapLevel, CelesteMapLevelUpdate};
+use arborio_state::data::action::RoomAction;
 use arborio_state::data::app::AppState;
 use arborio_state::data::tabs::AppTab;
 use arborio_state::data::EventPhase;
@@ -74,12 +74,12 @@ impl RoomTweakerWidget {
                 } else {
                     panic!()
                 };
-                let map = &app.loaded_maps.get(&maptab.id).unwrap().map;
+                let map = &app.loaded_maps.get(&maptab.id).unwrap().data;
                 if map
                     .levels
                     .iter()
                     .enumerate()
-                    .any(|(i, lvl)| i != maptab.current_room && lvl.name == name)
+                    .any(|(i, lvl)| i != maptab.current_room && lvl.data.name == name)
                 {
                     return false;
                 }
@@ -230,7 +230,9 @@ fn emit_bounds(
 ) {
     let app = cx.data::<AppState>().unwrap();
     let tab = app.map_tab_unwrap();
-    let mut bounds = app.loaded_maps.get(&tab.id).unwrap().map.levels[tab.current_room].bounds;
+    let mut bounds = app.loaded_maps.get(&tab.id).unwrap().data.levels[tab.current_room]
+        .data
+        .bounds;
     if let Some(x) = update_x {
         bounds.origin.x = x;
     }

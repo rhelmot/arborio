@@ -6,11 +6,11 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use arborio_maploader::action::StylegroundSelection;
 use arborio_maploader::map_struct::{Attribute, CelesteMap};
 use arborio_modloader::aggregate::ModuleAggregate;
 use arborio_modloader::config::{AttributeInfo, AttributeType, AttributeValue};
 use arborio_modloader::module::{CelesteModule, MapPath, ModuleID};
+use arborio_state::data::action::StylegroundSelection;
 use arborio_state::data::app::{AppEvent, AppState};
 use arborio_state::data::config_editor::{
     AnyConfig, ConfigSearchFilter, ConfigSearchResult, ConfigSearchType, EntityConfigSearchResult,
@@ -149,7 +149,7 @@ pub fn collect_search_targets<C: DataContext>(cx: &mut C) -> Vec<SearchScope> {
     for tab in &app.tabs {
         if let AppTab::Map(m) = tab {
             result.push(SearchScope::Map(
-                app.loaded_maps.get(&m.id).unwrap().path.clone(),
+                app.loaded_maps.get(&m.id).unwrap().cache.path.clone(),
             ));
         }
     }
@@ -398,7 +398,7 @@ fn walk_maps<T>(
                     CelesteModule::load_map_static(module.filesystem_root.as_ref().unwrap(), map)
                 {
                     let palette =
-                        ModuleAggregate::new(modules, &modules_lookup, &map, *name, false);
+                        ModuleAggregate::new(modules, &modules_lookup, &map.meta, *name, false);
                     f(&mut results, filter, &attrs, &map, &map_path, &palette);
                 }
             }

@@ -1,19 +1,24 @@
+pub mod action;
 pub mod app;
 pub mod app_apply;
 pub mod config_editor;
 pub mod project_map;
 pub mod selection;
+pub mod sid;
 pub mod tabs;
 
 use app::AppEvent;
 use log::Level;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use crate::data::action::{MapAction, RoomAction};
+use crate::data::project_map::MapEvent;
 use arborio_maploader::map_struct::{save_as, CelesteMap};
 use arborio_modloader::aggregate::ModuleAggregate;
 use arborio_modloader::discovery;
@@ -110,8 +115,13 @@ pub fn trigger_palette_update(
     maps: &mut HashMap<MapID, MapState>,
 ) -> ModuleAggregate {
     for state in maps.values_mut() {
-        state.palette =
-            ModuleAggregate::new(modules, modules_lookup, &state.map, state.path.module, true);
+        state.cache.palette = ModuleAggregate::new(
+            modules,
+            modules_lookup,
+            &Some(state.data.clone_meta()),
+            state.cache.path.module,
+            true,
+        );
     }
     // discard logs here
     ModuleAggregate::new_omni(modules, false)
@@ -151,6 +161,31 @@ fn save(module: &CelesteModule, path: &MapPath, map: &CelesteMap) -> Result<(), 
 }
 
 uuid_cls!(MapID);
+
+impl MapID {
+    pub fn action(&self, phase: EventPhase, action: MapAction) -> AppEvent {
+        AppEvent::MapEvent {
+            map: Some(*self),
+            event: MapEvent::Action {
+                event: RefCell::new(Some(action)),
+                merge_phase: phase,
+            },
+        }
+    }
+
+    pub fn room_action(&self, room: usize, phase: EventPhase, action: RoomAction) -> AppEvent {
+        AppEvent::MapEvent {
+            map: Some(*self),
+            event: MapEvent::Action {
+                event: RefCell::new(Some(MapAction::RoomAction {
+                    idx: room,
+                    event: action,
+                })),
+                merge_phase: phase,
+            },
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ArborioRecord {
