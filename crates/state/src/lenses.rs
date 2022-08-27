@@ -47,6 +47,7 @@ impl Lens for CurrentMapImplLens {
     fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
         let data = match source.tabs.get(source.current_tab) {
             Some(AppTab::Map(maptab)) => Some(&maptab.id),
+            Some(AppTab::MapMeta(id)) => Some(id),
             _ => None,
         };
 

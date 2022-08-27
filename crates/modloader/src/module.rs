@@ -209,7 +209,7 @@ impl CelesteModule {
             .join("Maps")
             .join(sid.clone() + ".bin");
         std::fs::create_dir_all(p.parent().unwrap()).expect("Failed to create directory for map");
-        save_as(&CelesteMap::default(), &p).expect("Could not save blank map");
+        save_as(&CelesteMap::default(), &sid, &p).expect("Could not save blank map");
         self.maps.push(sid);
     }
 }

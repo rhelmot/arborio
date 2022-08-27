@@ -314,35 +314,43 @@ impl From<MapStateData> for CelesteMap {
     }
 }
 
+fn if_not_default(s: String) -> Option<String> {
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
+}
+
 impl MapStateData {
     pub fn clone_meta(&self) -> CelesteMapMeta {
         CelesteMapMeta {
             override_aside_meta: Some(true),
-            color_grade: Some(self.color_grade.clone()),
+            color_grade: if_not_default(self.color_grade.clone()),
             dreaming: Some(self.dreaming),
-            fg_tiles: Some(self.fg_tiles.clone()),
-            bg_tiles: Some(self.bg_tiles.clone()),
-            animated_tiles: Some(self.animated_tiles.clone()),
-            sprites: Some(self.sprites.clone()),
-            portraits: Some(self.portraits.clone()),
-            intro_type: Some(self.intro_type.clone()),
-            cassette_note_color: Some(self.cassette_note_color.clone()),
-            title_text_color: Some(self.title_text_color.clone()),
-            title_base_color: Some(self.title_base_color.clone()),
-            title_accent_color: Some(self.title_accent_color.clone()),
-            icon: Some(self.icon.clone()),
+            fg_tiles: if_not_default(self.fg_tiles.clone()),
+            bg_tiles: if_not_default(self.bg_tiles.clone()),
+            animated_tiles: if_not_default(self.animated_tiles.clone()),
+            sprites: if_not_default(self.sprites.clone()),
+            portraits: if_not_default(self.portraits.clone()),
+            intro_type: if_not_default(self.intro_type.clone()),
+            cassette_note_color: if_not_default(self.cassette_note_color.clone()),
+            title_text_color: if_not_default(self.title_text_color.clone()),
+            title_base_color: if_not_default(self.title_base_color.clone()),
+            title_accent_color: if_not_default(self.title_accent_color.clone()),
+            icon: if_not_default(self.icon.clone()),
             interlude: Some(self.interlude),
-            wipe: Some(self.wipe.clone()),
+            wipe: if_not_default(self.wipe.clone()),
             bloom_base: Some(self.bloom_base),
             bloom_strength: Some(self.bloom_strength),
             darkness_alpha: Some(self.darkness_alpha),
-            cassette_song: Some(self.cassette_song.clone()),
-            core_mode: Some(self.core_mode.clone()),
-            postcard_sound_id: Some(self.postcard_sound_id.clone()),
+            cassette_song: if_not_default(self.cassette_song.clone()),
+            core_mode: if_not_default(self.core_mode.clone()),
+            postcard_sound_id: if_not_default(self.postcard_sound_id.clone()),
             mode: Some(CelesteMapMetaMode {
                 heart_is_end: Some(self.heart_is_end),
-                inventory: Some(self.inventory.clone()),
-                start_level: Some(self.start_level.clone()),
+                inventory: if_not_default(self.inventory.clone()),
+                start_level: if_not_default(self.start_level.clone()),
                 seeker_slowdown: Some(self.seeker_slowdown),
                 theo_in_bubble: Some(self.theo_in_bubble),
                 ignore_level_audio_layer_data: Some(self.ignore_level_audio_layer_data),

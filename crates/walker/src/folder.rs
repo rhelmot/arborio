@@ -64,8 +64,11 @@ impl ConfigSourceTrait for FolderSource {
     }
 
     fn get_file(&mut self, path: &Path) -> Option<Box<dyn ReadSeek>> {
-        Some(Box::new(BufReader::new(
-            File::open(self.0.join(path)).ok()?,
-        )))
+        let file = File::open(self.0.join(path)).ok()?;
+        // hey rust stdlib why the FUCK do we have to check this explicitly
+        if !file.metadata().ok()?.is_file() {
+            return None;
+        }
+        Some(Box::new(BufReader::new(file)))
     }
 }

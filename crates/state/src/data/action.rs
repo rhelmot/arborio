@@ -4,7 +4,7 @@ use arborio_utils::vizia::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashSet;
 
-use crate::data::project_map::{LevelState, MapState};
+use crate::data::project_map::{LevelState, MapState, MapStateUpdate};
 use arborio_maploader::map_struct::{
     CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapLevelUpdate,
     CelesteMapStyleground,
@@ -74,6 +74,10 @@ pub fn apply_map_action(
             } else {
                 Err("Out of range".to_owned())
             }
+        }
+        MapAction::MetaUpdate { mut update } => {
+            map.data.apply(&mut update);
+            Ok(MapAction::MetaUpdate { update })
         }
         MapAction::AddRoom { idx, mut room } => {
             let idx = idx.unwrap_or(map.data.levels.len());
@@ -288,6 +292,9 @@ pub enum MapAction {
     RoomAction {
         idx: usize,
         event: RoomAction,
+    },
+    MetaUpdate {
+        update: Box<MapStateUpdate>,
     },
     Batched {
         events: Vec<MapAction>, // must be COMPLETELY orthogonal!!!

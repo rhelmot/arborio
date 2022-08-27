@@ -107,38 +107,35 @@ impl ModuleAggregate {
             emit_logs,
         );
 
-        let fg_xml = map_meta
-            .as_ref()
-            .and_then(|meta| meta.fg_tiles.as_ref())
-            .map(|s| s.as_str())
-            .unwrap_or("Graphics/ForegroundTiles.xml");
-        let bg_xml = map_meta
+        if let Some(fg_xml) = map_meta
             .as_ref()
             .and_then(|meta| meta.bg_tiles.as_ref())
             .map(|s| s.as_str())
-            .unwrap_or("Graphics/BackgroundTiles.xml");
-        for (_, dep) in deps.clone() {
-            if let Some(root) = &dep.filesystem_root {
-                let mut config = open_module(root).unwrap();
-                if let Some(fp) = config.get_file(Path::new(fg_xml)) {
-                    autotilers.insert(
-                        "fg".into(),
-                        Arc::new(
-                            Tileset::new(fp, "tilesets/")
-                                .expect("Could not parse ForegroundTiles.xml"),
-                        ),
-                    );
-                }
-                if let Some(fp) = config.get_file(Path::new(bg_xml)) {
-                    autotilers.insert(
-                        "bg".into(),
-                        Arc::new(
-                            Tileset::new(fp, "tilesets/")
-                                .expect("Could not parse BackgroundTiles.xml"),
-                        ),
-                    );
-                }
+        {
+            if let Some(tiler) = lookup_tiler(fg_xml, deps.clone()) {
+                autotilers.insert("fg".into(), Arc::new(tiler));
             }
+        }
+        if let Some(bg_xml) = map_meta
+            .as_ref()
+            .and_then(|meta| meta.bg_tiles.as_ref())
+            .map(|s| s.as_str())
+        {
+            if let Some(tiler) = lookup_tiler(bg_xml, deps.clone()) {
+                autotilers.insert("bg".into(), Arc::new(tiler));
+            }
+        }
+        if deps.clone().count() != 0 && !autotilers.contains_key("fg") {
+            autotilers.insert(
+                "fg".into(),
+                Arc::new(lookup_tiler("Graphics/ForegroundTiles.xml", deps.clone()).unwrap()),
+            );
+        }
+        if deps.clone().count() != 0 && !autotilers.contains_key("bg") {
+            autotilers.insert(
+                "bg".into(),
+                Arc::new(lookup_tiler("Graphics/BackgroundTiles.xml", deps.clone()).unwrap()),
+            );
         }
 
         let fg_tiles_palette = if let Some(tiler) = autotilers.get("fg") {
@@ -203,6 +200,27 @@ impl ModuleAggregate {
                 .unwrap_or_else(|| self.entity_config.get("default").unwrap())
         }
     }
+}
+
+fn lookup_tiler<'a>(
+    xml: &str,
+    deps: impl Clone + Iterator<Item = (&'a str, &'a CelesteModule)>,
+) -> Option<Autotiler> {
+    for (depname, dep) in deps {
+        if let Some(root) = &dep.filesystem_root {
+            let mut config = open_module(root).unwrap();
+            if let Some(fp) = config.get_file(Path::new(xml)) {
+                match Tileset::new(fp, "tilesets/") {
+                    Ok(t) => return Some(t),
+                    Err(e) => {
+                        println!("{}", e);
+                        log::error!("{}:{}: {}", depname, xml, e);
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 fn extract_tiles_palette(map: &HashMap<char, Tileset>) -> Vec<TileSelectable> {

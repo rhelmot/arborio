@@ -699,15 +699,23 @@ pub fn from_binfile(binfile: BinFile) -> Result<CelesteMap, CelesteMapError> {
     CelesteMap::try_from_bin_el(&binfile.root)
 }
 
-pub fn save_as(map: &CelesteMap, path: &Path) -> Result<(), io::Error> {
-    save_to(map, &mut io::BufWriter::new(std::fs::File::create(path)?))
+pub fn save_as(map: &CelesteMap, package: &str, path: &Path) -> Result<(), io::Error> {
+    save_to(
+        map,
+        package,
+        &mut io::BufWriter::new(std::fs::File::create(path)?),
+    )
 }
 
-pub fn save_to<W: io::Write>(map: &CelesteMap, writer: &mut W) -> Result<(), io::Error> {
+pub fn save_to<W: io::Write>(
+    map: &CelesteMap,
+    package: &str,
+    writer: &mut W,
+) -> Result<(), io::Error> {
     let binel: BinEl = map.to_binel();
     let file = BinFile {
         root: binel,
-        package: "is this field used? please tell me if it's used".to_string(),
+        package: package.to_owned(),
     };
 
     celeste::binel::writer::put_file(writer, &file)

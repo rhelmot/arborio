@@ -317,6 +317,7 @@ impl AppState {
         if let Some(tab) = self.tabs.get(self.current_tab) {
             match tab {
                 AppTab::Map(maptab) => Some(maptab.id),
+                AppTab::MapMeta(mapid) => Some(*mapid),
                 _ => None,
             }
         } else {

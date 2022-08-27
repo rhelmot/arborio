@@ -149,6 +149,7 @@ fn save(module: &CelesteModule, path: &MapPath, map: &CelesteMap) -> Result<(), 
         if root.is_dir() {
             return save_as(
                 map,
+                &path.sid,
                 &root
                     .join("Maps")
                     .join(path.sid.clone())
