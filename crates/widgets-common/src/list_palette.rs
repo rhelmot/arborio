@@ -76,17 +76,18 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
 
         canvas.save();
         canvas.translate(bounds.x, bounds.y);
-        canvas.scissor(0.0, 0.0, bounds.w, 100.0);
+        let dpi = cx.style.dpi_factor as f32;
+        canvas.scissor(0.0, 0.0, bounds.w, 100.0 * dpi);
 
         let mut path = Path::new();
-        path.rect(0.0, 0.0, bounds.w, 100.0);
+        path.rect(0.0, 0.0, bounds.w, 100.0 * dpi);
         canvas.fill_path(
             &mut path,
             Paint::linear_gradient(
                 0.0,
                 0.0,
                 0.0,
-                100.0,
+                100.0 * dpi,
                 Color::black().into(),
                 Color::blue().into(),
             ),

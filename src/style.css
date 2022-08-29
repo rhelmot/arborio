@@ -253,6 +253,10 @@ arborio_editor {
     width: 200px;
 }
 
+tile_palette {
+    overflow: hidden;
+}
+
 palette {
     width: 100%;
 }

@@ -57,7 +57,7 @@ impl View for TilePaletteWidget {
                         } else {
                             (x, y)
                         };
-                        let screen_vec = ScreenVector::new(-*x, *y) * SCROLL_SENSITIVITY;
+                        let screen_vec = ScreenVector::new(*x, *y) * SCROLL_SENSITIVITY;
                         let map_vec = t.inverse().unwrap().transform_vector(screen_vec);
                         cx.emit(AppEvent::PanObjectTiles { delta: map_vec })
                     }
