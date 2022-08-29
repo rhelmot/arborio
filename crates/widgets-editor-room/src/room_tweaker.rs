@@ -7,7 +7,7 @@ use arborio_state::lenses::{
     CurrentRoomLens, RectHLens, RectWLens, RectXLens, RectYLens, RoomTweakerScopeLens,
 };
 use arborio_utils::vizia::prelude::*;
-use arborio_widgets_common::common::*;
+use arborio_widgets_common::advanced_tweaker::*;
 
 pub struct RoomTweakerWidget {}
 

@@ -7,7 +7,7 @@ use arborio_state::data::tabs::AppTab;
 use arborio_state::data::EventPhase;
 use arborio_state::lenses::{CurrentSelectedEntityLens, IsFailedLens};
 use arborio_utils::vizia::prelude::*;
-use arborio_widgets_common::common::advanced_attrs_editor;
+use arborio_widgets_common::advanced_tweaker::advanced_attrs_editor;
 
 pub struct EntityTweakerWidget {}
 

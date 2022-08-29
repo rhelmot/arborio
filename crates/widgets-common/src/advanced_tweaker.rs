@@ -1,8 +1,9 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::str::FromStr;
 
 use crate::textedit_dropdown::TextboxDropdown;
+use crate::validator_box;
+use crate::validator_box::validator_box;
 use arborio_maploader::map_struct::Attribute;
 use arborio_modloader::config::AttributeType;
 use arborio_state::lenses::{
@@ -39,7 +40,7 @@ where
 {
     HStack::new(cx, move |cx| {
         Label::new(cx, name).class("label");
-        validator_box(cx, lens, setter, |cx, valid| {
+        validator_box::validator_box(cx, lens, setter, |cx, valid| {
             cx.toggle_class("validation_error", !valid);
         });
     });
@@ -61,150 +62,6 @@ pub fn tweak_attr_text_dropdown<L, LL, F>(
         Label::new(cx, name).class("label");
         TextboxDropdown::new(cx, lens, options, setter);
     });
-}
-
-pub fn validator_box<L, F1, F2>(cx: &mut Context, lens: L, setter: F1, set_valid: F2)
-where
-    L: Lens,
-    <L as Lens>::Target: ToString + FromStr + Data,
-    F1: 'static + Send + Sync + Fn(&mut EventContext, <L as Lens>::Target) -> bool,
-    F2: 'static + Send + Sync + Fn(&mut EventContext, bool),
-{
-    Textbox::new(cx, lens).on_edit(move |cx, value| {
-        if let Ok(parsed) = value.parse() {
-            if setter(cx, parsed) {
-                set_valid(cx, true);
-            } else {
-                set_valid(cx, false);
-            }
-        } else {
-            set_valid(cx, false);
-        }
-    });
-}
-
-#[derive(Debug, Lens)]
-struct EditingState {
-    editing: bool,
-    valid: bool,
-}
-
-#[derive(Debug)]
-enum EditingStateEvent {
-    Start,
-    End,
-    Valid(bool),
-}
-
-#[derive(Debug, Clone, Lens)]
-pub struct ModelContainer<T: 'static + Clone + Send + Sync> {
-    pub val: T,
-}
-
-#[derive(Debug)]
-pub enum ModelEvent<T> {
-    Set(RefCell<Option<T>>), // only an option so the data can be taken out
-}
-
-impl<T: 'static + Clone + Send + Sync> Model for ModelContainer<T> {
-    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
-        event.map(|msg, _| {
-            let ModelEvent::Set(msg) = msg;
-            if let Some(v) = msg.take() {
-                self.val = v;
-            }
-        });
-    }
-}
-
-impl Model for EditingState {
-    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
-        event.map(|msg, _| match msg {
-            EditingStateEvent::End => self.editing = false,
-            EditingStateEvent::Start => self.editing = true,
-            EditingStateEvent::Valid(b) => self.valid = *b,
-        });
-    }
-}
-
-// should editable be a lens?
-pub fn label_with_pencil<L, F1, F2>(
-    cx: &mut Context,
-    lens: L,
-    validator: F1,
-    setter: F2,
-    editable: bool,
-) -> Handle<impl View>
-where
-    L: Lens,
-    <L as Lens>::Target: ToString + FromStr + Data + Send + Sync,
-    F1: 'static + Send + Sync + Clone + Fn(&mut EventContext, &<L as Lens>::Target) -> bool,
-    F2: 'static + Send + Sync + Clone + Fn(&mut EventContext, <L as Lens>::Target),
-{
-    HStack::new(cx, move |cx| {
-        EditingState {
-            editing: false,
-            valid: true,
-        }
-        .build(cx);
-
-        Binding::new(cx, EditingState::editing, move |cx, editing_lens| {
-            let setter = setter.clone();
-            let validator = validator.clone();
-            let editing = editing_lens.get(cx);
-            let lens = lens.clone();
-            if editing {
-                ModelContainer { val: lens.get(cx) }.build(cx);
-                Label::new(cx, "\u{e5ca}")
-                    .font("material")
-                    .class("btn_highlight")
-                    .class("pencil_icon")
-                    .on_press(move |cx| {
-                        if EditingState::valid.get(cx) {
-                            let value = ModelContainer::val.get(cx);
-                            setter(cx, value);
-                            cx.emit(EditingStateEvent::End);
-                        }
-                    })
-                    .bind(EditingState::valid, move |handle, lens| {
-                        let val = lens.get(handle.cx);
-                        handle.toggle_class("disabled", val);
-                    });
-                Label::new(cx, "\u{e5cd}")
-                    .font("material")
-                    .class("btn_highlight")
-                    .class("pencil_icon")
-                    .on_press(|cx| {
-                        cx.emit(EditingStateEvent::End);
-                    });
-                validator_box(
-                    cx,
-                    ModelContainer::val,
-                    move |cx, val| {
-                        if validator(cx, &val) {
-                            cx.emit(ModelEvent::Set(RefCell::new(Some(val))));
-                            true
-                        } else {
-                            false
-                        }
-                    },
-                    move |cx, valid| {
-                        cx.toggle_class("validation_error", !valid);
-                        cx.emit(EditingStateEvent::Valid(valid));
-                    },
-                );
-            } else {
-                if editable {
-                    Label::new(cx, "\u{e150}")
-                        .font("material")
-                        .class("btn_highlight")
-                        .class("pencil_icon")
-                        .on_press(move |cx| cx.emit(EditingStateEvent::Start));
-                }
-                Label::new(cx, lens).class("pencilable_label");
-            }
-        });
-    })
 }
 
 pub fn tweak_attr_check<L, F>(cx: &mut Context, name: &'static str, lens: L, setter: F)
@@ -341,14 +198,15 @@ fn attr_editor<T: ToString + FromStr + Data>(
         if !failed.get(cx) {
             let key = key.clone();
             let setter = setter.clone();
-            Textbox::new(cx, lens.clone()).on_edit(move |cx, text| {
-                if let Ok(value) = text.parse() {
+            validator_box(
+                cx,
+                lens.clone(),
+                move |cx, value| {
                     setter(cx, key.get(cx), value);
-                    cx.toggle_class("validation_error", false);
-                } else {
-                    cx.toggle_class("validation_error", true);
-                }
-            });
+                    true
+                },
+                move |cx, valid| cx.toggle_class("validation_error", !valid),
+            );
         }
     });
 }

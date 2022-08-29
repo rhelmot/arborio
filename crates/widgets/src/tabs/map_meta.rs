@@ -5,9 +5,11 @@ use arborio_state::data::sid::SIDFields;
 use arborio_state::data::{EventPhase, MapID};
 use arborio_state::lenses::{CurrentMapImplLens, StaticerLens};
 use arborio_utils::vizia::prelude::*;
-use arborio_widgets_common::common::{tweak_attr_check, tweak_attr_text, tweak_attr_text_dropdown};
-use arborio_widgets_common::common::{ModelContainer, ModelEvent};
+use arborio_widgets_common::advanced_tweaker::{
+    tweak_attr_check, tweak_attr_text, tweak_attr_text_dropdown,
+};
 use arborio_widgets_common::confirm_delete::deleter;
+use arborio_widgets_common::container_model::{ModelContainer, ModelEvent};
 use std::cell::RefCell;
 
 pub fn build_map_meta_tab(cx: &mut Context, map: MapID) {

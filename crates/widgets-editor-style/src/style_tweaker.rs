@@ -13,7 +13,7 @@ use arborio_state::lenses::{
 use arborio_utils::vizia::fonts::icons_names::DOWN;
 use arborio_utils::vizia::prelude::*;
 use arborio_utils::vizia::state::UnwrapLens;
-use arborio_widgets_common::common::*;
+use arborio_widgets_common::advanced_tweaker::*;
 
 macro_rules! edit_text {
     ($cx: expr, $label:expr, $attr:ident) => {
