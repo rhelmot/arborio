@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use crate::textedit_dropdown::TextboxDropdown;
 use arborio_maploader::map_struct::Attribute;
 use arborio_modloader::config::AttributeType;
 use arborio_state::lenses::{
@@ -37,10 +38,28 @@ where
     F: 'static + Send + Sync + Fn(&mut EventContext, <L as Lens>::Target) -> bool,
 {
     HStack::new(cx, move |cx| {
-        Label::new(cx, name);
+        Label::new(cx, name).class("label");
         validator_box(cx, lens, setter, |cx, valid| {
             cx.toggle_class("validation_error", !valid);
         });
+    });
+}
+
+pub fn tweak_attr_text_dropdown<L, LL, F>(
+    cx: &mut Context,
+    name: &'static str,
+    lens: L,
+    options: LL,
+    setter: F,
+) where
+    L: Lens<Target = String>,
+    LL: Lens<Target = Vec<String>>,
+    <LL as Lens>::Source: Model,
+    F: 'static + Send + Sync + Clone + Fn(&mut EventContext, String),
+{
+    HStack::new(cx, move |cx| {
+        Label::new(cx, name).class("label");
+        TextboxDropdown::new(cx, lens, options, setter);
     });
 }
 
@@ -194,7 +213,7 @@ where
     F: 'static + Send + Sync + Copy + Fn(&mut EventContext, bool),
 {
     HStack::new(cx, move |cx| {
-        Label::new(cx, name);
+        Label::new(cx, name).class("label");
         Binding::new(cx, lens, move |cx, lens| {
             Checkbox::new(cx, lens.clone()).on_toggle(move |cx| {
                 setter(cx, !lens.get(cx));

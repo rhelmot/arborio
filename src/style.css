@@ -171,7 +171,7 @@ menubutton:over {
 
 /* project tab */
 
-.title {
+.project_title {
     font-size: 40px;
 }
 
@@ -212,6 +212,31 @@ menubutton:over {
 }
 .project_name .pencilable_label {
     font-size: 40px;
+}
+
+/* map meta tab */
+
+#map_meta_tab {
+    top: 10px;
+}
+
+#map_meta_tab .label {
+    min-width: 200px;
+}
+
+#map_meta_tab>*>hstack {
+    bottom: 5px;
+    left: 10px;
+}
+#map_meta_tab>*>*>hstack {
+    bottom: 5px;
+    left: 10px;
+}
+
+#map_meta_tab textbox {
+    min-width: 200px;
+    max-width: 1000px;
+    width: 1s;
 }
 
 /* editor */
@@ -520,8 +545,8 @@ dropdown {
     overflow: visible;
 }
 
-dropdown button.title {
-    width: 100%;
+dropdown .title {
+    /*width: 100%;*/
 }
 
 dropdown popup {
@@ -533,7 +558,7 @@ dropdown popup {
 }
 
 .dropdown_element {
-    child-left: 3px;
+    left: 3px;
 }
 
 .dropdown_icon {
