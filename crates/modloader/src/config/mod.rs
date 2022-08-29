@@ -80,6 +80,8 @@ impl AttributeValue {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct EntityTemplate {
     pub name: Interned,
+    #[serde(default)]
+    pub keywords: Vec<String>,
     pub attributes: HashMap<Interned, AttributeValue>,
 }
 
@@ -142,6 +144,7 @@ impl EntityConfig {
         EntityTemplate {
             name: intern_str(&self.entity_name),
             attributes: HashMap::new(),
+            keywords: vec![],
         }
     }
 }
@@ -151,6 +154,7 @@ impl TriggerConfig {
         EntityTemplate {
             name: intern_str(&self.trigger_name),
             attributes: HashMap::new(),
+            keywords: vec![],
         }
     }
 }

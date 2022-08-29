@@ -54,6 +54,8 @@ pub struct EntityConfigV2 {
     #[serde(default)]
     pub attribute_info: HashMap<String, AttributeInfo>,
     #[serde(default)]
+    pub keywords: Vec<String>,
+    #[serde(default)]
     pub templates: Vec<EntityTemplate>,
 }
 

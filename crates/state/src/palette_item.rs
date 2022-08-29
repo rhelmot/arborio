@@ -7,18 +7,19 @@ use arborio_modloader::selectable::{
 };
 use arborio_utils::units::*;
 use arborio_utils::vizia::prelude::*;
+use itertools::Itertools;
 use std::fmt::Debug;
 use std::sync::Arc;
 
 pub trait PaletteItem: Copy + Clone + Data + Debug + Send {
-    fn search_text(&self) -> String;
+    fn search_text(&self, app: &AppState) -> String;
     fn display_name(&self, app: &AppState) -> String;
     const CAN_DRAW: bool = true;
     fn draw(&self, app: &AppState, canvas: &mut Canvas);
 }
 
 impl PaletteItem for TileSelectable {
-    fn search_text(&self) -> String {
+    fn search_text(&self, _app: &AppState) -> String {
         self.name.to_owned()
     }
 
@@ -50,8 +51,16 @@ impl PaletteItem for TileSelectable {
 }
 
 impl PaletteItem for EntitySelectable {
-    fn search_text(&self) -> String {
-        todo!()
+    fn search_text(&self, app: &AppState) -> String {
+        let config = get_entity_config(self, app);
+        let template = &config.templates[self.template];
+        config
+            .keywords
+            .iter()
+            .chain(config.templates[self.template].keywords.iter())
+            .chain([&config.entity_name.to_string()].into_iter())
+            .chain([&template.name.to_string()].into_iter())
+            .join(" ")
     }
 
     fn display_name(&self, app: &AppState) -> String {
@@ -83,8 +92,16 @@ impl PaletteItem for EntitySelectable {
 }
 
 impl PaletteItem for TriggerSelectable {
-    fn search_text(&self) -> String {
-        todo!()
+    fn search_text(&self, app: &AppState) -> String {
+        let config = get_trigger_config(self, app);
+        let template = &config.templates[self.template];
+        config
+            .keywords
+            .iter()
+            .chain(config.templates[self.template].keywords.iter())
+            .chain([&config.trigger_name.to_string()].into_iter())
+            .chain([&template.name.to_string()].into_iter())
+            .join(" ")
     }
 
     fn display_name(&self, app: &AppState) -> String {
@@ -222,8 +239,8 @@ pub fn instantiate_trigger(
 }
 
 impl PaletteItem for DecalSelectable {
-    fn search_text(&self) -> String {
-        todo!()
+    fn search_text(&self, _app: &AppState) -> String {
+        self.0.to_string()
     }
 
     fn display_name(&self, _app: &AppState) -> String {

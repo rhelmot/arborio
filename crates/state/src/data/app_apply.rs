@@ -343,7 +343,7 @@ impl AppState {
             }
             AppEvent::EditConfig { tab, config } => {
                 if let Some(AppTab::ConfigEditor(ctab)) = self.tabs.get_mut(*tab) {
-                    ctab.editing_config = Some(config.to_owned())
+                    ctab.editing_config = Some(config.as_ref().to_owned())
                 }
             }
             AppEvent::SetConfigErrorMessage { tab, message } => {

@@ -613,13 +613,13 @@ pub fn build_item_editor(cx: &mut Context) {
     config_editor_textbox(cx, config_lens.then(AnyConfig::entity), move |cx, c| {
         cx.emit(AppEvent::EditConfig {
             tab,
-            config: AnyConfig::Entity(c),
+            config: Box::new(AnyConfig::Entity(c)),
         })
     });
     config_editor_textbox(cx, config_lens.then(AnyConfig::trigger), move |cx, c| {
         cx.emit(AppEvent::EditConfig {
             tab,
-            config: AnyConfig::Trigger(c),
+            config: Box::new(AnyConfig::Trigger(c)),
         })
     });
     config_editor_textbox(
@@ -628,7 +628,7 @@ pub fn build_item_editor(cx: &mut Context) {
         move |cx, c| {
             cx.emit(AppEvent::EditConfig {
                 tab,
-                config: AnyConfig::Styleground(c),
+                config: Box::new(AnyConfig::Styleground(c)),
             })
         },
     );
@@ -682,7 +682,10 @@ pub fn build_item_editor(cx: &mut Context) {
                 let tab = app.current_tab;
                 let mut config: AnyConfig = config_lens.get(cx);
                 set_default_draw(&mut config, app);
-                cx.emit(AppEvent::EditConfig { tab, config });
+                cx.emit(AppEvent::EditConfig {
+                    tab,
+                    config: Box::new(config),
+                });
             },
             move |cx| Label::new(cx, "Default Draw"),
         );
@@ -702,7 +705,10 @@ pub fn build_item_editor(cx: &mut Context) {
                         .clone()
                 });
                 analyze_uses(&mut config, &result, &attrs);
-                cx.emit(AppEvent::EditConfig { tab, config });
+                cx.emit(AppEvent::EditConfig {
+                    tab,
+                    config: Box::new(config),
+                });
             },
             move |cx| Label::new(cx, "Analyze Attrs"),
         );

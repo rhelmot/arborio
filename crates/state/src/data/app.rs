@@ -150,7 +150,7 @@ pub enum AppEvent {
     },
     EditConfig {
         tab: usize,
-        config: AnyConfig,
+        config: Box<AnyConfig>,
     },
     SetConfigErrorMessage {
         tab: usize,

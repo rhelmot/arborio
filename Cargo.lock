@@ -120,6 +120,7 @@ dependencies = [
  "arborio-walker",
  "confy",
  "enum-iterator",
+ "itertools 0.10.3",
  "lazy_static",
  "log",
  "parking_lot",
