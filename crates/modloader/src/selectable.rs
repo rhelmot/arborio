@@ -32,8 +32,6 @@ impl PartialEq for TileSelectable {
 
 impl Eq for TileSelectable {}
 
-//unsafe impl Send for TileSelectable {}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct EntitySelectable {
     pub entity: Interned,

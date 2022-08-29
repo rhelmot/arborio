@@ -242,16 +242,19 @@ fn extract_entities_palette(config: &InternedMap<Arc<EntityConfig>>) -> Vec<Enti
     config
         .iter()
         .flat_map(|(_, c)| {
-            c.templates
-                .iter()
-                .enumerate()
-                .map(move |(idx, _)| EntitySelectable {
-                    entity: intern_str(&c.entity_name),
-                    template: idx,
-                })
+            c.templates.iter().enumerate().map(move |(idx, t)| {
+                (
+                    &t.name,
+                    EntitySelectable {
+                        entity: intern_str(&c.entity_name),
+                        template: idx,
+                    },
+                )
+            })
         })
-        .filter(|es| *es.entity != "default" && *es.entity != "trigger")
-        .sorted_by_key(|es| es.template)
+        .filter(|es| *es.1.entity != "default" && *es.1.entity != "trigger")
+        .sorted_by_key(|es| es.0)
+        .map(|es| es.1)
         .collect()
 }
 
@@ -259,16 +262,19 @@ fn extract_triggers_palette(config: &InternedMap<Arc<TriggerConfig>>) -> Vec<Tri
     config
         .iter()
         .flat_map(|(_, c)| {
-            c.templates
-                .iter()
-                .enumerate()
-                .map(move |(idx, _)| TriggerSelectable {
-                    trigger: intern_str(&c.trigger_name),
-                    template: idx,
-                })
+            c.templates.iter().enumerate().map(move |(idx, t)| {
+                (
+                    &t.name,
+                    TriggerSelectable {
+                        trigger: intern_str(&c.trigger_name),
+                        template: idx,
+                    },
+                )
+            })
         })
-        .filter(|es| *es.trigger != "default")
-        .sorted_by_key(|es| es.template)
+        .filter(|es| *es.1.trigger != "default")
+        .sorted_by_key(|es| es.0)
+        .map(|es| es.1)
         .collect()
 }
 
