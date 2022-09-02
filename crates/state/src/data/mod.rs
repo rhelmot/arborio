@@ -168,7 +168,7 @@ impl MapID {
         AppEvent::MapEvent {
             map: Some(*self),
             event: MapEvent::Action {
-                event: RefCell::new(Some(action)),
+                event: RefCell::new(Some(vec![action])),
                 merge_phase: phase,
             },
         }
@@ -178,10 +178,10 @@ impl MapID {
         AppEvent::MapEvent {
             map: Some(*self),
             event: MapEvent::Action {
-                event: RefCell::new(Some(MapAction::RoomAction {
+                event: RefCell::new(Some(vec![MapAction::RoomAction {
                     idx: room,
                     event: action,
-                })),
+                }])),
                 merge_phase: phase,
             },
         }

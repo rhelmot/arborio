@@ -11,6 +11,7 @@ use arborio_utils::vizia::vg::{Color, Paint, Path};
 use std::collections::{HashMap, HashSet};
 
 use crate::data::app::AppState;
+use crate::data::project_map::LevelState;
 use crate::data::selection::AppSelection;
 
 pub fn draw_entity(
@@ -517,29 +518,29 @@ pub fn decal_texture(decal: &CelesteMapDecal) -> String {
     path.to_str().unwrap().to_owned()
 }
 
-pub fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
+pub fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &LevelState, fg: bool) {
     let (tiles, tiles_asset) = if fg {
         (
-            &room.solids,
+            &room.data.solids,
             app.current_palette_unwrap().autotilers.get("fg").unwrap(),
         )
     } else {
         (
-            &room.bg,
+            &room.data.bg,
             app.current_palette_unwrap().autotilers.get("bg").unwrap(),
         )
     };
 
     // TODO use point_iter
-    for ty in 0..room.bounds.height() / 8 {
-        for tx in 0..room.bounds.width() / 8 {
+    for ty in 0..room.data.bounds.height() / 8 {
+        for tx in 0..room.data.bounds.width() / 8 {
             let pt = TilePoint::new(tx, ty);
             let rx = (tx * 8) as f32;
             let ry = (ty * 8) as f32;
             let tile = tiles.get(pt).unwrap();
             if let Some(tile) = tiles_asset
                 .get(tile)
-                .and_then(|tileset| tileset.tile(pt, &mut |pt| room.tile(pt, fg)))
+                .and_then(|tileset| tileset.tile(pt, &mut |pt| room.data.tile(pt, fg)))
             {
                 if let Err(e) = app.current_palette_unwrap().gameplay_atlas.draw_tile(
                     canvas,
@@ -549,6 +550,38 @@ pub fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, f
                     Color::white(),
                 ) {
                     log::error!("Failed drawing tile: {}", e);
+                }
+            }
+        }
+    }
+
+    let float = if fg { &room.floats.fg } else { &room.floats.bg };
+
+    if let Some((float_pos, float_dat)) = float {
+        let mut tiler = |pt| -> Option<char> { Some(float_dat.get_or_default(pt)) };
+        let rect = TileRect::new(*float_pos, float_dat.size());
+        for pt in rect_point_iter(rect, 1) {
+            let float_pt = pt - float_pos.to_vector();
+            let ch = float_dat.get_or_default(float_pt);
+            if ch != '\0' {
+                if let Some(tile) = app
+                    .current_palette_unwrap()
+                    .autotilers
+                    .get(if fg { "fg" } else { "bg" })
+                    .unwrap()
+                    .get(&ch)
+                    .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
+                {
+                    let room_pos = point_tile_to_room(&pt);
+                    if let Err(e) = app.current_palette_unwrap().gameplay_atlas.draw_tile(
+                        canvas,
+                        tile,
+                        room_pos.x as f32,
+                        room_pos.y as f32,
+                        Color::white(),
+                    ) {
+                        log::error!("{}", e);
+                    }
                 }
             }
         }
@@ -683,5 +716,34 @@ fn parse_color(color: &str) -> Option<Color> {
         Some(Color::rgb(r, g, b))
     } else {
         None
+    }
+}
+
+pub fn draw_objtiles_float(app: &AppState, canvas: &mut Canvas, room: &LevelState) {
+    if let Some((float_pos, float_dat)) = &room.floats.obj {
+        let rect = TileRect::new(*float_pos, float_dat.size());
+        for pt in rect_point_iter(rect, 1) {
+            let float_pt = pt - float_pos.to_vector();
+            let ch = float_dat.get_or_default(float_pt);
+            if ch >= 0 {
+                let tile = TileReference {
+                    tile: TextureTile {
+                        x: (ch % 32) as u32,
+                        y: (ch / 32) as u32,
+                    },
+                    texture: "tilesets/scenery".into(), // TODO we shouldn't be doing this lookup during draw. cache this string statically?
+                };
+                let room_pos = point_tile_to_room(&pt);
+                if let Err(e) = app.current_palette_unwrap().gameplay_atlas.draw_tile(
+                    canvas,
+                    tile,
+                    room_pos.x as f32,
+                    room_pos.y as f32,
+                    Color::white(),
+                ) {
+                    log::error!("{}", e)
+                }
+            }
+        }
     }
 }

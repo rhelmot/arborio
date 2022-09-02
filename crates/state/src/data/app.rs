@@ -395,7 +395,7 @@ impl AppState {
             .retain(|_, id| open_maps.contains(id));
     }
 
-    pub fn map_action(&self, event: MapAction, merge_phase: EventPhase) -> AppEvent {
+    pub fn map_action(&self, event: Vec<MapAction>, merge_phase: EventPhase) -> AppEvent {
         AppEvent::MapEvent {
             map: Some(self.map_tab_unwrap().id),
             event: MapEvent::Action {
@@ -405,7 +405,7 @@ impl AppState {
         }
     }
 
-    pub fn map_action_unique(&self, event: MapAction) -> AppEvent {
+    pub fn map_action_unique(&self, event: Vec<MapAction>) -> AppEvent {
         self.map_action(event, EventPhase::new())
     }
 
@@ -419,7 +419,10 @@ impl AppState {
         merge_phase: EventPhase,
         room: usize,
     ) -> AppEvent {
-        self.map_action(MapAction::RoomAction { idx: room, event }, merge_phase)
+        self.map_action(
+            vec![MapAction::RoomAction { idx: room, event }],
+            merge_phase,
+        )
     }
 
     // pub fn room_event_unique(&self, event: RoomAction) -> AppEvent {
@@ -435,12 +438,7 @@ impl AppState {
         events: impl IntoIterator<Item = MapAction>,
         merge_phase: EventPhase,
     ) -> AppEvent {
-        self.map_action(
-            MapAction::Batched {
-                events: events.into_iter().collect(),
-            },
-            merge_phase,
-        )
+        self.map_action(events.into_iter().collect(), merge_phase)
     }
 
     pub fn batch_action_unique(&self, events: impl IntoIterator<Item = MapAction>) -> AppEvent {

@@ -17,115 +17,113 @@ use arborio_maploader::map_struct::{
 // - should only require a single reference to do their jobs, e.g. to the map or to the room
 // - should all have a precise inverse, so history tracking is easy
 // - events with the same phase should completely supersede each other!!
+// UGH THE LAST ONE IS BEING HACKED AROUND NOW
 
 pub fn apply_map_action(
-    cx: &mut EventContext,
     map: &mut MapState,
-    event: MapAction,
-) -> Result<MapAction, String> {
-    match event {
-        MapAction::Batched { events } => Ok(MapAction::Batched {
-            events: events
-                .into_iter()
-                .map(|ev| apply_map_action(cx, map, ev))
-                .collect::<Result<Vec<MapAction>, String>>()?,
-        }),
-        MapAction::AddStyleground { loc, style } => {
-            let vec = map.styles_mut(loc.fg);
-            if loc.idx <= vec.len() {
-                vec.insert(loc.idx, *style);
-                Ok(MapAction::RemoveStyleground { loc })
-            } else {
-                Err("Out of range".to_owned())
+    event: Vec<MapAction>,
+) -> Result<Vec<MapAction>, String> {
+    event
+        .into_iter()
+        .map(|event| match event {
+            MapAction::AddStyleground { loc, style } => {
+                let vec = map.styles_mut(loc.fg);
+                if loc.idx <= vec.len() {
+                    vec.insert(loc.idx, *style);
+                    Ok(MapAction::RemoveStyleground { loc })
+                } else {
+                    Err("Out of range".to_owned())
+                }
             }
-        }
-        MapAction::UpdateStyleground { loc, mut style } => {
-            if let Some(style_ref) = map.styles_mut(loc.fg).get_mut(loc.idx) {
-                std::mem::swap(style_ref, &mut style);
-                Ok(MapAction::UpdateStyleground { loc, style })
-            } else {
-                Err("Out of range".to_owned())
+            MapAction::UpdateStyleground { loc, mut style } => {
+                if let Some(style_ref) = map.styles_mut(loc.fg).get_mut(loc.idx) {
+                    std::mem::swap(style_ref, &mut style);
+                    Ok(MapAction::UpdateStyleground { loc, style })
+                } else {
+                    Err("Out of range".to_owned())
+                }
             }
-        }
-        MapAction::RemoveStyleground { loc } => {
-            let vec = map.styles_mut(loc.fg);
-            if loc.idx < vec.len() {
-                let style = vec.remove(loc.idx);
-                Ok(MapAction::AddStyleground {
-                    loc,
-                    style: Box::new(style),
-                })
-            } else {
-                Err("Out of range".to_owned())
+            MapAction::RemoveStyleground { loc } => {
+                let vec = map.styles_mut(loc.fg);
+                if loc.idx < vec.len() {
+                    let style = vec.remove(loc.idx);
+                    Ok(MapAction::AddStyleground {
+                        loc,
+                        style: Box::new(style),
+                    })
+                } else {
+                    Err("Out of range".to_owned())
+                }
             }
-        }
-        MapAction::MoveStyleground { loc, target } => {
-            let vec = map.styles_mut(loc.fg);
-            if loc.idx < vec.len() {
-                let style = vec.remove(loc.idx);
-                let vec = map.styles_mut(target.fg);
-                let real_target = if target.idx <= vec.len() { target } else { loc };
-                let vec = map.styles_mut(real_target.fg);
-                vec.insert(real_target.idx, style);
-                Ok(MapAction::MoveStyleground {
-                    loc: real_target,
-                    target: loc,
-                })
-            } else {
-                Err("Out of range".to_owned())
+            MapAction::MoveStyleground { loc, target } => {
+                let vec = map.styles_mut(loc.fg);
+                if loc.idx < vec.len() {
+                    let style = vec.remove(loc.idx);
+                    let vec = map.styles_mut(target.fg);
+                    let real_target = if target.idx <= vec.len() { target } else { loc };
+                    let vec = map.styles_mut(real_target.fg);
+                    vec.insert(real_target.idx, style);
+                    Ok(MapAction::MoveStyleground {
+                        loc: real_target,
+                        target: loc,
+                    })
+                } else {
+                    Err("Out of range".to_owned())
+                }
             }
-        }
-        MapAction::MetaUpdate { mut update } => {
-            map.data.apply(&mut update);
-            Ok(MapAction::MetaUpdate { update })
-        }
-        MapAction::AddRoom { idx, mut room } => {
-            let idx = idx.unwrap_or(map.data.levels.len());
-            if room.name.is_empty()
-                || map
-                    .data
-                    .levels
-                    .iter()
-                    .any(|iroom| room.name == iroom.data.name)
-            {
-                room.name = pick_new_name(map);
+            MapAction::MetaUpdate { mut update } => {
+                map.data.apply(&mut update);
+                Ok(MapAction::MetaUpdate { update })
             }
-            if idx <= map.data.levels.len() {
-                map.data.levels.insert(
-                    idx,
-                    LevelState {
-                        data: *room,
-                        cache: RefCell::new(Default::default()),
-                    },
-                );
-                Ok(MapAction::DeleteRoom { idx })
-            } else {
-                Err("Out of range".to_owned())
+            MapAction::AddRoom { idx, mut room } => {
+                let idx = idx.unwrap_or(map.data.levels.len());
+                if room.name.is_empty()
+                    || map
+                        .data
+                        .levels
+                        .iter()
+                        .any(|iroom| room.name == iroom.data.name)
+                {
+                    room.name = pick_new_name(map);
+                }
+                if idx <= map.data.levels.len() {
+                    map.data.levels.insert(
+                        idx,
+                        LevelState {
+                            data: *room,
+                            cache: RefCell::new(Default::default()),
+                            floats: Default::default(),
+                        },
+                    );
+                    Ok(MapAction::DeleteRoom { idx })
+                } else {
+                    Err("Out of range".to_owned())
+                }
             }
-        }
-        MapAction::DeleteRoom { idx } => {
-            if idx <= map.data.levels.len() {
-                let room = map.data.levels.remove(idx);
-                Ok(MapAction::AddRoom {
-                    idx: Some(idx),
-                    room: Box::new(room.data),
-                })
-            } else {
-                Err("Out of range".to_owned())
+            MapAction::DeleteRoom { idx } => {
+                if idx <= map.data.levels.len() {
+                    let room = map.data.levels.remove(idx);
+                    Ok(MapAction::AddRoom {
+                        idx: Some(idx),
+                        room: Box::new(room.data),
+                    })
+                } else {
+                    Err("Out of range".to_owned())
+                }
             }
-        }
-        MapAction::RoomAction { idx, event } => {
-            if let Some(room) = map.data.levels.get_mut(idx) {
-                room.cache.borrow_mut().render_cache_valid = false;
-                Ok(MapAction::RoomAction {
-                    idx,
-                    event: apply_room_event(room, event)?,
-                })
-            } else {
-                Err("Out of range".to_owned())
+            MapAction::RoomAction { idx, event } => {
+                if let Some(room) = map.data.levels.get_mut(idx) {
+                    room.cache.borrow_mut().render_cache_valid = false;
+                    Ok(MapAction::RoomAction {
+                        idx,
+                        event: apply_room_event(room, event)?,
+                    })
+                } else {
+                    Err("Out of range".to_owned())
+                }
             }
-        }
-    }
+        })
+        .collect()
 }
 
 fn apply_room_event(room: &mut LevelState, event: RoomAction) -> Result<RoomAction, String> {
@@ -262,10 +260,23 @@ fn apply_room_event(room: &mut LevelState, event: RoomAction) -> Result<RoomActi
             }
             Err("No such decal".to_owned())
         }
+        RoomAction::TileFloatSet { fg, mut float } => {
+            let target = if fg {
+                &mut room.floats.fg
+            } else {
+                &mut room.floats.bg
+            };
+            std::mem::swap(&mut float, target);
+            Ok(RoomAction::TileFloatSet { fg, float })
+        }
+        RoomAction::ObjFloatSet { mut float } => {
+            std::mem::swap(&mut float, &mut room.floats.obj);
+            Ok(RoomAction::ObjFloatSet { float })
+        }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MapAction {
     AddStyleground {
         loc: StylegroundSelection,
@@ -296,12 +307,9 @@ pub enum MapAction {
     MetaUpdate {
         update: Box<MapStateUpdate>,
     },
-    Batched {
-        events: Vec<MapAction>, // must be COMPLETELY orthogonal!!!
-    },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum RoomAction {
     MoveRoom {
         bounds: MapRectStrict,
@@ -343,6 +351,13 @@ pub enum RoomAction {
     DecalRemove {
         fg: bool,
         id: u32,
+    },
+    TileFloatSet {
+        fg: bool,
+        float: Option<(TilePoint, TileGrid<char>)>,
+    },
+    ObjFloatSet {
+        float: Option<(TilePoint, TileGrid<i32>)>,
     },
 }
 

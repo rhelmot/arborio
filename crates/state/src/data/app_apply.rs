@@ -1,5 +1,5 @@
 use crate::data::app::{build_modules_lookup, step_modules_lookup, AppEvent, AppState};
-use crate::data::project_map::MapState;
+use crate::data::project_map::{MapEvent, MapState};
 use crate::data::tabs::{AppTab, ConfigEditorTab, MapTab};
 use crate::data::{load_map, trigger_module_load, trigger_palette_update, MapID};
 use arborio_modloader::aggregate::ModuleAggregate;
@@ -352,7 +352,20 @@ impl AppState {
                 }
             }
             AppEvent::MapEvent { map, event } => {
+                let needs_tool_cycle =
+                    matches!(event, MapEvent::Undo | MapEvent::Redo | MapEvent::Save);
+                if needs_tool_cycle {
+                    let tool = self.current_tool.borrow_mut().take();
+                    if let Some(mut tool) = tool {
+                        for event in tool.switch_off(self, cx) {
+                            self.apply(cx, &event);
+                        }
+                    }
+                }
                 self.apply_map_event(cx, *map, event);
+                if needs_tool_cycle {
+                    *self.current_tool.borrow_mut() = Some(self.current_toolspec.switch_on(self));
+                }
             }
             AppEvent::ProjectEvent { project, event } => {
                 self.apply_project_event(cx, *project, event);

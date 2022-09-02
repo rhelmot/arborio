@@ -213,7 +213,6 @@ fn lookup_tiler<'a>(
                 match Tileset::new(fp, "tilesets/") {
                     Ok(t) => return Some(t),
                     Err(e) => {
-                        println!("{}", e);
                         log::error!("{}:{}: {}", depname, xml, e);
                     }
                 }

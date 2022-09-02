@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use arborio_gfxloader::autotiler::{TextureTile, TileReference};
 use arborio_maploader::map_struct::Node;
 use arborio_modloader::mapstruct_plus_config::{make_entity_env, make_node_env};
 use arborio_utils::units::*;
@@ -9,7 +8,7 @@ use arborio_utils::vizia::vg;
 
 use crate::data::action::{MapAction, RoomAction};
 use crate::data::app::{AppEvent, AppInternalEvent, AppState};
-use crate::data::project_map::LevelState;
+use crate::data::project_map::{LevelFloatState, LevelState};
 use crate::data::selection::{AppInRoomSelectable, AppSelectable, AppSelection};
 use crate::data::{EventPhase, Layer};
 use crate::rendering::decal_texture;
@@ -18,9 +17,6 @@ use crate::tools::{generic_nav, Tool};
 pub struct SelectionTool {
     current_selection: HashSet<AppSelection>,
     pending_selection: HashSet<AppSelection>,
-    fg_float: Option<(TilePoint, TileGrid<char>)>,
-    bg_float: Option<(TilePoint, TileGrid<char>)>,
-    obj_float: Option<(TilePoint, TileGrid<i32>)>,
 
     status: SelectionStatus,
     draw_phase: EventPhase,
@@ -39,9 +35,6 @@ enum SelectionStatus {
 struct DraggingStatus {
     pointer_reference_point: RoomPoint,
     selection_reference_points: HashMap<AppSelection, RoomPoint>,
-    fg_float_reference_point: Option<RoomPoint>,
-    bg_float_reference_point: Option<RoomPoint>,
-    obj_float_reference_point: Option<RoomPoint>,
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -156,6 +149,10 @@ impl AppEventStaging {
     pub fn finalize_unique(self, app: &AppState) -> Vec<AppEvent> {
         self.finalize(app, EventPhase::new())
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty() && self.1.is_empty() && self.2.is_empty()
+    }
 }
 
 impl SelectionTool {
@@ -169,9 +166,6 @@ impl SelectionTool {
         Self {
             current_selection: selection,
             pending_selection: HashSet::new(),
-            fg_float: None,
-            bg_float: None,
-            obj_float: None,
             status: SelectionStatus::None,
             draw_phase: EventPhase::null(),
         }
@@ -220,11 +214,9 @@ impl Tool for SelectionTool {
             }
             WindowEvent::MouseDown(MouseButton::Left) => {
                 if self.status == SelectionStatus::None {
-                    self.draw_phase = EventPhase::new();
                     let got = self.selectable_at(app, room, app.current_layer, room_pos_unsnapped);
-                    if self.touches_float(room_pos)
-                        || (got.is_some() && self.current_selection.contains(&got.unwrap()))
-                    {
+                    if got.is_some() && self.current_selection.contains(&got.unwrap()) {
+                        self.draw_phase = EventPhase::new();
                         self.status =
                             SelectionStatus::CouldStartDragging(room_pos, room_pos_unsnapped);
                         AppEventStaging::default()
@@ -234,7 +226,7 @@ impl Tool for SelectionTool {
                             self.pending_selection = HashSet::from([g]);
                         }
                         if !cx.modifiers.contains(Modifiers::SHIFT) {
-                            self.clear_selection(app)
+                            self.clear_selection(app, room)
                         } else {
                             AppEventStaging::default()
                         }
@@ -244,12 +236,13 @@ impl Tool for SelectionTool {
                 }
             }
             WindowEvent::MouseMove(..) => {
-                let mut events = if let SelectionStatus::CouldStartDragging(pt, unsn) = self.status
-                {
-                    self.begin_dragging(app, room, pt, unsn) // sets self.status = Dragging | Resizing
-                } else {
-                    AppEventStaging::default()
-                };
+                let (mut events, floats) =
+                    if let SelectionStatus::CouldStartDragging(pt, unsn) = self.status {
+                        let (events, floats) = self.begin_dragging(app, room, pt, unsn); // sets self.status = Dragging | Resizing
+                        (events, Some(floats))
+                    } else {
+                        (AppEventStaging::default(), None)
+                    };
 
                 events.accumulate(match self.status {
                     SelectionStatus::None => AppEventStaging::default(),
@@ -266,7 +259,11 @@ impl Tool for SelectionTool {
                     SelectionStatus::Dragging(DraggingStatus {
                         pointer_reference_point,
                         ..
-                    }) => self.nudge(room, room_pos - pointer_reference_point),
+                    }) => self.nudge(
+                        room,
+                        room_pos - pointer_reference_point,
+                        floats.unwrap_or_else(|| room.floats.clone()),
+                    ),
                     SelectionStatus::Resizing(ResizingStatus {
                         pointer_reference_point,
                         ..
@@ -277,12 +274,21 @@ impl Tool for SelectionTool {
             }
             WindowEvent::KeyDown(code, _) => {
                 if self.status == SelectionStatus::None {
-                    self.draw_phase = EventPhase::new();
-                    match code {
-                        Code::ArrowDown => self.nudge(room, RoomVector::new(0, 8)),
-                        Code::ArrowUp => self.nudge(room, RoomVector::new(0, -8)),
-                        Code::ArrowRight => self.nudge(room, RoomVector::new(8, 0)),
-                        Code::ArrowLeft => self.nudge(room, RoomVector::new(-8, 0)),
+                    let mut old_draw_phase = EventPhase::new();
+                    std::mem::swap(&mut old_draw_phase, &mut self.draw_phase);
+                    let events = match code {
+                        Code::ArrowDown => {
+                            self.nudge(room, RoomVector::new(0, 8), room.floats.clone())
+                        }
+                        Code::ArrowUp => {
+                            self.nudge(room, RoomVector::new(0, -8), room.floats.clone())
+                        }
+                        Code::ArrowRight => {
+                            self.nudge(room, RoomVector::new(8, 0), room.floats.clone())
+                        }
+                        Code::ArrowLeft => {
+                            self.nudge(room, RoomVector::new(-8, 0), room.floats.clone())
+                        }
                         Code::KeyA if cx.modifiers == &Modifiers::CTRL => {
                             self.current_selection = self.selectables_in(
                                 app,
@@ -313,7 +319,11 @@ impl Tool for SelectionTool {
                         }
                         Code::Backspace | Code::Delete => self.delete_all(app, room),
                         _ => AppEventStaging::default(),
+                    };
+                    if events.is_empty() {
+                        self.draw_phase = old_draw_phase;
                     }
+                    events
                 } else {
                     AppEventStaging::default()
                 }
@@ -347,7 +357,12 @@ impl Tool for SelectionTool {
     }
 
     fn switch_off(&mut self, app: &AppState, _cx: &EventContext) -> Vec<AppEvent> {
-        self.clear_selection(app).finalize(app, self.draw_phase)
+        if let Some(room) = app.current_room_ref() {
+            self.clear_selection(app, room)
+                .finalize(app, self.draw_phase)
+        } else {
+            vec![]
+        }
     }
 
     fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &DrawContext) {
@@ -410,94 +425,6 @@ impl Tool for SelectionTool {
                     rect.width() as f32,
                     rect.height() as f32,
                 )
-            }
-        }
-
-        if let Some((float_pos, float_dat)) = &self.bg_float {
-            let mut tiler = |pt| -> Option<char> { Some(float_dat.get_or_default(pt)) };
-            let rect = TileRect::new(*float_pos, float_dat.size());
-            for pt in rect_point_iter(rect, 1) {
-                let float_pt = pt - float_pos.to_vector();
-                let ch = float_dat.get_or_default(float_pt);
-                if ch != '\0' {
-                    if let Some(tile) = state
-                        .current_palette_unwrap()
-                        .autotilers
-                        .get("bg")
-                        .unwrap()
-                        .get(&ch)
-                        .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
-                    {
-                        let room_pos = point_tile_to_room(&pt);
-                        if let Err(e) = state.current_palette_unwrap().gameplay_atlas.draw_tile(
-                            canvas,
-                            tile,
-                            room_pos.x as f32,
-                            room_pos.y as f32,
-                            Color::white().into(),
-                        ) {
-                            log::error!("{}", e);
-                        }
-                        path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
-                    }
-                }
-            }
-        }
-        if let Some((float_pos, float_dat)) = &self.fg_float {
-            let mut tiler = |pt| -> Option<char> { Some(float_dat.get_or_default(pt)) };
-            let rect = TileRect::new(*float_pos, float_dat.size());
-            for pt in rect_point_iter(rect, 1) {
-                let float_pt = pt - float_pos.to_vector();
-                let ch = float_dat.get_or_default(float_pt);
-                if ch != '\0' {
-                    if let Some(tile) = state
-                        .current_palette_unwrap()
-                        .autotilers
-                        .get("fg")
-                        .unwrap()
-                        .get(&ch)
-                        .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
-                    {
-                        let room_pos = point_tile_to_room(&pt);
-                        if let Err(e) = state.current_palette_unwrap().gameplay_atlas.draw_tile(
-                            canvas,
-                            tile,
-                            room_pos.x as f32,
-                            room_pos.y as f32,
-                            Color::white().into(),
-                        ) {
-                            log::error!("{}", e);
-                        }
-                        path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
-                    }
-                }
-            }
-        }
-        if let Some((float_pos, float_dat)) = &self.obj_float {
-            let rect = TileRect::new(*float_pos, float_dat.size());
-            for pt in rect_point_iter(rect, 1) {
-                let float_pt = pt - float_pos.to_vector();
-                let ch = float_dat.get_or_default(float_pt);
-                if ch >= 0 {
-                    let tile = TileReference {
-                        tile: TextureTile {
-                            x: (ch % 32) as u32,
-                            y: (ch / 32) as u32,
-                        },
-                        texture: "tilesets/scenery".into(), // TODO we shouldn't be doing this lookup during draw. cache this string statically?
-                    };
-                    let room_pos = point_tile_to_room(&pt);
-                    if let Err(e) = state.current_palette_unwrap().gameplay_atlas.draw_tile(
-                        canvas,
-                        tile,
-                        room_pos.x as f32,
-                        room_pos.y as f32,
-                        Color::white().into(),
-                    ) {
-                        log::error!("{}", e)
-                    }
-                    path.rect(room_pos.x as f32, room_pos.y as f32, 8.0, 8.0);
-                }
             }
         }
 
@@ -586,29 +513,6 @@ impl SelectionTool {
         self.notify_selection(app)
     }
 
-    fn touches_float(&self, room_pos: RoomPoint) -> bool {
-        let tile_pos = point_room_to_tile(&room_pos);
-        if let Some((offset, data)) = &self.fg_float {
-            let relative_pos = tile_pos - offset.to_vector();
-            if data.get_or_default(relative_pos) != '\0' {
-                return true;
-            }
-        }
-        if let Some((offset, data)) = &self.bg_float {
-            let relative_pos = tile_pos - offset.to_vector();
-            if data.get_or_default(relative_pos) != '\0' {
-                return true;
-            }
-        }
-        if let Some((offset, data)) = &self.obj_float {
-            let relative_pos = tile_pos - offset.to_vector();
-            if data.get(relative_pos).cloned().unwrap_or(-2) != -2 {
-                return true;
-            }
-        }
-        false
-    }
-
     fn rects_of(
         &self,
         app: &AppState,
@@ -625,6 +529,51 @@ impl SelectionTool {
             AppSelection::ObjectTile(pt) => {
                 vec![RoomRect::new(point_tile_to_room(&pt), RoomSize::new(8, 8))]
             }
+            AppSelection::FgFloat => {
+                let mut res = vec![];
+                if let Some((origin, grid)) = &room.floats.fg {
+                    for pt in rect_point_iter(TileRect::new(TilePoint::zero(), grid.size()), 1) {
+                        let tile = grid.get(pt);
+                        if *tile.unwrap() != '\0' {
+                            res.push(RoomRect::new(
+                                point_tile_to_room(&(*origin + pt.to_vector())),
+                                RoomSize::new(8, 8),
+                            ));
+                        }
+                    }
+                }
+                res
+            }
+            AppSelection::BgFloat => {
+                let mut res = vec![];
+                if let Some((origin, grid)) = &room.floats.bg {
+                    for pt in rect_point_iter(TileRect::new(TilePoint::zero(), grid.size()), 1) {
+                        let tile = grid.get(pt);
+                        if *tile.unwrap() != '\0' {
+                            res.push(RoomRect::new(
+                                point_tile_to_room(&(*origin + pt.to_vector())),
+                                RoomSize::new(8, 8),
+                            ));
+                        }
+                    }
+                }
+                res
+            }
+            AppSelection::ObjFloat => {
+                let mut res = vec![];
+                if let Some((origin, grid)) = &room.floats.obj {
+                    for pt in rect_point_iter(TileRect::new(TilePoint::zero(), grid.size()), 1) {
+                        let tile = grid.get(pt);
+                        if *tile.unwrap() != -2 {
+                            res.push(RoomRect::new(
+                                point_tile_to_room(&(*origin + pt.to_vector())),
+                                RoomSize::new(8, 8),
+                            ));
+                        }
+                    }
+                }
+                res
+            }
             AppSelection::EntityBody(id, trigger) => {
                 if let Some(entity) = room.entity(id, trigger) {
                     let config = app
@@ -637,10 +586,7 @@ impl SelectionTool {
                         .iter()
                         .filter_map(|r| match r.evaluate_int(&env) {
                             Ok(r) => Some(r),
-                            Err(_) => {
-                                //println!("{}", s);
-                                None
-                            }
+                            Err(_) => None,
                         })
                         .collect()
                 } else {
@@ -748,6 +694,19 @@ impl SelectionTool {
                     }
                 }
             }
+            if let Some((pt, grid)) = &room.floats.obj {
+                if let Some(float_rect_cropped) =
+                    rect_tile_to_room(&TileRect::new(*pt, grid.size())).intersection(&room_rect)
+                {
+                    for tile_pos_unaligned in rect_point_iter(float_rect_cropped, 8) {
+                        let tile_pos = point_room_to_tile(&tile_pos_unaligned);
+                        if grid.get(tile_pos - pt.to_vector()).copied().unwrap_or(-2) != -2 {
+                            result.insert(AppSelection::ObjFloat);
+                            break;
+                        }
+                    }
+                }
+            }
         }
         if let Layer::FgTiles | Layer::All = layer {
             if let Some(room_rect_cropped) = room_rect_cropped {
@@ -755,6 +714,19 @@ impl SelectionTool {
                     let tile_pos = point_room_to_tile(&tile_pos_unaligned);
                     if room.tile(tile_pos, true).unwrap_or('0') != '0' {
                         result.insert(AppSelection::FgTile(tile_pos));
+                    }
+                }
+            }
+            if let Some((pt, grid)) = &room.floats.fg {
+                if let Some(float_rect_cropped) =
+                    rect_tile_to_room(&TileRect::new(*pt, grid.size())).intersection(&room_rect)
+                {
+                    for tile_pos_unaligned in rect_point_iter(float_rect_cropped, 8) {
+                        let tile_pos = point_room_to_tile(&tile_pos_unaligned);
+                        if grid.get(tile_pos - pt.to_vector()).copied().unwrap_or('\0') != '\0' {
+                            result.insert(AppSelection::FgFloat);
+                            break;
+                        }
                     }
                 }
             }
@@ -808,30 +780,29 @@ impl SelectionTool {
                 }
             }
         }
+        if let Some((pt, grid)) = &room.floats.bg {
+            if let Some(float_rect_cropped) =
+                rect_tile_to_room(&TileRect::new(*pt, grid.size())).intersection(&room_rect)
+            {
+                for tile_pos_unaligned in rect_point_iter(float_rect_cropped, 8) {
+                    let tile_pos = point_room_to_tile(&tile_pos_unaligned);
+                    if grid.get(tile_pos - pt.to_vector()).copied().unwrap_or('\0') != '\0' {
+                        result.insert(AppSelection::BgFloat);
+                        break;
+                    }
+                }
+            }
+        }
 
         result
     }
 
     #[must_use]
-    fn clear_selection(&mut self, app: &AppState) -> AppEventStaging {
+    fn clear_selection(&mut self, app: &AppState, room: &LevelState) -> AppEventStaging {
         self.current_selection.clear();
         let mut result = self.notify_selection(app);
-        if let Some((offset, data)) = self.fg_float.take() {
-            result.push_room(RoomAction::TileUpdate {
-                fg: true,
-                offset,
-                data,
-            });
-        }
-        if let Some((offset, data)) = self.bg_float.take() {
-            result.push_room(RoomAction::TileUpdate {
-                fg: false,
-                offset,
-                data,
-            });
-        }
-        if let Some((offset, data)) = self.obj_float.take() {
-            result.push_room(RoomAction::ObjectTileUpdate { offset, data })
+        for action in drop_float(room) {
+            result.push_room(action);
         }
         result
     }
@@ -839,37 +810,55 @@ impl SelectionTool {
     /// This function interprets nudge as relative to the reference positions in Dragging mode and
     /// relative to the current position in other modes.
     #[must_use]
-    fn nudge(&mut self, room: &LevelState, nudge: RoomVector) -> AppEventStaging {
-        let mut result = self.float_tiles(room);
+    fn nudge(
+        &mut self,
+        room: &LevelState,
+        nudge: RoomVector,
+        floats: LevelFloatState,
+    ) -> AppEventStaging {
+        let mut result = AppEventStaging::default();
+        let mut result_floats = floats;
+
         let dragging = if let SelectionStatus::Dragging(dragging) = &self.status {
             Some(dragging)
         } else {
+            // edge case: if we're not dragging, we didn't call begin_dragging, so there might not be any floats floated
+            // fix that
+            let (e, f) = self.float_tiles(room);
+            result.accumulate(e);
+            add_floats_to_floats(&mut result_floats, &f);
             None
         };
-        if let Some((cur_pt, float)) = self.fg_float.take() {
-            let base = dragging
-                .map(|d| d.fg_float_reference_point.unwrap())
-                .unwrap_or_else(|| point_tile_to_room(&cur_pt));
-            self.fg_float = Some((point_room_to_tile(&(base + nudge)), float));
-        }
-        if let Some((cur_pt, float)) = self.bg_float.take() {
-            let base = dragging
-                .map(|d| d.bg_float_reference_point.unwrap())
-                .unwrap_or_else(|| point_tile_to_room(&cur_pt));
-            self.bg_float = Some((point_room_to_tile(&(base + nudge)), float));
-        }
-        if let Some((cur_pt, float)) = self.obj_float.take() {
-            let base = dragging
-                .map(|d| d.obj_float_reference_point.unwrap())
-                .unwrap_or_else(|| point_tile_to_room(&cur_pt));
-            self.obj_float = Some((point_room_to_tile(&(base + nudge)), float));
-        }
         let mut entity_updates = HashMap::new();
         let mut trigger_updates = HashMap::new();
         for selected in &self.current_selection {
             match selected {
                 AppSelection::FgTile(_) | AppSelection::BgTile(_) | AppSelection::ObjectTile(_) => {
                     unreachable!()
+                }
+                AppSelection::FgFloat => {
+                    let base = dragging
+                        .map(|d| d.selection_reference_points[selected])
+                        .unwrap_or_else(|| {
+                            point_tile_to_room(&result_floats.fg.as_ref().unwrap().0)
+                        });
+                    result_floats.fg.as_mut().unwrap().0 = point_room_to_tile(&(base + nudge));
+                }
+                AppSelection::BgFloat => {
+                    let base = dragging
+                        .map(|d| d.selection_reference_points[selected])
+                        .unwrap_or_else(|| {
+                            point_tile_to_room(&result_floats.bg.as_ref().unwrap().0)
+                        });
+                    result_floats.bg.as_mut().unwrap().0 = point_room_to_tile(&(base + nudge));
+                }
+                AppSelection::ObjFloat => {
+                    let base = dragging
+                        .map(|d| d.selection_reference_points[selected])
+                        .unwrap_or_else(|| {
+                            point_tile_to_room(&result_floats.obj.as_ref().unwrap().0)
+                        });
+                    result_floats.obj.as_mut().unwrap().0 = point_room_to_tile(&(base + nudge));
                 }
                 AppSelection::EntityBody(id, trigger) => {
                     let updates = if *trigger {
@@ -935,6 +924,7 @@ impl SelectionTool {
                 trigger: true,
             });
         }
+        result.accumulate(floats_to_events(result_floats));
         result
     }
 
@@ -977,7 +967,10 @@ impl SelectionTool {
                 AppSelection::FgTile(_)
                 | AppSelection::BgTile(_)
                 | AppSelection::ObjectTile(_)
-                | AppSelection::EntityNode(_, _, _) => {
+                | AppSelection::EntityNode(_, _, _)
+                | AppSelection::FgFloat
+                | AppSelection::BgFloat
+                | AppSelection::ObjFloat => {
                     unreachable!()
                 }
                 AppSelection::EntityBody(id, trigger) => {
@@ -1051,13 +1044,14 @@ impl SelectionTool {
     }
 
     #[must_use]
-    fn float_tiles(&mut self, room: &LevelState) -> AppEventStaging {
+    fn float_tiles(&mut self, room: &LevelState) -> (AppEventStaging, LevelFloatState) {
         // TODO: do this in an efficient order to avoid frequent reallocations of the float
         let mut result = AppEventStaging::default();
+        let mut floats = LevelFloatState::default();
         for sel in self.current_selection.iter().cloned().collect::<Vec<_>>() {
             match sel {
                 AppSelection::FgTile(pt) => {
-                    add_to_float(&mut self.fg_float, pt, &room.data.solids, '\0');
+                    add_to_float(&mut floats.fg, pt, room.data.solids.get(pt), '\0');
                     result.push_room(RoomAction::TileUpdate {
                         fg: true,
                         offset: pt,
@@ -1067,10 +1061,11 @@ impl SelectionTool {
                         },
                     });
                     self.current_selection.remove(&sel);
+                    self.current_selection.insert(AppSelection::FgFloat);
                     continue;
                 }
                 AppSelection::BgTile(pt) => {
-                    add_to_float(&mut self.bg_float, pt, &room.data.bg, '\0');
+                    add_to_float(&mut floats.bg, pt, room.data.bg.get(pt), '\0');
                     result.push_room(RoomAction::TileUpdate {
                         fg: false,
                         offset: pt,
@@ -1080,10 +1075,11 @@ impl SelectionTool {
                         },
                     });
                     self.current_selection.remove(&sel);
+                    self.current_selection.insert(AppSelection::BgFloat);
                     continue;
                 }
                 AppSelection::ObjectTile(pt) => {
-                    add_to_float(&mut self.obj_float, pt, &room.data.object_tiles, -2);
+                    add_to_float(&mut floats.obj, pt, room.data.object_tiles.get(pt), -2);
                     result.push_room(RoomAction::ObjectTileUpdate {
                         offset: pt,
                         data: TileGrid {
@@ -1092,13 +1088,14 @@ impl SelectionTool {
                         },
                     });
                     self.current_selection.remove(&sel);
+                    self.current_selection.insert(AppSelection::ObjFloat);
                     continue;
                 }
                 _ => {}
             }
         }
 
-        result
+        (result, floats)
     }
 
     fn elaborate_nodes(&mut self, room: &LevelState) {
@@ -1139,35 +1136,34 @@ impl SelectionTool {
 
         // filter that rectangle by which sides are appropriate for the current selection
         if side != ResizeSide::None {
-            if self.fg_float.is_some() || self.bg_float.is_some() {
-                side = ResizeSide::None;
-            } else {
-                for sel in &self.current_selection {
-                    side = match sel {
-                        AppSelection::FgTile(_)
-                        | AppSelection::BgTile(_)
-                        | AppSelection::ObjectTile(_) => ResizeSide::None,
-                        AppSelection::EntityBody(id, trigger) => {
-                            if let Some(entity) = room.entity(*id, *trigger) {
-                                let config = app
-                                    .current_palette_unwrap()
-                                    .get_entity_config(&entity.name, *trigger);
-                                if !config.resizable_x {
-                                    side = side.filter_out_left_right();
-                                }
-                                if !config.resizable_y {
-                                    side = side.filter_out_top_bottom();
-                                }
-                            }
-                            side
-                        }
-                        AppSelection::EntityNode(_, _, _) => ResizeSide::None,
-                        AppSelection::Decal(_, _) => side,
-                    };
-
-                    if side == ResizeSide::None {
-                        break;
+            for sel in &self.current_selection {
+                side = match sel {
+                    AppSelection::FgTile(_)
+                    | AppSelection::BgTile(_)
+                    | AppSelection::ObjectTile(_) => ResizeSide::None,
+                    AppSelection::FgFloat | AppSelection::BgFloat | AppSelection::ObjFloat => {
+                        ResizeSide::None
                     }
+                    AppSelection::EntityBody(id, trigger) => {
+                        if let Some(entity) = room.entity(*id, *trigger) {
+                            let config = app
+                                .current_palette_unwrap()
+                                .get_entity_config(&entity.name, *trigger);
+                            if !config.resizable_x {
+                                side = side.filter_out_left_right();
+                            }
+                            if !config.resizable_y {
+                                side = side.filter_out_top_bottom();
+                            }
+                        }
+                        side
+                    }
+                    AppSelection::EntityNode(_, _, _) => ResizeSide::None,
+                    AppSelection::Decal(_, _) => side,
+                };
+
+                if side == ResizeSide::None {
+                    break;
                 }
             }
         }
@@ -1182,9 +1178,11 @@ impl SelectionTool {
         room: &LevelState,
         pointer_reference_point: RoomPoint,
         pointer_reference_point_unsnapped: RoomPoint,
-    ) -> AppEventStaging {
+    ) -> (AppEventStaging, LevelFloatState) {
         // Offload all fg/bg selections into the floats
-        let result = self.float_tiles(room);
+        let (result, floats) = self.float_tiles(room);
+        let mut result_floats = room.floats.clone();
+        add_floats_to_floats(&mut result_floats, &floats);
 
         let side = self.can_resize(app, room, pointer_reference_point_unsnapped);
         if side != ResizeSide::None {
@@ -1196,6 +1194,9 @@ impl SelectionTool {
                     AppSelection::FgTile(_)
                     | AppSelection::BgTile(_)
                     | AppSelection::ObjectTile(_)
+                    | AppSelection::FgFloat
+                    | AppSelection::BgFloat
+                    | AppSelection::ObjFloat
                     | AppSelection::EntityNode(_, _, _) => unreachable!(),
                     AppSelection::EntityBody(id, trigger) => {
                         room.entity(*id, *trigger).map(|entity| {
@@ -1246,10 +1247,6 @@ impl SelectionTool {
             });
         } else {
             // collect reference points
-            let fg_float_reference_point = self.fg_float.as_ref().map(|f| point_tile_to_room(&f.0));
-            let bg_float_reference_point = self.bg_float.as_ref().map(|f| point_tile_to_room(&f.0));
-            let obj_float_reference_point =
-                self.obj_float.as_ref().map(|f| point_tile_to_room(&f.0));
             let selection_reference_points = self
                 .current_selection
                 .iter()
@@ -1272,6 +1269,15 @@ impl SelectionTool {
                                 let d = room.decal(*id, *fg).unwrap();
                                 RoomPoint::new(d.x, d.y)
                             }
+                            AppSelection::FgFloat => {
+                                point_tile_to_room(&result_floats.fg.as_ref().unwrap().0)
+                            }
+                            AppSelection::BgFloat => {
+                                point_tile_to_room(&result_floats.bg.as_ref().unwrap().0)
+                            }
+                            AppSelection::ObjFloat => {
+                                point_tile_to_room(&result_floats.obj.as_ref().unwrap().0)
+                            }
                         },
                     )
                 })
@@ -1281,21 +1287,15 @@ impl SelectionTool {
             self.status = SelectionStatus::Dragging(DraggingStatus {
                 pointer_reference_point,
                 selection_reference_points,
-                fg_float_reference_point,
-                bg_float_reference_point,
-                obj_float_reference_point,
             });
         }
 
-        result
+        (result, result_floats)
     }
 
     #[must_use]
     fn delete_all(&mut self, app: &AppState, room: &LevelState) -> AppEventStaging {
-        let mut result = self.float_tiles(room);
-        self.fg_float = None;
-        self.bg_float = None;
-        self.obj_float = None;
+        let (mut result, _) = self.float_tiles(room);
 
         let mut entity_nodes_removed = HashMap::new();
         let mut trigger_nodes_removed = HashMap::new();
@@ -1305,6 +1305,21 @@ impl SelectionTool {
             match sel {
                 AppSelection::FgTile(_) | AppSelection::BgTile(_) | AppSelection::ObjectTile(_) => {
                     unreachable!()
+                }
+                AppSelection::FgFloat => {
+                    result.push_room(RoomAction::TileFloatSet {
+                        fg: true,
+                        float: None,
+                    });
+                }
+                AppSelection::BgFloat => {
+                    result.push_room(RoomAction::TileFloatSet {
+                        fg: false,
+                        float: None,
+                    });
+                }
+                AppSelection::ObjFloat => {
+                    result.push_room(RoomAction::ObjFloatSet { float: None });
                 }
                 AppSelection::EntityBody(id, trigger) => {
                     result.push_room(RoomAction::EntityRemove {
@@ -1375,24 +1390,30 @@ impl SelectionTool {
     }
 
     pub fn clipboard_copy(&mut self, app: &AppState, room: &LevelState) -> AppEventStaging {
-        let mut result = self.float_tiles(room);
+        let (mut result, float) = self.float_tiles(room);
+        let mut result_float = room.floats.clone();
+        add_floats_to_floats(&mut result_float, &float);
+
         self.elaborate_nodes(room);
         result.accumulate(self.notify_selection(app));
 
         let mut clipboard_data: Vec<AppInRoomSelectable> = vec![];
-        if let Some(float) = &self.fg_float {
-            clipboard_data.push(AppInRoomSelectable::FgTiles(float.0, float.1.clone()));
-        }
-        if let Some(float) = &self.bg_float {
-            clipboard_data.push(AppInRoomSelectable::BgTiles(float.0, float.1.clone()));
-        }
-        if let Some(float) = &self.obj_float {
-            clipboard_data.push(AppInRoomSelectable::ObjectTiles(float.0, float.1.clone()));
-        }
         for sel in &self.current_selection {
             match sel {
                 AppSelection::FgTile(_) | AppSelection::BgTile(_) | AppSelection::ObjectTile(_) => {
                     unreachable!()
+                }
+                AppSelection::FgFloat => {
+                    let (pt, grid) = result_float.fg.take().unwrap();
+                    clipboard_data.push(AppInRoomSelectable::FgTiles(pt, grid));
+                }
+                AppSelection::BgFloat => {
+                    let (pt, grid) = result_float.bg.take().unwrap();
+                    clipboard_data.push(AppInRoomSelectable::BgTiles(pt, grid));
+                }
+                AppSelection::ObjFloat => {
+                    let (pt, grid) = result_float.obj.take().unwrap();
+                    clipboard_data.push(AppInRoomSelectable::ObjectTiles(pt, grid));
                 }
                 AppSelection::EntityNode(_, _, _) => {}
                 AppSelection::EntityBody(id, trigger) => {
@@ -1412,11 +1433,14 @@ impl SelectionTool {
         let s = serde_yaml::to_string(&AppSelectable::InRoom(clipboard_data))
             .expect("Failed to serialize copied data");
         result.push_ind(AppEvent::SetClipboard { contents: s });
+        result.accumulate(floats_to_events(result_float));
         result
     }
 
     pub fn clipboard_paste(&mut self, app: &AppState, data: String) -> AppEventStaging {
-        let mut result = self.clear_selection(app);
+        let mut result = self.clear_selection(app, app.current_room_ref().unwrap());
+        let mut result_float = LevelFloatState::default();
+
         let deser: AppSelectable = match serde_yaml::from_str(&data) {
             Ok(d) => d,
             Err(_) => return result,
@@ -1497,13 +1521,13 @@ impl SelectionTool {
         for obj in clipboard_data {
             match obj {
                 AppInRoomSelectable::FgTiles(point, float) => {
-                    self.fg_float = Some((point + offset, float));
+                    result_float.fg = Some((point + offset, float));
                 }
                 AppInRoomSelectable::BgTiles(point, float) => {
-                    self.bg_float = Some((point + offset, float));
+                    result_float.bg = Some((point + offset, float));
                 }
                 AppInRoomSelectable::ObjectTiles(point, float) => {
-                    self.obj_float = Some((point + offset, float));
+                    result_float.obj = Some((point + offset, float));
                 }
                 AppInRoomSelectable::Entity(mut entity, trigger) => {
                     entity.x += vector_tile_to_room(&offset).x;
@@ -1529,6 +1553,7 @@ impl SelectionTool {
                 }
             }
         }
+        result.accumulate(floats_to_events(result_float));
         result
     }
 }
@@ -1545,10 +1570,10 @@ fn intersects_any(haystack: &[RoomRect], needle: &RoomRect) -> bool {
 fn add_to_float<T: Copy>(
     float: &mut Option<(TilePoint, TileGrid<T>)>,
     pt: TilePoint,
-    src: &TileGrid<T>,
+    src: Option<&T>,
     filler: T,
 ) {
-    if let Some(ch) = src.get(pt) {
+    if let Some(ch) = src {
         let mut default = (
             pt,
             TileGrid {
@@ -1590,4 +1615,76 @@ fn add_to_float<T: Copy>(
         let movement = pt - new_origin;
         new_dat.tiles[(movement.x + movement.y * new_size.x) as usize] = *ch;
     }
+}
+
+pub(crate) fn add_float_to_float<T: Copy>(
+    float: &mut Option<(TilePoint, TileGrid<T>)>,
+    src_pt: TilePoint,
+    src_grid: &TileGrid<T>,
+    filler: T,
+) {
+    // TODO do this in an efficient order
+    for pt in rect_point_iter(TileRect::new(src_pt, src_grid.size()), 1) {
+        add_to_float(float, pt, src_grid.get((pt - src_pt).to_point()), filler);
+    }
+}
+
+fn add_floats_to_floats(floats: &mut LevelFloatState, src_grid: &LevelFloatState) {
+    if let Some((pt, grid)) = &src_grid.fg {
+        add_float_to_float(&mut floats.fg, *pt, grid, '\0');
+    }
+    if let Some((pt, grid)) = &src_grid.bg {
+        add_float_to_float(&mut floats.bg, *pt, grid, '\0');
+    }
+    if let Some((pt, grid)) = &src_grid.obj {
+        add_float_to_float(&mut floats.obj, *pt, grid, -2);
+    }
+}
+
+fn floats_to_events(floats: LevelFloatState) -> AppEventStaging {
+    let mut result = AppEventStaging::default();
+    result.push_room(RoomAction::TileFloatSet {
+        fg: true,
+        float: floats.fg,
+    });
+    result.push_room(RoomAction::TileFloatSet {
+        fg: false,
+        float: floats.bg,
+    });
+    result.push_room(RoomAction::ObjFloatSet { float: floats.obj });
+    result
+}
+
+pub(crate) fn drop_float(room: &LevelState) -> Vec<RoomAction> {
+    let mut result = vec![];
+    if let Some((offset, data)) = &room.floats.fg {
+        result.push(RoomAction::TileUpdate {
+            fg: true,
+            offset: *offset,
+            data: data.clone(),
+        });
+        result.push(RoomAction::TileFloatSet {
+            fg: true,
+            float: None,
+        });
+    }
+    if let Some((offset, data)) = &room.floats.bg {
+        result.push(RoomAction::TileUpdate {
+            fg: false,
+            offset: *offset,
+            data: data.clone(),
+        });
+        result.push(RoomAction::TileFloatSet {
+            fg: false,
+            float: None,
+        });
+    }
+    if let Some((offset, data)) = &room.floats.obj {
+        result.push(RoomAction::ObjectTileUpdate {
+            offset: *offset,
+            data: data.clone(),
+        });
+        result.push(RoomAction::ObjFloatSet { float: None });
+    }
+    result
 }

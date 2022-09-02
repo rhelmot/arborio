@@ -150,10 +150,10 @@ impl Tool for RoomTool {
                         )]),
                     });
                     let mut events = self.notify_selection(app);
-                    events.push(app.map_action_unique(MapAction::AddRoom {
+                    events.push(app.map_action_unique(vec![MapAction::AddRoom {
                         idx: None,
                         room: Box::new(result),
-                    }));
+                    }]));
                     events
                 } else {
                     vec![]
@@ -506,7 +506,7 @@ impl RoomTool {
         let phase = EventPhase::new();
         self.current_selection
             .iter()
-            .map(|idx| app.map_action(MapAction::DeleteRoom { idx: *idx }, phase))
+            .map(|idx| app.map_action(vec![MapAction::DeleteRoom { idx: *idx }], phase))
             .collect()
     }
 

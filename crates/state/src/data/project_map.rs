@@ -1,7 +1,8 @@
-use crate::data::action::{apply_map_action, MapAction};
+use crate::data::action::{apply_map_action, MapAction, RoomAction};
 use crate::data::app::{step_modules_lookup, AppEvent, AppState};
 use crate::data::tabs::AppTab;
 use crate::data::{save, EventPhase, MapID, UNDO_BUFFER_SIZE};
+use crate::tools::selection::{add_float_to_float, drop_float};
 use arborio_maploader::map_struct::{
     CelesteMap, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapMeta,
     CelesteMapMetaAudioState, CelesteMapMetaMode, CelesteMapStyleground, FieldEntry,
@@ -14,7 +15,7 @@ use arborio_utils::units::*;
 use arborio_utils::vizia::prelude::*;
 use arborio_utils::vizia::vg;
 use std::cell::RefCell;
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
@@ -70,13 +71,13 @@ pub struct MapStateData {
 pub struct MapStateCache {
     pub dirty: bool,
     pub path: MapPath,
-    pub undo_buffer: VecDeque<MapAction>,
-    pub redo_buffer: VecDeque<MapAction>,
+    pub undo_buffer: VecDeque<Vec<MapAction>>,
+    pub redo_buffer: VecDeque<Vec<MapAction>>,
     pub event_phase: EventPhase,
     pub palette: ModuleAggregate,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct MapStateUpdate {
     pub fg_tiles: Option<String>,
     pub bg_tiles: Option<String>,
@@ -460,7 +461,7 @@ impl AppState {
         match event {
             MapEvent::Action { event, merge_phase } => {
                 if let Some(event) = event.borrow_mut().take() {
-                    match apply_map_action(cx, state, event) {
+                    match apply_map_action(state, event) {
                         Ok(undo) => {
                             cx.needs_redraw();
                             state.cache.dirty = true;
@@ -471,6 +472,10 @@ impl AppState {
                                 || state.cache.event_phase != *merge_phase
                             {
                                 state.cache.undo_buffer.push_back(undo);
+                            } else if let Some(back) = state.cache.undo_buffer.back_mut() {
+                                // irrefutable if the if fails
+                                // breaking my own rules here: it's merge time
+                                merge_events(back, undo);
                             }
                             state.cache.event_phase = *merge_phase;
                             state.cache.redo_buffer.clear();
@@ -485,8 +490,48 @@ impl AppState {
             }
             MapEvent::Undo => {
                 if let Some(event) = state.cache.undo_buffer.pop_back() {
-                    match apply_map_action(cx, state, event) {
-                        Ok(opposite) => {
+                    match apply_map_action(state, event) {
+                        Ok(mut opposite) => {
+                            for room_idx in opposite
+                                .iter()
+                                .filter_map(|act| {
+                                    if let MapAction::RoomAction { idx: room, .. } = act {
+                                        Some(*room)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect::<HashSet<_>>()
+                                .into_iter()
+                            {
+                                if let Some(room) = state.data.levels.get_mut(room_idx) {
+                                    let defloat = drop_float(room)
+                                        .into_iter()
+                                        .map(|ra| MapAction::RoomAction {
+                                            idx: room_idx,
+                                            event: ra,
+                                        })
+                                        .collect();
+                                    match apply_map_action(state, defloat) {
+                                        Ok(inverse) => {
+                                            // ?????????????????????????
+                                            merge_events(&mut opposite, inverse.clone());
+                                            if let Some(next_back) =
+                                                state.cache.undo_buffer.back_mut()
+                                            {
+                                                merge_events(next_back, inverse);
+                                            }
+                                        }
+                                        Err(e) => {
+                                            log::error!(
+                                                "Internal error: Failed to drop-float-undo: {}",
+                                                e
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+
                             cx.needs_redraw();
                             state.cache.dirty = true;
                             state.cache.redo_buffer.push_back(opposite);
@@ -500,8 +545,42 @@ impl AppState {
             }
             MapEvent::Redo => {
                 if let Some(event) = state.cache.redo_buffer.pop_back() {
-                    match apply_map_action(cx, state, event) {
-                        Ok(opposite) => {
+                    match apply_map_action(state, event) {
+                        Ok(mut opposite) => {
+                            for room_idx in opposite
+                                .iter()
+                                .filter_map(|act| {
+                                    if let MapAction::RoomAction { idx: room, .. } = act {
+                                        Some(*room)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect::<HashSet<_>>()
+                                .into_iter()
+                            {
+                                if let Some(room) = state.data.levels.get_mut(room_idx) {
+                                    let defloat = drop_float(room)
+                                        .into_iter()
+                                        .map(|ra| MapAction::RoomAction {
+                                            idx: room_idx,
+                                            event: ra,
+                                        })
+                                        .collect();
+                                    match apply_map_action(state, defloat) {
+                                        Ok(inverse) => {
+                                            merge_events(&mut opposite, inverse);
+                                        }
+                                        Err(e) => {
+                                            log::error!(
+                                                "Internal error: Failed to drop-float-redo: {}",
+                                                e
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+
                             cx.needs_redraw();
                             state.cache.dirty = true;
                             state.cache.undo_buffer.push_back(opposite);
@@ -728,7 +807,7 @@ pub enum MapEvent {
         sid: String,
     },
     Action {
-        event: RefCell<Option<MapAction>>,
+        event: RefCell<Option<Vec<MapAction>>>,
         merge_phase: EventPhase,
     },
 }
@@ -737,6 +816,15 @@ pub enum MapEvent {
 pub struct LevelState {
     pub data: CelesteMapLevel,
     pub cache: RefCell<LevelStateCache>,
+
+    pub floats: LevelFloatState,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct LevelFloatState {
+    pub fg: Option<(TilePoint, TileGrid<char>)>,
+    pub bg: Option<(TilePoint, TileGrid<char>)>,
+    pub obj: Option<(TilePoint, TileGrid<i32>)>,
 }
 
 #[derive(Default)]
@@ -752,13 +840,14 @@ impl From<CelesteMapLevel> for LevelState {
         Self {
             data,
             cache: Default::default(),
+            floats: Default::default(),
         }
     }
 }
 
 impl Debug for LevelStateCache {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("LiveMapLevelCache")
+        f.debug_struct("LevelStateCache")
             .field("render_cache_valid", &self.render_cache_valid)
             .field("last_entity_idx", &self.last_entity_idx)
             .finish()
@@ -770,6 +859,7 @@ impl Clone for LevelState {
         Self {
             data: self.data.clone(),
             cache: RefCell::new(LevelStateCache::default()),
+            floats: LevelFloatState::default(), // ummmmm this should always be default when this is called. what happens otherwise?
         }
     }
 }
@@ -907,3 +997,125 @@ impl LevelState {
         self.cache.borrow_mut().last_decal_idx = idx;
     }
 }
+
+// this function will forever be a pile of hacks
+// if I WANTED to justify this I would say that TileUpdates is special because it's necessarily working with big hunks of data
+// but I don't wanna justify this. it's just bad
+fn merge_events(old: &mut Vec<MapAction>, new: Vec<MapAction>) {
+    for mut new in new {
+        let mut merged = false;
+        for old in old.iter_mut() {
+            match (old, &mut new) {
+                (
+                    MapAction::RoomAction {
+                        idx: idx1,
+                        event:
+                            RoomAction::TileUpdate {
+                                fg: fg1,
+                                offset: offset1,
+                                data: data1,
+                            },
+                    },
+                    MapAction::RoomAction {
+                        idx: idx2,
+                        event:
+                            RoomAction::TileUpdate {
+                                fg: fg2,
+                                offset: offset2,
+                                data: data2,
+                            },
+                    },
+                ) if idx1 == idx2 && fg1 == fg2 => {
+                    merge_tile_events(offset1, data1, offset2, data2, '\0');
+                }
+                (
+                    MapAction::RoomAction {
+                        idx: idx1,
+                        event:
+                            RoomAction::ObjectTileUpdate {
+                                offset: offset1,
+                                data: data1,
+                            },
+                    },
+                    MapAction::RoomAction {
+                        idx: idx2,
+                        event:
+                            RoomAction::ObjectTileUpdate {
+                                offset: offset2,
+                                data: data2,
+                            },
+                    },
+                ) if idx1 == idx2 => {
+                    merge_tile_events(offset1, data1, offset2, data2, -2);
+                }
+                _ => continue,
+            }
+            merged = true;
+            break;
+        }
+        if !merged
+            && matches!(
+                &new,
+                MapAction::RoomAction {
+                    event: RoomAction::TileUpdate { .. },
+                    ..
+                } | MapAction::RoomAction {
+                    event: RoomAction::ObjectTileUpdate { .. },
+                    ..
+                }
+            )
+        {
+            old.push(new);
+        }
+    }
+}
+
+fn merge_tile_events<T: Copy>(
+    offset1: &mut TilePoint,
+    data1: &mut TileGrid<T>,
+    offset2: &mut TilePoint,
+    data2: &mut TileGrid<T>,
+    filler: T,
+) {
+    let mut weh = Some((TilePoint::zero(), TileGrid::new(TileSize::zero(), filler)));
+    if let Some((weh1, weh2)) = &mut weh {
+        std::mem::swap(weh1, offset2);
+        std::mem::swap(weh2, data2);
+    }
+    // add old over top the new
+    add_float_to_float(&mut weh, *offset1, data1, filler);
+    // now assign that to the old
+    if let Some((weh1, weh2)) = &mut weh {
+        std::mem::swap(weh1, offset1);
+        std::mem::swap(weh2, data1);
+    }
+}
+
+/*
+fn merge_events(old: &mut MapAction, new: MapAction) {
+    // basically: we try to prove that new is already handled, and if not, add it to the batch I guess?
+    match new {
+        MapAction::Batched { events } => {
+            for event in events {
+                merge_events(old, event);
+            }
+        }
+        new => {
+            if !is_action_handled(old, &new) {
+            }
+        }
+    }
+}
+
+fn is_action_handled(old: &MapAction, new: &MapAction) -> bool {
+    // precondition: new is NOT a batched event
+    match old {
+        MapAction::Batched { events } => {
+            events.iter().any(|old| is_action_handled(old, new))
+        }
+        old => {
+
+        }
+    }
+}
+ */

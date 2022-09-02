@@ -206,7 +206,7 @@ impl View for EditorWidget {
                     room.data.bounds.height() as u32,
                     Color::rgba(0, 0, 0, 0),
                 );
-                rendering::draw_tiles(app, canvas, &room.data, false);
+                rendering::draw_tiles(app, canvas, room, false);
                 rendering::draw_decals(app, canvas, &room.data, false);
                 rendering::draw_triggers(
                     app,
@@ -228,8 +228,10 @@ impl View for EditorWidget {
                         None
                     },
                 );
-                rendering::draw_tiles(app, canvas, &room.data, true);
+                rendering::draw_tiles(app, canvas, room, true);
                 rendering::draw_decals(app, canvas, &room.data, true);
+                rendering::draw_objtiles_float(app, canvas, room);
+                // TODO draw object tiles float
 
                 canvas.restore();
                 canvas.set_render_target(RenderTarget::Screen);
