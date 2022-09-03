@@ -16,4 +16,4 @@ serde = { version = "^1.0", features = ["derive"] }
 lazy_static = "^1.4"
 
 #vizia = { path = "../../../../rust/vizia", default-features = false, features = ["winit", "clipboard"] }
-vizia = {git = "https://github.com/vizia/vizia", rev = "6c5b69f159751716266c869c4db5ea7e9de3096e", default-features = false, features = ["winit", "clipboard"] }
+vizia = {git = "https://github.com/vizia/vizia", rev = "10833b54314ddf980fbaedfc373850b555c73921", default-features = false, features = ["winit", "clipboard"] }

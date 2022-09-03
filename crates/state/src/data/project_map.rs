@@ -475,7 +475,7 @@ impl AppState {
                             } else if let Some(back) = state.cache.undo_buffer.back_mut() {
                                 // irrefutable if the if fails
                                 // breaking my own rules here: it's merge time
-                                merge_events(back, undo);
+                                merge_events(back, undo, true);
                             }
                             state.cache.event_phase = *merge_phase;
                             state.cache.redo_buffer.clear();
@@ -515,16 +515,16 @@ impl AppState {
                                     match apply_map_action(state, defloat) {
                                         Ok(inverse) => {
                                             // ?????????????????????????
-                                            merge_events(&mut opposite, inverse.clone());
+                                            merge_events(&mut opposite, inverse.clone(), true);
                                             if let Some(next_back) =
                                                 state.cache.undo_buffer.back_mut()
                                             {
-                                                merge_events(next_back, inverse);
+                                                merge_events(next_back, inverse, true);
                                             }
                                         }
                                         Err(e) => {
                                             log::error!(
-                                                "Internal error: Failed to drop-float-undo: {}",
+                                                "Internal error: Failed to undo-defloat: {}",
                                                 e
                                             );
                                         }
@@ -569,11 +569,16 @@ impl AppState {
                                         .collect();
                                     match apply_map_action(state, defloat) {
                                         Ok(inverse) => {
-                                            merge_events(&mut opposite, inverse);
+                                            merge_events(&mut opposite, inverse.clone(), true); // NOTE: these true/false values are based on literally nothing. I'm not even sure the calls are right.
+                                            if let Some(next_back) =
+                                                state.cache.redo_buffer.back_mut()
+                                            {
+                                                merge_events(next_back, inverse, true);
+                                            }
                                         }
                                         Err(e) => {
                                             log::error!(
-                                                "Internal error: Failed to drop-float-redo: {}",
+                                                "Internal error: Failed to redo-defloat: {}",
                                                 e
                                             );
                                         }
@@ -1001,19 +1006,20 @@ impl LevelState {
 // this function will forever be a pile of hacks
 // if I WANTED to justify this I would say that TileUpdates is special because it's necessarily working with big hunks of data
 // but I don't wanna justify this. it's just bad
-fn merge_events(old: &mut Vec<MapAction>, new: Vec<MapAction>) {
-    for mut new in new {
+fn merge_events(dst: &mut Vec<MapAction>, src: Vec<MapAction>, dst_priority: bool) {
+    dst.reverse();
+    for mut src in src.into_iter().rev() {
         let mut merged = false;
-        for old in old.iter_mut() {
-            match (old, &mut new) {
+        for dst in dst.iter_mut().rev() {
+            match (dst, &mut src) {
                 (
                     MapAction::RoomAction {
                         idx: idx1,
                         event:
                             RoomAction::TileUpdate {
                                 fg: fg1,
-                                offset: offset1,
-                                data: data1,
+                                offset: offset_dst,
+                                data: data_dst,
                             },
                     },
                     MapAction::RoomAction {
@@ -1021,32 +1027,39 @@ fn merge_events(old: &mut Vec<MapAction>, new: Vec<MapAction>) {
                         event:
                             RoomAction::TileUpdate {
                                 fg: fg2,
-                                offset: offset2,
-                                data: data2,
+                                offset: offset_src,
+                                data: data_src,
                             },
                     },
                 ) if idx1 == idx2 && fg1 == fg2 => {
-                    merge_tile_events(offset1, data1, offset2, data2, '\0');
+                    merge_tile_events(
+                        offset_dst,
+                        data_dst,
+                        offset_src,
+                        data_src,
+                        '\0',
+                        dst_priority,
+                    );
                 }
                 (
                     MapAction::RoomAction {
                         idx: idx1,
                         event:
                             RoomAction::ObjectTileUpdate {
-                                offset: offset1,
-                                data: data1,
+                                offset: offset_dst,
+                                data: data_dst,
                             },
                     },
                     MapAction::RoomAction {
                         idx: idx2,
                         event:
                             RoomAction::ObjectTileUpdate {
-                                offset: offset2,
-                                data: data2,
+                                offset: offset_src,
+                                data: data_src,
                             },
                     },
                 ) if idx1 == idx2 => {
-                    merge_tile_events(offset1, data1, offset2, data2, -2);
+                    merge_tile_events(offset_dst, data_dst, offset_src, data_src, -2, dst_priority);
                 }
                 _ => continue,
             }
@@ -1055,7 +1068,7 @@ fn merge_events(old: &mut Vec<MapAction>, new: Vec<MapAction>) {
         }
         if !merged
             && matches!(
-                &new,
+                &src,
                 MapAction::RoomAction {
                     event: RoomAction::TileUpdate { .. },
                     ..
@@ -1065,29 +1078,44 @@ fn merge_events(old: &mut Vec<MapAction>, new: Vec<MapAction>) {
                 }
             )
         {
-            old.push(new);
+            dst.push(src);
         }
     }
+    dst.reverse();
 }
 
-fn merge_tile_events<T: Copy>(
-    offset1: &mut TilePoint,
-    data1: &mut TileGrid<T>,
-    offset2: &mut TilePoint,
-    data2: &mut TileGrid<T>,
+fn merge_tile_events<T: Copy + PartialEq>(
+    offset_dst: &mut TilePoint,
+    data_dst: &mut TileGrid<T>,
+    offset_src: &mut TilePoint,
+    data_src: &mut TileGrid<T>,
     filler: T,
+    dst_priority: bool,
 ) {
-    let mut weh = Some((TilePoint::zero(), TileGrid::new(TileSize::zero(), filler)));
-    if let Some((weh1, weh2)) = &mut weh {
-        std::mem::swap(weh1, offset2);
-        std::mem::swap(weh2, data2);
+    let mut low_priority = Some((TilePoint::zero(), TileGrid::new(TileSize::zero(), filler)));
+    if let Some((weh1, weh2)) = &mut low_priority {
+        std::mem::swap(
+            weh1,
+            if !dst_priority {
+                offset_dst
+            } else {
+                offset_src
+            },
+        );
+        std::mem::swap(weh2, if !dst_priority { data_dst } else { data_src });
     }
-    // add old over top the new
-    add_float_to_float(&mut weh, *offset1, data1, filler);
-    // now assign that to the old
-    if let Some((weh1, weh2)) = &mut weh {
-        std::mem::swap(weh1, offset1);
-        std::mem::swap(weh2, data1);
+    let mut high_priority = Some((TilePoint::zero(), TileGrid::new(TileSize::zero(), filler)));
+    if let Some((weh1, weh2)) = &mut high_priority {
+        std::mem::swap(weh1, if dst_priority { offset_dst } else { offset_src });
+        std::mem::swap(weh2, if dst_priority { data_dst } else { data_src });
+
+        // add em
+        add_float_to_float(&mut low_priority, *weh1, weh2, filler);
+    }
+    if let Some((weh1, weh2)) = &mut low_priority {
+        // now assign that to the dst
+        std::mem::swap(weh1, offset_dst);
+        std::mem::swap(weh2, data_dst);
     }
 }
 

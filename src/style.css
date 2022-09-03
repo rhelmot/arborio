@@ -453,8 +453,7 @@ label {
     background-color: #ffc0c0;
     font-size: 12px;
     color: black;
-    child-left: 1s;
-    child-right: 1s;
+    child-space: 1s;
     min-height: 0;
     height: 14px;
     width: 14px;

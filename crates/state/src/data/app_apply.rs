@@ -352,7 +352,7 @@ impl AppState {
                 }
             }
             AppEvent::MapEvent { map, event } => {
-                let needs_tool_cycle =
+                let mut needs_tool_cycle =
                     matches!(event, MapEvent::Undo | MapEvent::Redo | MapEvent::Save);
                 if needs_tool_cycle {
                     let tool = self.current_tool.borrow_mut().take();
@@ -360,6 +360,8 @@ impl AppState {
                         for event in tool.switch_off(self, cx) {
                             self.apply(cx, &event);
                         }
+                    } else {
+                        needs_tool_cycle = false;
                     }
                 }
                 self.apply_map_event(cx, *map, event);

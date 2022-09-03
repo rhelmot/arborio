@@ -1617,7 +1617,7 @@ fn add_to_float<T: Copy>(
     }
 }
 
-pub(crate) fn add_float_to_float<T: Copy>(
+pub(crate) fn add_float_to_float<T: Copy + PartialEq>(
     float: &mut Option<(TilePoint, TileGrid<T>)>,
     src_pt: TilePoint,
     src_grid: &TileGrid<T>,
@@ -1625,7 +1625,10 @@ pub(crate) fn add_float_to_float<T: Copy>(
 ) {
     // TODO do this in an efficient order
     for pt in rect_point_iter(TileRect::new(src_pt, src_grid.size()), 1) {
-        add_to_float(float, pt, src_grid.get((pt - src_pt).to_point()), filler);
+        let tile = src_grid.get((pt - src_pt).to_point());
+        if tile != Some(&filler) {
+            add_to_float(float, pt, tile, filler);
+        }
     }
 }
 

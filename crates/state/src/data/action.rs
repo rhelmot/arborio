@@ -23,7 +23,7 @@ pub fn apply_map_action(
     map: &mut MapState,
     event: Vec<MapAction>,
 ) -> Result<Vec<MapAction>, String> {
-    event
+    let mut result: Result<Vec<MapAction>, String> = event
         .into_iter()
         .map(|event| match event {
             MapAction::AddStyleground { loc, style } => {
@@ -123,7 +123,9 @@ pub fn apply_map_action(
                 }
             }
         })
-        .collect()
+        .collect();
+    result.as_mut().map(|result| result.reverse()).ok();
+    result
 }
 
 fn apply_room_event(room: &mut LevelState, event: RoomAction) -> Result<RoomAction, String> {
