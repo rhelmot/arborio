@@ -1,3 +1,4 @@
+pub mod bucket;
 pub mod hand;
 pub mod pencil;
 pub mod room;
@@ -17,6 +18,7 @@ pub enum ToolSpec {
     Pencil,
     Room,
     Style,
+    Bucket,
 }
 
 impl Data for ToolSpec {
@@ -33,6 +35,7 @@ impl ToolSpec {
             ToolSpec::Pencil => "Pencil",
             ToolSpec::Room => "Rooms",
             ToolSpec::Style => "Style",
+            ToolSpec::Bucket => "Bucket",
         }
     }
 
@@ -43,6 +46,7 @@ impl ToolSpec {
             ToolSpec::Pencil => Box::new(pencil::PencilTool::new()),
             ToolSpec::Room => Box::new(room::RoomTool::new(app)),
             ToolSpec::Style => Box::new(style::StyleTool::new(app)),
+            ToolSpec::Bucket => Box::new(bucket::BucketTool::new()),
         }
     }
 }

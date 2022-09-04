@@ -1075,6 +1075,9 @@ fn merge_events(dst: &mut Vec<MapAction>, src: Vec<MapAction>, dst_priority: boo
                 } | MapAction::RoomAction {
                     event: RoomAction::ObjectTileUpdate { .. },
                     ..
+                } | MapAction::RoomAction {
+                    event: RoomAction::EntityRemove { .. },
+                    ..
                 }
             )
         {

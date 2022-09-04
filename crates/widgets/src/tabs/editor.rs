@@ -73,7 +73,14 @@ pub fn build_layer_picker(cx: &mut Context) {
             .class("list_highlight")
             .bind(AppState::current_toolspec, move |handle, toolspec| {
                 let toolspec = toolspec.get(handle.cx);
-                handle.display(layer != Layer::All || toolspec == ToolSpec::Selection);
+                handle.display(
+                    toolspec == ToolSpec::Selection
+                        || (toolspec == ToolSpec::Bucket
+                            && (layer == Layer::FgTiles || layer == Layer::BgTiles))
+                        || (toolspec != ToolSpec::Bucket
+                            && toolspec != ToolSpec::Selection
+                            && layer != Layer::All),
+                );
             });
         }
     })
@@ -96,7 +103,10 @@ pub fn build_palette_widgets(cx: &mut Context) {
     )
     .bind(pair, |handle, pair| {
         let (toolspec, layer) = pair.get(handle.cx);
-        handle.display(layer == Layer::FgTiles && toolspec == ToolSpec::Pencil);
+        handle.display(
+            layer == Layer::FgTiles
+                && (toolspec == ToolSpec::Pencil || toolspec == ToolSpec::Bucket),
+        );
     });
 
     PaletteWidget::new(
@@ -107,7 +117,10 @@ pub fn build_palette_widgets(cx: &mut Context) {
     )
     .bind(pair, |handle, pair| {
         let (toolspec, layer) = pair.get(handle.cx);
-        handle.display(layer == Layer::BgTiles && toolspec == ToolSpec::Pencil);
+        handle.display(
+            layer == Layer::BgTiles
+                && (toolspec == ToolSpec::Pencil || toolspec == ToolSpec::Bucket),
+        );
     });
 
     PaletteWidget::new(

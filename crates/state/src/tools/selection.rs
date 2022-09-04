@@ -1567,7 +1567,7 @@ fn intersects_any(haystack: &[RoomRect], needle: &RoomRect) -> bool {
     }
     false
 }
-fn add_to_float<T: Copy>(
+pub(crate) fn add_to_float<T: Copy>(
     float: &mut Option<(TilePoint, TileGrid<T>)>,
     pt: TilePoint,
     src: Option<&T>,
