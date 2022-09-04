@@ -6,7 +6,7 @@ use std::path::Path;
 use arborio_modloader::module::{CelesteModuleKind, ModuleID};
 use arborio_state::data::app::AppEvent;
 use arborio_state::data::app::AppState;
-use arborio_state::data::AppConfig;
+use arborio_state::data::{AppConfig, AppConfigSetter};
 use arborio_state::lenses::AutoSaverLens;
 
 pub fn build_installation_tab(cx: &mut Context) {
@@ -102,8 +102,10 @@ pub fn build_installation_tab(cx: &mut Context) {
                                 .mode(dialog::FileSelectionMode::Open)
                                 .show()
                         {
-                            cx.emit(AppEvent::SetConfigPath {
-                                path: Path::new(&celeste_path).parent().unwrap().to_path_buf(),
+                            cx.emit(AppEvent::EditSettings {
+                                setter: AppConfigSetter::CelesteRoot(Some(
+                                    Path::new(&celeste_path).parent().unwrap().to_path_buf(),
+                                )),
                             });
                         }
                     },

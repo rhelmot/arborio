@@ -6,6 +6,7 @@ use std::error::Error;
 
 use crate::logging::setup_logger_thread;
 use arborio_state::data::app::{AppEvent, AppState};
+use arborio_state::data::AppConfigSetter;
 use arborio_utils::vizia::prelude::*;
 use arborio_widgets::main_widget::main_widget;
 
@@ -18,7 +19,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         log::info!("Hello world!");
         if let Some(path) = &cx.data::<AppState>().unwrap().config.celeste_root {
             let path = path.clone();
-            cx.emit(AppEvent::SetConfigPath { path });
+            cx.emit(AppEvent::EditSettings {
+                setter: AppConfigSetter::CelesteRoot(Some(path)),
+            });
         }
         #[cfg(not(debug_assertions))]
         cx.add_theme(include_str!("style.css"));

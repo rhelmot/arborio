@@ -245,6 +245,10 @@ arborio_editor {
     overflow: hidden;
 }
 
+#tool_settings {
+    height: auto;
+}
+
 #left_bar {
     width: auto;
 }

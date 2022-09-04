@@ -2,8 +2,8 @@ use enum_iterator::IntoEnumIterator;
 
 use arborio_modloader::aggregate::ModuleAggregate;
 use arborio_state::data::app::{AppEvent, AppState};
-use arborio_state::data::Layer;
-use arborio_state::lenses::{AnotherLens, CurrentMapLens, CurrentPaletteLens};
+use arborio_state::data::{AppConfig, AppConfigSetter, Layer};
+use arborio_state::lenses::{AnotherLens, AutoSaverLens, CurrentMapLens, CurrentPaletteLens};
 use arborio_state::tools::ToolSpec;
 use arborio_utils::vizia::prelude::*;
 
@@ -21,9 +21,15 @@ pub fn build_editor(cx: &mut Context) {
         })
         .id("left_bar");
 
-        EditorWidget::new(cx)
-            .width(Stretch(1.0))
-            .height(Stretch(1.0));
+        VStack::new(cx, move |cx| {
+            HStack::new(cx, move |cx| {
+                build_tool_settings(cx);
+            })
+            .id("tool_settings");
+            EditorWidget::new(cx)
+                .width(Stretch(1.0))
+                .height(Stretch(1.0));
+        });
 
         VStack::new(cx, |cx| {
             build_layer_picker(cx);
@@ -33,6 +39,19 @@ pub fn build_editor(cx: &mut Context) {
         .id("right_bar");
     })
     .height(Stretch(1.0));
+}
+
+fn build_tool_settings(cx: &mut Context) {
+    Label::new(cx, "Snap").describing("tool_settings_snap_checkbox");
+    let lens = AppState::config
+        .then(AutoSaverLens::new())
+        .then(AppConfig::snap);
+    Checkbox::new(cx, lens).on_toggle(move |cx| {
+        let val = !lens.get(cx);
+        cx.emit(AppEvent::EditSettings {
+            setter: AppConfigSetter::Snap(val),
+        });
+    });
 }
 
 pub fn build_tool_picker(cx: &mut Context) {

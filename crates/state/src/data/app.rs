@@ -13,7 +13,6 @@ use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
-use std::path::PathBuf;
 use std::time;
 
 use crate::auto_saver::AutoSaver;
@@ -23,7 +22,7 @@ use crate::data::config_editor::{
 use crate::data::project_map::{LevelState, MapEvent, MapState, ProjectEvent};
 use crate::data::selection::AppSelection;
 use crate::data::tabs::{AppTab, MapTab};
-use crate::data::{AppConfig, ArborioRecord, EventPhase, Layer, MapID, Progress};
+use crate::data::{AppConfig, AppConfigSetter, ArborioRecord, EventPhase, Layer, MapID, Progress};
 use crate::tools::{Tool, ToolSpec};
 
 #[derive(Lens)]
@@ -52,9 +51,6 @@ pub struct AppState {
     pub current_objtile: u32,
     pub objtiles_transform: MapToScreen,
 
-    pub draw_interval: f32,
-    pub snap: bool,
-
     pub last_draw: RefCell<time::Instant>, // mutable to draw
     pub progress: Progress,
     pub logs: Vec<ArborioRecord>,
@@ -72,11 +68,8 @@ pub enum AppEvent {
     SetClipboard {
         contents: String,
     },
-    SetConfigPath {
-        path: PathBuf,
-    },
-    SetLastPath {
-        path: PathBuf,
+    EditSettings {
+        setter: AppConfigSetter,
     },
     SetModules {
         modules: Mutex<HashMap<ModuleID, CelesteModule>>,
@@ -208,9 +201,9 @@ pub enum AppInternalEvent {
 
 impl Model for AppState {
     fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
-        event.map(|app_event, _| {
+        if let Some(app_event) = event.take() {
             self.apply(cx, app_event);
-        });
+        };
     }
 }
 
@@ -250,8 +243,6 @@ impl AppState {
             current_entity: EntitySelectable::default(),
             current_trigger: TriggerSelectable::default(),
             current_decal: DecalSelectable::default(),
-            draw_interval: 4.0,
-            snap: true,
             last_draw: RefCell::new(time::Instant::now()),
             current_layer: Layer::FgTiles,
             current_objtile: 0,
@@ -398,10 +389,7 @@ impl AppState {
     pub fn map_action(&self, event: Vec<MapAction>, merge_phase: EventPhase) -> AppEvent {
         AppEvent::MapEvent {
             map: Some(self.map_tab_unwrap().id),
-            event: MapEvent::Action {
-                merge_phase,
-                event: RefCell::new(Some(event)),
-            },
+            event: MapEvent::Action { merge_phase, event },
         }
     }
 

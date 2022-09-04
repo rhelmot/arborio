@@ -17,6 +17,7 @@ use arborio_state::data::config_editor::{
     SearchScope, StylegroundConfigSearchResult, TriggerConfigSearchResult,
 };
 use arborio_state::data::tabs::{AppTab, ConfigEditorTab};
+use arborio_state::data::AppConfigSetter;
 use arborio_state::lenses::{CurrentTabImplLens, IsFailedLens};
 use arborio_utils::interned::intern_str;
 
@@ -665,11 +666,13 @@ pub fn build_item_editor(cx: &mut Context) {
                             .unwrap();
                     }
                     let result_path: PathBuf = result.into();
-                    cx.emit(AppEvent::SetLastPath {
-                        path: result_path
-                            .parent()
-                            .unwrap_or_else(|| Path::new("/"))
-                            .to_owned(),
+                    cx.emit(AppEvent::EditSettings {
+                        setter: AppConfigSetter::LastFilepath(
+                            result_path
+                                .parent()
+                                .unwrap_or_else(|| Path::new("/"))
+                                .to_owned(),
+                        ),
                     });
                 }
             },

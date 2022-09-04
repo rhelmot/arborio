@@ -196,7 +196,7 @@ impl Tool for SelectionTool {
         let room_pos_unsnapped = (map_pos - room.data.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos_unsnapped);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
-        let room_pos = if app.snap {
+        let room_pos = if app.config.snap {
             room_pos_snapped
         } else {
             room_pos_unsnapped
@@ -390,7 +390,7 @@ impl Tool for SelectionTool {
         let room_pos = (map_pos - room.data.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
-        let room_pos = if state.snap {
+        let room_pos = if state.config.snap {
             room_pos_snapped
         } else {
             room_pos

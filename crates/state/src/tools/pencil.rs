@@ -115,7 +115,7 @@ impl Tool for PencilTool {
         let room_pos = (map_pos - room.data.bounds.origin).to_point().cast_unit();
         let tile_pos = point_room_to_tile(&room_pos);
         let room_pos_snapped = point_tile_to_room(&tile_pos);
-        let room_pos = if state.snap {
+        let room_pos = if state.config.snap {
             room_pos_snapped
         } else {
             room_pos
@@ -196,7 +196,7 @@ impl PencilTool {
                 match pencil {
                     PencilBehavior::Line => {}
                     PencilBehavior::Node | PencilBehavior::Rect => {
-                        let room_pos = if app.snap {
+                        let room_pos = if app.config.snap {
                             let tile_pos = point_room_to_tile(&room_pos);
                             point_tile_to_room(&tile_pos)
                         } else {
@@ -213,7 +213,7 @@ impl PencilTool {
     // TODO test to see if the diff would do anything before sending an event
     fn do_draw(&mut self, app: &AppState, room_pos: RoomPoint) -> Vec<AppEvent> {
         let tile_pos = point_room_to_tile(&room_pos);
-        let room_pos = if app.snap {
+        let room_pos = if app.config.snap {
             point_tile_to_room(&tile_pos)
         } else {
             room_pos
@@ -239,41 +239,70 @@ impl PencilTool {
                 } else {
                     app.current_bg_tile
                 };
-                vec![app.room_action(
-                    RoomAction::TileUpdate {
-                        fg,
-                        offset: tile_pos,
-                        data: TileGrid {
-                            tiles: vec![ch.id],
-                            stride: 1,
+                if let Some(start) = self.reference_point {
+                    let mut result = vec![];
+                    for step in steps(point_room_to_tile(&start), tile_pos, 1) {
+                        result.push(app.room_action(
+                            RoomAction::TileUpdate {
+                                fg,
+                                offset: step,
+                                data: TileGrid {
+                                    tiles: vec![ch.id],
+                                    stride: 1,
+                                },
+                            },
+                            self.draw_phase,
+                        ));
+                        self.reference_point = Some(point_tile_to_room(&step));
+                    }
+                    result
+                } else {
+                    self.reference_point = Some(room_pos);
+                    vec![app.room_action(
+                        RoomAction::TileUpdate {
+                            fg,
+                            offset: tile_pos,
+                            data: TileGrid {
+                                tiles: vec![ch.id],
+                                stride: 1,
+                            },
                         },
-                    },
-                    self.draw_phase,
-                )]
+                        self.draw_phase,
+                    )]
+                }
             }
             Layer::Entities
                 if get_entity_config(&app.current_entity, app).pencil == PencilBehavior::Line =>
             {
                 match self.reference_point {
                     Some(last_draw) => {
-                        let diff = (room_pos - last_draw).cast::<f32>().length();
-                        if diff > app.draw_interval {
-                            self.reference_point = Some(room_pos);
-                            vec![app.room_action(
+                        let mut result = vec![];
+                        let mut last_step = None;
+                        for step in steps(last_draw, room_pos, app.config.draw_interval as i32) {
+                            let step = if app.config.snap {
+                                point_tile_to_room(&point_room_to_tile(&step))
+                            } else {
+                                step
+                            };
+                            if last_step == Some(step) {
+                                continue;
+                            }
+                            last_step = Some(step);
+                            result.push(app.room_action(
                                 RoomAction::EntityAdd {
                                     entity: Box::new(self.get_terminal_entity(
                                         app,
                                         app.current_entity,
-                                        room_pos,
+                                        step,
                                     )),
                                     trigger: false,
                                     genid: true,
                                 },
                                 self.draw_phase,
-                            )]
-                        } else {
-                            vec![]
+                            ));
+                            self.reference_point = Some(step);
                         }
+                        result
                     }
                     None => {
                         self.reference_point = Some(room_pos);
@@ -297,7 +326,7 @@ impl PencilTool {
     }
 
     fn do_draw_finish(&mut self, app: &AppState, room_pos: RoomPoint) -> Vec<AppEvent> {
-        let room_pos = if app.snap {
+        let room_pos = if app.config.snap {
             point_tile_to_room(&point_room_to_tile(&room_pos))
         } else {
             room_pos
@@ -421,4 +450,24 @@ impl PencilTool {
             vec![],
         )
     }
+}
+
+fn steps<U>(from: Point2D<i32, U>, to: Point2D<i32, U>, step: i32) -> Vec<Point2D<i32, U>> {
+    let vec = (to - from).cast::<f32>();
+    let step_vec = vec.normalize() * step as f32;
+    let length = vec.length();
+    let mut result = vec![];
+    let mut cursor = from.cast::<f32>();
+    let mut accumulated_length = 0.0;
+
+    loop {
+        cursor += step_vec;
+        accumulated_length += step as f32;
+        if accumulated_length > length {
+            break;
+        }
+        result.push(cursor.cast());
+    }
+
+    result
 }

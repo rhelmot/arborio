@@ -11,7 +11,6 @@ use app::AppEvent;
 use log::Level;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::io;
@@ -31,11 +30,26 @@ const UNDO_BUFFER_SIZE: usize = 1000;
 
 uuid_cls!(EventPhase);
 
-#[derive(Serialize, Deserialize, Default, Lens, Debug)]
+#[derive(Serialize, Deserialize, Lens, Debug, Setter)]
 pub struct AppConfig {
     pub celeste_root: Option<PathBuf>,
     pub last_filepath: PathBuf,
     pub user_name: String,
+
+    pub draw_interval: f32,
+    pub snap: bool,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            celeste_root: None,
+            last_filepath: Default::default(),
+            user_name: "me".to_owned(),
+            draw_interval: 8.0,
+            snap: true,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, enum_iterator::IntoEnumIterator)]
@@ -168,7 +182,7 @@ impl MapID {
         AppEvent::MapEvent {
             map: Some(*self),
             event: MapEvent::Action {
-                event: RefCell::new(Some(vec![action])),
+                event: vec![action],
                 merge_phase: phase,
             },
         }
@@ -178,10 +192,10 @@ impl MapID {
         AppEvent::MapEvent {
             map: Some(*self),
             event: MapEvent::Action {
-                event: RefCell::new(Some(vec![MapAction::RoomAction {
+                event: vec![MapAction::RoomAction {
                     idx: room,
                     event: action,
-                }])),
+                }],
                 merge_phase: phase,
             },
         }

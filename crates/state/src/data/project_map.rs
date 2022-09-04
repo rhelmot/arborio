@@ -439,7 +439,7 @@ impl MapStateUpdate {
 }
 
 impl AppState {
-    pub fn apply_map_event(&mut self, cx: &mut EventContext, map: Option<MapID>, event: &MapEvent) {
+    pub fn apply_map_event(&mut self, cx: &mut EventContext, map: Option<MapID>, event: MapEvent) {
         let map = if let Some(map) = map.or_else(|| self.current_map_id()) {
             map
         } else {
@@ -460,32 +460,28 @@ impl AppState {
 
         match event {
             MapEvent::Action { event, merge_phase } => {
-                if let Some(event) = event.borrow_mut().take() {
-                    match apply_map_action(state, event) {
-                        Ok(undo) => {
-                            cx.needs_redraw();
-                            state.cache.dirty = true;
-                            if state.cache.undo_buffer.len() == UNDO_BUFFER_SIZE {
-                                state.cache.undo_buffer.pop_front();
-                            }
-                            if state.cache.undo_buffer.back().is_none()
-                                || state.cache.event_phase != *merge_phase
-                            {
-                                state.cache.undo_buffer.push_back(undo);
-                            } else if let Some(back) = state.cache.undo_buffer.back_mut() {
-                                // irrefutable if the if fails
-                                // breaking my own rules here: it's merge time
-                                merge_events(back, undo, true);
-                            }
-                            state.cache.event_phase = *merge_phase;
-                            state.cache.redo_buffer.clear();
+                match apply_map_action(state, event) {
+                    Ok(undo) => {
+                        cx.needs_redraw();
+                        state.cache.dirty = true;
+                        if state.cache.undo_buffer.len() == UNDO_BUFFER_SIZE {
+                            state.cache.undo_buffer.pop_front();
                         }
-                        Err(e) => {
-                            log::error!("Internal error: map event: {}", e);
+                        if state.cache.undo_buffer.back().is_none()
+                            || state.cache.event_phase != merge_phase
+                        {
+                            state.cache.undo_buffer.push_back(undo);
+                        } else if let Some(back) = state.cache.undo_buffer.back_mut() {
+                            // irrefutable if the if fails
+                            // breaking my own rules here: it's merge time
+                            merge_events(back, undo, true);
                         }
+                        state.cache.event_phase = merge_phase;
+                        state.cache.redo_buffer.clear();
                     }
-                } else {
-                    log::error!("Internal error: MapAction being applied twice?");
+                    Err(e) => {
+                        log::error!("Internal error: map event: {}", e);
+                    }
                 }
             }
             MapEvent::Undo => {
@@ -611,7 +607,7 @@ impl AppState {
                 };
 
                 let old_path = root.join("Maps").join(current_sid).with_extension("bin");
-                let new_path = root.join("Maps").join(sid).with_extension("bin");
+                let new_path = root.join("Maps").join(&sid).with_extension("bin");
                 let mut index = None;
                 for (idx, other_sid) in module.maps.iter().enumerate() {
                     if other_sid == current_sid {
@@ -635,7 +631,7 @@ impl AppState {
                 }
 
                 module.maps[index] = sid.clone();
-                state.cache.path.sid = sid.clone();
+                state.cache.path.sid = sid;
                 self.modules_version += 1;
             }
             MapEvent::OpenMeta => {
@@ -692,7 +688,7 @@ impl AppState {
         &mut self,
         cx: &mut EventContext,
         project: Option<ModuleID>,
-        event: &ProjectEvent,
+        event: ProjectEvent,
     ) {
         let project = match project.or_else(|| self.current_project_id()) {
             Some(project) => project,
@@ -708,7 +704,7 @@ impl AppState {
         match event {
             ProjectEvent::SetName { name } => {
                 self.modules_lookup.remove(&state.everest_metadata.name);
-                state.everest_metadata.name = name.clone();
+                state.everest_metadata.name = name;
                 step_modules_lookup(
                     &mut self.modules_lookup,
                     &self.modules,
@@ -721,13 +717,13 @@ impl AppState {
                     .save(state.filesystem_root.as_ref().unwrap());
             }
             ProjectEvent::SetVersion { version } => {
-                state.everest_metadata.version = version.clone();
+                state.everest_metadata.version = version;
                 state
                     .everest_metadata
                     .save(state.filesystem_root.as_ref().unwrap());
             }
             ProjectEvent::SetPath { path } => {
-                if let Err(e) = std::fs::rename(state.filesystem_root.as_ref().unwrap(), path) {
+                if let Err(e) = std::fs::rename(state.filesystem_root.as_ref().unwrap(), &path) {
                     log::error!(
                         "Could not move {} to {}: {}",
                         &state.everest_metadata.name,
@@ -735,7 +731,7 @@ impl AppState {
                         e
                     );
                 } else {
-                    state.filesystem_root = Some(path.clone());
+                    state.filesystem_root = Some(path);
                 }
             }
             ProjectEvent::NewMap => {
@@ -812,7 +808,7 @@ pub enum MapEvent {
         sid: String,
     },
     Action {
-        event: RefCell<Option<Vec<MapAction>>>,
+        event: Vec<MapAction>,
         merge_phase: EventPhase,
     },
 }
