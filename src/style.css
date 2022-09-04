@@ -247,6 +247,18 @@ arborio_editor {
 
 #tool_settings {
     height: auto;
+    col-between: 10px;
+}
+
+#tool_settings hstack {
+    width: auto;
+}
+
+#tool_settings slider {
+    width: 100px;
+    height: 2px;
+    top: 1s;
+    bottom: 1s;
 }
 
 #left_bar {
@@ -610,6 +622,34 @@ button:over {
     color: white;
     width: 1s;
 }
+
+slider > * {
+    background-color: #868686;
+    border-radius: 3px;
+}
+
+slider:focus-visible {
+    outline-width: 2px;
+    outline-color: blue;
+    outline-offset: 5px;
+    border-radius: 3px;
+}
+
+slider .active {
+    background-color: #005a9e;
+    border-radius: 4.5px;
+}
+
+slider .thumb {
+    background-color: white;
+    border-radius: 50%;
+    border-color: #c06308;
+    border-width: 3px;
+    width: 10px;
+    height: 10px;
+    child-space: 1s;
+}
+
 
 /*
 * {

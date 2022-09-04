@@ -42,15 +42,44 @@ pub fn build_editor(cx: &mut Context) {
 }
 
 fn build_tool_settings(cx: &mut Context) {
-    Label::new(cx, "Snap").describing("tool_settings_snap_checkbox");
-    let lens = AppState::config
-        .then(AutoSaverLens::new())
-        .then(AppConfig::snap);
-    Checkbox::new(cx, lens).on_toggle(move |cx| {
-        let val = !lens.get(cx);
-        cx.emit(AppEvent::EditSettings {
-            setter: AppConfigSetter::Snap(val),
-        });
+    HStack::new(cx, move |cx| {
+        Label::new(cx, "Snap").describing("tool_settings_snap");
+        let lens = AppState::config
+            .then(AutoSaverLens::new())
+            .then(AppConfig::snap);
+        Checkbox::new(cx, lens)
+            .on_toggle(move |cx| {
+                let val = !lens.get(cx);
+                cx.emit(AppEvent::EditSettings {
+                    setter: AppConfigSetter::Snap(val),
+                });
+            })
+            .id("tool_settings_snap");
+    })
+    .bind(AppState::current_toolspec, move |handle, spec| {
+        let spec = spec.get(handle.cx);
+        let show = spec == ToolSpec::Pencil || spec == ToolSpec::Selection;
+        handle.display(show);
+    });
+
+    HStack::new(cx, move |cx| {
+        Label::new(cx, "Interval").describing("tool_settings_interval");
+        let lens = AppState::config
+            .then(AutoSaverLens::new())
+            .then(AppConfig::draw_interval);
+        Slider::new(cx, lens)
+            .range(1.0..100.0)
+            .on_changing(|cx, val| {
+                cx.emit(AppEvent::EditSettings {
+                    setter: AppConfigSetter::DrawInterval(val),
+                });
+            })
+            .id("tool_settings_interval");
+    })
+    .bind(AppState::current_toolspec, move |handle, spec| {
+        let spec = spec.get(handle.cx);
+        let show = spec == ToolSpec::Pencil;
+        handle.display(show);
     });
 }
 
