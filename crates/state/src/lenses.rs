@@ -19,6 +19,7 @@ use arborio_maploader::map_struct::{
     Attribute, CelesteMapEntity, CelesteMapLevel, CelesteMapStyleground,
 };
 use arborio_modloader::aggregate::ModuleAggregate;
+use arborio_modloader::config::AttributeInfo;
 
 #[derive(Debug, Copy, Clone)]
 pub struct CurrentMapLens {}
@@ -126,6 +127,63 @@ impl Lens for CurrentSelectedEntityLens {
 }
 
 #[derive(Copy, Clone, Debug)]
+pub struct CurrentSelectedEntityResizableLens {}
+
+impl Lens for CurrentSelectedEntityResizableLens {
+    type Source = AppState;
+    type Target = (bool, bool);
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        let tab = if let Some(tab) = source.tabs.get(source.current_tab) {
+            tab
+        } else {
+            return map(None);
+        };
+        let MapTab {
+            id: map_id,
+            current_room,
+            current_selected,
+            ..
+        } = if let AppTab::Map(t) = tab {
+            t
+        } else {
+            return map(None);
+        };
+        let (entity_id, trigger) = match current_selected {
+            Some(AppSelection::EntityBody(id, trigger)) => (id, trigger),
+            Some(AppSelection::EntityNode(id, _, trigger)) => (id, trigger),
+            _ => return map(None),
+        };
+        if *trigger {
+            return map(Some(&(true, true)));
+        }
+        let cmap = if let Some(cmap) = source.loaded_maps.get(map_id) {
+            cmap
+        } else {
+            return map(None);
+        };
+        let name = if let Some(name) = cmap
+            .data
+            .levels
+            .get(*current_room)
+            .and_then(|room| room.entity(*entity_id, *trigger))
+            .map(|entity| &entity.name)
+        {
+            name
+        } else {
+            return map(None);
+        };
+        let data = cmap
+            .cache
+            .palette
+            .entity_config
+            .get(name.as_str())
+            .map(|cfg| (cfg.resizable_x, cfg.resizable_y));
+        map(data.as_ref())
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
 pub struct CurrentPaletteLens {}
 
 impl Lens for CurrentPaletteLens {
@@ -149,6 +207,60 @@ impl Lens for CurrentPaletteLens {
             .get(map_id)
             .map(|state| &state.cache.palette);
         map(data)
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct CurrentSelectedEntityConfigAttributesLens {}
+
+impl Lens for CurrentSelectedEntityConfigAttributesLens {
+    type Source = AppState;
+    type Target = HashMap<String, AttributeInfo>;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        let tab = if let Some(tab) = source.tabs.get(source.current_tab) {
+            tab
+        } else {
+            return map(None);
+        };
+        let MapTab {
+            current_selected, ..
+        } = if let AppTab::Map(t) = tab {
+            t
+        } else {
+            return map(None);
+        };
+        let trigger = match current_selected {
+            Some(AppSelection::EntityBody(_, trigger)) => trigger,
+            Some(AppSelection::EntityNode(_, _, trigger)) => trigger,
+            _ => return map(None),
+        };
+
+        CurrentSelectedEntityLens {}
+            .then(CelesteMapEntity::name)
+            .view(source, |entity| {
+                if let Some(entity) = entity {
+                    CurrentPaletteLens {}.view(source, |palette| {
+                        if let Some(palette) = palette {
+                            if *trigger {
+                                map(palette
+                                    .trigger_config
+                                    .get(entity.as_str())
+                                    .map(|c| &c.attribute_info))
+                            } else {
+                                map(palette
+                                    .entity_config
+                                    .get(entity.as_str())
+                                    .map(|c| &c.attribute_info))
+                            }
+                        } else {
+                            map(None)
+                        }
+                    })
+                } else {
+                    map(None)
+                }
+            })
     }
 }
 

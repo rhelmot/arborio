@@ -4,10 +4,14 @@ use arborio_state::data::action::RoomAction;
 use arborio_state::data::app::{AppEvent, AppState};
 use arborio_state::data::selection::AppSelection;
 use arborio_state::data::tabs::AppTab;
-use arborio_state::data::EventPhase;
-use arborio_state::lenses::{CurrentSelectedEntityLens, IsFailedLens};
+use arborio_state::data::{AppConfig, EventPhase};
+use arborio_state::lenses::{
+    AutoSaverLens, CurrentSelectedEntityConfigAttributesLens, CurrentSelectedEntityLens,
+    CurrentSelectedEntityResizableLens, IsFailedLens,
+};
 use arborio_utils::vizia::prelude::*;
 use arborio_widgets_common::advanced_tweaker::advanced_attrs_editor;
+use arborio_widgets_common::basic_tweaker::basic_attrs_editor;
 
 pub struct EntityTweakerWidget {}
 
@@ -37,6 +41,10 @@ impl EntityTweakerWidget {
 
     fn members(cx: &mut Context) {
         let entity_lens = CurrentSelectedEntityLens {};
+        let advanced_lens = AppState::config
+            .then(AutoSaverLens::new())
+            .then(AppConfig::advanced);
+        let attributes_lens = entity_lens.then(CelesteMapEntity::attributes);
         HStack::new(cx, move |cx| {
             Label::new(cx, "x");
             Textbox::new(cx, entity_lens.then(CelesteMapEntity::x)).on_edit(edit_x);
@@ -45,23 +53,44 @@ impl EntityTweakerWidget {
             Label::new(cx, "y");
             Textbox::new(cx, entity_lens.then(CelesteMapEntity::y)).on_edit(edit_y);
         });
-        HStack::new(cx, move |cx| {
-            Label::new(cx, "width");
-            Textbox::new(cx, entity_lens.then(CelesteMapEntity::width)).on_edit(edit_w);
-        });
-        HStack::new(cx, move |cx| {
-            Label::new(cx, "height");
-            Textbox::new(cx, entity_lens.then(CelesteMapEntity::height)).on_edit(edit_h);
-        });
 
-        let attributes_lens = entity_lens.then(CelesteMapEntity::attributes);
-        advanced_attrs_editor(
-            cx,
-            attributes_lens,
-            edit_attribute,
-            add_default_attribute,
-            remove_attribute,
-        );
+        Binding::new(cx, advanced_lens, move |cx, advanced| {
+            let advanced = advanced.get(cx);
+            Binding::new(
+                cx,
+                CurrentSelectedEntityResizableLens {},
+                move |cx, resizable| {
+                    let (rx, ry) = resizable.get(cx);
+                    if advanced || rx {
+                        HStack::new(cx, move |cx| {
+                            Label::new(cx, "width");
+                            Textbox::new(cx, entity_lens.then(CelesteMapEntity::width))
+                                .on_edit(edit_w);
+                        });
+                    }
+                    if advanced || ry {
+                        HStack::new(cx, move |cx| {
+                            Label::new(cx, "height");
+                            Textbox::new(cx, entity_lens.then(CelesteMapEntity::height))
+                                .on_edit(edit_h);
+                        });
+                    }
+                },
+            );
+
+            if advanced {
+                advanced_attrs_editor(
+                    cx,
+                    attributes_lens,
+                    edit_attribute,
+                    add_default_attribute,
+                    remove_attribute,
+                );
+            } else {
+                let config_lens = CurrentSelectedEntityConfigAttributesLens {};
+                basic_attrs_editor(cx, attributes_lens, config_lens, edit_attribute);
+            }
+        });
 
         Label::new(cx, "Nodes");
         List::new(

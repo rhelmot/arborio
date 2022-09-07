@@ -51,7 +51,7 @@ pub fn analyze_uses(
             continue;
         }
         let suggestion = most_interesting_type(&attr);
-        match info.entry(name) {
+        match info.entry(name.clone()) {
             Entry::Occupied(mut o) => {
                 let o = o.get_mut();
                 o.ty = type_meet(&suggestion, &o.ty);
@@ -61,6 +61,7 @@ pub fn analyze_uses(
             }
             Entry::Vacant(v) => {
                 v.insert(AttributeInfo {
+                    display_name: Some(name),
                     default: default_value(&suggestion),
                     ty: suggestion,
                     options: vec![],

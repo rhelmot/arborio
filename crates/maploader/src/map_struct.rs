@@ -444,7 +444,7 @@ pub enum CelesteMapErrorType {
     OutOfRange,
 }
 
-#[derive(Debug, PartialEq, Clone, Lens, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Lens, Serialize, Deserialize, Data)]
 pub enum Attribute {
     Bool(bool),
     Int(i32),

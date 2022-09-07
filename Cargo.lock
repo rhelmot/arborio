@@ -182,6 +182,7 @@ dependencies = [
  "arborio-modloader",
  "arborio-state",
  "arborio-utils",
+ "itertools 0.10.3",
 ]
 
 [[package]]

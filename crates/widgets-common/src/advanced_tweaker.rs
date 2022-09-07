@@ -188,7 +188,7 @@ pub fn advanced_attrs_editor(
     });
 }
 
-fn attr_editor<T: ToString + FromStr + Data>(
+pub fn attr_editor<T: ToString + FromStr + Data>(
     cx: &mut Context,
     lens: impl Lens<Target = T>,
     key: impl Send + Sync + Lens<Target = String>,

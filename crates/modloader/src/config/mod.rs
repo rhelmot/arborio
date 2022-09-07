@@ -36,15 +36,17 @@ impl Default for PencilBehavior {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Lens, Data)]
 pub struct AttributeInfo {
+    #[serde(default)]
+    pub display_name: Option<String>,
     pub ty: AttributeType,
     pub default: AttributeValue,
     #[serde(default)]
     pub options: Vec<AttributeOption>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Data)]
 pub struct AttributeOption {
     pub name: String,
     pub value: AttributeValue,
@@ -58,7 +60,7 @@ pub enum AttributeType {
     Bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Data)]
 pub enum AttributeValue {
     String(String),
     Float(f32),

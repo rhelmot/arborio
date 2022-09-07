@@ -10,3 +10,5 @@ arborio-utils = { path = "../utils", default-features = false }
 arborio-state = { path = "../state", default-features = false }
 arborio-modloader = { path = "../modloader", default-features = false }
 arborio-maploader = { path = "../maploader", default-features = false }
+
+itertools = "^0.10"

@@ -38,6 +38,7 @@ pub struct AppConfig {
 
     pub draw_interval: f32,
     pub snap: bool,
+    pub advanced: bool,
 }
 
 impl Default for AppConfig {
@@ -48,6 +49,7 @@ impl Default for AppConfig {
             user_name: "me".to_owned(),
             draw_interval: 8.0,
             snap: true,
+            advanced: false,
         }
     }
 }
