@@ -80,11 +80,12 @@ impl PaletteItem for EntitySelectable {
             vec![(48, 16).into()],
         );
         draw_entity(
-            app,
+            app.current_palette_unwrap()
+                .get_entity_config(&tmp_entity.name, false),
+            app.current_palette_unwrap(),
             canvas,
             &tmp_entity,
             &TileGrid::empty(),
-            false,
             false,
             &TileGrid::empty(),
         )

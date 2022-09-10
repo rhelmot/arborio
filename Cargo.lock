@@ -124,6 +124,7 @@ dependencies = [
  "lazy_static",
  "log",
  "parking_lot",
+ "rand 0.8.5",
  "regex",
  "serde",
  "serde_yaml",
@@ -480,9 +481,9 @@ dependencies = [
 
 [[package]]
 name = "copypasta"
-version = "0.7.1"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4423d79fed83ebd9ab81ec21fa97144300a961782158287dc9bf7eddac37ff0b"
+checksum = "d7216b5c1e9ad3867252505995b02d01c6fa7e6db0d8abd42634352ef377777e"
 dependencies = [
  "clipboard-win",
  "objc",
@@ -2464,7 +2465,7 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=10833b54314ddf980fbaedfc373850b555c73921#10833b54314ddf980fbaedfc373850b555c73921"
+source = "git+https://github.com/vizia/vizia?rev=f9f06ce1e2fbb260d2cc9f3279f17d8900868323#f9f06ce1e2fbb260d2cc9f3279f17d8900868323"
 dependencies = [
  "vizia_core",
  "vizia_winit",
@@ -2473,7 +2474,7 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=10833b54314ddf980fbaedfc373850b555c73921#10833b54314ddf980fbaedfc373850b555c73921"
+source = "git+https://github.com/vizia/vizia?rev=f9f06ce1e2fbb260d2cc9f3279f17d8900868323#f9f06ce1e2fbb260d2cc9f3279f17d8900868323"
 dependencies = [
  "bitflags",
  "copypasta",
@@ -2501,7 +2502,7 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=10833b54314ddf980fbaedfc373850b555c73921#10833b54314ddf980fbaedfc373850b555c73921"
+source = "git+https://github.com/vizia/vizia?rev=f9f06ce1e2fbb260d2cc9f3279f17d8900868323#f9f06ce1e2fbb260d2cc9f3279f17d8900868323"
 dependencies = [
  "proc-macro2 1.0.37",
  "quote 1.0.18",
@@ -2511,12 +2512,12 @@ dependencies = [
 [[package]]
 name = "vizia_id"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=10833b54314ddf980fbaedfc373850b555c73921#10833b54314ddf980fbaedfc373850b555c73921"
+source = "git+https://github.com/vizia/vizia?rev=f9f06ce1e2fbb260d2cc9f3279f17d8900868323#f9f06ce1e2fbb260d2cc9f3279f17d8900868323"
 
 [[package]]
 name = "vizia_input"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=10833b54314ddf980fbaedfc373850b555c73921#10833b54314ddf980fbaedfc373850b555c73921"
+source = "git+https://github.com/vizia/vizia?rev=f9f06ce1e2fbb260d2cc9f3279f17d8900868323#f9f06ce1e2fbb260d2cc9f3279f17d8900868323"
 dependencies = [
  "bitflags",
  "keyboard-types",
@@ -2526,7 +2527,7 @@ dependencies = [
 [[package]]
 name = "vizia_storage"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=10833b54314ddf980fbaedfc373850b555c73921#10833b54314ddf980fbaedfc373850b555c73921"
+source = "git+https://github.com/vizia/vizia?rev=f9f06ce1e2fbb260d2cc9f3279f17d8900868323#f9f06ce1e2fbb260d2cc9f3279f17d8900868323"
 dependencies = [
  "morphorm",
  "vizia_id",
@@ -2535,7 +2536,7 @@ dependencies = [
 [[package]]
 name = "vizia_window"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=10833b54314ddf980fbaedfc373850b555c73921#10833b54314ddf980fbaedfc373850b555c73921"
+source = "git+https://github.com/vizia/vizia?rev=f9f06ce1e2fbb260d2cc9f3279f17d8900868323#f9f06ce1e2fbb260d2cc9f3279f17d8900868323"
 dependencies = [
  "morphorm",
  "vizia_input",
@@ -2544,7 +2545,7 @@ dependencies = [
 [[package]]
 name = "vizia_winit"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=10833b54314ddf980fbaedfc373850b555c73921#10833b54314ddf980fbaedfc373850b555c73921"
+source = "git+https://github.com/vizia/vizia?rev=f9f06ce1e2fbb260d2cc9f3279f17d8900868323#f9f06ce1e2fbb260d2cc9f3279f17d8900868323"
 dependencies = [
  "console_error_panic_hook",
  "copypasta",
@@ -2908,9 +2909,9 @@ dependencies = [
 
 [[package]]
 name = "x11-clipboard"
-version = "0.5.3"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "473068b7b80ac86a18328824f1054e5e007898c47b5bbc281bd7abe32bc3653c"
+checksum = "6a7468a5768fea473e6c8c0d4b60d6d7001a64acceaac267207ca0281e1337e8"
 dependencies = [
  "xcb",
 ]
@@ -2928,12 +2929,12 @@ dependencies = [
 
 [[package]]
 name = "xcb"
-version = "0.10.1"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "771e2b996df720cd1c6dd9ff90f62d91698fd3610cc078388d0564bdd6622a9c"
+checksum = "b127bf5bfe9dbb39118d6567e3773d4bbc795411a8e1ef7b7e056bccac0011a9"
 dependencies = [
+ "bitflags",
  "libc",
- "log",
  "quick-xml",
 ]
 

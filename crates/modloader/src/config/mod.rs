@@ -44,6 +44,8 @@ pub struct AttributeInfo {
     pub default: AttributeValue,
     #[serde(default)]
     pub options: Vec<AttributeOption>,
+    #[serde(default)]
+    pub ignore: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Data)]

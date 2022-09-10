@@ -3,42 +3,40 @@ use arborio_maploader::map_struct::{
     Attribute, CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapStyleground,
     FieldEntry,
 };
-use arborio_modloader::config::{Const, DrawElement, Number};
+use arborio_modloader::aggregate::ModuleAggregate;
+use arborio_modloader::config::{Const, DrawElement, EntityConfig, Number};
 use arborio_modloader::mapstruct_plus_config::{make_entity_env, make_node_env};
 use arborio_utils::units::*;
 use arborio_utils::vizia::prelude::Canvas;
 use arborio_utils::vizia::vg::{Color, Paint, Path};
 use std::collections::{HashMap, HashSet};
 
-use crate::data::app::AppState;
 use crate::data::project_map::LevelState;
 use crate::data::selection::AppSelection;
 
 pub fn draw_entity(
-    app: &AppState,
+    config: &EntityConfig,
+    palette: &ModuleAggregate,
     canvas: &mut Canvas,
     entity: &CelesteMapEntity,
     field: &TileGrid<FieldEntry>,
     selected: bool,
-    trigger: bool,
     object_tiles: &TileGrid<i32>,
 ) {
-    let config = app
-        .current_palette_unwrap()
-        .get_entity_config(&entity.name, trigger);
     let env = make_entity_env(entity);
 
     for node_idx in 0..entity.nodes.len() {
         for draw in &config.standard_draw.node_draw {
             let env = make_node_env(entity, env.clone(), node_idx);
-            if let Err(e) = draw_entity_directive(app, canvas, draw, &env, field, object_tiles) {
+            if let Err(e) = draw_entity_directive(palette, canvas, draw, &env, field, object_tiles)
+            {
                 log::warn!("Error drawing {}: {}", &entity.name, e);
             }
         }
     }
 
     for draw in &config.standard_draw.initial_draw {
-        if let Err(e) = draw_entity_directive(app, canvas, draw, &env, field, object_tiles) {
+        if let Err(e) = draw_entity_directive(palette, canvas, draw, &env, field, object_tiles) {
             log::warn!("Error drawing {}: {}", &entity.name, e);
         }
     }
@@ -47,7 +45,8 @@ pub fn draw_entity(
         for node_idx in 0..entity.nodes.len() {
             for draw in &config.selected_draw.node_draw {
                 let env = make_node_env(entity, env.clone(), node_idx);
-                if let Err(e) = draw_entity_directive(app, canvas, draw, &env, field, object_tiles)
+                if let Err(e) =
+                    draw_entity_directive(palette, canvas, draw, &env, field, object_tiles)
                 {
                     log::warn!("Error drawing {}: {}", &entity.name, e);
                 }
@@ -55,7 +54,8 @@ pub fn draw_entity(
         }
 
         for draw in &config.selected_draw.initial_draw {
-            if let Err(e) = draw_entity_directive(app, canvas, draw, &env, field, object_tiles) {
+            if let Err(e) = draw_entity_directive(palette, canvas, draw, &env, field, object_tiles)
+            {
                 log::warn!("Error drawing {}: {}", &entity.name, e);
             }
         }
@@ -63,7 +63,7 @@ pub fn draw_entity(
 }
 
 fn draw_entity_directive(
-    app: &AppState,
+    palette: &ModuleAggregate,
     canvas: &mut Canvas,
     draw: &DrawElement,
     env: &HashMap<&str, Const>,
@@ -212,7 +212,7 @@ fn draw_entity_directive(
             let color = color.evaluate(env)?;
             let scale = scale.evaluate_float(env)?.to_point().cast_unit();
             let rot = rot.evaluate(env)?.as_number()?.to_float();
-            return app.current_palette_unwrap().gameplay_atlas.draw_sprite(
+            return palette.gameplay_atlas.draw_sprite(
                 canvas,
                 &texture,
                 point,
@@ -253,16 +253,13 @@ fn draw_entity_directive(
 
             match tiler.as_str() {
                 "repeat" => {
-                    let dim: Size2D<f32, UnknownUnit> = if let Some(dim) = app
-                        .current_palette_unwrap()
-                        .gameplay_atlas
-                        .sprite_dimensions(&texture)
-                    {
-                        dim
-                    } else {
-                        return Err(format!("No such gameplay texture: {}", texture));
-                    }
-                    .cast();
+                    let dim: Size2D<f32, UnknownUnit> =
+                        if let Some(dim) = palette.gameplay_atlas.sprite_dimensions(&texture) {
+                            dim
+                        } else {
+                            return Err(format!("No such gameplay texture: {}", texture));
+                        }
+                        .cast();
                     let slice: Rect<f32, UnknownUnit> = if slice_w == 0.0 {
                         Rect {
                             origin: Point2D::zero(),
@@ -274,19 +271,16 @@ fn draw_entity_directive(
                             size: Size2D::new(slice_w, slice_h),
                         }
                     };
-                    draw_tiled(app, canvas, &texture, &bounds, &slice, color)?;
+                    draw_tiled(palette, canvas, &texture, &bounds, &slice, color)?;
                 }
                 "9slice" => {
-                    let dim: Size2D<f32, UnknownUnit> = if let Some(dim) = app
-                        .current_palette_unwrap()
-                        .gameplay_atlas
-                        .sprite_dimensions(&texture)
-                    {
-                        dim
-                    } else {
-                        return Err(format!("No such gameplay texture: {}", texture));
-                    }
-                    .cast();
+                    let dim: Size2D<f32, UnknownUnit> =
+                        if let Some(dim) = palette.gameplay_atlas.sprite_dimensions(&texture) {
+                            dim
+                        } else {
+                            return Err(format!("No such gameplay texture: {}", texture));
+                        }
+                        .cast();
                     if dim.width < 17.0 || dim.height < 17.0 {
                         return Err(format!(
                             "Cannot draw {} as 9slice: must be at least 17x17",
@@ -306,7 +300,7 @@ fn draw_entity_directive(
                     for x in 0..3_usize {
                         for y in 0..3_usize {
                             draw_tiled(
-                                app,
+                                palette,
                                 canvas,
                                 &texture,
                                 &Rect::new(
@@ -336,12 +330,11 @@ fn draw_entity_directive(
                         (tiler.as_str(), false)
                     };
                     let texture = texture.chars().next().unwrap();
-                    let tilemap =
-                        if let Some(tilemap) = app.current_palette_unwrap().autotilers.get(tiler) {
-                            tilemap
-                        } else {
-                            return Err(format!("No such tiler {}", tiler));
-                        };
+                    let tilemap = if let Some(tilemap) = palette.autotilers.get(tiler) {
+                        tilemap
+                    } else {
+                        return Err(format!("No such tiler {}", tiler));
+                    };
                     let tileset = if let Some(tileset) = tilemap.get(&texture) {
                         tileset
                     } else {
@@ -371,10 +364,8 @@ fn draw_entity_directive(
                                     && self_entity.unwrap().attributes == e.attributes
                                 {
                                     '1'
-                                } else if let Some(conf) = app
-                                    .current_palette_unwrap()
-                                    .entity_config
-                                    .get(e.name.as_str())
+                                } else if let Some(conf) =
+                                    palette.entity_config.get(e.name.as_str())
                                 {
                                     if conf.solid {
                                         '2'
@@ -391,7 +382,7 @@ fn draw_entity_directive(
                         let fp_pt = point_tile_to_room(&pt).cast::<f32>();
                         if let Some(objtile_idx) = object_tiles.get(pt) {
                             if *objtile_idx > 0 {
-                                app.current_palette_unwrap().gameplay_atlas.draw_tile(
+                                palette.gameplay_atlas.draw_tile(
                                     canvas,
                                     TileReference {
                                         tile: TextureTile {
@@ -408,7 +399,7 @@ fn draw_entity_directive(
                             }
                         }
                         if let Some(tile) = tileset.tile(pt, &mut tiler) {
-                            app.current_palette_unwrap()
+                            palette
                                 .gameplay_atlas
                                 .draw_tile(canvas, tile, fp_pt.x, fp_pt.y, color)?;
                         }
@@ -428,7 +419,14 @@ fn draw_entity_directive(
                 env2.insert("customy", Const::Number(Number(point.y as f64)));
 
                 for draw_element in draw {
-                    draw_entity_directive(app, canvas, draw_element, &env2, field, object_tiles)?;
+                    draw_entity_directive(
+                        palette,
+                        canvas,
+                        draw_element,
+                        &env2,
+                        field,
+                        object_tiles,
+                    )?;
                 }
             }
         }
@@ -437,7 +435,7 @@ fn draw_entity_directive(
 }
 
 fn draw_tiled(
-    app: &AppState,
+    palette: &ModuleAggregate,
     canvas: &mut Canvas,
     sprite: &str,
     bounds: &Rect<f32, UnknownUnit>,
@@ -445,7 +443,7 @@ fn draw_tiled(
     color: Color,
 ) -> Result<(), String> {
     tile(bounds, slice.width(), slice.height(), |piece| {
-        app.current_palette_unwrap().gameplay_atlas.draw_sprite(
+        palette.gameplay_atlas.draw_sprite(
             canvas,
             sprite,
             piece.origin,
@@ -492,12 +490,17 @@ where
     Ok(())
 }
 
-pub fn draw_decals(app: &AppState, canvas: &mut Canvas, room: &CelesteMapLevel, fg: bool) {
+pub fn draw_decals(
+    palette: &ModuleAggregate,
+    canvas: &mut Canvas,
+    room: &CelesteMapLevel,
+    fg: bool,
+) {
     let decals = if fg { &room.fg_decals } else { &room.bg_decals };
     for decal in decals {
         let texture = decal_texture(decal);
         let scale = Point2D::new(decal.scale_x, decal.scale_y);
-        if let Err(e) = app.current_palette_unwrap().gameplay_atlas.draw_sprite(
+        if let Err(e) = palette.gameplay_atlas.draw_sprite(
             canvas,
             &texture,
             Point2D::new(decal.x, decal.y).cast(),
@@ -518,17 +521,11 @@ pub fn decal_texture(decal: &CelesteMapDecal) -> String {
     path.to_str().unwrap().to_owned()
 }
 
-pub fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &LevelState, fg: bool) {
+pub fn draw_tiles(palette: &ModuleAggregate, canvas: &mut Canvas, room: &LevelState, fg: bool) {
     let (tiles, tiles_asset) = if fg {
-        (
-            &room.data.solids,
-            app.current_palette_unwrap().autotilers.get("fg").unwrap(),
-        )
+        (&room.data.solids, palette.autotilers.get("fg").unwrap())
     } else {
-        (
-            &room.data.bg,
-            app.current_palette_unwrap().autotilers.get("bg").unwrap(),
-        )
+        (&room.data.bg, palette.autotilers.get("bg").unwrap())
     };
 
     // TODO use point_iter
@@ -542,13 +539,11 @@ pub fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &LevelState, fg: bo
                 .get(tile)
                 .and_then(|tileset| tileset.tile(pt, &mut |pt| room.data.tile(pt, fg)))
             {
-                if let Err(e) = app.current_palette_unwrap().gameplay_atlas.draw_tile(
-                    canvas,
-                    tile,
-                    rx,
-                    ry,
-                    Color::white(),
-                ) {
+                if let Err(e) =
+                    palette
+                        .gameplay_atlas
+                        .draw_tile(canvas, tile, rx, ry, Color::white())
+                {
                     log::error!("Failed drawing tile: {}", e);
                 }
             }
@@ -564,8 +559,7 @@ pub fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &LevelState, fg: bo
             let float_pt = pt - float_pos.to_vector();
             let ch = float_dat.get_or_default(float_pt);
             if ch != '\0' {
-                if let Some(tile) = app
-                    .current_palette_unwrap()
+                if let Some(tile) = palette
                     .autotilers
                     .get(if fg { "fg" } else { "bg" })
                     .unwrap()
@@ -573,7 +567,7 @@ pub fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &LevelState, fg: bo
                     .and_then(|tileset| tileset.tile(float_pt, &mut tiler))
                 {
                     let room_pos = point_tile_to_room(&pt);
-                    if let Err(e) = app.current_palette_unwrap().gameplay_atlas.draw_tile(
+                    if let Err(e) = palette.gameplay_atlas.draw_tile(
                         canvas,
                         tile,
                         room_pos.x as f32,
@@ -589,7 +583,7 @@ pub fn draw_tiles(app: &AppState, canvas: &mut Canvas, room: &LevelState, fg: bo
 }
 
 pub fn draw_entities(
-    app: &AppState,
+    palette: &ModuleAggregate,
     canvas: &mut Canvas,
     room: &CelesteMapLevel,
     selection: Option<AppSelection>,
@@ -598,19 +592,19 @@ pub fn draw_entities(
     for entity in &room.entities {
         let selected = matches!(selection, Some(AppSelection::EntityBody(id, false)) | Some(AppSelection::EntityNode(id, _, false)) if id == entity.id);
         draw_entity(
-            app,
+            palette.get_entity_config(&entity.name, false),
+            palette,
             canvas,
             entity,
             &field,
             selected,
-            false,
             &room.object_tiles,
         );
     }
 }
 
 pub fn draw_triggers(
-    app: &AppState,
+    palette: &ModuleAggregate,
     canvas: &mut Canvas,
     room: &CelesteMapLevel,
     selection: Option<AppSelection>,
@@ -618,19 +612,19 @@ pub fn draw_triggers(
     for trigger in &room.triggers {
         let selected = matches!(selection, Some(AppSelection::EntityBody(id, true)) | Some(AppSelection::EntityNode(id, _, true)) if id == trigger.id);
         draw_entity(
-            app,
+            palette.get_entity_config(&trigger.name, true),
+            palette,
             canvas,
             trigger,
             &TileGrid::empty(),
             selected,
-            true,
             &TileGrid::empty(),
         );
     }
 }
 
 pub fn draw_stylegrounds(
-    app: &AppState,
+    palette: &ModuleAggregate,
     canvas: &mut Canvas,
     preview: MapPointStrict,
     styles: &[CelesteMapStyleground],
@@ -657,7 +651,7 @@ pub fn draw_stylegrounds(
                         Attribute::Text(s) => s.to_owned(),
                     });
 
-                let atlas = &app.current_palette_unwrap().gameplay_atlas;
+                let atlas = &palette.gameplay_atlas;
                 if let Some(dim) = atlas.sprite_dimensions(&texture) {
                     let dim = dim.cast().cast_unit();
                     let matters = MapRectPrecise::new(
@@ -719,7 +713,7 @@ fn parse_color(color: &str) -> Option<Color> {
     }
 }
 
-pub fn draw_objtiles_float(app: &AppState, canvas: &mut Canvas, room: &LevelState) {
+pub fn draw_objtiles_float(palette: &ModuleAggregate, canvas: &mut Canvas, room: &LevelState) {
     if let Some((float_pos, float_dat)) = &room.floats.obj {
         let rect = TileRect::new(*float_pos, float_dat.size());
         for pt in rect_point_iter(rect, 1) {
@@ -734,7 +728,7 @@ pub fn draw_objtiles_float(app: &AppState, canvas: &mut Canvas, room: &LevelStat
                     texture: "tilesets/scenery".into(), // TODO we shouldn't be doing this lookup during draw. cache this string statically?
                 };
                 let room_pos = point_tile_to_room(&pt);
-                if let Err(e) = app.current_palette_unwrap().gameplay_atlas.draw_tile(
+                if let Err(e) = palette.gameplay_atlas.draw_tile(
                     canvas,
                     tile,
                     room_pos.x as f32,

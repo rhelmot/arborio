@@ -21,3 +21,4 @@ enum-iterator = "^0.7"
 lazy_static = "^1.4"
 regex = { version = "^1.5", default-features = false, features = ["std"] }
 itertools = "^0.10"
+rand = "0.8.5"

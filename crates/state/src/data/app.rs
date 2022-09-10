@@ -1,5 +1,5 @@
 use crate::data::action::{MapAction, RoomAction, StylegroundSelection};
-use arborio_maploader::map_struct::CelesteMap;
+use arborio_maploader::map_struct::{CelesteMap, CelesteMapEntity};
 use arborio_modloader::aggregate::ModuleAggregate;
 use arborio_modloader::module::{CelesteModule, MapPath, ModuleID, CELESTE_MODULE_ID};
 use arborio_modloader::selectable::{
@@ -144,6 +144,10 @@ pub enum AppEvent {
     EditConfig {
         tab: usize,
         config: Box<AnyConfig>,
+    },
+    EditPreviewEntity {
+        tab: usize,
+        entity: CelesteMapEntity,
     },
     SetConfigErrorMessage {
         tab: usize,
@@ -299,6 +303,8 @@ impl AppState {
                 .expect("stale reference")
                 .cache
                 .palette
+        } else if let Some(AppTab::ConfigEditor(_)) = self.tabs.get(self.current_tab) {
+            &self.omni_palette
         } else {
             panic!("misuse of current_palette_unwrap");
         }

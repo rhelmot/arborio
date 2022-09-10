@@ -4,6 +4,7 @@ use crate::data::config_editor::{
 };
 use crate::data::selection::AppSelection;
 use crate::data::MapID;
+use arborio_maploader::map_struct::CelesteMapEntity;
 use arborio_modloader::module::ModuleID;
 use arborio_utils::units::{MapPointStrict, MapToScreen};
 use arborio_utils::uuid::next_uuid;
@@ -31,6 +32,7 @@ pub struct ConfigEditorTab {
     pub attribute_filter: String,
     pub editing_config: Option<AnyConfig>,
     pub error_message: String,
+    pub preview_entity: CelesteMapEntity,
 }
 
 impl Default for ConfigEditorTab {
@@ -45,6 +47,16 @@ impl Default for ConfigEditorTab {
             attribute_filter: "originX,originY".to_owned(),
             editing_config: None,
             error_message: "".to_owned(),
+            preview_entity: CelesteMapEntity {
+                id: 0,
+                name: "".to_string(),
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+                attributes: Default::default(),
+                nodes: vec![],
+            },
         }
     }
 }

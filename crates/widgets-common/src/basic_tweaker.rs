@@ -31,6 +31,10 @@ pub fn basic_attrs_editor<LA, LC, FS>(
             let lens_attr_val = HashMapIndexWithLens::new(lens_attributes, lens_attr_key);
             let lens_attr_opts = lens_attr_info.then(AttributeInfo::options);
 
+            if lens_attr_info.then(AttributeInfo::ignore).get(cx) {
+                continue;
+            }
+
             HStack::new(cx, move |cx| {
                 Binding::new(cx, lens_attr_key, move |cx, lens_attr_key| {
                     let attr_key = lens_attr_key.get(cx);
@@ -46,43 +50,44 @@ pub fn basic_attrs_editor<LA, LC, FS>(
                     if opts_len != 0 {
                         // ugh... the placement of this binding is nontrivial
                         Binding::new(cx, lens_attr_val, move |cx, lens_attr_val| {
-                            let attr_val = lens_attr_val.get(cx);
-                            let (found_idx, found_lbl) =
-                                lens_attr_opts.view(cx.data().unwrap(), |opts| {
-                                    for (idx, opt) in opts.unwrap().iter().enumerate() {
-                                        if opt.value.to_binel() == attr_val {
-                                            return (Some(idx), Some(opt.name.clone()));
+                            if let Some(attr_val) = lens_attr_val.get_fallible(cx) {
+                                let (found_idx, found_lbl) =
+                                    lens_attr_opts.view(cx.data().unwrap(), |opts| {
+                                        for (idx, opt) in opts.unwrap().iter().enumerate() {
+                                            if opt.value.to_binel() == attr_val {
+                                                return (Some(idx), Some(opt.name.clone()));
+                                            }
                                         }
-                                    }
-                                    (None, None)
-                                });
-                            Dropdown::new(
-                                cx,
-                                move |cx| {
-                                    let found_lbl = found_lbl.clone();
-                                    HStack::new(cx, move |cx| {
-                                        Label::new(
-                                            cx,
-                                            found_lbl.as_ref().map_or("weh", |a| a.as_str()),
-                                        );
-                                        Label::new(cx, DOWN).font("icons");
-                                    })
-                                    .width(Units::Stretch(1.0))
-                                },
-                                move |cx| {
-                                    for idx in 0..opts_len {
-                                        let opt = lens_attr_opts.index(idx).get(cx);
-                                        Label::new(cx, &opt.name)
-                                            .class("dropdown_element")
-                                            .toggle_class("checked", Some(idx) == found_idx)
-                                            .on_press(move |cx| {
-                                                let key = lens_attr_key.get(cx);
-                                                setter(cx, key, opt.value.to_binel());
-                                                cx.emit(PopupEvent::Close);
-                                            });
-                                    }
-                                },
-                            );
+                                        (None, None)
+                                    });
+                                Dropdown::new(
+                                    cx,
+                                    move |cx| {
+                                        let found_lbl = found_lbl.clone();
+                                        HStack::new(cx, move |cx| {
+                                            Label::new(
+                                                cx,
+                                                found_lbl.as_ref().map_or("weh", |a| a.as_str()),
+                                            );
+                                            Label::new(cx, DOWN).font("icons");
+                                        })
+                                        .width(Units::Stretch(1.0))
+                                    },
+                                    move |cx| {
+                                        for idx in 0..opts_len {
+                                            let opt = lens_attr_opts.index(idx).get(cx);
+                                            Label::new(cx, &opt.name)
+                                                .class("dropdown_element")
+                                                .toggle_class("checked", Some(idx) == found_idx)
+                                                .on_press(move |cx| {
+                                                    let key = lens_attr_key.get(cx);
+                                                    setter(cx, key, opt.value.to_binel());
+                                                    cx.emit(PopupEvent::Close);
+                                                });
+                                        }
+                                    },
+                                );
+                            }
                         });
                     } else {
                         Binding::new(cx, lens_attr_type, move |cx, attr_type| {
@@ -122,7 +127,10 @@ pub fn basic_attrs_editor<LA, LC, FS>(
                                     Checkbox::new(cx, lens_attr_val.then(Attribute::bool))
                                         .on_toggle(move |cx| {
                                             let key = lens_attr_key.get(cx);
-                                            let val = !lens_attr_val.then(Attribute::bool).get(cx);
+                                            let val = !lens_attr_val
+                                                .then(Attribute::bool)
+                                                .get_fallible(cx)
+                                                .unwrap_or(false);
                                             setter(cx, key, Attribute::Bool(val));
                                         });
                                 }

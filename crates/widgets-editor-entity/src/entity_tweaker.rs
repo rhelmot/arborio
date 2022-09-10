@@ -31,92 +31,91 @@ impl EntityTweakerWidget {
                 Binding::new(cx, IsFailedLens::new(entity_lens), move |cx, failed| {
                     if !failed.get(cx) {
                         ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
-                            VStack::new(cx, Self::members).class("tweaker_container");
+                            VStack::new(cx, build_tweaker).class("tweaker_container");
                         });
                     }
                 });
             })
             .class("tweaker")
     }
+}
 
-    fn members(cx: &mut Context) {
-        let entity_lens = CurrentSelectedEntityLens {};
-        let advanced_lens = AppState::config
-            .then(AutoSaverLens::new())
-            .then(AppConfig::advanced);
-        let attributes_lens = entity_lens.then(CelesteMapEntity::attributes);
-        HStack::new(cx, move |cx| {
-            Label::new(cx, "x");
-            Textbox::new(cx, entity_lens.then(CelesteMapEntity::x)).on_edit(edit_x);
-        });
-        HStack::new(cx, move |cx| {
-            Label::new(cx, "y");
-            Textbox::new(cx, entity_lens.then(CelesteMapEntity::y)).on_edit(edit_y);
-        });
+pub fn build_tweaker(cx: &mut Context) {
+    let entity_lens = CurrentSelectedEntityLens {};
+    let advanced_lens = AppState::config
+        .then(AutoSaverLens::new())
+        .then(AppConfig::advanced);
+    let attributes_lens = entity_lens.then(CelesteMapEntity::attributes);
+    HStack::new(cx, move |cx| {
+        Label::new(cx, "x");
+        Textbox::new(cx, entity_lens.then(CelesteMapEntity::x)).on_edit(edit_x);
+    });
+    HStack::new(cx, move |cx| {
+        Label::new(cx, "y");
+        Textbox::new(cx, entity_lens.then(CelesteMapEntity::y)).on_edit(edit_y);
+    });
 
-        Binding::new(cx, advanced_lens, move |cx, advanced| {
-            let advanced = advanced.get(cx);
-            Binding::new(
-                cx,
-                CurrentSelectedEntityResizableLens {},
-                move |cx, resizable| {
-                    let (rx, ry) = resizable.get(cx);
-                    if advanced || rx {
-                        HStack::new(cx, move |cx| {
-                            Label::new(cx, "width");
-                            Textbox::new(cx, entity_lens.then(CelesteMapEntity::width))
-                                .on_edit(edit_w);
-                        });
-                    }
-                    if advanced || ry {
-                        HStack::new(cx, move |cx| {
-                            Label::new(cx, "height");
-                            Textbox::new(cx, entity_lens.then(CelesteMapEntity::height))
-                                .on_edit(edit_h);
-                        });
-                    }
-                },
-            );
-
-            if advanced {
-                advanced_attrs_editor(
-                    cx,
-                    attributes_lens,
-                    edit_attribute,
-                    add_default_attribute,
-                    remove_attribute,
-                );
-            } else {
-                let config_lens = CurrentSelectedEntityConfigAttributesLens {};
-                basic_attrs_editor(cx, attributes_lens, config_lens, edit_attribute);
-            }
-        });
-
-        Label::new(cx, "Nodes");
-        List::new(
+    Binding::new(cx, advanced_lens, move |cx, advanced| {
+        let advanced = advanced.get(cx);
+        Binding::new(
             cx,
-            entity_lens.then(CelesteMapEntity::nodes),
-            move |cx, idx, item| {
-                HStack::new(cx, move |cx| {
-                    Label::new(cx, "x");
-                    Textbox::new(cx, item.map(|pair| pair.x)).on_edit(move |cx, text| {
-                        edit_node_x(cx, idx, text);
+            CurrentSelectedEntityResizableLens {},
+            move |cx, resizable| {
+                let (rx, ry) = resizable.get(cx);
+                if advanced || rx {
+                    HStack::new(cx, move |cx| {
+                        Label::new(cx, "width");
+                        Textbox::new(cx, entity_lens.then(CelesteMapEntity::width)).on_edit(edit_w);
                     });
-                    Label::new(cx, "y");
-                    Textbox::new(cx, item.map(|pair| pair.y)).on_edit(move |cx, text| {
-                        edit_node_y(cx, idx, text);
+                }
+                if advanced || ry {
+                    HStack::new(cx, move |cx| {
+                        Label::new(cx, "height");
+                        Textbox::new(cx, entity_lens.then(CelesteMapEntity::height))
+                            .on_edit(edit_h);
                     });
-                    Label::new(cx, "\u{e15b}")
-                        .class("icon")
-                        .class("remove_btn")
-                        .on_press(move |cx| {
-                            remove_node(cx, idx);
-                        });
-                });
+                }
             },
         );
-        Button::new(cx, add_node, |cx| Label::new(cx, "+ Node"));
-    }
+
+        if advanced {
+            advanced_attrs_editor(
+                cx,
+                attributes_lens,
+                edit_attribute,
+                add_default_attribute,
+                remove_attribute,
+            );
+        } else {
+            let config_lens = CurrentSelectedEntityConfigAttributesLens {};
+            basic_attrs_editor(cx, attributes_lens, config_lens, edit_attribute);
+        }
+    });
+
+    Label::new(cx, "Nodes");
+    List::new(
+        cx,
+        entity_lens.then(CelesteMapEntity::nodes),
+        move |cx, idx, item| {
+            HStack::new(cx, move |cx| {
+                Label::new(cx, "x");
+                Textbox::new(cx, item.map(|pair| pair.x)).on_edit(move |cx, text| {
+                    edit_node_x(cx, idx, text);
+                });
+                Label::new(cx, "y");
+                Textbox::new(cx, item.map(|pair| pair.y)).on_edit(move |cx, text| {
+                    edit_node_y(cx, idx, text);
+                });
+                Label::new(cx, "\u{e15b}")
+                    .class("icon")
+                    .class("remove_btn")
+                    .on_press(move |cx| {
+                        remove_node(cx, idx);
+                    });
+            });
+        },
+    );
+    Button::new(cx, add_node, |cx| Label::new(cx, "+ Node"));
 }
 
 impl View for EntityTweakerWidget {
@@ -189,6 +188,7 @@ fn edit_x(cx: &mut EventContext, value: String) {
         cx.toggle_class("validation_error", true);
     }
 }
+
 fn edit_y(cx: &mut EventContext, value: String) {
     if let Ok(value) = value.parse() {
         edit_entity(cx, move |entity| {
@@ -199,6 +199,7 @@ fn edit_y(cx: &mut EventContext, value: String) {
         cx.toggle_class("validation_error", true);
     }
 }
+
 fn edit_w(cx: &mut EventContext, value: String) {
     if let Ok(value) = value.parse() {
         edit_entity(cx, move |entity| {
@@ -209,6 +210,7 @@ fn edit_w(cx: &mut EventContext, value: String) {
         cx.toggle_class("validation_error", true);
     }
 }
+
 fn edit_h(cx: &mut EventContext, value: String) {
     if let Ok(value) = value.parse() {
         edit_entity(cx, move |entity| {

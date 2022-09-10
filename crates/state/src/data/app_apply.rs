@@ -1,4 +1,5 @@
 use crate::data::app::{build_modules_lookup, step_modules_lookup, AppEvent, AppState};
+use crate::data::config_editor::ConfigSearchResult;
 use crate::data::project_map::{MapEvent, MapState};
 use crate::data::tabs::{AppTab, ConfigEditorTab, MapTab};
 use crate::data::{load_map, trigger_module_load, trigger_palette_update, AppConfigSetter, MapID};
@@ -335,9 +336,29 @@ impl AppState {
                     ctab.selected_result = idx;
                     if let Some(result) = ctab.search_results.get(idx) {
                         ctab.editing_config = Some(result.get_config(&self.omni_palette));
+                        if let ConfigSearchResult::Entity(e) = result {
+                            let vec = e.examples.lock();
+                            ctab.preview_entity = vec
+                                .get(rand::random::<usize>() % vec.len())
+                                .unwrap()
+                                .0
+                                .clone();
+                            let offset =
+                                RoomVector::new(ctab.preview_entity.x, ctab.preview_entity.y);
+                            ctab.preview_entity.x = 0;
+                            ctab.preview_entity.y = 0;
+                            for node in ctab.preview_entity.nodes.iter_mut() {
+                                node.x -= offset.x;
+                                node.y -= offset.y;
+                            }
+                        }
                     } else {
                         ctab.editing_config = None;
                     }
+                } else {
+                    log::error!(
+                        "Internal error: SelectConfigSearchResult: not a config editor tab"
+                    );
                 }
             }
             AppEvent::EditConfig { tab, config } => {
@@ -371,6 +392,16 @@ impl AppState {
             AppEvent::ProjectEvent { project, event } => {
                 self.apply_project_event(cx, project, event);
                 self.modules_version += 1;
+            }
+            AppEvent::EditPreviewEntity { tab, entity } => {
+                if let Some(AppTab::ConfigEditor(ConfigEditorTab { preview_entity, .. })) =
+                    self.tabs.get_mut(tab)
+                {
+                    *preview_entity = entity;
+                    cx.needs_redraw();
+                } else {
+                    log::error!("Internal error: EditPreviewEntity targeted at nonexistent or non-config tab")
+                }
             }
         }
     }

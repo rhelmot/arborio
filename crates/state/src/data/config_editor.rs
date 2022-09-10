@@ -264,3 +264,18 @@ impl Hash for StylegroundConfigSearchResult {
         self.name.hash(state)
     }
 }
+
+#[derive(Debug, Lens, Setter, Default)]
+pub struct EntityConfigPreviewModel {
+    pub show_boxes: bool,
+    pub show_selected: bool,
+}
+
+impl Model for EntityConfigPreviewModel {
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
+        if let Some(msg) = event.take::<EntityConfigPreviewModelSetter>() {
+            msg.apply(self);
+            cx.needs_redraw();
+        }
+    }
+}

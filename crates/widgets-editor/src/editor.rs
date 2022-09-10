@@ -149,7 +149,7 @@ impl View for EditorWidget {
         canvas.save();
         canvas.intersect_scissor(preview.x as f32, preview.y as f32, 320.0, 180.0);
         rendering::draw_stylegrounds(
-            app,
+            app.current_palette_unwrap(),
             canvas,
             preview,
             map.data.backgrounds.as_slice(),
@@ -206,10 +206,10 @@ impl View for EditorWidget {
                     room.data.bounds.height() as u32,
                     Color::rgba(0, 0, 0, 0),
                 );
-                rendering::draw_tiles(app, canvas, room, false);
-                rendering::draw_decals(app, canvas, &room.data, false);
+                rendering::draw_tiles(app.current_palette_unwrap(), canvas, room, false);
+                rendering::draw_decals(app.current_palette_unwrap(), canvas, &room.data, false);
                 rendering::draw_triggers(
-                    app,
+                    app.current_palette_unwrap(),
                     canvas,
                     &room.data,
                     if idx == app.map_tab_unwrap().current_room {
@@ -219,7 +219,7 @@ impl View for EditorWidget {
                     },
                 );
                 rendering::draw_entities(
-                    app,
+                    app.current_palette_unwrap(),
                     canvas,
                     &room.data,
                     if idx == app.map_tab_unwrap().current_room {
@@ -228,10 +228,9 @@ impl View for EditorWidget {
                         None
                     },
                 );
-                rendering::draw_tiles(app, canvas, room, true);
-                rendering::draw_decals(app, canvas, &room.data, true);
-                rendering::draw_objtiles_float(app, canvas, room);
-                // TODO draw object tiles float
+                rendering::draw_tiles(app.current_palette_unwrap(), canvas, room, true);
+                rendering::draw_decals(app.current_palette_unwrap(), canvas, &room.data, true);
+                rendering::draw_objtiles_float(app.current_palette_unwrap(), canvas, room);
 
                 canvas.restore();
                 canvas.set_render_target(RenderTarget::Screen);
@@ -264,7 +263,7 @@ impl View for EditorWidget {
         canvas.save();
         canvas.intersect_scissor(preview.x as f32, preview.y as f32, 320.0, 180.0);
         rendering::draw_stylegrounds(
-            app,
+            app.current_palette_unwrap(),
             canvas,
             preview,
             map.data.foregrounds.as_slice(),

@@ -136,11 +136,13 @@ impl Tool for PencilTool {
                 let tmp_entity = self.get_terminal_entity(state, state.current_entity, room_pos);
                 canvas.set_global_alpha(0.5);
                 rendering::draw_entity(
-                    state,
+                    state
+                        .current_palette_unwrap()
+                        .get_entity_config(&tmp_entity.name, false),
+                    state.current_palette_unwrap(),
                     canvas,
                     &tmp_entity,
                     &TileGrid::empty(),
-                    false,
                     false,
                     &room.data.object_tiles,
                 );
@@ -149,12 +151,14 @@ impl Tool for PencilTool {
                 let tmp_trigger = self.get_terminal_trigger(state, state.current_trigger, room_pos);
                 canvas.set_global_alpha(0.5);
                 rendering::draw_entity(
-                    state,
+                    state
+                        .current_palette_unwrap()
+                        .get_entity_config(&tmp_trigger.name, true),
+                    state.current_palette_unwrap(),
                     canvas,
                     &tmp_trigger,
                     &TileGrid::empty(),
                     false,
-                    true,
                     &TileGrid::empty(),
                 );
             }

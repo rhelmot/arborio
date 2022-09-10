@@ -6,20 +6,27 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use arborio_maploader::map_struct::{Attribute, CelesteMap};
+use arborio_maploader::map_struct::{Attribute, CelesteMap, CelesteMapEntity};
 use arborio_modloader::aggregate::ModuleAggregate;
-use arborio_modloader::config::{AttributeInfo, AttributeType, AttributeValue};
+use arborio_modloader::config::{AttributeInfo, AttributeType, AttributeValue, EntityConfig};
+use arborio_modloader::mapstruct_plus_config::{make_entity_env, make_node_env};
 use arborio_modloader::module::{CelesteModule, MapPath, ModuleID};
 use arborio_state::data::action::StylegroundSelection;
 use arborio_state::data::app::{AppEvent, AppState};
 use arborio_state::data::config_editor::{
-    AnyConfig, ConfigSearchFilter, ConfigSearchResult, ConfigSearchType, EntityConfigSearchResult,
-    SearchScope, StylegroundConfigSearchResult, TriggerConfigSearchResult,
+    AnyConfig, ConfigSearchFilter, ConfigSearchResult, ConfigSearchType, EntityConfigPreviewModel,
+    EntityConfigPreviewModelSetter, EntityConfigSearchResult, SearchScope,
+    StylegroundConfigSearchResult, TriggerConfigSearchResult,
 };
 use arborio_state::data::tabs::{AppTab, ConfigEditorTab};
 use arborio_state::data::AppConfigSetter;
 use arborio_state::lenses::{CurrentTabImplLens, IsFailedLens};
+use arborio_state::rendering::draw_entity;
 use arborio_utils::interned::intern_str;
+use arborio_utils::units::TileGrid;
+use arborio_utils::vizia::state::UnwrapLens;
+use arborio_utils::vizia::vg::{Paint, Path as PPath};
+use arborio_widgets_common::basic_tweaker::basic_attrs_editor;
 
 pub fn set_default_draw(this: &mut AnyConfig, app: &AppState) {
     if let AnyConfig::Entity(e) = this {
@@ -47,9 +54,6 @@ pub fn analyze_uses(
 ) {
     let info = attr_info(this);
     for (name, attr) in result.example_attrs() {
-        if attribute_filter.contains(name.as_str()) {
-            continue;
-        }
         let suggestion = most_interesting_type(&attr);
         match info.entry(name.clone()) {
             Entry::Occupied(mut o) => {
@@ -61,6 +65,7 @@ pub fn analyze_uses(
             }
             Entry::Vacant(v) => {
                 v.insert(AttributeInfo {
+                    ignore: attribute_filter.contains(name.as_str()),
                     display_name: Some(name),
                     default: default_value(&suggestion),
                     ty: suggestion,
@@ -717,7 +722,7 @@ pub fn build_item_editor(cx: &mut Context) {
             move |cx| Label::new(cx, "Analyze Attrs"),
         );
     })
-    .class("config_editor_toolbar");
+    .id("config_editor_toolbar");
 }
 
 fn config_editor_textbox<T>(
@@ -753,4 +758,336 @@ fn config_editor_textbox<T>(
     });
 }
 
-pub fn build_item_preview(_cx: &mut Context) {}
+pub fn build_item_preview(cx: &mut Context) {
+    let ctab = CurrentTabImplLens {}.then(AppTab::config_editor);
+    let entity_config_lens = ctab
+        .then(ConfigEditorTab::editing_config)
+        .then(UnwrapLens::new())
+        .then(AnyConfig::entity);
+    let entity_data_lens = ctab.then(ConfigEditorTab::preview_entity);
+    Binding::new(
+        cx,
+        IsFailedLens::new(entity_config_lens),
+        move |cx, is_failed| {
+            if !is_failed.get(cx) {
+                EntityConfigPreviewModel::default().build(cx);
+                HStack::new(cx, move |cx| {
+                    EntityConfigPreview::new(cx, entity_config_lens, entity_data_lens);
+                    ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
+                        VStack::new(cx, move |cx| {
+                            HStack::new(cx, move |cx| {
+                                Label::new(cx, "Show Hitboxes");
+                                Checkbox::new(cx, EntityConfigPreviewModel::show_boxes).on_toggle(
+                                    move |cx| {
+                                        let new_val = !EntityConfigPreviewModel::show_boxes.get(cx);
+                                        cx.emit(EntityConfigPreviewModelSetter::ShowBoxes(new_val));
+                                    },
+                                );
+                            });
+                            HStack::new(cx, move |cx| {
+                                Label::new(cx, "Show As Selected");
+                                Checkbox::new(cx, EntityConfigPreviewModel::show_selected)
+                                    .on_toggle(move |cx| {
+                                        let new_val =
+                                            !EntityConfigPreviewModel::show_selected.get(cx);
+                                        cx.emit(EntityConfigPreviewModelSetter::ShowSelected(
+                                            new_val,
+                                        ));
+                                    });
+                            });
+
+                            build_entity_tweaker(cx);
+                        });
+                    });
+                });
+            }
+        },
+    )
+}
+
+fn build_entity_tweaker(cx: &mut Context) {
+    let ctab = CurrentTabImplLens {}.then(AppTab::config_editor);
+    let config_lens = ctab
+        .then(ConfigEditorTab::editing_config)
+        .then(UnwrapLens::new())
+        .then(AnyConfig::entity);
+    let entity_lens = ctab.then(ConfigEditorTab::preview_entity);
+
+    let attributes_lens = entity_lens.then(CelesteMapEntity::attributes);
+    HStack::new(cx, move |cx| {
+        Label::new(cx, "x");
+        Textbox::new(cx, entity_lens.then(CelesteMapEntity::x)).on_edit(edit_x);
+    });
+    HStack::new(cx, move |cx| {
+        Label::new(cx, "y");
+        Textbox::new(cx, entity_lens.then(CelesteMapEntity::y)).on_edit(edit_y);
+    });
+
+    Binding::new(
+        cx,
+        config_lens.then(EntityConfig::resizable_x),
+        move |cx, rx| {
+            let rx = rx.get(cx);
+            if rx {
+                HStack::new(cx, move |cx| {
+                    Label::new(cx, "width");
+                    Textbox::new(cx, entity_lens.then(CelesteMapEntity::width)).on_edit(edit_w);
+                });
+            }
+        },
+    );
+    Binding::new(
+        cx,
+        config_lens.then(EntityConfig::resizable_y),
+        move |cx, ry| {
+            let ry = ry.get(cx);
+            if ry {
+                HStack::new(cx, move |cx| {
+                    Label::new(cx, "height");
+                    Textbox::new(cx, entity_lens.then(CelesteMapEntity::height)).on_edit(edit_h);
+                });
+            }
+        },
+    );
+
+    basic_attrs_editor(
+        cx,
+        attributes_lens,
+        config_lens.then(EntityConfig::attribute_info),
+        edit_attribute,
+    );
+
+    Label::new(cx, "Nodes");
+    List::new(
+        cx,
+        entity_lens.then(CelesteMapEntity::nodes),
+        move |cx, idx, item| {
+            HStack::new(cx, move |cx| {
+                Label::new(cx, "x");
+                Textbox::new(cx, item.map(|pair| pair.x)).on_edit(move |cx, text| {
+                    edit_node_x(cx, idx, text);
+                });
+                Label::new(cx, "y");
+                Textbox::new(cx, item.map(|pair| pair.y)).on_edit(move |cx, text| {
+                    edit_node_y(cx, idx, text);
+                });
+                Label::new(cx, "\u{e15b}")
+                    .class("icon")
+                    .class("remove_btn")
+                    .on_press(move |cx| {
+                        remove_node(cx, idx);
+                    });
+            });
+        },
+    );
+    Button::new(cx, add_node, |cx| Label::new(cx, "+ Node"));
+}
+
+#[derive(Debug)]
+pub struct EntityConfigPreview<L1, L2> {
+    config: L1,
+    entity: L2,
+}
+
+impl<L1, L2> EntityConfigPreview<L1, L2>
+where
+    L1: Lens<Target = EntityConfig>,
+    L2: Lens<Target = CelesteMapEntity, Source = <L1 as Lens>::Source>,
+{
+    fn new(cx: &mut Context, config: L1, entity: L2) -> Handle<'_, Self> {
+        Self { config, entity }.build(cx, |_| {})
+    }
+}
+
+impl<L1, L2> View for EntityConfigPreview<L1, L2>
+where
+    L1: Lens<Target = EntityConfig>,
+    L2: Lens<Target = CelesteMapEntity, Source = <L1 as Lens>::Source>,
+{
+    fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+        let bounds = cx.bounds();
+
+        canvas.save();
+        canvas.translate(bounds.x + bounds.w / 2.0, bounds.y + bounds.h / 2.0);
+        canvas.scissor(-bounds.w / 2.0, -bounds.h / 2.0, bounds.w, bounds.h);
+
+        let mut path = PPath::new();
+        path.rect(-bounds.w / 2.0, -bounds.h / 2.0, bounds.w, bounds.h);
+        canvas.fill_path(
+            &mut path,
+            Paint::linear_gradient(
+                0.0,
+                -bounds.h / 2.0,
+                0.0,
+                bounds.h / 2.0,
+                Color::black().into(),
+                Color::blue().into(),
+            ),
+        );
+
+        let mut path = PPath::new();
+        path.move_to(0.0, -bounds.h as f32 / 2.0);
+        path.line_to(0.0, bounds.h as f32 / 2.0);
+        path.move_to(-bounds.w as f32 / 2.0, 0.0);
+        path.line_to(bounds.w as f32 / 2.0, 0.0);
+        canvas.stroke_path(
+            &mut path,
+            Paint::color(Color::cyan().into()).with_line_width(cx.style.dpi_factor as f32),
+        );
+
+        canvas.scale(cx.style.dpi_factor as f32, cx.style.dpi_factor as f32);
+
+        self.config.view(cx.data().unwrap(), |config| {
+            if let Some(config) = config {
+                self.entity.view(cx.data().unwrap(), |entity| {
+                    if let Some(entity) = entity {
+                        draw_entity(
+                            config,
+                            &cx.data::<AppState>().unwrap().omni_palette,
+                            canvas,
+                            entity,
+                            &TileGrid::empty(),
+                            EntityConfigPreviewModel::show_selected.get(cx),
+                            &TileGrid::empty(),
+                        );
+
+                        if EntityConfigPreviewModel::show_boxes.get(cx) {
+                            let env = make_entity_env(entity);
+                            let mut path = PPath::new();
+                            for rect in config.hitboxes.initial_rects.iter() {
+                                if let Ok(rect) = rect.evaluate_float(&env) {
+                                    path.rect(
+                                        rect.min_x(),
+                                        rect.min_y(),
+                                        rect.width(),
+                                        rect.height(),
+                                    );
+                                }
+                            }
+                            for idx in 0..entity.nodes.len() {
+                                let env = make_node_env(entity, env.clone(), idx);
+                                for rect in config.hitboxes.node_rects.iter() {
+                                    if let Ok(rect) = rect.evaluate_float(&env) {
+                                        path.rect(
+                                            rect.min_x(),
+                                            rect.min_y(),
+                                            rect.width(),
+                                            rect.height(),
+                                        );
+                                    }
+                                }
+                            }
+
+                            canvas.fill_path(
+                                &mut path,
+                                Paint::color(arborio_utils::vizia::vg::Color::rgba(
+                                    255, 255, 0, 128,
+                                )),
+                            );
+                        }
+                    }
+                })
+            }
+        });
+        canvas.restore();
+    }
+}
+
+fn edit_attribute(cx: &mut EventContext, key: String, value: Attribute) {
+    edit_entity(cx, move |entity| {
+        entity.attributes.insert(key, value);
+    });
+}
+
+fn edit_x(cx: &mut EventContext, value: String) {
+    if let Ok(value) = value.parse() {
+        edit_entity(cx, move |entity| {
+            entity.x = value;
+        });
+        cx.toggle_class("validation_error", false);
+    } else {
+        cx.toggle_class("validation_error", true);
+    }
+}
+
+fn edit_y(cx: &mut EventContext, value: String) {
+    if let Ok(value) = value.parse() {
+        edit_entity(cx, move |entity| {
+            entity.y = value;
+        });
+        cx.toggle_class("validation_error", false);
+    } else {
+        cx.toggle_class("validation_error", true);
+    }
+}
+
+fn edit_w(cx: &mut EventContext, value: String) {
+    if let Ok(value) = value.parse() {
+        edit_entity(cx, move |entity| {
+            entity.width = value;
+        });
+        cx.toggle_class("validation_error", false);
+    } else {
+        cx.toggle_class("validation_error", true);
+    }
+}
+
+fn edit_h(cx: &mut EventContext, value: String) {
+    if let Ok(value) = value.parse() {
+        edit_entity(cx, move |entity| {
+            entity.height = value;
+        });
+        cx.toggle_class("validation_error", false);
+    } else {
+        cx.toggle_class("validation_error", true);
+    }
+}
+
+fn edit_node_x(cx: &mut EventContext, idx: usize, value: String) {
+    if let Ok(x) = value.parse() {
+        edit_entity(cx, move |entity| {
+            entity.nodes[idx] = (x, entity.nodes[idx].y).into();
+        });
+        cx.toggle_class("validation_error", false);
+    } else {
+        cx.toggle_class("validation_error", true);
+    }
+}
+
+fn edit_node_y(cx: &mut EventContext, idx: usize, value: String) {
+    if let Ok(y) = value.parse() {
+        edit_entity(cx, move |entity| {
+            entity.nodes[idx] = (entity.nodes[idx].x, y).into();
+        });
+        cx.toggle_class("validation_error", false);
+    } else {
+        cx.toggle_class("validation_error", true);
+    }
+}
+
+fn remove_node(cx: &mut EventContext, idx: usize) {
+    edit_entity(cx, move |entity| {
+        entity.nodes.remove(idx);
+    })
+}
+
+fn add_node(cx: &mut EventContext) {
+    edit_entity(cx, |entity| {
+        entity.nodes.push((entity.x, entity.y).into());
+    });
+}
+
+fn edit_entity<F: FnOnce(&mut CelesteMapEntity)>(cx: &mut EventContext, f: F) {
+    let app_state = cx.data::<AppState>().unwrap();
+    let mut entity = match app_state.tabs.get(app_state.current_tab) {
+        Some(AppTab::ConfigEditor(ctab)) => ctab.preview_entity.clone(),
+        _ => panic!("How'd you do that"),
+    };
+
+    f(&mut entity);
+
+    cx.emit(AppEvent::EditPreviewEntity {
+        tab: app_state.current_tab,
+        entity,
+    });
+}
