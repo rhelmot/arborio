@@ -7,9 +7,9 @@ use std::error::Error;
 use crate::logging::setup_logger_thread;
 use arborio_state::data::app::{AppEvent, AppState};
 use arborio_state::data::AppConfigSetter;
+use arborio_utils::resources::fonts::{DROID_SANS_MONO, RENOGARE};
 use arborio_utils::vizia::prelude::*;
 use arborio_widgets::main_widget::main_widget;
-use arborio_utils::resources::fonts::{DROID_SANS_MONO, RENOGARE};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let icon_img = image::load_from_memory(include_bytes!("../icon.png")).unwrap();
