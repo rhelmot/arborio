@@ -9,6 +9,7 @@ use arborio_state::data::app::{AppEvent, AppState};
 use arborio_state::data::AppConfigSetter;
 use arborio_utils::vizia::prelude::*;
 use arborio_widgets::main_widget::main_widget;
+use arborio_utils::resources::fonts::{DROID_SANS_MONO, RENOGARE};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let icon_img = image::load_from_memory(include_bytes!("../icon.png")).unwrap();
@@ -28,6 +29,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         #[cfg(debug_assertions)]
         cx.add_stylesheet("src/style.css")
             .expect("Could not load stylesheet. Are you running me in the right directory?");
+
+        cx.add_font_mem("monospace", DROID_SANS_MONO);
+        cx.add_font_mem("celeste", RENOGARE);
 
         main_widget(cx);
     })

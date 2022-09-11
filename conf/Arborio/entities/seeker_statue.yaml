@@ -1,46 +1,61 @@
+---
 entity_name: seekerStatue
 hitboxes:
   initial_rects:
     - topleft:
-        x: x - 12
-        y: y - 12
+        x: (x - 12)
+        y: (y - 12)
       size:
-        x: 24
-        y: 24
+        x: "24"
+        y: "24"
   node_rects:
     - topleft:
-        x: nodex - 2
-        y: nodey - 2
+        x: (nodex - 2)
+        y: (nodey - 2)
       size:
-        x: 4
-        y: 4
+        x: "4"
+        y: "4"
 standard_draw:
   initial_draw:
     - DrawPointImage:
-        texture: '"characters/monsters/predator75"'
+        texture: "\"characters/monsters/predator75\""
         point:
           x: x
           y: y
+        justify_x: 0.5
+        justify_y: 0.5
+        scale:
+          x: "1"
+          y: "1"
+        color:
+          r: "255"
+          g: "255"
+          b: "255"
+          a: "255"
+        rot: "0"
+  node_draw: []
 selected_draw:
+  initial_draw: []
   node_draw:
     - DrawRect:
         rect:
           topleft:
-            x: nodex - 2
-            y: nodey - 2
+            x: (nodex - 2)
+            y: (nodey - 2)
           size:
-            x: 4
-            y: 4
+            x: "4"
+            y: "4"
         color:
-          r: 255
-          g: 50
-          b: 50
-          a: 255
+          r: "255"
+          g: "50"
+          b: "50"
+          a: "255"
         border_color:
-          r: 255
-          g: 0
-          b: 0
-          a: 255
+          r: "255"
+          g: "0"
+          b: "0"
+          a: "255"
+        border_thickness: 1
     - DrawLine:
         start:
           x: prevnodexorbase
@@ -48,14 +63,50 @@ selected_draw:
         end:
           x: nodex
           y: nodey
-        arrowhead: true
         color:
-          r: 255
-          g: 255
-          b: 0
-          a: 200
+          r: "255"
+          g: "255"
+          b: "0"
+          a: "200"
+        arrowhead: true
+        thickness: 1
+minimum_size_x: 8
+minimum_size_y: 8
 resizable_x: false
 resizable_y: false
 nodes: true
-attribute_info: {}
 pencil: Node
+solid: false
+attribute_info:
+  originY:
+    display_name: originY
+    ty: Int
+    default:
+      Int: 0
+    options: []
+    ignore: true
+  hatch:
+    display_name: Hatch Condition
+    ty: String
+    default:
+      String: ""
+    options:
+      - name: Within Distance
+        value:
+          String: Distance
+      - name: Player on the Right
+        value:
+          String: playerRightOfX
+    ignore: false
+  originX:
+    display_name: originX
+    ty: Int
+    default:
+      Int: 0
+    options: []
+    ignore: true
+keywords: []
+templates:
+  - name: seekerStatue
+    keywords: []
+    attributes: {}

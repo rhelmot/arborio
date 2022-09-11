@@ -1,19 +1,75 @@
+---
 entity_name: blackGem
 hitboxes:
   initial_rects:
     - topleft:
-        x: x-8
-        y: y-8
+        x: (x - 8)
+        y: (y - 8)
       size:
-        x: 16
-        y: 16
+        x: "16"
+        y: "16"
+  node_rects: []
 standard_draw:
   initial_draw:
     - DrawPointImage:
-        texture: '"collectables/heartGem/0/00"'
+        texture: "\"collectables/heartGem/0/00\""
         point:
           x: x
           y: y
+        justify_x: 0.5
+        justify_y: 0.5
+        scale:
+          x: "1"
+          y: "1"
+        color:
+          r: "255"
+          g: "255"
+          b: "255"
+          a: "255"
+        rot: "0"
+  node_draw: []
+selected_draw:
+  initial_draw: []
+  node_draw: []
+minimum_size_x: 8
+minimum_size_y: 8
 resizable_x: false
 resizable_y: false
 nodes: false
+pencil: Line
+solid: false
+attribute_info:
+  originY:
+    display_name: originY
+    ty: Int
+    default:
+      Int: 0
+    options: []
+    ignore: true
+  removeCameraTriggers:
+    display_name: removeCameraTriggers
+    ty: Bool
+    default:
+      Bool: false
+    options: []
+    ignore: false
+  fake:
+    display_name: Fake
+    ty: Bool
+    default:
+      Bool: false
+    options: []
+    ignore: false
+  originX:
+    display_name: originX
+    ty: Int
+    default:
+      Int: 0
+    options: []
+    ignore: true
+keywords: []
+templates:
+  - name: Heart
+    keywords:
+      - Crystal Heart
+    attributes: {}

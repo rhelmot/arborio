@@ -360,6 +360,7 @@ style_list list {
     width: 1s;
     height: 1s;
     min-height: 50px;
+    font: "monospace";
 }
 
 /* logs */
