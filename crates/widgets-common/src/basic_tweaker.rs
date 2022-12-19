@@ -21,7 +21,7 @@ pub fn basic_attrs_editor<LA, LC, FS>(
 {
     let info_len_lens = lens_config.then(HashMapLenLens::new());
     Binding::new(cx, info_len_lens, move |cx, info_len| {
-        let info_len = info_len.get(cx);
+        let info_len = info_len.get_fallible(cx).unwrap_or_default();
 
         for idx in 0..info_len {
             let lens_attr_key = lens_config.then(HashMapNthKeyLens::new(idx));
@@ -46,48 +46,47 @@ pub fn basic_attrs_editor<LA, LC, FS>(
                 });
                 Binding::new(cx, lens_attr_opts, move |cx, lens_attr_opts| {
                     let opts_len =
-                        lens_attr_opts.view(cx.data().unwrap(), |opts| opts.unwrap().len());
+                        lens_attr_opts.view(cx.data().unwrap(), |opts| opts.map_or(0, |x| x.len()));
                     if opts_len != 0 {
                         // ugh... the placement of this binding is nontrivial
                         Binding::new(cx, lens_attr_val, move |cx, lens_attr_val| {
-                            if let Some(attr_val) = lens_attr_val.get_fallible(cx) {
-                                let (found_idx, found_lbl) =
-                                    lens_attr_opts.view(cx.data().unwrap(), |opts| {
-                                        for (idx, opt) in opts.unwrap().iter().enumerate() {
-                                            if opt.value.to_binel() == attr_val {
-                                                return (Some(idx), Some(opt.name.clone()));
-                                            }
+                            let attr_val = lens_attr_val.get_fallible(cx);
+                            let (found_idx, found_lbl) =
+                                lens_attr_opts.view(cx.data().unwrap(), |opts| {
+                                    for (idx, opt) in opts.unwrap().iter().enumerate() {
+                                        if Some(opt.value.to_binel()) == attr_val {
+                                            return (Some(idx), Some(opt.name.clone()));
                                         }
-                                        (None, None)
-                                    });
-                                Dropdown::new(
-                                    cx,
-                                    move |cx| {
-                                        let found_lbl = found_lbl.clone();
-                                        HStack::new(cx, move |cx| {
-                                            Label::new(
-                                                cx,
-                                                found_lbl.as_ref().map_or("weh", |a| a.as_str()),
-                                            );
-                                            Label::new(cx, DOWN).font("icons");
-                                        })
-                                        .width(Units::Stretch(1.0))
-                                    },
-                                    move |cx| {
-                                        for idx in 0..opts_len {
-                                            let opt = lens_attr_opts.index(idx).get(cx);
-                                            Label::new(cx, &opt.name)
-                                                .class("dropdown_element")
-                                                .toggle_class("checked", Some(idx) == found_idx)
-                                                .on_press(move |cx| {
-                                                    let key = lens_attr_key.get(cx);
-                                                    setter(cx, key, opt.value.to_binel());
-                                                    cx.emit(PopupEvent::Close);
-                                                });
-                                        }
-                                    },
-                                );
-                            }
+                                    }
+                                    (None, None)
+                                });
+                            Dropdown::new(
+                                cx,
+                                move |cx| {
+                                    let found_lbl = found_lbl.clone();
+                                    HStack::new(cx, move |cx| {
+                                        Label::new(
+                                            cx,
+                                            found_lbl.as_ref().map_or("weh", |a| a.as_str()),
+                                        );
+                                        Label::new(cx, DOWN).font("icons");
+                                    })
+                                    .width(Units::Stretch(1.0))
+                                },
+                                move |cx| {
+                                    for idx in 0..opts_len {
+                                        let opt = lens_attr_opts.index(idx).get(cx);
+                                        Label::new(cx, &opt.name)
+                                            .class("dropdown_element")
+                                            .toggle_class("checked", Some(idx) == found_idx)
+                                            .on_press(move |cx| {
+                                                let key = lens_attr_key.get(cx);
+                                                setter(cx, key, opt.value.to_binel());
+                                                cx.emit(PopupEvent::Close);
+                                            });
+                                    }
+                                },
+                            );
                         });
                     } else {
                         Binding::new(cx, lens_attr_type, move |cx, attr_type| {
@@ -101,6 +100,7 @@ pub fn basic_attrs_editor<LA, LC, FS>(
                                         move |cx, key, val| {
                                             setter(cx, key, Attribute::Text(val));
                                         },
+                                        true,
                                     );
                                 }
                                 AttributeType::Int => {
@@ -111,6 +111,7 @@ pub fn basic_attrs_editor<LA, LC, FS>(
                                         move |cx, key, val| {
                                             setter(cx, key, Attribute::Int(val));
                                         },
+                                        true,
                                     );
                                 }
                                 AttributeType::Float => {
@@ -121,6 +122,7 @@ pub fn basic_attrs_editor<LA, LC, FS>(
                                         move |cx, key, val| {
                                             setter(cx, key, Attribute::Float(val));
                                         },
+                                        true,
                                     );
                                 }
                                 AttributeType::Bool => {
@@ -144,10 +146,14 @@ pub fn basic_attrs_editor<LA, LC, FS>(
         let attrs_len_lens = lens_attributes.then(HashMapLenLens::new());
         Binding::new(cx, attrs_len_lens, move |cx, _| {
             let keys_attributes = lens_attributes.view(cx.data().unwrap(), |val| {
-                val.unwrap().keys().cloned().collect::<HashSet<String>>()
+                val.map_or(HashSet::default(), |x| {
+                    x.keys().cloned().collect::<HashSet<String>>()
+                })
             });
             let keys_config = lens_config.view(cx.data().unwrap(), |val| {
-                val.unwrap().keys().cloned().collect::<HashSet<String>>()
+                val.map_or(HashSet::default(), |x| {
+                    x.keys().cloned().collect::<HashSet<String>>()
+                })
             });
             let difference = keys_attributes.difference(&keys_config).count();
             if difference != 0 {

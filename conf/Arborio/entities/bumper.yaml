@@ -37,3 +37,8 @@ selected_draw:
 resizable_x: false
 resizable_y: false
 nodes: false
+templates:
+  - name: Bumper
+    keywords:
+      - pinball
+    attributes: {}

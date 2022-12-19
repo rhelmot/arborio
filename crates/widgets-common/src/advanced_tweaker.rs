@@ -105,17 +105,29 @@ pub fn advanced_attrs_editor(
                     let b_value_lens = attr_value_lens.then(Attribute::bool);
 
                     let setter2 = setter.clone();
-                    attr_editor(cx, s_value_lens, key_lens, move |cx, key, val| {
-                        setter2(cx, key, Attribute::Text(val))
-                    });
+                    attr_editor(
+                        cx,
+                        s_value_lens,
+                        key_lens,
+                        move |cx, key, val| setter2(cx, key, Attribute::Text(val)),
+                        false,
+                    );
                     let setter2 = setter.clone();
-                    attr_editor(cx, i_value_lens, key_lens, move |cx, key, val| {
-                        setter2(cx, key, Attribute::Int(val))
-                    });
+                    attr_editor(
+                        cx,
+                        i_value_lens,
+                        key_lens,
+                        move |cx, key, val| setter2(cx, key, Attribute::Int(val)),
+                        false,
+                    );
                     let setter2 = setter.clone();
-                    attr_editor(cx, f_value_lens, key_lens, move |cx, key, val| {
-                        setter2(cx, key, Attribute::Float(val))
-                    });
+                    attr_editor(
+                        cx,
+                        f_value_lens,
+                        key_lens,
+                        move |cx, key, val| setter2(cx, key, Attribute::Float(val)),
+                        false,
+                    );
                     Binding::new(cx, IsFailedLens::new(b_value_lens), move |cx, failed| {
                         if !failed.get(cx) {
                             let setter2 = setter.clone();
@@ -193,20 +205,35 @@ pub fn attr_editor<T: ToString + FromStr + Data>(
     lens: impl Lens<Target = T>,
     key: impl Send + Sync + Lens<Target = String>,
     setter: impl 'static + Clone + Send + Sync + Fn(&mut EventContext, String, T),
+    force: bool,
 ) {
-    Binding::new(cx, IsFailedLens::new(lens.clone()), move |cx, failed| {
-        if !failed.get(cx) {
-            let key = key.clone();
-            let setter = setter.clone();
-            validator_box(
-                cx,
-                lens.clone(),
-                move |cx, value| {
-                    setter(cx, key.get(cx), value);
-                    true
-                },
-                move |cx, valid| cx.toggle_class("validation_error", !valid),
-            );
-        }
-    });
+    if force {
+        attr_editor_inner(cx, lens, key, setter);
+    } else {
+        Binding::new(cx, IsFailedLens::new(lens.clone()), move |cx, failed| {
+            if !failed.get(cx) {
+                let key = key.clone();
+                let setter = setter.clone();
+                let lens = lens.clone();
+                attr_editor_inner(cx, lens, key, setter);
+            }
+        });
+    }
+}
+
+pub fn attr_editor_inner<T: ToString + FromStr + Data>(
+    cx: &mut Context,
+    lens: impl Lens<Target = T>,
+    key: impl Send + Sync + Lens<Target = String>,
+    setter: impl 'static + Clone + Send + Sync + Fn(&mut EventContext, String, T),
+) {
+    validator_box(
+        cx,
+        lens.clone(),
+        move |cx, value| {
+            setter(cx, key.get(cx), value);
+            true
+        },
+        move |cx, valid| cx.toggle_class("validation_error", !valid),
+    );
 }

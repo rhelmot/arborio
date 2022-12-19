@@ -1,0 +1,62 @@
+---
+entity_name: soundSource
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x - 4
+        y: y - 4
+      size:
+        x: 8
+        y: 8
+  node_rects: []
+standard_draw:
+  initial_draw:
+    - DrawRect:
+        rect:
+          topleft:
+            x: x - 4
+            y: y - 4
+          size:
+            x: 8
+            y: 8
+        color:
+          r: 0xff
+          g: 0x4f
+          b: 0
+          a: 0x40
+        border_color:
+          r: 0xf0
+          g: 0x40
+          b: 0xff
+          a: 0xff
+  node_draw: []
+selected_draw:
+  initial_draw: []
+  node_draw: []
+minimum_size_x: 0
+minimum_size_y: 0
+resizable_x: false
+resizable_y: false
+nodes: false
+pencil: Line
+solid: false
+attribute_info:
+  sound:
+    display_name: sound
+    ty: String
+    default:
+      String: ""
+  originX:
+    ty: Int
+    default:
+      Int: 0
+    ignore: true
+  originY:
+    ty: Int
+    default:
+      Int: 0
+    ignore: true
+keywords: []
+templates:
+  - name: Sound Source
+    attributes: {}

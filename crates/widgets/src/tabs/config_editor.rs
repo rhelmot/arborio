@@ -44,6 +44,13 @@ pub fn set_default_draw(this: &mut AnyConfig, app: &AppState) {
             .unwrap()
             .selected_draw
             .clone();
+        e.hitboxes = app
+            .omni_palette
+            .entity_config
+            .get("default")
+            .unwrap()
+            .hitboxes
+            .clone();
     }
 }
 

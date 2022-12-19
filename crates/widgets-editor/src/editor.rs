@@ -41,7 +41,9 @@ pub struct EditorWidget {}
 
 impl EditorWidget {
     pub fn new(cx: &mut Context) -> Handle<Self> {
-        Self {}.build(cx, |_| {})
+        Self {}.build(cx, |cx| {
+            cx.focus();
+        })
     }
 }
 

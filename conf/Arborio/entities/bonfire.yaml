@@ -26,15 +26,18 @@ standard_draw:
 resizable_x: false
 resizable_y: false
 nodes: false
-attributes:
+attribute_info:
   mode:
     ty: String
     default:
       String: Unlit
     options:
       - name: Unlit
-        value: Unlit
+        value:
+          String: Unlit
       - name: Lit
-        value: Lit
+        value:
+          String: Lit
       - name: Smoking
-        value: Smoking
+        value:
+          String: Smoking

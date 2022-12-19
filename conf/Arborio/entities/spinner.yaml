@@ -41,7 +41,7 @@ resizable_x: false
 resizable_y: false
 nodes: false
 pencil: Line
-attributes:
+attribute_info:
   dust:
     ty: Bool
     default:

@@ -34,3 +34,22 @@ standard_draw:
 resizable_x: false
 resizable_y: false
 nodes: false
+attribute_info:
+  originX:
+    ty: Int
+    default:
+      Int: 0
+    ignore: true
+  originY:
+    ty: Int
+    default:
+      Int: 0
+    ignore: true
+  right:
+    display_name: Face Right
+    ty: Bool
+    default:
+      Bool: false
+templates:
+  - name: Puffer Fish
+    attributes: {}

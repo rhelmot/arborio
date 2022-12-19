@@ -40,7 +40,7 @@ impl ConfigSourceTrait for FolderSource {
         let path = path.to_path_buf();
         let start = self.0.clone();
         Box::new(
-            WalkDir::new(self.0.join(&path))
+            WalkDir::new(self.0.join(path))
                 .min_depth(1)
                 .max_depth(1)
                 .into_iter()
@@ -54,7 +54,7 @@ impl ConfigSourceTrait for FolderSource {
         let path = path.to_path_buf();
         let start = self.0.clone();
         Box::new(
-            WalkDir::new(self.0.join(&path))
+            WalkDir::new(self.0.join(path))
                 .min_depth(1)
                 .into_iter()
                 .filter_map(Result::ok)

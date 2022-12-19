@@ -48,37 +48,53 @@ resizable_x: true
 resizable_y: false
 minimum_size_x: 16
 nodes: false
+pencil: Rect
 attribute_info:
   texture:
+    display_name: Texture
     ty: String
     default:
-      String: "default"
+      String: default
     options:
       - name: Default
         value:
-          String: "default"
+          String: default
       - name: Cliffside
         value:
-          String: "cliffside"
+          String: cliffside
       - name: Core
         value:
-          String: "core"
+          String: core
       - name: Dream
         value:
-          String: "dream"
+          String: dream
       - name: Moon
         value:
-          String: "moon"
+          String: moon
       - name: Reflection
         value:
-          String: "reflection"
+          String: reflection
       - name: Temple
         value:
-          String: "temple"
+          String: temple
       - name: Temple B
         value:
-          String: "templeB"
+          String: templeB
       - name: Wood
         value:
-          String: "wood"
-pencil: Rect
+          String: wood
+  surfaceIndex:
+    display_name: Surface Index
+    ty: Int
+    default:
+      Int: 0
+  originX:
+    ty: Int
+    default:
+      Int: 0
+    ignore: true
+  originY:
+    ty: Int
+    default:
+      Int: 0
+    ignore: true

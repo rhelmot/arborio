@@ -1,0 +1,11 @@
+trigger_name: eventTrigger
+nodes: true
+attribute_info:
+  event:
+    ty: String
+    default:
+      String: ''
+  onSpawn:
+    ty: Bool
+    default:
+      Bool: false

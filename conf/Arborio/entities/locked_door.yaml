@@ -22,3 +22,29 @@ standard_draw:
 resizable_x: false
 resizable_y: false
 nodes: false
+attribute_info:
+  sprite:
+    ty: String
+    default:
+      String: 'wood'
+    options:
+      - name: Wood
+        value:
+          String: wood
+      - name: Temple A
+        value:
+          String: temple_a
+      - name: Temple B
+        value:
+          String: temple_b
+      - name: Moon
+        value:
+          String: moon
+  stepMusicProgress:
+    ty: Bool
+    default:
+      Bool: false
+  unlock_sfx:
+    ty: String
+    default:
+      String: ""

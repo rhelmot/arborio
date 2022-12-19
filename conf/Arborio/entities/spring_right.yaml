@@ -19,3 +19,22 @@ standard_draw:
 resizable_x: false
 resizable_y: false
 nodes: false
+attribute_info:
+  playerCanUse:
+    display_name: Player Can Use
+    ty: Bool
+    default:
+      Bool: true
+  originX:
+    ty: Int
+    default:
+      Int: 0
+    ignore: true
+  originY:
+    ty: Int
+    default:
+      Int: 0
+    ignore: true
+templates:
+  - name: Spring (Right)
+    attributes: {}

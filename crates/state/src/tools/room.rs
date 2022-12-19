@@ -553,6 +553,8 @@ impl RoomTool {
                 .unwrap()
                 .transform_point(ScreenPoint::new(100., 100.)),
         );
+        let real_center =
+            point_tile_to_room(&point_room_to_tile(&real_center.cast_unit())).cast_unit();
         let offset = real_center - center;
         result.push(
             app.batch_action_unique(clipboard_data.into_iter().map(|mut room| {

@@ -104,8 +104,12 @@ impl RoomTweakerWidget {
             )
             .on_edit(move |cx, value| {
                 if let Ok(parsed) = value.parse() {
-                    emit_bounds(cx, Some(parsed), None, None, None);
-                    cx.toggle_class("validation_error", false);
+                    if parsed % 8 == 0 {
+                        emit_bounds(cx, Some(parsed), None, None, None);
+                        cx.toggle_class("validation_error", false);
+                    } else {
+                        cx.toggle_class("validation_error", true);
+                    }
                 } else {
                     cx.toggle_class("validation_error", true);
                 }
@@ -121,8 +125,12 @@ impl RoomTweakerWidget {
             )
             .on_edit(move |cx, value| {
                 if let Ok(parsed) = value.parse() {
-                    emit_bounds(cx, None, Some(parsed), None, None);
-                    cx.toggle_class("validation_error", false);
+                    if parsed % 8 == 0 {
+                        emit_bounds(cx, None, Some(parsed), None, None);
+                        cx.toggle_class("validation_error", false);
+                    } else {
+                        cx.toggle_class("validation_error", true);
+                    }
                 } else {
                     cx.toggle_class("validation_error", true);
                 }
@@ -138,8 +146,12 @@ impl RoomTweakerWidget {
             )
             .on_edit(move |cx, value| {
                 if let Ok(parsed) = value.parse() {
-                    emit_bounds(cx, None, None, Some(parsed), None);
-                    cx.toggle_class("validation_error", false);
+                    if parsed % 8 == 0 {
+                        emit_bounds(cx, None, None, Some(parsed), None);
+                        cx.toggle_class("validation_error", false);
+                    } else {
+                        cx.toggle_class("validation_error", true);
+                    }
                 } else {
                     cx.toggle_class("validation_error", true);
                 }
@@ -155,8 +167,12 @@ impl RoomTweakerWidget {
             )
             .on_edit(move |cx, value| {
                 if let Ok(parsed) = value.parse() {
-                    emit_bounds(cx, None, None, None, Some(parsed));
-                    cx.toggle_class("validation_error", false);
+                    if parsed % 8 == 0 {
+                        emit_bounds(cx, None, None, None, Some(parsed));
+                        cx.toggle_class("validation_error", false);
+                    } else {
+                        cx.toggle_class("validation_error", true);
+                    }
                 } else {
                     cx.toggle_class("validation_error", true);
                 }

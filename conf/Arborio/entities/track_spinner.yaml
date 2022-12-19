@@ -60,13 +60,45 @@ nodes: true
 pencil: Node
 attribute_info:
   star:
+    display_name: Star
     ty: Bool
     default:
       Bool: false
   dust:
+    display_name: Dust
     ty: Bool
     default:
       Bool: false
+  startCenter:
+    display_name: Start at Center
+    ty: Bool
+    default:
+      Bool: false
+  speed:
+    display_name: Speed
+    ty: String
+    default:
+      String: "Slow"
+    options:
+      - name: Slow
+        value:
+          String: Slow
+      - name: Normal
+        value:
+          String: Normal
+      - name: Fast
+        value:
+          String: Fast
+  originX:
+    ty: Int
+    default:
+      Int: 0
+    ignore: true
+  originY:
+    ty: Int
+    default:
+      Int: 0
+    ignore: true
 templates:
   - name: "Track Spinner (Blade)"
     attributes: {}
