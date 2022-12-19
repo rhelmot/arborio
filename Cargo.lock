@@ -1123,8 +1123,9 @@ dependencies = [
 
 [[package]]
 name = "include_dir_macros"
-version = "0.7.2"
-source = "git+https://github.com/zombiepigdragon/include_dir.git?branch=reintroduce-include-bytes#898c4a0c76125b1a36c3514a4736b512f37b277f"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b139284b5cf57ecfa712bcc66950bb635b31aff41c188e8a4cfc758eca374a3f"
 dependencies = [
  "proc-macro2 1.0.43",
  "quote 1.0.21",

@@ -48,7 +48,6 @@ log = "0.4.16"
 image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
 
 [patch.crates-io]
-include_dir_macros = { git = "https://github.com/zombiepigdragon/include_dir.git", branch = "reintroduce-include-bytes" }
 smithay-clipboard = { path = "../../rust/smithay-clipboard" }
 
 [dev-dependencies]
