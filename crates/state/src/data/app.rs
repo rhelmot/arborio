@@ -229,7 +229,7 @@ impl AppState {
             cfg.celeste_root = None;
         }
         let cfg = AutoSaver::new(cfg, |cfg: &mut AppConfig| {
-            confy::store("arborio", &cfg)
+            confy::store("arborio", cfg)
                 .unwrap_or_else(|e| panic!("Failed to save config file: {}", e));
         });
 

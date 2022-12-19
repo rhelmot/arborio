@@ -136,7 +136,7 @@ impl EverestYaml {
     pub fn save(&self, mod_path: &Path) {
         [self]
             .serialize(&mut serde_yaml::Serializer::new(
-                std::fs::File::create(&mod_path.join("everest.yaml")).unwrap(),
+                std::fs::File::create(mod_path.join("everest.yaml")).unwrap(),
             ))
             .unwrap();
     }

@@ -37,7 +37,7 @@ impl View for TilePaletteWidget {
         let entity = cx.current();
         let bounds = cx.cache.get_bounds(entity);
         let t = app.objtiles_transform;
-        let t = t.then_translate(ScreenVector::new(bounds.x as f32, bounds.y as f32));
+        let t = t.then_translate(ScreenVector::new(bounds.x, bounds.y));
         let screen_hovered = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let tinv = t.inverse().unwrap();
         let map_hovered = tinv.transform_point(screen_hovered);

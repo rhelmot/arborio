@@ -250,7 +250,7 @@ impl MultiAtlas {
     }
 
     pub fn iter_paths(&self) -> impl Iterator<Item = &Interned> + '_ {
-        self.sprites_map.iter().map(|(path, _)| path)
+        self.sprites_map.keys()
     }
 
     pub fn sprite_dimensions(&self, sprite_path: &str) -> Option<Size2D<u16, UnknownUnit>> {

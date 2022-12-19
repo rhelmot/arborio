@@ -933,10 +933,10 @@ where
         );
 
         let mut path = PPath::new();
-        path.move_to(0.0, -bounds.h as f32 / 2.0);
-        path.line_to(0.0, bounds.h as f32 / 2.0);
-        path.move_to(-bounds.w as f32 / 2.0, 0.0);
-        path.line_to(bounds.w as f32 / 2.0, 0.0);
+        path.move_to(0.0, -bounds.h / 2.0);
+        path.line_to(0.0, bounds.h / 2.0);
+        path.move_to(-bounds.w / 2.0, 0.0);
+        path.line_to(bounds.w / 2.0, 0.0);
         canvas.stroke_path(
             &mut path,
             Paint::color(Color::cyan().into()).with_line_width(cx.style.dpi_factor as f32),

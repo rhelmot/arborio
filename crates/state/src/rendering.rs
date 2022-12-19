@@ -147,8 +147,8 @@ fn draw_entity_directive(
             line.set_anti_alias(false);
 
             let mut path = Path::new();
-            path.move_to(x1 as f32, y1 as f32);
-            path.line_to(x2 as f32, y2 as f32);
+            path.move_to(x1, y1);
+            path.line_to(x2, y2);
             if *arrowhead {
                 let vec: Vector2D<f32, UnknownUnit> =
                     Vector2D::new(x2 - x1, y2 - y1).normalize() * 8.0;

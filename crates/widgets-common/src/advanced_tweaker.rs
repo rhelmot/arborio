@@ -229,7 +229,7 @@ pub fn attr_editor_inner<T: ToString + FromStr + Data>(
 ) {
     validator_box(
         cx,
-        lens.clone(),
+        lens,
         move |cx, value| {
             setter(cx, key.get(cx), value);
             true

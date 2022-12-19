@@ -591,7 +591,7 @@ impl TwoWayConverter<String> for ParenFlipper {
 
 impl CelesteMapLevel {
     pub fn tile(&self, pt: TilePoint, foreground: bool) -> Option<char> {
-        let w = self.bounds.width() as i32 / 8;
+        let w = self.bounds.width() / 8;
         if pt.x < 0 || pt.x >= w {
             return None;
         }
@@ -940,7 +940,7 @@ fn serialize_tiles<T: Copy + PartialEq + ToString>(
     let mut elem = BinEl::new("");
     let text = tiles
         .tiles
-        .chunks(tiles.stride as usize)
+        .chunks(tiles.stride)
         .map(|s| {
             let last_present = s.iter().rposition(|&c| c != default);
             if let Some(last_present) = last_present {
@@ -1004,7 +1004,7 @@ where
 
     Ok(TileGrid {
         tiles: data,
-        stride: width as usize,
+        stride: width,
     })
 }
 

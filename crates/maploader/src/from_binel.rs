@@ -405,7 +405,7 @@ fn compare_char_tiles_required(first: Option<&BinElAttr>, second: Option<&BinElA
                 let pattern_ch = second_chars.get(pattern_i);
                 if Some(target_ch) == pattern_ch.copied() {
                     pattern_i += 1;
-                } else if (pattern_ch == None || pattern_ch.copied() == Some('\n'))
+                } else if (pattern_ch.is_none() || pattern_ch.copied() == Some('\n'))
                     && (target_ch == '0' || target_ch == '\n')
                 {
                 } else {
@@ -443,7 +443,7 @@ fn compare_int_tiles_required(first: Option<&BinElAttr>, second: Option<&BinElAt
                 let pattern_ch = second_chars.get(pattern_i);
                 if Some(target_ch) == pattern_ch.copied() {
                     pattern_i += 1;
-                } else if (pattern_ch == None || pattern_ch.copied() == Some('\n'))
+                } else if (pattern_ch.is_none() || pattern_ch.copied() == Some('\n'))
                     && target_ch == '\n'
                 {
                 } else {

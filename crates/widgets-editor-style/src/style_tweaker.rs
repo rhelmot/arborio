@@ -135,7 +135,9 @@ impl StyleTweakerWidget {
                                     EventPhase::new(),
                                     MapAction::AddStyleground {
                                         loc: CurrentStylegroundLens {}.get(cx),
-                                        style: Box::new(CelesteMapStyleground::default()),
+                                        style: Box::<
+                                            arborio_maploader::map_struct::CelesteMapStyleground,
+                                        >::default(),
                                     },
                                 ));
                             }

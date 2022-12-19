@@ -630,10 +630,7 @@ impl SelectionTool {
                             .cast()
                             .to_size()
                             .abs();
-                        vec![Rect::new(
-                            RoomPoint::new(decal.x as i32, decal.y as i32) - size / 2,
-                            size,
-                        )]
+                        vec![Rect::new(RoomPoint::new(decal.x, decal.y) - size / 2, size)]
                     } else {
                         vec![]
                     }
@@ -1504,10 +1501,7 @@ impl SelectionTool {
                             .cast()
                             .to_size()
                             .abs();
-                        let hitbox = Rect::new(
-                            RoomPoint::new(decal.x as i32, decal.y as i32) - size / 2,
-                            size,
-                        );
+                        let hitbox = Rect::new(RoomPoint::new(decal.x, decal.y) - size / 2, size);
                         min_tile = min_tile.min(point_room_to_tile(&hitbox.min()));
                         max_tile = max_tile.max(point_room_to_tile(&hitbox.max()));
                     }
