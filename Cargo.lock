@@ -2134,6 +2134,7 @@ dependencies = [
 [[package]]
 name = "smithay-clipboard"
 version = "0.6.6"
+source = "git+https://github.com/rhelmot/smithay-clipboard?rev=f2b003a3d35e4c050d989cc2a3492cef6762740f#f2b003a3d35e4c050d989cc2a3492cef6762740f"
 dependencies = [
  "libc",
  "smithay-client-toolkit",

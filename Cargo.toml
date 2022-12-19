@@ -48,7 +48,8 @@ log = "0.4.16"
 image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
 
 [patch.crates-io]
-smithay-clipboard = { path = "../../rust/smithay-clipboard" }
+#smithay-clipboard = { path = "../../rust/smithay-clipboard" }
+smithay-clipboard = { git = "https://github.com/rhelmot/smithay-clipboard", rev = "f2b003a3d35e4c050d989cc2a3492cef6762740f" }
 
 [dev-dependencies]
 celeste = "^2"
