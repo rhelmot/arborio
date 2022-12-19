@@ -155,7 +155,7 @@ impl Atlas {
         let count = reader.read_u16::<LittleEndian>()?;
         for _ in 0..count {
             let data_file = read_string(&mut reader)? + ".data";
-            let data_path = meta_file.with_file_name(&data_file);
+            let data_path = meta_file.with_file_name(data_file);
             self.blobs
                 .push(Arc::new(Mutex::new(BlobData::Waiting(load_data_file(
                     config, data_path,

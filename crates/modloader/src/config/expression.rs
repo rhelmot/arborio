@@ -572,7 +572,7 @@ impl Const {
 
     pub fn from_attr(a: &Attribute) -> Const {
         match a {
-            Attribute::Bool(b) => Const::from_num(if *b { 1 } else { 0 }),
+            Attribute::Bool(b) => Const::from_num(i32::from(*b)),
             Attribute::Int(i) => Const::from_num(*i),
             Attribute::Float(f) => Const::from_num(*f),
             Attribute::Text(s) => Const::String(s.clone()),
