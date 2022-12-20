@@ -12,6 +12,7 @@ use std::str::FromStr;
 
 use arborio_maploader::map_struct::Attribute;
 use arborio_utils;
+use arborio_utils::default::is_default;
 use arborio_utils::interned::{intern_str, Interned};
 use arborio_utils::units::{Rect as CRect, *};
 use arborio_utils::vizia::prelude::*;
@@ -38,13 +39,13 @@ impl Default for PencilBehavior {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Lens)]
 pub struct AttributeInfo {
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_default")]
     pub display_name: Option<String>,
     pub ty: AttributeType,
     pub default: AttributeValue,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_default")]
     pub options: Vec<AttributeOption>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_default")]
     pub ignore: bool,
 }
 
@@ -84,7 +85,7 @@ impl AttributeValue {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct EntityTemplate {
     pub name: Interned,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_default")]
     pub keywords: Vec<String>,
     pub attributes: HashMap<Interned, AttributeValue>,
 }
