@@ -3,11 +3,12 @@ use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{one_of, space0};
 use nom::combinator::{complete, eof, map, map_res, opt, recognize};
-use nom::error::{Error, ErrorKind};
+use nom::error::{Error as NomError, ErrorKind};
 use nom::multi::{fold_many0, many0, separated_list0};
 use nom::number::complete;
 use nom::sequence::{delimited, pair, separated_pair, terminated, tuple};
 use nom::{IResult, InputTakeAtPosition, Parser};
+use serde::de::Error as SerdeError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fmt::Formatter;
@@ -302,7 +303,7 @@ fn match_expr_with_errors(input: &str) -> IResult<&str, Result<Expression, ()>> 
 
 fn match_expr(input: &str) -> IResult<&str, Expression> {
     map_res(match_expr_with_errors, |s| {
-        s.map_err(|_| Error {
+        s.map_err(|_| NomError {
             input: "what",
             code: ErrorKind::MapRes,
         })
@@ -318,8 +319,8 @@ fn un_op(op: UnOp) -> impl FnMut(&str) -> IResult<&str, UnOp> {
 }
 
 fn bin_expression<'a>(
-    mut operator: impl Parser<&'a str, BinOp, Error<&'a str>>,
-    mut sub_expression: impl Parser<&'a str, Expression, Error<&'a str>>,
+    mut operator: impl Parser<&'a str, BinOp, NomError<&'a str>>,
+    mut sub_expression: impl Parser<&'a str, Expression, NomError<&'a str>>,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Expression> {
     move |input: &str| {
         let (input, init) = sub_expression.parse(input)?;
@@ -398,10 +399,10 @@ impl<'de> Deserialize<'de> for Expression {
         let s: String = Deserialize::deserialize(deserializer)?;
         let parsed = expression(s.as_str());
         if let Err(e) = parsed {
-            dbg!(e);
-            panic!("Error parsing {}", s); // TODO ummmm how do you construct this kind of error
+            Err(D::Error::custom(e))
+        } else {
+            Ok(parsed.unwrap().1)
         }
-        Ok(parsed.unwrap().1)
     }
 }
 
