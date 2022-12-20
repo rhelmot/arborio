@@ -408,7 +408,7 @@ impl Tool for SelectionTool {
             );
             canvas.stroke_path(
                 &mut path,
-                vg::Paint::color(vg::Color::rgb(0, 0, 0)).with_line_width(1.5),
+                &vg::Paint::color(vg::Color::rgb(0, 0, 0)).with_line_width(1.5),
             );
         }
 
@@ -430,7 +430,7 @@ impl Tool for SelectionTool {
 
         canvas.fill_path(
             &mut path,
-            vg::Paint::color(vg::Color::rgba(255, 255, 0, 128)),
+            &vg::Paint::color(vg::Color::rgba(255, 255, 0, 128)),
         );
 
         if self.status == SelectionStatus::None {
@@ -447,7 +447,7 @@ impl Tool for SelectionTool {
                     }
                     canvas.fill_path(
                         &mut path,
-                        vg::Paint::color(vg::Color::rgba(100, 100, 255, 128)),
+                        &vg::Paint::color(vg::Color::rgba(100, 100, 255, 128)),
                     );
                 }
             }

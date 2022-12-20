@@ -1,4 +1,3 @@
-use arborio_utils::vizia::prelude::Data;
 use itertools::Itertools;
 use serde::de::{Error, Unexpected};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -48,7 +47,7 @@ pub struct EverestYamlDependency {
     pub version: EverestModuleVersion,
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Clone, Debug, Data)]
+#[derive(PartialEq, Eq, PartialOrd, Clone, Debug)]
 pub struct EverestModuleVersion(pub Vec<i32>);
 
 impl<'de> Deserialize<'de> for EverestModuleVersion {

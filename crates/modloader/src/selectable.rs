@@ -1,5 +1,4 @@
 use arborio_utils::interned::Interned;
-use arborio_utils::vizia::prelude::*;
 
 #[derive(Copy, Clone, Debug)]
 pub struct TileSelectable {
@@ -15,12 +14,6 @@ impl Default for TileSelectable {
             name: "Empty",
             texture: None,
         }
-    }
-}
-
-impl Data for TileSelectable {
-    fn same(&self, other: &Self) -> bool {
-        self == other
     }
 }
 
@@ -47,12 +40,6 @@ impl Default for EntitySelectable {
     }
 }
 
-impl Data for EntitySelectable {
-    fn same(&self, other: &Self) -> bool {
-        self == other
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct TriggerSelectable {
     pub trigger: Interned,
@@ -68,23 +55,11 @@ impl Default for TriggerSelectable {
     }
 }
 
-impl Data for TriggerSelectable {
-    fn same(&self, other: &Self) -> bool {
-        self == other
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DecalSelectable(pub Interned);
 
 impl Default for DecalSelectable {
     fn default() -> Self {
         Self("does not exist".into())
-    }
-}
-
-impl Data for DecalSelectable {
-    fn same(&self, other: &Self) -> bool {
-        self == other
     }
 }

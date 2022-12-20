@@ -737,7 +737,7 @@ fn config_editor_textbox<T>(
     lens: impl Copy + Lens<Target = T>,
     on_edit: impl 'static + Send + Sync + Clone + Fn(&mut EventContext, T),
 ) where
-    T: FromStr + std::fmt::Display + Data,
+    T: FromStr + std::fmt::Display + PartialEq + Clone,
     <T as FromStr>::Err: ToString,
 {
     let tab = cx.data::<AppState>().unwrap().current_tab;
@@ -882,7 +882,7 @@ fn build_entity_tweaker(cx: &mut Context) {
                     .class("icon")
                     .class("remove_btn")
                     .on_press(move |cx| {
-                        remove_node(cx, idx);
+                        remove_node(cx.as_mut(), idx);
                     });
             });
         },
@@ -922,7 +922,7 @@ where
         path.rect(-bounds.w / 2.0, -bounds.h / 2.0, bounds.w, bounds.h);
         canvas.fill_path(
             &mut path,
-            Paint::linear_gradient(
+            &Paint::linear_gradient(
                 0.0,
                 -bounds.h / 2.0,
                 0.0,
@@ -939,7 +939,7 @@ where
         path.line_to(bounds.w / 2.0, 0.0);
         canvas.stroke_path(
             &mut path,
-            Paint::color(Color::cyan().into()).with_line_width(cx.style.dpi_factor as f32),
+            &Paint::color(Color::cyan().into()).with_line_width(cx.style.dpi_factor as f32),
         );
 
         canvas.scale(cx.style.dpi_factor as f32, cx.style.dpi_factor as f32);
@@ -987,7 +987,7 @@ where
 
                             canvas.fill_path(
                                 &mut path,
-                                Paint::color(arborio_utils::vizia::vg::Color::rgba(
+                                &Paint::color(arborio_utils::vizia::vg::Color::rgba(
                                     255, 255, 0, 128,
                                 )),
                             );

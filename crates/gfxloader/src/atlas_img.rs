@@ -334,7 +334,7 @@ impl MultiAtlas {
         canvas.save();
         canvas.translate(point.x, point.y);
         canvas.rotate(rot.to_radians());
-        canvas.fill_path(&mut path, paint);
+        canvas.fill_path(&mut path, &paint);
         canvas.restore();
 
         Ok(())

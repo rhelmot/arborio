@@ -330,7 +330,7 @@ pub struct CelesteMapEntity {
     pub nodes: Vec<Node>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, TryFromBinEl, Data, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, TryFromBinEl, Serialize, Deserialize)]
 #[name("node")]
 pub struct Node {
     pub x: i32,
@@ -444,7 +444,7 @@ pub enum CelesteMapErrorType {
     OutOfRange,
 }
 
-#[derive(Debug, PartialEq, Clone, Lens, Serialize, Deserialize, Data)]
+#[derive(Debug, PartialEq, Clone, Lens, Serialize, Deserialize)]
 pub enum Attribute {
     Bool(bool),
     Int(i32),
@@ -506,12 +506,6 @@ impl Into<BinElAttr> for Attribute {
             Attribute::Float(f) => BinElAttr::Float(f),
             Attribute::Text(s) => BinElAttr::Text(s),
         }
-    }
-}
-
-impl Data for CelesteMapEntity {
-    fn same(&self, other: &Self) -> bool {
-        self == other
     }
 }
 
@@ -1072,12 +1066,6 @@ impl PartialEq for RoomGlob {
     }
 }
 
-impl Data for RoomGlob {
-    fn same(&self, other: &Self) -> bool {
-        self == other
-    }
-}
-
 impl AttrCoercion for RoomGlob {
     const NICE_NAME: &'static str = "room glob";
 
@@ -1090,10 +1078,10 @@ impl AttrCoercion for RoomGlob {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Clone, Data)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub struct FadeDirectives(pub Vec<FadeDirective>);
 
-#[derive(Debug, PartialEq, Clone, Data)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct FadeDirective {
     pub pos_from: f32,
     pub pos_to: f32,

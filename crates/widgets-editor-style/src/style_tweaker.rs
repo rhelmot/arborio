@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use arborio_maploader::map_struct::{Attribute, CelesteMapStyleground};
 use arborio_modloader::config::AttributeType;
@@ -337,18 +337,18 @@ fn emit(cx: &mut EventContext, style: CelesteMapStyleground) {
     ));
 }
 
-fn tweak_attr_picker<T: Data>(
+fn tweak_attr_picker<T: 'static + PartialEq + Clone + Send + Sync>(
     // TODO move to common when mature
     cx: &mut Context,
     name: &'static str,
     lens: impl Lens<Target = T>,
     items: impl 'static + IntoIterator<Item = T> + Clone,
     labels: impl 'static + Fn(&mut Context, &T) -> String,
-    setter: impl 'static + Fn(&mut EventContext, T),
+    setter: impl 'static + Send + Sync + Fn(&mut EventContext, T),
 ) {
-    let labels = Rc::new(labels);
+    let labels = Arc::new(labels);
     let labels2 = labels.clone();
-    let setter = Rc::new(setter);
+    let setter = Arc::new(setter);
     HStack::new(cx, move |cx| {
         Label::new(cx, name);
         Dropdown::new(
@@ -377,7 +377,7 @@ fn tweak_attr_picker<T: Data>(
                         .class("btn_highlight")
                         .on_press(move |cx| {
                             cx.emit(PopupEvent::Close);
-                            setter(cx, item.clone());
+                            setter(cx.as_mut(), item.clone());
                         });
                 }
             },

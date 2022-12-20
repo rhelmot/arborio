@@ -8,7 +8,6 @@ use arborio_gfxloader::autotiler::{Autotiler, Tileset};
 use arborio_maploader::map_struct::{from_reader, save_as, CelesteMap};
 use arborio_utils::interned::{intern_str, InternedMap};
 use arborio_utils::uuid_cls;
-use arborio_utils::vizia::prelude::*;
 use arborio_walker::ConfigSourceTrait;
 use arborio_walker::{open_module, ConfigSource};
 
@@ -33,12 +32,6 @@ uuid_cls!(ModuleID);
 pub struct MapPath {
     pub module: ModuleID,
     pub sid: String,
-}
-
-impl Data for MapPath {
-    fn same(&self, other: &Self) -> bool {
-        self == other
-    }
 }
 
 lazy_static::lazy_static! {

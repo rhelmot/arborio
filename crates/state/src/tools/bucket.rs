@@ -107,7 +107,7 @@ impl Tool for BucketTool {
             let room_pt = point_tile_to_room(&tile);
             path.rect(room_pt.x as f32, room_pt.y as f32, 8.0, 8.0);
         }
-        canvas.fill_path(&mut path, Paint::color(Color::rgba(255, 0, 255, 128)));
+        canvas.fill_path(&mut path, &Paint::color(Color::rgba(255, 0, 255, 128)));
         canvas.restore();
     }
 }

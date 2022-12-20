@@ -35,7 +35,7 @@ enum NewAttributeDataEvent {
 pub fn tweak_attr_text<L, F>(cx: &mut Context, name: &'static str, lens: L, setter: F)
 where
     L: Lens,
-    <L as Lens>::Target: ToString + FromStr + Data,
+    <L as Lens>::Target: ToString + FromStr + PartialEq + Clone,
     F: 'static + Send + Sync + Fn(&mut EventContext, <L as Lens>::Target) -> bool,
 {
     HStack::new(cx, move |cx| {
@@ -54,7 +54,7 @@ pub fn tweak_attr_text_dropdown<L, LL, F>(
     setter: F,
 ) where
     L: Lens<Target = String>,
-    LL: Lens<Target = Vec<String>>,
+    LL: Send + Sync + Lens<Target = Vec<String>>,
     <LL as Lens>::Source: Model,
     F: 'static + Send + Sync + Clone + Fn(&mut EventContext, String),
 {
@@ -83,8 +83,8 @@ pub fn advanced_attrs_editor(
     cx: &mut Context,
     attributes_lens: impl Lens<Target = HashMap<String, Attribute>> + Copy + Send + Sync,
     setter: impl 'static + Clone + Send + Sync + Fn(&mut EventContext, String, Attribute),
-    adder: impl 'static + Fn(&mut EventContext, String, AttributeType),
-    remover: impl 'static + Clone + Fn(&mut EventContext, String),
+    adder: impl 'static + Send + Sync + Fn(&mut EventContext, String, AttributeType),
+    remover: impl 'static + Clone + Send + Sync + Fn(&mut EventContext, String),
 ) {
     Binding::new(
         cx,
@@ -142,7 +142,8 @@ pub fn advanced_attrs_editor(
                         .class("icon")
                         .class("remove_btn")
                         .on_press(move |cx| {
-                            remover(cx, key_lens.get(cx));
+                            let keyed = key_lens.get(cx);
+                            remover(cx.as_mut(), keyed);
                         });
                 });
             }
@@ -193,14 +194,15 @@ pub fn advanced_attrs_editor(
             .on_press(move |cx| {
                 let name = NewAttributeData::name.get(cx);
                 if !name.is_empty() {
-                    adder(cx, name, NewAttributeData::ty.get(cx));
+                    let weh = NewAttributeData::ty.get(cx);
+                    adder(cx.as_mut(), name, weh);
                     cx.emit(NewAttributeDataEvent::SetName("".to_owned()));
                 }
             });
     });
 }
 
-pub fn attr_editor<T: ToString + FromStr + Data>(
+pub fn attr_editor<T: ToString + FromStr + PartialEq + Clone>(
     cx: &mut Context,
     lens: impl Lens<Target = T>,
     key: impl Send + Sync + Lens<Target = String>,
@@ -221,7 +223,7 @@ pub fn attr_editor<T: ToString + FromStr + Data>(
     }
 }
 
-pub fn attr_editor_inner<T: ToString + FromStr + Data>(
+pub fn attr_editor_inner<T: ToString + FromStr + PartialEq + Clone>(
     cx: &mut Context,
     lens: impl Lens<Target = T>,
     key: impl Send + Sync + Lens<Target = String>,

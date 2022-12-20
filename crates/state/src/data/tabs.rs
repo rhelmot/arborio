@@ -87,9 +87,3 @@ impl PartialEq for MapTab {
 }
 
 impl Eq for MapTab {}
-
-impl Data for AppTab {
-    fn same(&self, other: &Self) -> bool {
-        self == other
-    }
-}

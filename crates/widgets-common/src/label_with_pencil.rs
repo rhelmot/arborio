@@ -37,7 +37,7 @@ pub fn label_with_pencil<L, F1, F2>(
 ) -> Handle<impl View>
 where
     L: Lens,
-    <L as Lens>::Target: ToString + FromStr + Data + Send + Sync,
+    <L as Lens>::Target: ToString + FromStr + PartialEq + Clone + Send + Sync,
     F1: 'static + Send + Sync + Clone + Fn(&mut EventContext, &<L as Lens>::Target) -> bool,
     F2: 'static + Send + Sync + Clone + Fn(&mut EventContext, <L as Lens>::Target),
 {
@@ -62,7 +62,7 @@ where
                     .on_press(move |cx| {
                         if EditingState::valid.get(cx) {
                             let value = ModelContainer::val.get(cx);
-                            setter(cx, value);
+                            setter(cx.as_mut(), value);
                             cx.emit(EditingStateEvent::End);
                         }
                     })

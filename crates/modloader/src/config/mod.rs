@@ -36,7 +36,7 @@ impl Default for PencilBehavior {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Lens, Data)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Lens)]
 pub struct AttributeInfo {
     #[serde(default)]
     pub display_name: Option<String>,
@@ -48,13 +48,13 @@ pub struct AttributeInfo {
     pub ignore: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Data)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct AttributeOption {
     pub name: String,
     pub value: AttributeValue,
 }
 
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Data)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
 pub enum AttributeType {
     String,
     Float,
@@ -62,7 +62,7 @@ pub enum AttributeType {
     Bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Data)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum AttributeValue {
     String(String),
     Float(f32),
@@ -214,24 +214,6 @@ impl FromStr for StylegroundConfig {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         serde_yaml::from_str(s)
-    }
-}
-
-impl Data for EntityConfig {
-    fn same(&self, other: &Self) -> bool {
-        self == other
-    }
-}
-
-impl Data for TriggerConfig {
-    fn same(&self, other: &Self) -> bool {
-        self == other
-    }
-}
-
-impl Data for StylegroundConfig {
-    fn same(&self, other: &Self) -> bool {
-        self == other
     }
 }
 

@@ -81,7 +81,7 @@ pub fn basic_attrs_editor<LA, LC, FS>(
                                             .toggle_class("checked", Some(idx) == found_idx)
                                             .on_press(move |cx| {
                                                 let key = lens_attr_key.get(cx);
-                                                setter(cx, key, opt.value.to_binel());
+                                                setter(cx.as_mut(), key, opt.value.to_binel());
                                                 cx.emit(PopupEvent::Close);
                                             });
                                     }

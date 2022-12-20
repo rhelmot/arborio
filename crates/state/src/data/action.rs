@@ -1,6 +1,5 @@
 use arborio_utils::units::{MapRectStrict, TileGrid, TilePoint, TileVector};
 use arborio_utils::uuid::next_uuid;
-use arborio_utils::vizia::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashSet;
 
@@ -425,7 +424,7 @@ pub fn pick_new_name(map: &MapState) -> String {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Data)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct StylegroundSelection {
     pub fg: bool,
     pub idx: usize,

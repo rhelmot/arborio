@@ -21,12 +21,6 @@ pub enum ToolSpec {
     Bucket,
 }
 
-impl Data for ToolSpec {
-    fn same(&self, other: &Self) -> bool {
-        self == other
-    }
-}
-
 impl ToolSpec {
     pub fn name(&self) -> &'static str {
         match self {

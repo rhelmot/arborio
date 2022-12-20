@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use crate::data::app::AppState;
 
-#[derive(Debug, PartialEq, Eq, Data, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum SearchScope {
     AllMods,
     AllOpenMods,
@@ -48,7 +48,7 @@ impl SearchScope {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Data)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ConfigSearchType {
     Entities,
     Triggers,
@@ -61,7 +61,7 @@ impl std::fmt::Display for ConfigSearchType {
     }
 }
 
-#[derive(Debug, Lens, Clone, PartialEq, Eq, Data)]
+#[derive(Debug, Lens, Clone, PartialEq, Eq)]
 pub enum ConfigSearchFilter {
     All,
     NoConfig,

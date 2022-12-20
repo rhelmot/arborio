@@ -98,8 +98,8 @@ fn draw_entity_directive(
 
             let mut path = Path::new();
             path.rect(x, y, width, height);
-            canvas.fill_path(&mut path, fill);
-            canvas.stroke_path(&mut path, border);
+            canvas.fill_path(&mut path, &fill);
+            canvas.stroke_path(&mut path, &border);
         }
         DrawElement::DrawEllipse {
             rect,
@@ -128,8 +128,8 @@ fn draw_entity_directive(
 
             let mut path = Path::new();
             path.ellipse(x + width / 2.0, y + width / 2.0, width / 2.0, height / 2.0);
-            canvas.fill_path(&mut path, fill);
-            canvas.stroke_path(&mut path, border);
+            canvas.fill_path(&mut path, &fill);
+            canvas.stroke_path(&mut path, &border);
         }
         DrawElement::DrawLine {
             start,
@@ -163,7 +163,7 @@ fn draw_entity_directive(
                 path.line_to(endpoint.x, endpoint.y);
                 path.line_to(tail2.x, tail2.y);
             }
-            canvas.stroke_path(&mut path, line);
+            canvas.stroke_path(&mut path, &line);
         }
         DrawElement::DrawCurve {
             start,
@@ -192,7 +192,7 @@ fn draw_entity_directive(
             let mut path = Path::new();
             path.move_to(x1, y1);
             path.bezier_to(x2, y2, x3, y3, x4, y4);
-            canvas.stroke_path(&mut path, line);
+            canvas.stroke_path(&mut path, &line);
         }
         DrawElement::DrawPointImage {
             texture,

@@ -110,7 +110,7 @@ pub fn build_tweaker(cx: &mut Context) {
                     .class("icon")
                     .class("remove_btn")
                     .on_press(move |cx| {
-                        remove_node(cx, idx);
+                        remove_node(cx.as_mut(), idx);
                     });
             });
         },

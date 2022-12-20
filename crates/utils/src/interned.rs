@@ -5,9 +5,8 @@ use std::borrow::{Borrow, Cow};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
-use vizia::prelude::*;
 
-#[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, PartialOrd, Ord, Data)]
+#[derive(Hash, PartialEq, Eq, Copy, Clone, Debug, PartialOrd, Ord)]
 pub struct Interned(&'static str);
 
 pub type InternedMap<T> = HashMap<Interned, T>;

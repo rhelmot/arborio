@@ -247,7 +247,7 @@ impl Tool for RoomTool {
             );
             canvas.stroke_path(
                 &mut path,
-                Paint::color(Color::rgb(0, 0, 0)).with_line_width(1.5),
+                &Paint::color(Color::rgb(0, 0, 0)).with_line_width(1.5),
             );
         }
 
@@ -268,7 +268,7 @@ impl Tool for RoomTool {
             }
         }
 
-        canvas.fill_path(&mut path, Paint::color(Color::rgba(255, 255, 0, 128)));
+        canvas.fill_path(&mut path, &Paint::color(Color::rgba(255, 255, 0, 128)));
 
         if self.status == SelectionStatus::None {
             if let Some(room) = room_at(map, map_pos_unsnapped) {
@@ -283,7 +283,7 @@ impl Tool for RoomTool {
                             rect.height() as f32,
                         );
                     }
-                    canvas.fill_path(&mut path, Paint::color(Color::rgba(100, 100, 255, 128)));
+                    canvas.fill_path(&mut path, &Paint::color(Color::rgba(100, 100, 255, 128)));
                 }
             }
         }
@@ -311,7 +311,7 @@ impl Tool for RoomTool {
 
             canvas.stroke_path(
                 &mut path,
-                Paint::color(Color::rgb(0, 0, 0)).with_line_width(1.5),
+                &Paint::color(Color::rgb(0, 0, 0)).with_line_width(1.5),
             );
         }
 

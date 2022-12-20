@@ -94,7 +94,7 @@ impl View for TilePaletteWidget {
         path.rect(0.0, 0.0, bounds.w, bounds.h);
         canvas.fill_path(
             &mut path,
-            Paint::linear_gradient(
+            &Paint::linear_gradient(
                 0.0,
                 0.0,
                 0.0,
@@ -144,7 +144,7 @@ impl View for TilePaletteWidget {
             8.0,
             8.0,
         );
-        canvas.fill_path(&mut path, Paint::color(Color::rgba(255, 255, 0, 128)));
+        canvas.fill_path(&mut path, &Paint::color(Color::rgba(255, 255, 0, 128)));
 
         let map_selected_snapped = RoomPoint::new(
             ((self.selected % 32) * 8) as i32,
@@ -157,7 +157,7 @@ impl View for TilePaletteWidget {
             8.0,
             8.0,
         );
-        canvas.fill_path(&mut path, Paint::color(Color::rgba(100, 100, 255, 128)));
+        canvas.fill_path(&mut path, &Paint::color(Color::rgba(100, 100, 255, 128)));
 
         canvas.restore();
     }

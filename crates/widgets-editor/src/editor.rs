@@ -142,11 +142,14 @@ impl View for EditorWidget {
                 room.data.bounds.height() as f32,
             );
         }
-        canvas.fill_path(&mut path, Paint::color(ROOM_EMPTY_COLOR));
+        canvas.fill_path(&mut path, &Paint::color(ROOM_EMPTY_COLOR));
 
         let mut path = Path::new();
         path.rect(preview.x as f32, preview.y as f32, 320.0, 180.0);
-        canvas.stroke_path(&mut path, Paint::color(Color::black()).with_line_width(2.0));
+        canvas.stroke_path(
+            &mut path,
+            &Paint::color(Color::black()).with_line_width(2.0),
+        );
 
         canvas.save();
         canvas.intersect_scissor(preview.x as f32, preview.y as f32, 320.0, 180.0);
@@ -173,7 +176,7 @@ impl View for EditorWidget {
                 filler.height() as f32,
             );
         }
-        canvas.fill_path(&mut path, Paint::color(FILLER_COLOR));
+        canvas.fill_path(&mut path, &Paint::color(FILLER_COLOR));
 
         for (idx, room) in map.data.levels.iter().enumerate() {
             canvas.save();
@@ -255,9 +258,9 @@ impl View for EditorWidget {
                 0.0,
                 1.0,
             );
-            canvas.fill_path(&mut path, paint);
+            canvas.fill_path(&mut path, &paint);
             if idx != current_room {
-                canvas.fill_path(&mut path, Paint::color(ROOM_DESELECTED_COLOR));
+                canvas.fill_path(&mut path, &Paint::color(ROOM_DESELECTED_COLOR));
             }
             canvas.restore();
         }

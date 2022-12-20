@@ -66,12 +66,6 @@ pub enum Layer {
     All,
 }
 
-impl Data for Layer {
-    fn same(&self, other: &Self) -> bool {
-        self == other
-    }
-}
-
 impl Layer {
     pub fn name(&self) -> &'static str {
         match self {
@@ -91,12 +85,6 @@ impl Layer {
 pub struct Progress {
     pub progress: i32,
     pub status: String,
-}
-
-impl Data for Progress {
-    fn same(&self, other: &Self) -> bool {
-        self == other
-    }
 }
 
 pub fn trigger_module_load(cx: &mut EventContext, path: PathBuf) {

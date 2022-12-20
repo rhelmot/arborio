@@ -36,14 +36,14 @@ impl<T: 'static + Clone, L: 'static + Clone> Lens for PaletteWidgetFilterLens<T,
     }
 }
 
-impl<T: PaletteItem, LI> PaletteWidget<T, LI>
+impl<T: PaletteItem + Send + Sync, LI> PaletteWidget<T, LI>
 where
     LI: Lens<Target = T>,
 {
     pub fn new<F, LL>(cx: &mut Context, items: LL, selected: LI, callback: F) -> Handle<Self>
     where
-        F: 'static + Fn(&mut EventContext, T) + Copy,
-        LL: Lens<Target = Vec<T>>,
+        F: 'static + Send + Sync + Fn(&mut EventContext, T) + Copy,
+        LL: Send + Sync + Lens<Target = Vec<T>>,
         <LI as Lens>::Source: Model,
         <LL as Lens>::Source: Model,
     {
@@ -70,7 +70,7 @@ where
                     .bind(selected.clone(), move |handle, selected| {
                         let mine = item3.get(handle.cx);
                         let selected = selected.get(handle.cx);
-                        handle.checked(selected.same(&mine));
+                        handle.checked(selected == mine);
                     })
                     .bind(
                         PaletteWidgetFilterLens::default(),
@@ -85,7 +85,8 @@ where
                         },
                     )
                     .on_press(move |cx| {
-                        (callback)(cx, item.get(cx));
+                        let item = item.get(cx);
+                        (callback)(cx.as_mut(), item);
                     });
                 });
             });
@@ -123,7 +124,7 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
         path.rect(0.0, 0.0, bounds.w, 100.0 * dpi);
         canvas.fill_path(
             &mut path,
-            Paint::linear_gradient(
+            &Paint::linear_gradient(
                 0.0,
                 0.0,
                 0.0,
@@ -150,15 +151,15 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
             .with_font_size(10.0 * dpi)
             .with_font(&[*default_font])
             .with_text_baseline(Baseline::Bottom);
-        let text_black = text_paint.with_color(Color::black().into());
+        let text_black = text_paint.clone().with_color(Color::black().into());
         canvas
-            .fill_text(11.0 * dpi, 91.0 * dpi, &self.filter, text_black)
+            .fill_text(11.0 * dpi, 91.0 * dpi, &self.filter, &text_black)
             .expect("Could not draw text");
         canvas
-            .fill_text(9.0 * dpi, 89.0 * dpi, &self.filter, text_black)
+            .fill_text(9.0 * dpi, 89.0 * dpi, &self.filter, &text_black)
             .expect("Could not draw text");
         canvas
-            .fill_text(10.0 * dpi, 90.0 * dpi, &self.filter, text_paint)
+            .fill_text(10.0 * dpi, 90.0 * dpi, &self.filter, &text_paint)
             .expect("Could not draw text");
 
         canvas.restore();

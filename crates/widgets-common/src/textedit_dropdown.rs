@@ -9,9 +9,9 @@ pub struct TextboxDropdown<T> {
 impl<T> TextboxDropdown<T> {
     pub fn new<L, LL, F>(cx: &mut Context, lens: L, options: LL, callback: F) -> Handle<'_, Self>
     where
-        T: ToString + Data,
+        T: 'static + ToString + PartialEq + Clone + Send + Sync,
         L: Lens<Target = T>,
-        LL: Lens<Target = Vec<T>>,
+        LL: Send + Sync + Lens<Target = Vec<T>>,
         <LL as Lens>::Source: Model,
         F: 'static + Clone + Send + Sync + Fn(&mut EventContext, String),
     {
@@ -40,7 +40,7 @@ impl<T> TextboxDropdown<T> {
                             .class("dropdown_element")
                             .on_press(move |cx| {
                                 let value = lens.get(cx).to_string();
-                                callback.clone()(cx, value);
+                                callback.clone()(cx.as_mut(), value);
                                 cx.emit(PopupEvent::Close);
                             });
                     });

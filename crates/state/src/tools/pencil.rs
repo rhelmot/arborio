@@ -130,7 +130,7 @@ impl Tool for PencilTool {
                     8.0,
                     8.0,
                 );
-                canvas.fill_path(&mut path, Paint::color(Color::rgba(255, 0, 255, 128)));
+                canvas.fill_path(&mut path, &Paint::color(Color::rgba(255, 0, 255, 128)));
             }
             Layer::Entities => {
                 let tmp_entity = self.get_terminal_entity(state, state.current_entity, room_pos);
