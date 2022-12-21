@@ -7,7 +7,7 @@ use crate::validator_box::validator_box;
 use arborio_maploader::map_struct::Attribute;
 use arborio_modloader::config::AttributeType;
 use arborio_state::lenses::{
-    HashMapIndexWithLens, HashMapLenLens, HashMapNthKeyLens, IsFailedLens,
+    hash_map_nth_key_lens, HashMapIndexWithLens, HashMapLenLens, IsFailedLens,
 };
 use arborio_utils::vizia::fonts::icons_names::DOWN;
 use arborio_utils::vizia::prelude::*;
@@ -94,7 +94,7 @@ pub fn advanced_attrs_editor(
             for i in 0..len {
                 let setter = setter.clone();
                 let remover = remover.clone();
-                let key_lens = attributes_lens.then(HashMapNthKeyLens::new(i));
+                let key_lens = attributes_lens.then(hash_map_nth_key_lens(i));
                 HStack::new(cx, move |cx| {
                     Label::new(cx, key_lens);
 

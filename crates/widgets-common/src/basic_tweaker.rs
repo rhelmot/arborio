@@ -1,7 +1,7 @@
 use crate::advanced_tweaker::attr_editor;
 use arborio_maploader::map_struct::Attribute;
 use arborio_modloader::config::{AttributeInfo, AttributeType};
-use arborio_state::lenses::{HashMapIndexWithLens, HashMapLenLens, HashMapNthKeyLens};
+use arborio_state::lenses::{hash_map_nth_key_lens, HashMapIndexWithLens, HashMapLenLens};
 use arborio_utils::vizia::fonts::icons_names::DOWN;
 use arborio_utils::vizia::prelude::*;
 use std::collections::{HashMap, HashSet};
@@ -24,7 +24,7 @@ pub fn basic_attrs_editor<LA, LC, FS>(
         let info_len = info_len.get_fallible(cx).unwrap_or_default();
 
         for idx in 0..info_len {
-            let lens_attr_key = lens_config.then(HashMapNthKeyLens::new(idx));
+            let lens_attr_key = lens_config.then(hash_map_nth_key_lens(idx));
             let lens_attr_info = HashMapIndexWithLens::new(lens_config, lens_attr_key);
             let lens_attr_type = lens_attr_info.then(AttributeInfo::ty);
             let lens_attr_name = lens_attr_info.then(AttributeInfo::display_name);

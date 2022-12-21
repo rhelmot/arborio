@@ -95,9 +95,7 @@ impl Atlas {
         atlas: &str,
         path: &path::Path,
     ) -> Result<(), io::Error> {
-        let reader = if let Some(fp) = config.get_file(path) {
-            fp
-        } else {
+        let Some(reader) = config.get_file(path) else {
             return Err(io::ErrorKind::NotFound.into());
         };
 
@@ -271,15 +269,10 @@ impl MultiAtlas {
         color: Option<Color>,
         rot: f32,
     ) -> Result<(), String> {
-        let sprite = match self
+        let sprite = self
             .sprites_map
             .get(sprite_path.replace('\\', "/").as_str())
-        {
-            None => {
-                return Err(format!("No such texture: {}", sprite_path));
-            }
-            Some(sprite) => sprite,
-        };
+            .ok_or_else(|| format!("No such texture: {}", sprite_path))?;
         let color = color.unwrap_or_else(Color::white);
 
         let justify = justify.unwrap_or_else(|| Vector2D::new(0.5, 0.5));
@@ -296,13 +289,10 @@ impl MultiAtlas {
         // we draw so atlas_center corresponds to point
 
         // what canvas-space bounds should we clip to?
-        let slice_visible = slice.intersection(&Rect::new(
+        let Some(slice_visible) = slice.intersection(&Rect::new(
             -sprite.trim_offset.cast::<f32>().to_point(),
             sprite.bounding_box.size.cast(),
-        ));
-        let slice_visible = if let Some(slice_visible) = slice_visible {
-            slice_visible
-        } else {
+        )) else {
             return Ok(());
         };
         let canvas_rect = slice_visible

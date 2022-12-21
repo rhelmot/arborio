@@ -138,16 +138,12 @@ impl ModuleAggregate {
             );
         }
 
-        let fg_tiles_palette = if let Some(tiler) = autotilers.get("fg") {
-            extract_tiles_palette(tiler)
-        } else {
-            vec![]
-        };
-        let bg_tiles_palette = if let Some(tiler) = autotilers.get("bg") {
-            extract_tiles_palette(tiler)
-        } else {
-            vec![]
-        };
+        let fg_tiles_palette = autotilers
+            .get("fg")
+            .map_or_else(Vec::new, |tiler| extract_tiles_palette(tiler));
+        let bg_tiles_palette = autotilers
+            .get("bg")
+            .map_or_else(Vec::new, |tiler| extract_tiles_palette(tiler));
         let entities_palette = extract_entities_palette(&entity_config);
         let triggers_palette = extract_triggers_palette(&trigger_config);
         let decals_palette = gameplay_atlas

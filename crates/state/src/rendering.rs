@@ -10,6 +10,7 @@ use arborio_utils::units::*;
 use arborio_utils::vizia::prelude::Canvas;
 use arborio_utils::vizia::vg::{Color, Paint, Path};
 use std::collections::{HashMap, HashSet};
+use std::ops::Deref;
 
 use crate::data::project_map::LevelState;
 use crate::data::selection::AppSelection;
@@ -203,7 +204,8 @@ fn draw_entity_directive(
             rot,
             color,
         } => {
-            let texture = texture.evaluate(env)?.as_string()?;
+            let texture = texture.evaluate(env)?;
+            let texture = texture.as_string()?;
             if texture.is_empty() {
                 return Ok(());
             }
@@ -231,7 +233,8 @@ fn draw_entity_directive(
             color,
             tiler,
         } => {
-            let texture = texture.evaluate(env)?.as_string()?;
+            let texture = texture.evaluate(env)?;
+            let texture = texture.as_string()?;
             if texture.is_empty() {
                 return Ok(());
             }
@@ -244,22 +247,18 @@ fn draw_entity_directive(
             let bounds_w = bounds.size.x.evaluate(env)?.as_number()?.to_int() as f32;
             let bounds_h = bounds.size.y.evaluate(env)?.as_number()?.to_int() as f32;
             let color = color.evaluate(env)?;
-            let tiler = tiler.evaluate(env)?.as_string()?;
+            let tiler = tiler.evaluate(env)?;
+            let tiler = tiler.as_string()?;
 
             let bounds = Rect {
                 origin: Point2D::new(bounds_x, bounds_y),
                 size: Size2D::new(bounds_w, bounds_h),
             };
 
-            match tiler.as_str() {
+            match tiler.deref() {
                 "repeat" => {
-                    let dim: Size2D<f32, UnknownUnit> =
-                        if let Some(dim) = palette.gameplay_atlas.sprite_dimensions(&texture) {
-                            dim
-                        } else {
-                            return Err(format!("No such gameplay texture: {}", texture));
-                        }
-                        .cast();
+                    let Some(dim) = palette.gameplay_atlas.sprite_dimensions(&texture) else { return Err(format!("No such gameplay texture: {}", texture)) };
+                    let dim: Size2D<f32, UnknownUnit> = dim.cast();
                     let slice: Rect<f32, UnknownUnit> = if slice_w == 0.0 {
                         Rect {
                             origin: Point2D::zero(),
@@ -274,13 +273,8 @@ fn draw_entity_directive(
                     draw_tiled(palette, canvas, &texture, &bounds, &slice, color)?;
                 }
                 "9slice" => {
-                    let dim: Size2D<f32, UnknownUnit> =
-                        if let Some(dim) = palette.gameplay_atlas.sprite_dimensions(&texture) {
-                            dim
-                        } else {
-                            return Err(format!("No such gameplay texture: {}", texture));
-                        }
-                        .cast();
+                    let Some(dim) = palette.gameplay_atlas.sprite_dimensions(&texture) else { return Err(format!("No such gameplay texture: {}", texture)) };
+                    let dim: Size2D<f32, UnknownUnit> = dim.cast();
                     if dim.width < 17.0 || dim.height < 17.0 {
                         return Err(format!(
                             "Cannot draw {} as 9slice: must be at least 17x17",
@@ -327,19 +321,11 @@ fn draw_entity_directive(
                     let (tiler, ignore) = if tiler == "fg_ignore" {
                         ("fg", true)
                     } else {
-                        (tiler.as_str(), false)
+                        (tiler.deref(), false)
                     };
                     let texture = texture.chars().next().unwrap();
-                    let tilemap = if let Some(tilemap) = palette.autotilers.get(tiler) {
-                        tilemap
-                    } else {
-                        return Err(format!("No such tiler {}", tiler));
-                    };
-                    let tileset = if let Some(tileset) = tilemap.get(&texture) {
-                        tileset
-                    } else {
-                        return Err(format!("No such texture {} for tiler {}", texture, tiler));
-                    };
+                    let Some(tilemap) = palette.autotilers.get(tiler) else { return Err(format!("No such tiler {}", tiler)) };
+                    let Some(tileset) = tilemap.get(&texture) else { return Err(format!("No such texture {} for tiler {}", texture, tiler)) };
 
                     let tile_bounds =
                         rect_room_to_tile(&bounds.cast::<i32>().cast_unit::<RoomSpace>());
@@ -380,29 +366,21 @@ fn draw_entity_directive(
                     };
                     for pt in rect_point_iter(tile_bounds, 1) {
                         let fp_pt = point_tile_to_room(&pt).cast::<f32>();
-                        if let Some(objtile_idx) = object_tiles.get(pt) {
-                            if *objtile_idx > 0 {
-                                palette.gameplay_atlas.draw_tile(
-                                    canvas,
-                                    TileReference {
-                                        tile: TextureTile {
-                                            x: (*objtile_idx % 32) as u32,
-                                            y: (*objtile_idx / 32) as u32,
-                                        },
-                                        texture: "tilesets/scenery".into(), // TODO see similar TODO in selection.rs
-                                    },
-                                    fp_pt.x,
-                                    fp_pt.y,
-                                    color,
-                                )?;
-                                continue;
+                        let tile_ref = if let Some(objtile_idx @ 1..) = object_tiles.get(pt) {
+                            TileReference {
+                                tile: TextureTile {
+                                    x: (*objtile_idx % 32) as u32,
+                                    y: (*objtile_idx / 32) as u32,
+                                },
+                                texture: "tilesets/scenery".into(), // TODO see similar TODO in selection.rs
                             }
-                        }
-                        if let Some(tile) = tileset.tile(pt, &mut tiler) {
-                            palette
-                                .gameplay_atlas
-                                .draw_tile(canvas, tile, fp_pt.x, fp_pt.y, color)?;
-                        }
+                        } else {
+                            let Some(tile) = tileset.tile(pt, &mut tiler) else { continue };
+                            tile
+                        };
+                        palette
+                            .gameplay_atlas
+                            .draw_tile(canvas, tile_ref, fp_pt.x, fp_pt.y, color)?;
                     }
                 }
             }
@@ -633,68 +611,65 @@ pub fn draw_stylegrounds(
     dreaming: bool,
 ) {
     for bg in styles {
-        #[allow(clippy::collapsible_if)] // TODO draw other types of thing
-        if bg.visible(current_room, flags, dreaming) {
-            let mut color = parse_color(&bg.color).unwrap_or_else(Color::white);
-            color.a = bg.alpha;
+        if !bg.visible(current_room, flags, dreaming) {
+            continue;
+        }
+        let mut color = parse_color(&bg.color).unwrap_or_else(Color::white);
+        color.a = bg.alpha;
 
-            if bg.name == "parallax" {
-                let posx = bg.x + preview.x as f32 * (1.0 - bg.scroll_x);
-                let posy = bg.y + preview.y as f32 * (1.0 - bg.scroll_y);
-                let texture = bg
-                    .attributes
-                    .get("texture")
-                    .map_or("".to_owned(), |t| match t {
-                        Attribute::Bool(b) => b.to_string(),
-                        Attribute::Int(i) => i.to_string(),
-                        Attribute::Float(f) => f.to_string(),
-                        Attribute::Text(s) => s.to_owned(),
-                    });
+        if bg.name == "parallax" {
+            let posx = bg.x + preview.x as f32 * (1.0 - bg.scroll_x);
+            let posy = bg.y + preview.y as f32 * (1.0 - bg.scroll_y);
+            let texture = bg
+                .attributes
+                .get("texture")
+                .map_or("".to_owned(), |t| match t {
+                    Attribute::Bool(b) => b.to_string(),
+                    Attribute::Int(i) => i.to_string(),
+                    Attribute::Float(f) => f.to_string(),
+                    Attribute::Text(s) => s.to_owned(),
+                });
 
-                let atlas = &palette.gameplay_atlas;
-                if let Some(dim) = atlas.sprite_dimensions(&texture) {
-                    let dim = dim.cast().cast_unit();
-                    let matters = MapRectPrecise::new(
-                        MapPointPrecise::new(preview.x as f32, preview.y as f32),
-                        MapSizePrecise::new(320.0, 180.0),
-                    );
-                    let mut available = MapRectPrecise::new(MapPointPrecise::new(posx, posy), dim);
-                    if bg.loop_x {
-                        available.origin.x = f32::MIN / 2.0;
-                        available.size.width = f32::MAX;
-                    }
-                    if bg.loop_y {
-                        available.origin.y = f32::MIN / 2.0;
-                        available.size.height = f32::MAX;
-                    }
-                    if let Some(intersection) = matters.intersection(&available) {
-                        let offset_from_base =
-                            intersection.origin - MapPointPrecise::new(posx, posy);
-                        let chunk_id = offset_from_base.component_div(dim.to_vector()).floor();
-                        let chunk_offset_from_base = chunk_id.component_mul(dim.to_vector());
-                        let aligned_intersection = MapRectPrecise::new(
-                            MapPointPrecise::new(posx, posy) + chunk_offset_from_base,
-                            intersection.size + dim,
-                        );
-                        let scale = Point2D::new(
-                            if bg.flip_x { -1.0 } else { 1.0 },
-                            if bg.flip_y { -1.0 } else { 1.0 },
-                        );
-                        for point in rect_point_iter2(aligned_intersection, dim.to_vector()) {
-                            if let Err(e) = atlas.draw_sprite(
-                                canvas,
-                                &texture,
-                                point.cast_unit() + dim.to_vector().cast_unit() / 2.0,
-                                None,
-                                None,
-                                Some(scale),
-                                Some(color),
-                                0.0,
-                            ) {
-                                log::error!("Failed drawing styleground: {}", e)
-                            }
-                        }
-                    }
+            let atlas = &palette.gameplay_atlas;
+            let Some(dim) = atlas.sprite_dimensions(&texture) else { continue };
+            let dim = dim.cast().cast_unit();
+            let matters = MapRectPrecise::new(
+                MapPointPrecise::new(preview.x as f32, preview.y as f32),
+                MapSizePrecise::new(320.0, 180.0),
+            );
+            let mut available = MapRectPrecise::new(MapPointPrecise::new(posx, posy), dim);
+            if bg.loop_x {
+                available.origin.x = f32::MIN / 2.0;
+                available.size.width = f32::MAX;
+            }
+            if bg.loop_y {
+                available.origin.y = f32::MIN / 2.0;
+                available.size.height = f32::MAX;
+            }
+            let Some(intersection) = matters.intersection(&available) else { continue };
+            let offset_from_base = intersection.origin - MapPointPrecise::new(posx, posy);
+            let chunk_id = offset_from_base.component_div(dim.to_vector()).floor();
+            let chunk_offset_from_base = chunk_id.component_mul(dim.to_vector());
+            let aligned_intersection = MapRectPrecise::new(
+                MapPointPrecise::new(posx, posy) + chunk_offset_from_base,
+                intersection.size + dim,
+            );
+            let scale = Point2D::new(
+                if bg.flip_x { -1.0 } else { 1.0 },
+                if bg.flip_y { -1.0 } else { 1.0 },
+            );
+            for point in rect_point_iter2(aligned_intersection, dim.to_vector()) {
+                if let Err(e) = atlas.draw_sprite(
+                    canvas,
+                    &texture,
+                    point.cast_unit() + dim.to_vector().cast_unit() / 2.0,
+                    None,
+                    None,
+                    Some(scale),
+                    Some(color),
+                    0.0,
+                ) {
+                    log::error!("Failed drawing styleground: {}", e)
                 }
             }
         }
@@ -714,30 +689,30 @@ fn parse_color(color: &str) -> Option<Color> {
 }
 
 pub fn draw_objtiles_float(palette: &ModuleAggregate, canvas: &mut Canvas, room: &LevelState) {
-    if let Some((float_pos, float_dat)) = &room.floats.obj {
-        let rect = TileRect::new(*float_pos, float_dat.size());
-        for pt in rect_point_iter(rect, 1) {
-            let float_pt = pt - float_pos.to_vector();
-            let ch = float_dat.get_or_default(float_pt);
-            if ch >= 0 {
-                let tile = TileReference {
-                    tile: TextureTile {
-                        x: (ch % 32) as u32,
-                        y: (ch / 32) as u32,
-                    },
-                    texture: "tilesets/scenery".into(), // TODO we shouldn't be doing this lookup during draw. cache this string statically?
-                };
-                let room_pos = point_tile_to_room(&pt);
-                if let Err(e) = palette.gameplay_atlas.draw_tile(
-                    canvas,
-                    tile,
-                    room_pos.x as f32,
-                    room_pos.y as f32,
-                    Color::white(),
-                ) {
-                    log::error!("{}", e)
-                }
-            }
+    let Some((float_pos, float_dat)) = &room.floats.obj else { return };
+    let rect = TileRect::new(*float_pos, float_dat.size());
+    for pt in rect_point_iter(rect, 1) {
+        let float_pt = pt - float_pos.to_vector();
+        let ch = float_dat.get_or_default(float_pt);
+        if ch < 0 {
+            continue;
+        }
+        let tile = TileReference {
+            tile: TextureTile {
+                x: (ch % 32) as u32,
+                y: (ch / 32) as u32,
+            },
+            texture: "tilesets/scenery".into(), // TODO we shouldn't be doing this lookup during draw. cache this string statically?
+        };
+        let room_pos = point_tile_to_room(&pt);
+        if let Err(e) = palette.gameplay_atlas.draw_tile(
+            canvas,
+            tile,
+            room_pos.x as f32,
+            room_pos.y as f32,
+            Color::white(),
+        ) {
+            log::error!("{}", e)
         }
     }
 }

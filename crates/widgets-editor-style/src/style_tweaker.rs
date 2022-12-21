@@ -7,8 +7,8 @@ use arborio_state::data::app::{AppEvent, AppState};
 use arborio_state::data::project_map::MapStateData;
 use arborio_state::data::EventPhase;
 use arborio_state::lenses::{
-    CurrentMapImplLens, CurrentMapLens, CurrentStylegroundImplLens, CurrentStylegroundLens,
-    IsFailedLens, StylegroundNameLens,
+    current_map_impl_lens, current_map_lens, current_styleground_impl_lens,
+    current_styleground_lens, IsFailedLens, StylegroundNameLens,
 };
 use arborio_utils::vizia::fonts::icons_names::DOWN;
 use arborio_utils::vizia::prelude::*;
@@ -20,9 +20,9 @@ macro_rules! edit_text {
         tweak_attr_text(
             $cx,
             $label,
-            CurrentStylegroundImplLens {}.then(CelesteMapStyleground::$attr),
+            current_styleground_impl_lens().then(CelesteMapStyleground::$attr),
             |cx, x| {
-                let mut style = CurrentStylegroundImplLens {}.get(cx);
+                let mut style = current_styleground_impl_lens().get(cx);
                 style.$attr = x;
                 emit(cx, style);
                 true
@@ -35,9 +35,9 @@ macro_rules! edit_check {
         tweak_attr_check(
             $cx,
             $label,
-            CurrentStylegroundImplLens {}.then(CelesteMapStyleground::$attr),
+            current_styleground_impl_lens().then(CelesteMapStyleground::$attr),
             |cx, x| {
-                let mut style = CurrentStylegroundImplLens {}.get(cx);
+                let mut style = current_styleground_impl_lens().get(cx);
                 style.$attr = x;
                 emit(cx, style);
             },
@@ -49,11 +49,11 @@ macro_rules! edit_optional_text {
         tweak_attr_text(
             $cx,
             $label,
-            CurrentStylegroundImplLens {}
+            current_styleground_impl_lens()
                 .then(CelesteMapStyleground::$attr)
                 .then(UnwrapLens::new()),
             |cx, x| {
-                let mut style = CurrentStylegroundImplLens {}.get(cx);
+                let mut style = current_styleground_impl_lens().get(cx);
                 style.$attr = if x.is_empty() { None } else { Some(x) };
                 emit(cx, style);
                 true
@@ -72,13 +72,13 @@ impl StyleListWidget {
                 build_active_style_list(
                     cx,
                     true,
-                    CurrentMapImplLens {}.then(MapStateData::foregrounds),
+                    current_map_impl_lens().then(MapStateData::foregrounds),
                 );
                 Label::new(cx, "Backgrounds").class("style_category");
                 build_active_style_list(
                     cx,
                     false,
-                    CurrentMapImplLens {}.then(MapStateData::backgrounds),
+                    current_map_impl_lens().then(MapStateData::backgrounds),
                 );
             });
         })
@@ -104,7 +104,7 @@ where
             })
             .class("palette_item")
             .class("list_highlight")
-            .bind(CurrentStylegroundLens {}, move |handle, selected| {
+            .bind(current_styleground_lens(), move |handle, selected| {
                 let is_me =
                     selected.get_fallible(handle.cx) == Some(StylegroundSelection { fg, idx });
                 handle.checked(is_me);
@@ -130,11 +130,11 @@ impl StyleTweakerWidget {
                     Button::new(
                         cx,
                         |cx| {
-                            if (CurrentStylegroundLens {}).get_fallible(cx).is_some() {
-                                cx.emit(CurrentMapLens {}.get(cx).action(
+                            if (current_styleground_lens()).get_fallible(cx).is_some() {
+                                cx.emit(current_map_lens().get(cx).action(
                                     EventPhase::new(),
                                     MapAction::AddStyleground {
-                                        loc: CurrentStylegroundLens {}.get(cx),
+                                        loc: current_styleground_lens().get(cx),
                                         style: Box::<
                                             arborio_maploader::map_struct::CelesteMapStyleground,
                                         >::default(),
@@ -147,11 +147,11 @@ impl StyleTweakerWidget {
                     Button::new(
                         cx,
                         |cx| {
-                            if (CurrentStylegroundLens {}).get_fallible(cx).is_some() {
-                                cx.emit(CurrentMapLens {}.get(cx).action(
+                            if (current_styleground_lens()).get_fallible(cx).is_some() {
+                                cx.emit(current_map_lens().get(cx).action(
                                     EventPhase::new(),
                                     MapAction::RemoveStyleground {
-                                        loc: CurrentStylegroundLens {}.get(cx),
+                                        loc: current_styleground_lens().get(cx),
                                     },
                                 ));
                             }
@@ -162,12 +162,12 @@ impl StyleTweakerWidget {
                         cx,
                         |cx| {
                             let sel =
-                                if let Some(sel) = (CurrentStylegroundLens {}).get_fallible(cx) {
+                                if let Some(sel) = (current_styleground_lens()).get_fallible(cx) {
                                     sel
                                 } else {
                                     return;
                                 };
-                            let max_idx = CurrentMapImplLens {}
+                            let max_idx = current_map_impl_lens()
                                 .map(move |map| map.styles(sel.fg).len())
                                 .get(cx);
                             let target = if sel.idx + 1 == max_idx {
@@ -181,7 +181,7 @@ impl StyleTweakerWidget {
                                     idx: sel.idx + 1,
                                 }
                             };
-                            cx.emit(CurrentMapLens {}.get(cx).action(
+                            cx.emit(current_map_lens().get(cx).action(
                                 EventPhase::new(),
                                 MapAction::MoveStyleground { loc: sel, target },
                             ));
@@ -196,7 +196,7 @@ impl StyleTweakerWidget {
                         cx,
                         |cx| {
                             let sel =
-                                if let Some(sel) = (CurrentStylegroundLens {}).get_fallible(cx) {
+                                if let Some(sel) = (current_styleground_lens()).get_fallible(cx) {
                                     sel
                                 } else {
                                     return;
@@ -205,7 +205,7 @@ impl StyleTweakerWidget {
                                 if !sel.fg {
                                     return;
                                 }
-                                let max_idx = CurrentMapImplLens {}
+                                let max_idx = current_map_impl_lens()
                                     .map(move |map| map.styles(false).len())
                                     .get(cx);
                                 StylegroundSelection {
@@ -218,7 +218,7 @@ impl StyleTweakerWidget {
                                     idx: sel.idx - 1,
                                 }
                             };
-                            cx.emit(CurrentMapLens {}.get(cx).action(
+                            cx.emit(current_map_lens().get(cx).action(
                                 EventPhase::new(),
                                 MapAction::MoveStyleground { loc: sel, target },
                             ));
@@ -233,7 +233,7 @@ impl StyleTweakerWidget {
                 ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
                     Binding::new(
                         cx,
-                        IsFailedLens::new(CurrentStylegroundImplLens {}),
+                        IsFailedLens::new(current_styleground_impl_lens()),
                         move |cx, is_failed| {
                             if !is_failed.get(cx) {
                                 Self::members(cx);
@@ -269,7 +269,7 @@ impl StyleTweakerWidget {
         tweak_attr_picker(
             cx,
             "Dreaming Status",
-            CurrentStylegroundImplLens {}.then(CelesteMapStyleground::dreaming),
+            current_styleground_impl_lens().then(CelesteMapStyleground::dreaming),
             [None, Some(true), Some(false)],
             |_, item| {
                 match item {
@@ -281,7 +281,7 @@ impl StyleTweakerWidget {
                 .to_owned()
             },
             |cx, item| {
-                let mut style = CurrentStylegroundImplLens {}.get(cx);
+                let mut style = current_styleground_impl_lens().get(cx);
                 style.dreaming = item;
                 emit(cx, style);
             },
@@ -293,14 +293,14 @@ impl StyleTweakerWidget {
 
         advanced_attrs_editor(
             cx,
-            CurrentStylegroundImplLens {}.then(CelesteMapStyleground::attributes),
+            current_styleground_impl_lens().then(CelesteMapStyleground::attributes),
             |cx, key, value| {
-                let mut current = CurrentStylegroundImplLens {}.get(cx);
+                let mut current = current_styleground_impl_lens().get(cx);
                 current.attributes.insert(key, value);
                 emit(cx, current);
             },
             |cx, key, ty| {
-                let mut current = CurrentStylegroundImplLens {}.get(cx);
+                let mut current = current_styleground_impl_lens().get(cx);
                 current.attributes.insert(
                     key,
                     match ty {
@@ -313,7 +313,7 @@ impl StyleTweakerWidget {
                 emit(cx, current);
             },
             |cx, key| {
-                let mut current = CurrentStylegroundImplLens {}.get(cx);
+                let mut current = current_styleground_impl_lens().get(cx);
                 current.attributes.remove(&key);
                 emit(cx, current);
             },
@@ -328,10 +328,10 @@ impl View for StyleTweakerWidget {
 }
 
 fn emit(cx: &mut EventContext, style: CelesteMapStyleground) {
-    cx.emit(CurrentMapLens {}.get(cx).action(
+    cx.emit(current_map_lens().get(cx).action(
         EventPhase::new(),
         MapAction::UpdateStyleground {
-            loc: CurrentStylegroundLens {}.get(cx),
+            loc: current_styleground_lens().get(cx),
             style: Box::new(style),
         },
     ));

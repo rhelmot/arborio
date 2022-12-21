@@ -20,11 +20,7 @@ impl Tool for BucketTool {
             return events;
         }
 
-        let room = if let Some(room) = app.current_room_ref() {
-            room
-        } else {
-            return vec![];
-        };
+        let Some(room) = app.current_room_ref() else { return vec![] };
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos = app
             .map_tab_unwrap()
@@ -65,11 +61,7 @@ impl Tool for BucketTool {
     }
 
     fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &DrawContext) {
-        let room = if let Some(room) = state.current_room_ref() {
-            room
-        } else {
-            return;
-        };
+        let Some(room) = state.current_room_ref() else { return };
         canvas.save();
         canvas.translate(
             room.data.bounds.origin.x as f32,
@@ -119,11 +111,7 @@ impl BucketTool {
 }
 
 fn bucket_it(room: &LevelState, fg: bool, tile_pos: TilePoint) -> HashSet<TilePoint> {
-    let desired_char = if let Some(ch) = room.tile(tile_pos, fg) {
-        ch
-    } else {
-        return HashSet::new();
-    };
+    let Some(desired_char) = room.tile(tile_pos, fg) else { return HashSet::new() };
 
     let mut result = HashSet::new();
     let mut queue = VecDeque::from([tile_pos]);

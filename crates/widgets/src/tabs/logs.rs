@@ -24,13 +24,15 @@ pub fn build_logs(cx: &mut Context) {
             });
 
             for (count, message) in annotated {
+                let count_string;
                 let count_text = if count > 1 {
-                    count.to_string()
+                    count_string = count.to_string();
+                    count_string.as_str()
                 } else {
-                    "".to_owned()
+                    ""
                 };
                 HStack::new(cx, move |cx| {
-                    Label::new(cx, &count_text).class("log_icon");
+                    Label::new(cx, count_text).class("log_icon");
                     Label::new(cx, &message.message).class("log_text");
                 })
                 .class(match message.level {

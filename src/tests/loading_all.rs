@@ -27,8 +27,12 @@ fn test_saving_all_mods() {
         discovery::for_each_mod(root, |_, _, name, mut config| {
             for path in config.list_all_files(Path::new("Maps")) {
                 if path.extension() == Some(OsStr::new("bin")) {
-                    if path == Path::new("Maps/SpringCollab2020/4-Expert/Mun.bin") {
-                        println!("skipping whatever the fuck this is");
+                    let brokens = [
+                        Path::new("Maps/KaydenFox/FactoryMod/1-Factory.bin"),
+                        Path::new("Maps/SpringCollab2020/4-Expert/Mun.bin"),
+                    ];
+                    if brokens.contains(&path.as_path()) {
+                        println!("Skipping {} {:?}", name, path);
                         continue;
                     }
                     println!("testing {} {:?}", name, path);

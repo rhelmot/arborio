@@ -40,11 +40,7 @@ impl Tool for PencilTool {
             return events;
         }
 
-        let room = if let Some(room) = app.current_room_ref() {
-            room
-        } else {
-            return vec![];
-        };
+        let Some(room) = app.current_room_ref() else { return vec![] };
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos = app
             .map_tab_unwrap()
@@ -68,11 +64,7 @@ impl Tool for PencilTool {
     }
 
     fn switch_off(&mut self, app: &AppState, cx: &EventContext) -> Vec<AppEvent> {
-        let room = if let Some(room) = app.current_room_ref() {
-            room
-        } else {
-            return vec![];
-        };
+        let Some(room) = app.current_room_ref() else { return vec![] };
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos = app
             .map_tab_unwrap()
@@ -87,11 +79,7 @@ impl Tool for PencilTool {
     }
 
     fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &DrawContext) {
-        let room = if let Some(room) = state.current_room_ref() {
-            room
-        } else {
-            return;
-        };
+        let Some(room) = state.current_room_ref() else { return };
         canvas.save();
         canvas.translate(
             room.data.bounds.origin.x as f32,

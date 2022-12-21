@@ -3,7 +3,7 @@ use enum_iterator::IntoEnumIterator;
 use arborio_modloader::aggregate::ModuleAggregate;
 use arborio_state::data::app::{AppEvent, AppState};
 use arborio_state::data::{AppConfig, AppConfigSetter, Layer};
-use arborio_state::lenses::{AnotherLens, AutoSaverLens, CurrentMapLens, CurrentPaletteLens};
+use arborio_state::lenses::{current_map_lens, current_palette_lens, AnotherLens, AutoSaverLens};
 use arborio_state::tools::ToolSpec;
 use arborio_utils::vizia::prelude::*;
 
@@ -85,7 +85,7 @@ fn build_tool_settings(cx: &mut Context) {
 
 pub fn build_tool_picker(cx: &mut Context) {
     VStack::new(cx, move |cx| {
-        Binding::new(cx, CurrentMapLens {}, |cx, map| {
+        Binding::new(cx, current_map_lens(), |cx, map| {
             let showme = map.get_fallible(cx).is_some();
             if showme {
                 Binding::new(cx, AppState::current_toolspec, |cx, tool_field| {
@@ -143,7 +143,7 @@ pub fn build_palette_widgets(cx: &mut Context) {
     let pair = AnotherLens::new(AppState::current_toolspec, AppState::current_layer);
     PaletteWidget::new(
         cx,
-        CurrentPaletteLens {}.then(ModuleAggregate::fg_tiles_palette),
+        current_palette_lens().then(ModuleAggregate::fg_tiles_palette),
         AppState::current_fg_tile,
         |cx, tile| {
             cx.emit(AppEvent::SelectPaletteTile { fg: true, tile });
@@ -159,7 +159,7 @@ pub fn build_palette_widgets(cx: &mut Context) {
 
     PaletteWidget::new(
         cx,
-        CurrentPaletteLens {}.then(ModuleAggregate::bg_tiles_palette),
+        current_palette_lens().then(ModuleAggregate::bg_tiles_palette),
         AppState::current_bg_tile,
         |cx, tile| cx.emit(AppEvent::SelectPaletteTile { fg: false, tile }),
     )
@@ -173,7 +173,7 @@ pub fn build_palette_widgets(cx: &mut Context) {
 
     PaletteWidget::new(
         cx,
-        CurrentPaletteLens {}.then(ModuleAggregate::entities_palette),
+        current_palette_lens().then(ModuleAggregate::entities_palette),
         AppState::current_entity,
         |cx, entity| cx.emit(AppEvent::SelectPaletteEntity { entity }),
     )
@@ -184,7 +184,7 @@ pub fn build_palette_widgets(cx: &mut Context) {
 
     PaletteWidget::new(
         cx,
-        CurrentPaletteLens {}.then(ModuleAggregate::triggers_palette),
+        current_palette_lens().then(ModuleAggregate::triggers_palette),
         AppState::current_trigger,
         |cx, trigger| cx.emit(AppEvent::SelectPaletteTrigger { trigger }),
     )
@@ -195,7 +195,7 @@ pub fn build_palette_widgets(cx: &mut Context) {
 
     PaletteWidget::new(
         cx,
-        CurrentPaletteLens {}.then(ModuleAggregate::decals_palette),
+        current_palette_lens().then(ModuleAggregate::decals_palette),
         AppState::current_decal,
         |cx, decal| cx.emit(AppEvent::SelectPaletteDecal { decal }),
     )

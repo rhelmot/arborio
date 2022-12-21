@@ -216,11 +216,7 @@ impl Tool for RoomTool {
     }
 
     fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &DrawContext) {
-        let map = if let Some(map) = state.current_map_ref() {
-            map
-        } else {
-            return;
-        };
+        let Some(map) = state.current_map_ref() else { return };
 
         let screen_pos = ScreenPoint::new(cx.mouse.cursorx, cx.mouse.cursory);
         let map_pos_precise = state
@@ -393,36 +389,36 @@ impl RoomTool {
     }
 
     fn resize(&self, map: &MapState, resize: MapVectorStrict) -> Vec<MapAction> {
+        let pos_vec;
+        let size_vec;
         let dragging = if let SelectionStatus::Resizing(dragging) = &self.status {
+            let side = dragging.side;
+            pos_vec = MapVectorStrict::new(
+                if side.is_left() { resize.x } else { 0 },
+                if side.is_top() { resize.y } else { 0 },
+            );
+            size_vec = MapVectorStrict::new(
+                if side.is_left() {
+                    -resize.x
+                } else if side.is_right() {
+                    resize.x
+                } else {
+                    0
+                },
+                if side.is_top() {
+                    -resize.y
+                } else if side.is_bottom() {
+                    resize.y
+                } else {
+                    0
+                },
+            );
             Some(dragging)
         } else {
+            pos_vec = MapVectorStrict::new(resize.x, resize.y);
+            size_vec = MapVectorStrict::new(-resize.x, -resize.y);
             None
         };
-        let side = if let Some(dragging) = dragging {
-            dragging.side
-        } else {
-            ResizeSide::TopLeft
-        };
-        let pos_vec = MapVectorStrict::new(
-            if side.is_left() { resize.x } else { 0 },
-            if side.is_top() { resize.y } else { 0 },
-        );
-        let size_vec = MapVectorStrict::new(
-            if side.is_left() {
-                -resize.x
-            } else if side.is_right() {
-                resize.x
-            } else {
-                0
-            },
-            if side.is_top() {
-                -resize.y
-            } else if side.is_bottom() {
-                resize.y
-            } else {
-                0
-            },
-        );
 
         let mut events = vec![];
 
@@ -446,67 +442,51 @@ impl RoomTool {
     }
 
     fn begin_dragging(&mut self, map: &MapState, pt: MapPointStrict, pt_unsnapped: MapPointStrict) {
-        let side = self.can_resize(map, pt_unsnapped);
-        if side != ResizeSide::None {
-            let selection_reference_sizes = self
-                .current_selection
-                .iter()
-                .filter_map(|idx| {
-                    map.data
-                        .levels
-                        .get(*idx)
-                        .map(|room| (*idx, room.data.bounds))
-                })
-                .collect::<HashMap<_, _>>();
-
-            self.status = SelectionStatus::Resizing(ResizingStatus {
+        let selection_reference_sizes = self.current_selection.iter().filter_map(|idx| {
+            map.data
+                .levels
+                .get(*idx)
+                .map(|room| (*idx, room.data.bounds))
+        });
+        self.status = match self.can_resize(map, pt_unsnapped) {
+            ResizeSide::None => SelectionStatus::Dragging(DraggingStatus {
                 pointer_reference_point: pt,
-                selection_reference_sizes,
+                selection_reference_points: selection_reference_sizes
+                    .map(|(idx, size)| (idx, size.origin))
+                    .collect(),
+            }),
+            side => SelectionStatus::Resizing(ResizingStatus {
+                pointer_reference_point: pt,
+                selection_reference_sizes: selection_reference_sizes.collect(),
                 side,
-            });
-        } else {
-            let selection_reference_points = self
-                .current_selection
-                .iter()
-                .filter_map(|idx| {
-                    map.data
-                        .levels
-                        .get(*idx)
-                        .map(|room| (*idx, room.data.bounds.origin))
-                })
-                .collect::<HashMap<_, _>>();
-
-            self.status = SelectionStatus::Dragging(DraggingStatus {
-                pointer_reference_point: pt,
-                selection_reference_points,
-            });
-        }
+            }),
+        };
     }
 
     fn can_resize(&self, map: &MapState, pointer: MapPointStrict) -> ResizeSide {
-        for idx in self.current_selection.iter() {
-            if let Some(room) = map.data.levels.get(*idx) {
-                let rect = &room.data.bounds;
-                if rect.contains(pointer) {
-                    let smaller_rect = rect.inflate(-2, -2);
-                    let at_top = pointer.y < smaller_rect.min_y();
-                    let at_bottom = pointer.y >= smaller_rect.max_y();
-                    let at_left = pointer.x < smaller_rect.min_x();
-                    let at_right = pointer.x >= smaller_rect.max_x();
+        let Some(rect) = self
+            .current_selection
+            .iter()
+            .filter_map(|idx| {
+                Some(map.data.levels.get(*idx)?.data.bounds)
+            })
+            .find(|rect| rect.contains(pointer))
+            else { return ResizeSide::None };
 
-                    return ResizeSide::from_sides(at_top, at_bottom, at_left, at_right);
-                }
-            }
-        }
+        let smaller_rect = rect.inflate(-2, -2);
+        let at_top = pointer.y < smaller_rect.min_y();
+        let at_bottom = pointer.y >= smaller_rect.max_y();
+        let at_left = pointer.x < smaller_rect.min_x();
+        let at_right = pointer.x >= smaller_rect.max_x();
 
-        ResizeSide::None
+        ResizeSide::from_sides(at_top, at_bottom, at_left, at_right)
     }
 
     fn delete_all(&self, app: &AppState) -> Vec<AppEvent> {
         let phase = EventPhase::new();
         self.current_selection
             .iter()
-            .map(|idx| app.map_action(vec![MapAction::DeleteRoom { idx: *idx }], phase))
+            .map(|&idx| app.map_action(vec![MapAction::DeleteRoom { idx }], phase))
             .collect()
     }
 
@@ -528,14 +508,7 @@ impl RoomTool {
 
     fn clipboard_paste(&mut self, app: &AppState, data: String) -> Vec<AppEvent> {
         let mut result = self.clear_selection(app);
-        let deser: AppSelectable = match serde_yaml::from_str(&data) {
-            Ok(d) => d,
-            Err(_) => return result,
-        };
-        let clipboard_data = match deser {
-            AppSelectable::Rooms(d) => d,
-            _ => return result,
-        };
+        let Ok(AppSelectable::Rooms(clipboard_data)) = serde_yaml::from_str(&data) else { return result };
         if clipboard_data.is_empty() {
             return result;
         }

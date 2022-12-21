@@ -25,9 +25,8 @@ impl ConfigSourceTrait for EmbeddedSource {
         Box::new(
             EMBEDDED
                 .get_dir(path)
-                .map(Dir::dirs)
                 .into_iter()
-                .flatten()
+                .flat_map(Dir::dirs)
                 .map(Dir::path)
                 .map(Path::to_owned),
         )
@@ -37,9 +36,8 @@ impl ConfigSourceTrait for EmbeddedSource {
         Box::new(
             EMBEDDED
                 .get_dir(path)
-                .map(EmbeddedFileIter::new)
                 .into_iter()
-                .flatten()
+                .flat_map(EmbeddedFileIter::new)
                 .map(Path::to_path_buf),
         )
     }
@@ -65,7 +63,8 @@ impl<'a> Iterator for EmbeddedFileIter<'a> {
     type Item = &'a Path;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some((cur_dir, cur_idx)) = self.stack.last_mut() {
+        loop {
+            let (cur_dir, cur_idx) = self.stack.last_mut()?;
             if let Some(entry) = cur_dir.entries().get(*cur_idx) {
                 *cur_idx += 1;
                 match entry {
@@ -76,7 +75,5 @@ impl<'a> Iterator for EmbeddedFileIter<'a> {
                 self.stack.pop();
             }
         }
-
-        None
     }
 }

@@ -20,7 +20,7 @@ use arborio_state::data::config_editor::{
 };
 use arborio_state::data::tabs::{AppTab, ConfigEditorTab};
 use arborio_state::data::AppConfigSetter;
-use arborio_state::lenses::{CurrentTabImplLens, IsFailedLens};
+use arborio_state::lenses::{current_tab_impl_lens, IsFailedLens};
 use arborio_state::rendering::draw_entity;
 use arborio_utils::interned::intern_str;
 use arborio_utils::units::TileGrid;
@@ -128,22 +128,10 @@ fn most_interesting_type(attr: &Attribute) -> AttributeType {
 fn type_meet(a: &AttributeType, b: &AttributeType) -> AttributeType {
     use AttributeType::*;
     match (a, b) {
-        (String, String) => String,
-        (String, Int) => String,
-        (String, Float) => String,
-        (String, Bool) => String,
-        (Float, Float) => Float,
-        (Float, Bool) => String,
-        (Float, Int) => Float,
-        (Float, String) => String,
         (Bool, Bool) => Bool,
-        (Bool, Int) => String,
-        (Bool, String) => String,
-        (Bool, Float) => String,
         (Int, Int) => Int,
-        (Int, Float) => Float,
-        (Int, String) => String,
-        (Int, Bool) => String,
+        (Float | Int, Float) | (Float, Int) => Float,
+        (String, _) | (_, String) | (Float | Int, Bool) | (Bool, Float | Int) => String,
     }
 }
 
@@ -156,16 +144,14 @@ pub fn collect_search_targets<C: DataContext>(cx: &mut C) -> Vec<SearchScope> {
     ];
 
     for tab in &app.tabs {
-        if let AppTab::ProjectOverview(p) = tab {
-            result.push(SearchScope::Mod(*p));
-        }
+        let AppTab::ProjectOverview(p) = tab else { continue };
+        result.push(SearchScope::Mod(*p));
     }
     for tab in &app.tabs {
-        if let AppTab::Map(m) = tab {
-            result.push(SearchScope::Map(
-                app.loaded_maps.get(&m.id).unwrap().cache.path.clone(),
-            ));
-        }
+        let AppTab::Map(m) = tab else { continue };
+        result.push(SearchScope::Map(
+            app.loaded_maps.get(&m.id).unwrap().cache.path.clone(),
+        ));
     }
 
     result
@@ -185,7 +171,7 @@ pub fn build_config_editor(cx: &mut Context) {
 }
 
 pub fn build_search_settings(cx: &mut Context) {
-    let ctab = CurrentTabImplLens {}.then(AppTab::config_editor);
+    let ctab = current_tab_impl_lens().then(AppTab::config_editor);
     VStack::new(cx, move |cx| {
         HStack::new(cx, move |cx| {
             Label::new(cx, "Search Scope");
@@ -593,7 +579,7 @@ fn scan_stylegrounds(
 }
 
 fn build_search_results(cx: &mut Context) {
-    let ctab = CurrentTabImplLens {}.then(AppTab::config_editor);
+    let ctab = current_tab_impl_lens().then(AppTab::config_editor);
     ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
         List::new(
             cx,
@@ -621,7 +607,7 @@ fn build_search_results(cx: &mut Context) {
 }
 
 pub fn build_item_editor(cx: &mut Context) {
-    let ctab = CurrentTabImplLens {}.then(AppTab::config_editor);
+    let ctab = current_tab_impl_lens().then(AppTab::config_editor);
     let tab = cx.data::<AppState>().unwrap().current_tab;
     let config_lens = ctab.then(ConfigEditorTab::editing_config).unwrap();
     config_editor_textbox(cx, config_lens.then(AnyConfig::entity), move |cx, c| {
@@ -745,20 +731,15 @@ fn config_editor_textbox<T>(
         if !failed.get(cx) {
             let on_edit = on_edit.clone();
             Textbox::new_multiline(cx, lens, true)
-                .on_edit(move |cx, text| match text.parse() {
-                    Ok(t) => {
-                        on_edit(cx, t);
-                        cx.emit(AppEvent::SetConfigErrorMessage {
-                            tab,
-                            message: "".to_owned(),
-                        });
-                    }
-                    Err(e) => {
-                        cx.emit(AppEvent::SetConfigErrorMessage {
-                            tab,
-                            message: e.to_string(),
-                        });
-                    }
+                .on_edit(move |cx, text| {
+                    let message = match text.parse() {
+                        Ok(t) => {
+                            on_edit(cx, t);
+                            "".to_owned()
+                        }
+                        Err(e) => e.to_string(),
+                    };
+                    cx.emit(AppEvent::SetConfigErrorMessage { tab, message });
                 })
                 .id("config_editor_box");
         }
@@ -766,7 +747,7 @@ fn config_editor_textbox<T>(
 }
 
 pub fn build_item_preview(cx: &mut Context) {
-    let ctab = CurrentTabImplLens {}.then(AppTab::config_editor);
+    let ctab = current_tab_impl_lens().then(AppTab::config_editor);
     let entity_config_lens = ctab
         .then(ConfigEditorTab::editing_config)
         .then(UnwrapLens::new())
@@ -813,7 +794,7 @@ pub fn build_item_preview(cx: &mut Context) {
 }
 
 fn build_entity_tweaker(cx: &mut Context) {
-    let ctab = CurrentTabImplLens {}.then(AppTab::config_editor);
+    let ctab = current_tab_impl_lens().then(AppTab::config_editor);
     let config_lens = ctab
         .then(ConfigEditorTab::editing_config)
         .then(UnwrapLens::new())
@@ -1086,10 +1067,8 @@ fn add_node(cx: &mut EventContext) {
 
 fn edit_entity<F: FnOnce(&mut CelesteMapEntity)>(cx: &mut EventContext, f: F) {
     let app_state = cx.data::<AppState>().unwrap();
-    let mut entity = match app_state.tabs.get(app_state.current_tab) {
-        Some(AppTab::ConfigEditor(ctab)) => ctab.preview_entity.clone(),
-        _ => panic!("How'd you do that"),
-    };
+    let Some(AppTab::ConfigEditor(ctab)) = app_state.tabs.get(app_state.current_tab) else { panic!("How'd you do that") };
+    let mut entity = ctab.preview_entity.clone();
 
     f(&mut entity);
 

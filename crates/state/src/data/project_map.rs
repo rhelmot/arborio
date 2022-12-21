@@ -440,22 +440,14 @@ impl MapStateUpdate {
 
 impl AppState {
     pub fn apply_map_event(&mut self, cx: &mut EventContext, map: Option<MapID>, event: MapEvent) {
-        let map = if let Some(map) = map.or_else(|| self.current_map_id()) {
-            map
-        } else {
-            return;
-        };
-        let state = if let Some(state) = self.loaded_maps.get_mut(&map) {
-            state
-        } else {
+        let Some(map) = map.or_else(|| self.current_map_id()) else { return };
+        let Some(state) = self.loaded_maps.get_mut(&map) else {
             log::error!("Internal error: event referring to unloaded map");
-            return;
+            return
         };
-        let module = if let Some(module) = self.modules.get_mut(&state.cache.path.module) {
-            module
-        } else {
+        let Some(module) = self.modules.get_mut(&state.cache.path.module) else {
             log::error!("Internal error: loaded map referring to unloaded module");
-            return;
+            return
         };
 
         match event {
@@ -599,9 +591,7 @@ impl AppState {
             },
             MapEvent::SetName { sid } => {
                 let current_sid = &state.cache.path.sid;
-                let root = if let Some(root) = module.unpacked() {
-                    root
-                } else {
+                let Some(root) = module.unpacked() else {
                     log::error!("Internal error: tried to rename a packed map");
                     return;
                 };
@@ -615,9 +605,7 @@ impl AppState {
                         break;
                     }
                 }
-                let index = if let Some(index) = index {
-                    index
-                } else {
+                let Some(index) = index else {
                     log::error!("Internal error: rename map: maps list desync");
                     return;
                 };
@@ -647,39 +635,33 @@ impl AppState {
                 self.tabs.push(AppTab::MapMeta(map));
             }
             MapEvent::Delete => {
-                if let Some(root) = module.unpacked() {
-                    // TODO: there's no fucking way this is the best way to do this
-                    let idx = match module
-                        .maps
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(i, sid)| (sid == &state.cache.path.sid).then_some(i))
-                        .next()
-                    {
-                        Some(i) => i,
-                        None => {
-                            log::error!(
-                                "Internal error: map to delete is not part of parent module"
-                            );
-                            return;
-                        }
-                    };
-                    let old_path = root
-                        .join("Maps")
-                        .join(&state.cache.path.sid)
-                        .with_extension("bin");
-                    if let Err(e) = std::fs::remove_file(old_path) {
-                        log::error!("Failed to delete map: {}", e);
-                        return;
-                    }
-                    module.maps.remove(idx);
-                    self.loaded_maps.remove(&map);
-                    self.modules_version += 1;
-
-                    self.garbage_collect();
-                } else {
+                let Some(root) = module.unpacked() else {
                     log::error!("Internal error: tried to delete a packed map");
+                    return;
+                };
+                // TODO: there's no fucking way this is the best way to do this
+                let Some(idx) = module
+                    .maps
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, sid)| (sid == &state.cache.path.sid).then_some(i))
+                    .next() else {
+                        log::error!("Internal error: map to delete is not part of parent module");
+                        return;
+                    };
+                let old_path = root
+                    .join("Maps")
+                    .join(&state.cache.path.sid)
+                    .with_extension("bin");
+                if let Err(e) = std::fs::remove_file(old_path) {
+                    log::error!("Failed to delete map: {}", e);
+                    return;
                 }
+                module.maps.remove(idx);
+                self.loaded_maps.remove(&map);
+                self.modules_version += 1;
+
+                self.garbage_collect();
             }
         }
     }
@@ -690,13 +672,8 @@ impl AppState {
         project: Option<ModuleID>,
         event: ProjectEvent,
     ) {
-        let project = match project.or_else(|| self.current_project_id()) {
-            Some(project) => project,
-            None => return,
-        };
-        let state = if let Some(state) = self.modules.get_mut(&project) {
-            state
-        } else {
+        let Some(project) = project.or_else(|| self.current_project_id()) else { return };
+        let Some(state) = self.modules.get_mut(&project) else {
             log::error!("Internal error: event referring to unloaded map");
             return;
         };

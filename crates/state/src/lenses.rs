@@ -21,111 +21,89 @@ use arborio_maploader::map_struct::{
 use arborio_modloader::aggregate::ModuleAggregate;
 use arborio_modloader::config::AttributeInfo;
 
-#[derive(Debug, Copy, Clone)]
-pub struct CurrentMapLens {}
+pub fn current_map_lens() -> impl Lens<Source = AppState, Target = MapID> {
+    ClosureLens::new(|state: &AppState| {
+        let AppTab::Map(map) = state.tabs.get(state.current_tab)? else { return None };
+        Some(&map.id)
+    })
+}
 
-impl Lens for CurrentMapLens {
-    type Source = AppState;
-    type Target = MapID;
+pub struct ClosureLens<T: 'static, U: 'static, F: (Fn(&T) -> Option<&U>) + Clone + 'static>(
+    F,
+    PhantomData<fn(&T) -> &U>,
+);
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let data = match source.tabs.get(source.current_tab) {
-            Some(AppTab::Map(maptab)) => Some(&maptab.id),
-            _ => None,
-        };
-
-        map(data)
+impl<T, U, F> Clone for ClosureLens<T, U, F>
+where
+    F: Fn(&T) -> Option<&U> + Clone,
+{
+    fn clone(&self) -> Self {
+        Self(self.0.clone(), PhantomData)
+    }
+}
+impl<T, U, F> Copy for ClosureLens<T, U, F> where F: Fn(&T) -> Option<&U> + Copy {}
+impl<T, U, F> ClosureLens<T, U, F>
+where
+    F: Fn(&T) -> Option<&U> + Clone,
+{
+    pub fn new(f: F) -> Self {
+        Self(f, PhantomData)
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct CurrentMapImplLens {}
-
-impl Lens for CurrentMapImplLens {
-    type Source = AppState;
-    type Target = MapStateData;
-
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let data = match source.tabs.get(source.current_tab) {
-            Some(AppTab::Map(maptab)) => Some(&maptab.id),
-            Some(AppTab::MapMeta(id)) => Some(id),
-            _ => None,
-        };
-
-        map(data.map(|id| &source.loaded_maps.get(id).unwrap().data))
+impl<T, U, F> Lens for ClosureLens<T, U, F>
+where
+    F: (Fn(&T) -> Option<&U>) + Clone + 'static,
+{
+    type Source = T;
+    type Target = U;
+    fn view<O, F1: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F1) -> O {
+        map((self.0)(source))
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct CurrentRoomLens {}
-
-impl Lens for CurrentRoomLens {
-    type Source = AppState;
-    type Target = CelesteMapLevel;
-
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let maptab = if let Some(AppTab::Map(maptab)) = source.tabs.get(source.current_tab) {
-            maptab
-        } else {
-            return map(None);
-        };
-
-        let the_map = if let Some(the_map) = source.loaded_maps.get(&maptab.id) {
-            the_map
-        } else {
-            return map(None);
-        };
-
-        map(the_map
-            .data
-            .levels
-            .get(maptab.current_room)
-            .map(|x| &x.data))
-    }
+pub fn current_map_impl_lens() -> impl Lens<Source = AppState, Target = MapStateData> + Copy {
+    ClosureLens::new(|source: &AppState| {
+        let (AppTab::Map(MapTab{id, ..}) | AppTab::MapMeta(id)) = source.tabs.get(source.current_tab)? else { return None };
+        Some(&source.loaded_maps.get(id).unwrap().data)
+    })
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct CurrentSelectedEntityLens {}
+pub fn current_room_lens() -> impl Lens<Source = AppState, Target = CelesteMapLevel> + Copy {
+    ClosureLens::new(|source: &AppState| {
+        let AppTab::Map(maptab) = source.tabs.get(source.current_tab)? else { return None };
 
-impl Lens for CurrentSelectedEntityLens {
-    type Source = AppState;
-    type Target = CelesteMapEntity;
+        Some(
+            &source
+                .loaded_maps
+                .get(&maptab.id)?
+                .data
+                .levels
+                .get(maptab.current_room)?
+                .data,
+        )
+    })
+}
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let tab = if let Some(tab) = source.tabs.get(source.current_tab) {
-            tab
-        } else {
-            return map(None);
-        };
-        let MapTab {
+pub fn current_selected_entity_lens(
+) -> impl Lens<Source = AppState, Target = CelesteMapEntity> + Copy {
+    ClosureLens::new(|source: &AppState| {
+        let AppTab::Map(MapTab {
             id: map_id,
             current_room,
-            current_selected,
+            current_selected: Some(AppSelection::EntityBody(entity_id, trigger) | AppSelection::EntityNode(entity_id, _, trigger)),
             ..
-        } = if let AppTab::Map(t) = tab {
-            t
-        } else {
-            return map(None);
-        };
-        let (entity_id, trigger) = match current_selected {
-            Some(AppSelection::EntityBody(id, trigger)) => (id, trigger),
-            Some(AppSelection::EntityNode(id, _, trigger)) => (id, trigger),
-            _ => return map(None),
-        };
-        let cmap = if let Some(cmap) = source.loaded_maps.get(map_id) {
-            cmap
-        } else {
-            return map(None);
-        };
-        let data = cmap
+        }) = source.tabs.get(source.current_tab)? else { return None };
+
+        source
+            .loaded_maps
+            .get(map_id)?
             .data
             .levels
-            .get(*current_room)
-            .and_then(|room| room.entity(*entity_id, *trigger));
-        map(data)
-    }
+            .get(*current_room)?
+            .entity(*entity_id, *trigger)
+    })
 }
-
 #[derive(Copy, Clone, Debug)]
 pub struct CurrentSelectedEntityResizableLens {}
 
@@ -134,43 +112,26 @@ impl Lens for CurrentSelectedEntityResizableLens {
     type Target = (bool, bool);
 
     fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let tab = if let Some(tab) = source.tabs.get(source.current_tab) {
-            tab
-        } else {
-            return map(None);
-        };
-        let MapTab {
+        let tab = source.tabs.get(source.current_tab);
+        let Some(AppTab::Map(MapTab {
             id: map_id,
             current_room,
-            current_selected,
+            current_selected: Some(AppSelection::EntityBody(entity_id, trigger) | AppSelection::EntityNode(entity_id, _, trigger)),
             ..
-        } = if let AppTab::Map(t) = tab {
-            t
-        } else {
-            return map(None);
-        };
-        let (entity_id, trigger) = match current_selected {
-            Some(AppSelection::EntityBody(id, trigger)) => (id, trigger),
-            Some(AppSelection::EntityNode(id, _, trigger)) => (id, trigger),
-            _ => return map(None),
-        };
+        })) = tab else { return map(None) };
         if *trigger {
             return map(Some(&(true, true)));
         }
-        let cmap = if let Some(cmap) = source.loaded_maps.get(map_id) {
-            cmap
-        } else {
+        let Some(cmap) = source.loaded_maps.get(map_id) else {
             return map(None);
         };
-        let name = if let Some(name) = cmap
+        let Some(name) = cmap
             .data
             .levels
             .get(*current_room)
             .and_then(|room| room.entity(*entity_id, *trigger))
             .map(|entity| &entity.name)
-        {
-            name
-        } else {
+         else {
             return map(None);
         };
         let data = cmap
@@ -183,33 +144,16 @@ impl Lens for CurrentSelectedEntityResizableLens {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct CurrentPaletteLens {}
-
-impl Lens for CurrentPaletteLens {
-    type Source = AppState;
-    type Target = ModuleAggregate;
-
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let tab = if let Some(tab) = source.tabs.get(source.current_tab) {
-            tab
-        } else {
-            return map(None);
-        };
-        let MapTab { id: map_id, .. } = if let AppTab::Map(t) = tab {
-            t
-        } else {
-            return map(None);
+pub fn current_palette_lens() -> impl Lens<Source = AppState, Target = ModuleAggregate> {
+    ClosureLens::new(|source: &AppState| {
+        let tab = source.tabs.get(source.current_tab)?;
+        let AppTab::Map(MapTab { id: map_id, .. }) = tab else {
+            return None;
         };
 
-        let data = source
-            .loaded_maps
-            .get(map_id)
-            .map(|state| &state.cache.palette);
-        map(data)
-    }
+        Some(&source.loaded_maps.get(map_id)?.cache.palette)
+    })
 }
-
 #[derive(Debug, Copy, Clone)]
 pub struct CurrentSelectedEntityConfigAttributesLens {}
 
@@ -218,48 +162,29 @@ impl Lens for CurrentSelectedEntityConfigAttributesLens {
     type Target = HashMap<String, AttributeInfo>;
 
     fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let tab = if let Some(tab) = source.tabs.get(source.current_tab) {
-            tab
-        } else {
-            return map(None);
-        };
-        let MapTab {
-            current_selected, ..
-        } = if let AppTab::Map(t) = tab {
-            t
-        } else {
-            return map(None);
-        };
-        let trigger = match current_selected {
-            Some(AppSelection::EntityBody(_, trigger)) => trigger,
-            Some(AppSelection::EntityNode(_, _, trigger)) => trigger,
-            _ => return map(None),
-        };
+        let Some(AppTab::Map(MapTab {
+            current_selected: Some(AppSelection::EntityBody(_, trigger) | AppSelection::EntityNode(_, _, trigger)), ..
+        })) = source.tabs.get(source.current_tab) else { return map(None) };
 
-        CurrentSelectedEntityLens {}
+        current_selected_entity_lens()
             .then(CelesteMapEntity::name)
             .view(source, |entity| {
-                if let Some(entity) = entity {
-                    CurrentPaletteLens {}.view(source, |palette| {
-                        if let Some(palette) = palette {
-                            if *trigger {
-                                map(palette
-                                    .trigger_config
-                                    .get(entity.as_str())
-                                    .map(|c| &c.attribute_info))
-                            } else {
-                                map(palette
-                                    .entity_config
-                                    .get(entity.as_str())
-                                    .map(|c| &c.attribute_info))
-                            }
-                        } else {
-                            map(None)
-                        }
-                    })
-                } else {
-                    map(None)
-                }
+                let Some(entity) = entity else { return map(None) };
+                current_palette_lens().view(source, |palette| {
+                    let Some(palette) = palette else { return map(None) };
+                    let info = if *trigger {
+                        palette
+                            .trigger_config
+                            .get(entity.as_str())
+                            .map(|c| &c.attribute_info)
+                    } else {
+                        palette
+                            .entity_config
+                            .get(entity.as_str())
+                            .map(|c| &c.attribute_info)
+                    };
+                    map(info)
+                })
             })
     }
 }
@@ -336,9 +261,7 @@ pub struct VecLenLens<T> {
 
 impl<T> Clone for VecLenLens<T> {
     fn clone(&self) -> Self {
-        Self {
-            p: PhantomData::default(),
-        }
+        Self { p: PhantomData }
     }
 }
 
@@ -360,17 +283,13 @@ pub struct HashMapLenLens<K, V> {
 
 impl<K, V> HashMapLenLens<K, V> {
     pub fn new() -> Self {
-        Self {
-            p: PhantomData::default(),
-        }
+        Self { p: PhantomData }
     }
 }
 
 impl<K, V> Clone for HashMapLenLens<K, V> {
     fn clone(&self) -> Self {
-        Self {
-            p: PhantomData::default(),
-        }
+        Self::new()
     }
 }
 
@@ -385,41 +304,14 @@ impl<K: 'static, V: 'static> Lens for HashMapLenLens<K, V> {
     }
 }
 
-#[derive(Debug)]
-pub struct HashMapNthKeyLens<K, V> {
+pub fn hash_map_nth_key_lens<K: Ord + 'static, V: 'static>(
     idx: usize,
-    p: PhantomData<(K, V)>,
-}
-
-impl<K, V> HashMapNthKeyLens<K, V> {
-    pub fn new(idx: usize) -> Self {
-        Self {
-            idx,
-            p: PhantomData::default(),
-        }
-    }
-}
-
-impl<K, V> Clone for HashMapNthKeyLens<K, V> {
-    fn clone(&self) -> Self {
-        Self {
-            idx: self.idx,
-            p: PhantomData::default(),
-        }
-    }
-}
-
-impl<K, V> Copy for HashMapNthKeyLens<K, V> {}
-
-impl<K: 'static + Ord, V: 'static> Lens for HashMapNthKeyLens<K, V> {
-    type Source = HashMap<K, V>;
-    type Target = K;
-
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+) -> impl Lens<Source = HashMap<K, V>, Target = K> + Copy {
+    ClosureLens::new(move |source: &HashMap<K, V>| {
         let mut keys = source.keys().collect::<Vec<_>>();
         keys.sort();
-        map(keys.get(self.idx).copied())
-    }
+        keys.get(idx).copied()
+    })
 }
 
 #[derive(Debug)]
@@ -434,7 +326,7 @@ impl<L1, L2, T> VecIndexWithLens<L1, L2, T> {
         Self {
             l1,
             l2,
-            t: PhantomData::default(),
+            t: PhantomData,
         }
     }
 }
@@ -456,11 +348,8 @@ where
     type Target = T;
 
     fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        if let Some(index) = self.l2.view(source, |s| s.copied()) {
-            self.l1.view(source, |s| map(s.and_then(|s| s.get(index))))
-        } else {
-            map(None)
-        }
+        let Some(index) = self.l2.view(source, |s| s.copied()) else { return map(None) };
+        self.l1.view(source, |s| map(s.and_then(|s| s.get(index))))
     }
 }
 
@@ -476,7 +365,7 @@ impl<L1, L2, T> HashMapIndexWithLens<L1, L2, T> {
         Self {
             l1,
             l2,
-            t: PhantomData::default(),
+            t: PhantomData,
         }
     }
 }
@@ -501,10 +390,7 @@ where
     fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
         self.l2.view(source, |idx| {
             self.l1.view(source, |hashmap| {
-                map(match (hashmap, idx) {
-                    (Some(x), Some(y)) => x.get(y),
-                    _ => None,
-                })
+                map(hashmap.zip(idx).and_then(|(x, y)| x.get(y)))
             })
         })
     }
@@ -538,9 +424,7 @@ impl Lens for RoomTweakerScopeLens {
     type Target = (MapID, usize);
 
     fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let maptab = if let Some(AppTab::Map(maptab)) = source.tabs.get(source.current_tab) {
-            maptab
-        } else {
+        let Some(AppTab::Map(maptab)) = source.tabs.get(source.current_tab) else {
             return map(None);
         };
 
@@ -587,134 +471,18 @@ where
     }
 }
 
-#[derive(Debug)]
-pub struct RectXLens<T, U> {
-    p: PhantomData<T>,
-    u: PhantomData<U>,
+pub fn rect_x_lens<T: 'static, U: 'static>() -> impl Lens<Source = Rect<T, U>, Target = T> {
+    ClosureLens::new(|source: &Rect<T, U>| Some(&source.origin.x))
 }
-
-impl<T, U> RectXLens<T, U> {
-    pub fn new() -> Self {
-        Self {
-            p: PhantomData::default(),
-            u: PhantomData::default(),
-        }
-    }
+pub fn rect_y_lens<T: 'static, U: 'static>() -> impl Lens<Source = Rect<T, U>, Target = T> {
+    ClosureLens::new(|source: &Rect<T, U>| Some(&source.origin.y))
 }
-
-impl<T, U> Clone for RectXLens<T, U> {
-    fn clone(&self) -> Self {
-        Self::new()
-    }
+pub fn rect_w_lens<T: 'static, U: 'static>() -> impl Lens<Source = Rect<T, U>, Target = T> {
+    ClosureLens::new(|source: &Rect<T, U>| Some(&source.size.width))
 }
-
-impl<T, U> Copy for RectXLens<T, U> {}
-
-impl<T: 'static, U: 'static> Lens for RectXLens<T, U> {
-    type Source = Rect<T, U>;
-    type Target = T;
-
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        map(Some(&source.origin.x))
-    }
+pub fn rect_h_lens<T: 'static, U: 'static>() -> impl Lens<Source = Rect<T, U>, Target = T> {
+    ClosureLens::new(|source: &Rect<T, U>| Some(&source.size.height))
 }
-
-#[derive(Debug)]
-pub struct RectYLens<T, U> {
-    p: PhantomData<T>,
-    u: PhantomData<U>,
-}
-
-impl<T, U> RectYLens<T, U> {
-    pub fn new() -> Self {
-        Self {
-            p: PhantomData::default(),
-            u: PhantomData::default(),
-        }
-    }
-}
-
-impl<T, U> Clone for RectYLens<T, U> {
-    fn clone(&self) -> Self {
-        Self::new()
-    }
-}
-
-impl<T, U> Copy for RectYLens<T, U> {}
-
-impl<T: 'static, U: 'static> Lens for RectYLens<T, U> {
-    type Source = Rect<T, U>;
-    type Target = T;
-
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        map(Some(&source.origin.y))
-    }
-}
-
-#[derive(Debug)]
-pub struct RectWLens<T, U> {
-    p: PhantomData<T>,
-    u: PhantomData<U>,
-}
-
-impl<T, U> RectWLens<T, U> {
-    pub fn new() -> Self {
-        Self {
-            p: PhantomData::default(),
-            u: PhantomData::default(),
-        }
-    }
-}
-
-impl<T, U> Clone for RectWLens<T, U> {
-    fn clone(&self) -> Self {
-        Self::new()
-    }
-}
-
-impl<T, U> Copy for RectWLens<T, U> {}
-
-impl<T: 'static, U: 'static> Lens for RectWLens<T, U> {
-    type Source = Rect<T, U>;
-    type Target = T;
-
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        map(Some(&source.size.width))
-    }
-}
-
-#[derive(Debug)]
-pub struct RectHLens<T, U> {
-    p: PhantomData<T>,
-    u: PhantomData<U>,
-}
-
-impl<T, U> RectHLens<T, U> {
-    pub fn new() -> Self {
-        Self {
-            p: PhantomData::default(),
-            u: PhantomData::default(),
-        }
-    }
-}
-
-impl<T, U> Clone for RectHLens<T, U> {
-    fn clone(&self) -> Self {
-        Self::new()
-    }
-}
-
-impl<T, U> Copy for RectHLens<T, U> {}
-
-impl<T: 'static, U: 'static> Lens for RectHLens<T, U> {
-    type Source = Rect<T, U>;
-    type Target = T;
-
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        map(Some(&source.size.height))
-    }
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct StylegroundNameLens {}
 
@@ -739,72 +507,33 @@ impl Lens for StylegroundNameLens {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct CurrentStylegroundLens {}
-
-impl Lens for CurrentStylegroundLens {
-    type Source = AppState;
-    type Target = StylegroundSelection;
-
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let data = match source.tabs.get(source.current_tab) {
-            Some(AppTab::Map(maptab)) => maptab.styleground_selected.as_ref(),
-            _ => None,
-        };
-
-        map(data)
-    }
+pub fn current_styleground_lens() -> impl Lens<Source = AppState, Target = StylegroundSelection> {
+    ClosureLens::new(|source: &AppState| {
+        let Some(AppTab::Map(maptab)) = source.tabs.get(source.current_tab) else { return None };
+        maptab.styleground_selected.as_ref()
+    })
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct CurrentStylegroundImplLens {}
-
-impl Lens for CurrentStylegroundImplLens {
-    type Source = AppState;
-    type Target = CelesteMapStyleground;
-
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let maptab = match source.tabs.get(source.current_tab) {
-            Some(AppTab::Map(maptab)) => maptab,
-            _ => return map(None),
-        };
-        let stysel = match &maptab.styleground_selected {
-            Some(stysel) => stysel,
-            None => return map(None),
-        };
-        let mapstate = match source.loaded_maps.get(&maptab.id) {
-            Some(map) => map,
-            None => return map(None),
-        };
-        map(mapstate.styles(stysel.fg).get(stysel.idx))
-    }
+pub fn current_styleground_impl_lens(
+) -> impl Lens<Source = AppState, Target = CelesteMapStyleground> + Copy {
+    ClosureLens::new(|source: &AppState| {
+        let AppTab::Map(MapTab { id, styleground_selected: Some(stysel),   ..}) = source.tabs.get(source.current_tab)? else { return None };
+        source
+            .loaded_maps
+            .get(id)?
+            .styles(stysel.fg)
+            .get(stysel.idx)
+    })
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct CurrentTabImplLens {}
-
-impl Lens for CurrentTabImplLens {
-    type Source = AppState;
-    type Target = AppTab;
-
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        map(source.tabs.get(source.current_tab))
-    }
+pub fn current_tab_impl_lens() -> impl Lens<Source = AppState, Target = AppTab> + Copy {
+    ClosureLens::new(|source: &AppState| source.tabs.get(source.current_tab))
 }
 
+#[derive(Copy, Clone)]
 pub struct StaticerLens<T: 'static> {
     data: T,
 }
-
-impl<T: Clone> Clone for StaticerLens<T> {
-    fn clone(&self) -> Self {
-        StaticerLens {
-            data: self.data.clone(),
-        }
-    }
-}
-
-impl<T: Copy> Copy for StaticerLens<T> {}
 
 impl<T: Clone> Lens for StaticerLens<T> {
     type Source = ();

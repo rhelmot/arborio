@@ -6,7 +6,7 @@ use arborio_state::data::selection::AppSelection;
 use arborio_state::data::tabs::AppTab;
 use arborio_state::data::{AppConfig, EventPhase};
 use arborio_state::lenses::{
-    AutoSaverLens, CurrentSelectedEntityConfigAttributesLens, CurrentSelectedEntityLens,
+    current_selected_entity_lens, AutoSaverLens, CurrentSelectedEntityConfigAttributesLens,
     CurrentSelectedEntityResizableLens, IsFailedLens,
 };
 use arborio_utils::vizia::prelude::*;
@@ -19,7 +19,7 @@ impl EntityTweakerWidget {
     pub fn new(cx: &mut Context) -> Handle<'_, Self> {
         Self {}
             .build(cx, move |cx| {
-                let entity_lens = CurrentSelectedEntityLens {};
+                let entity_lens = current_selected_entity_lens();
                 Binding::new(cx, entity_lens, move |cx, entity| {
                     if let Some(entity) = entity.get_fallible(cx) {
                         let msg = format!("{} - {}", entity.name, entity.id);
@@ -41,7 +41,7 @@ impl EntityTweakerWidget {
 }
 
 pub fn build_tweaker(cx: &mut Context) {
-    let entity_lens = CurrentSelectedEntityLens {};
+    let entity_lens = current_selected_entity_lens();
     let advanced_lens = AppState::config
         .then(AutoSaverLens::new())
         .then(AppConfig::advanced);
@@ -138,7 +138,7 @@ fn edit_entity<F: FnOnce(&mut CelesteMapEntity)>(cx: &mut EventContext, f: F) {
         Some(AppSelection::EntityBody(_, true) | AppSelection::EntityNode(_, _, true))
     );
 
-    let mut entity = (CurrentSelectedEntityLens {}).get(cx);
+    let mut entity = (current_selected_entity_lens()).get(cx);
 
     f(&mut entity);
 
@@ -261,17 +261,14 @@ fn add_node(cx: &mut EventContext) {
 
     if let (Some(id), Some(select)) = (id, select) {
         let app_state = cx.data::<AppState>().unwrap();
-        let current_tab = app_state.current_tab;
-        let current_selected = match app_state.tabs.get(app_state.current_tab) {
-            Some(AppTab::Map(map_tab)) => map_tab.current_selected,
-            _ => panic!("How'd you do that"),
-        };
+        let Some(AppTab::Map(map_tab)) = app_state.tabs.get(app_state.current_tab) else { panic!("How'd you do that") };
+        let current_selected = map_tab.current_selected;
         let trigger = matches!(
             current_selected,
             Some(AppSelection::EntityBody(_, true) | AppSelection::EntityNode(_, _, true))
         );
         cx.emit(AppEvent::SelectObject {
-            tab: current_tab,
+            tab: app_state.current_tab,
             selection: Some(AppSelection::EntityNode(id, select, trigger)),
         });
     }

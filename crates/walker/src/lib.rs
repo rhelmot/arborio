@@ -42,9 +42,7 @@ pub trait ConfigSourceTrait {
 }
 
 pub fn open_module(path: &Path) -> Option<ConfigSource> {
-    if let Some(folder) = FolderSource::new(path) {
-        Some(folder.into())
-    } else {
-        ZipSource::new(path).map(|zipped| zipped.into())
-    }
+    FolderSource::new(path)
+        .map(FolderSource::into)
+        .or_else(|| ZipSource::new(path).map(ZipSource::into))
 }

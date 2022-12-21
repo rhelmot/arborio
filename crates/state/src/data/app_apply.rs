@@ -104,11 +104,11 @@ impl AppState {
             }
             AppEvent::LoadMap { path, map } => {
                 if let Some(map) = map.borrow_mut().take() {
-                    let id = if let Some(id) = self.loaded_maps_lookup.get(&path) {
-                        *id
-                    } else {
-                        MapID::new()
-                    };
+                    let id = self
+                        .loaded_maps_lookup
+                        .get(&path)
+                        .copied()
+                        .unwrap_or_else(MapID::new);
                     if !self.loaded_maps.contains_key(&id) {
                         self.tabs.push(AppTab::Map(MapTab {
                             nonce: next_uuid(),

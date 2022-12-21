@@ -2,7 +2,7 @@ use crate::tabs::{build_tab_bar, build_tabs};
 use arborio_state::data::app::{AppEvent, AppState};
 use arborio_state::data::project_map::MapEvent;
 use arborio_state::data::tabs::AppTab;
-use arborio_state::lenses::{CurrentTabImplLens, IsFailedLens};
+use arborio_state::lenses::{current_tab_impl_lens, IsFailedLens};
 use arborio_utils::vizia::prelude::*;
 
 pub fn main_widget(cx: &mut Context) {
@@ -73,7 +73,7 @@ pub fn main_widget(cx: &mut Context) {
 }
 
 fn is_map() -> impl Lens<Target = bool> {
-    IsFailedLens::new(CurrentTabImplLens {}.then(AppTab::map)).map(|b| !b)
+    IsFailedLens::new(current_tab_impl_lens().then(AppTab::map)).map(|b| !b)
 }
 
 fn build_menu_bar(cx: &mut Context) {

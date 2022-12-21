@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use std::collections::{HashMap, HashSet};
 
 use crate::map_struct::{get_child_mut, get_optional_child, CelesteMapError};
@@ -288,7 +286,7 @@ fn get_attr_comparator(
     bin_el_attr_fuzzy_equal_required
 }
 
-fn get_elem_comparator(parent_name: &str, child_name: &str) -> fn(&str, &BinEl, &BinEl) -> bool {
+fn get_elem_comparator(_parent_name: &str, _child_name: &str) -> fn(&str, &BinEl, &BinEl) -> bool {
     bin_el_fuzzy_equal
 }
 
@@ -380,93 +378,86 @@ pub fn bin_el_fuzzy_equal(parent: &str, first: &BinEl, second: &BinEl) -> bool {
     true
 }
 
-#[allow(clippy::unnecessary_unwrap)]
 fn compare_char_tiles(first: Option<&BinElAttr>, second: Option<&BinElAttr>) -> bool {
-    if first.is_none() {
-        let first = make_like_default(second.unwrap());
-        compare_char_tiles_required(Some(&first), second)
-    } else if second.is_none() {
-        let second = make_like_default(first.unwrap());
-        compare_char_tiles_required(first, Some(&second))
-    } else {
-        compare_char_tiles_required(first, second)
-    }
-}
+    let default;
 
-fn compare_char_tiles_required(first: Option<&BinElAttr>, second: Option<&BinElAttr>) -> bool {
-    match (first, second) {
-        (Some(BinElAttr::Text(first)), Some(BinElAttr::Text(second))) => {
-            let mut pattern_i = 0;
-            let second_chars = second.chars().collect::<Vec<_>>();
-            for (target_i, target_ch) in first.chars().enumerate() {
-                if target_ch == '\r' {
-                    continue;
-                }
-                let pattern_ch = second_chars.get(pattern_i);
-                if Some(target_ch) == pattern_ch.copied() {
-                    pattern_i += 1;
-                } else if (pattern_ch.is_none() || pattern_ch.copied() == Some('\n'))
-                    && (target_ch == '0' || target_ch == '\n')
-                {
-                } else {
-                    return false;
-                }
-            }
-            true
+    let (first, second) = match (first, second) {
+        (None, Some(second)) => {
+            default = make_like_default(second);
+            (&default, second)
         }
-        _ => false,
-    }
+        (Some(first), None) => {
+            default = make_like_default(first);
+            (first, &default)
+        }
+        (Some(first), Some(second)) => (first, second),
+        (None, None) => unimplemented!(),
+    };
+    compare_char_tiles_required(first, second)
 }
 
-#[allow(clippy::unnecessary_unwrap)]
+fn compare_char_tiles_required(first: &BinElAttr, second: &BinElAttr) -> bool {
+    let (BinElAttr::Text(first), BinElAttr::Text(second)) = (first, second) else {
+        return false
+    };
+    let mut pattern_i = 0;
+    let second_chars = second.chars().collect::<Vec<_>>();
+    for target_ch in first.chars().filter(|ch| ch != &'\r') {
+        match second_chars.get(pattern_i) {
+            Some(&pattern_ch) if pattern_ch == target_ch => pattern_i += 1,
+            None | Some(&'\n') => continue,
+            _ => return false,
+        }
+    }
+    true
+}
+
 fn compare_int_tiles(first: Option<&BinElAttr>, second: Option<&BinElAttr>) -> bool {
-    if first.is_none() {
-        let first = make_like_default(second.unwrap());
-        compare_int_tiles_required(Some(&first), second)
-    } else if second.is_none() {
-        let second = make_like_default(first.unwrap());
-        compare_int_tiles_required(first, Some(&second))
-    } else {
-        compare_int_tiles_required(first, second)
-    }
-}
-
-fn compare_int_tiles_required(first: Option<&BinElAttr>, second: Option<&BinElAttr>) -> bool {
-    match (first, second) {
-        (Some(BinElAttr::Text(first)), Some(BinElAttr::Text(second))) => {
-            let mut pattern_i = 0;
-            let second_chars = second.chars().collect::<Vec<_>>();
-            for (target_i, target_ch) in first.chars().enumerate() {
-                if target_ch == '\r' {
-                    continue;
-                }
-                let pattern_ch = second_chars.get(pattern_i);
-                if Some(target_ch) == pattern_ch.copied() {
-                    pattern_i += 1;
-                } else if (pattern_ch.is_none() || pattern_ch.copied() == Some('\n'))
-                    && target_ch == '\n'
-                {
-                } else {
-                    return false;
-                }
-            }
-            true
+    let default;
+    let (new_first, new_second) = match (first, second) {
+        (Some(first), Some(second)) => (first, second),
+        (Some(first), None) => {
+            default = make_like_default(first);
+            (first, &default)
         }
-        _ => false,
-    }
+        (None, Some(second)) => {
+            default = make_like_default(second);
+            (&default, second)
+        }
+        (None, None) => unreachable!(),
+    };
+    compare_int_tiles_required(new_first, new_second)
 }
 
-#[allow(clippy::unnecessary_unwrap)]
-fn bin_el_attr_fuzzy_equal_optional(first: Option<&BinElAttr>, second: Option<&BinElAttr>) -> bool {
-    if first.is_none() {
-        let first = make_like_default(second.unwrap());
-        bin_el_attr_fuzzy_equal_required(Some(&first), second)
-    } else if second.is_none() {
-        let second = make_like_default(first.unwrap());
-        bin_el_attr_fuzzy_equal_required(first, Some(&second))
-    } else {
-        bin_el_attr_fuzzy_equal_required(first, second)
+fn compare_int_tiles_required(first: &BinElAttr, second: &BinElAttr) -> bool {
+    let (BinElAttr::Text(first), BinElAttr::Text(second)) = (first, second) else { return false };
+    let mut pattern_i = 0;
+    let second_chars = second.chars().collect::<Vec<_>>();
+    for target_ch in first.chars().filter(|ch| ch != &'\r') {
+        match second_chars.get(pattern_i) {
+            Some(&pattern_ch) if pattern_ch == target_ch => pattern_i += 1,
+            None | Some(&'\n') if target_ch == '\n' => {}
+            _ => return false,
+        }
     }
+    true
+}
+
+fn bin_el_attr_fuzzy_equal_optional(first: Option<&BinElAttr>, second: Option<&BinElAttr>) -> bool {
+    let default;
+    let (new_first, new_second) = match (first, second) {
+        (Some(first), Some(second)) => (first, second),
+        (Some(first), None) => {
+            default = make_like_default(first);
+            (first, &default)
+        }
+        (None, Some(second)) => {
+            default = make_like_default(second);
+            (&default, second)
+        }
+        (None, None) => unreachable!(),
+    };
+    bin_el_attr_fuzzy_equal_required(Some(new_first), Some(new_second))
 }
 
 fn compare_default_one(first: Option<&BinElAttr>, second: Option<&BinElAttr>) -> bool {
@@ -493,23 +484,20 @@ fn make_like_default(like: &BinElAttr) -> BinElAttr {
 }
 
 fn bin_el_attr_fuzzy_equal_required(first: Option<&BinElAttr>, second: Option<&BinElAttr>) -> bool {
-    if let (Some(first), Some(second)) = (first, second) {
-        match (first, second) {
-            (BinElAttr::Bool(_), BinElAttr::Int(_)) => todo!(),
-            (BinElAttr::Bool(_), BinElAttr::Float(_)) => todo!(),
-            (BinElAttr::Bool(_), BinElAttr::Text(_)) => todo!(),
-            (BinElAttr::Int(_), BinElAttr::Bool(_)) => todo!(),
-            (BinElAttr::Int(i), BinElAttr::Float(f)) => *i as f32 == *f && *f as i32 == *i,
-            (BinElAttr::Int(i), BinElAttr::Text(t)) => *t == i.to_string(),
-            (BinElAttr::Float(_), BinElAttr::Bool(_)) => todo!(),
-            (BinElAttr::Float(f), BinElAttr::Int(i)) => *f as i32 == *i,
-            (BinElAttr::Float(_), BinElAttr::Text(_)) => todo!(),
-            (BinElAttr::Text(_), BinElAttr::Bool(_)) => todo!(),
-            (BinElAttr::Text(t), BinElAttr::Int(i)) => *t == i.to_string(),
-            (BinElAttr::Text(_), BinElAttr::Float(_)) => todo!(),
-            _ => first == second,
-        }
-    } else {
-        false
+    let (Some(first), Some(second)) = (first, second) else { return false };
+    match (first, second) {
+        (BinElAttr::Bool(_), BinElAttr::Int(_)) => todo!(),
+        (BinElAttr::Bool(_), BinElAttr::Float(_)) => todo!(),
+        (BinElAttr::Bool(_), BinElAttr::Text(_)) => todo!(),
+        (BinElAttr::Int(_), BinElAttr::Bool(_)) => todo!(),
+        (BinElAttr::Int(i), BinElAttr::Float(f)) => *i as f32 == *f && *f as i32 == *i,
+        (BinElAttr::Int(i), BinElAttr::Text(t)) => *t == i.to_string(),
+        (BinElAttr::Float(_), BinElAttr::Bool(_)) => todo!(),
+        (BinElAttr::Float(f), BinElAttr::Int(i)) => *f as i32 == *i,
+        (BinElAttr::Float(_), BinElAttr::Text(_)) => todo!(),
+        (BinElAttr::Text(_), BinElAttr::Bool(_)) => todo!(),
+        (BinElAttr::Text(t), BinElAttr::Int(i)) => *t == i.to_string(),
+        (BinElAttr::Text(_), BinElAttr::Float(_)) => todo!(),
+        _ => first == second,
     }
 }

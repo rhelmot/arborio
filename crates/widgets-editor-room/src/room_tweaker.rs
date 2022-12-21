@@ -4,7 +4,7 @@ use arborio_state::data::app::AppState;
 use arborio_state::data::tabs::AppTab;
 use arborio_state::data::EventPhase;
 use arborio_state::lenses::{
-    CurrentRoomLens, RectHLens, RectWLens, RectXLens, RectYLens, RoomTweakerScopeLens,
+    current_room_lens, rect_h_lens, rect_w_lens, rect_x_lens, rect_y_lens, RoomTweakerScopeLens,
 };
 use arborio_utils::vizia::prelude::*;
 use arborio_widgets_common::advanced_tweaker::*;
@@ -16,7 +16,7 @@ macro_rules! edit_text {
         tweak_attr_text(
             $cx,
             $label,
-            CurrentRoomLens {}.then(CelesteMapLevel::$attr),
+            current_room_lens().then(CelesteMapLevel::$attr),
             |cx, x| {
                 emit(
                     cx,
@@ -35,7 +35,7 @@ macro_rules! edit_check {
         tweak_attr_check(
             $cx,
             $label,
-            CurrentRoomLens {}.then(CelesteMapLevel::$attr),
+            current_room_lens().then(CelesteMapLevel::$attr),
             |cx, x| {
                 emit(
                     cx,
@@ -64,16 +64,12 @@ impl RoomTweakerWidget {
         tweak_attr_text(
             cx,
             "Name",
-            CurrentRoomLens {}.then(
+            current_room_lens().then(
                 CelesteMapLevel::name.map(|n| n.strip_prefix("lvl_").unwrap_or(n).to_owned()),
             ),
             |cx, name| {
                 let app = cx.data::<AppState>().unwrap();
-                let maptab = if let Some(AppTab::Map(maptab)) = app.tabs.get(app.current_tab) {
-                    maptab
-                } else {
-                    panic!()
-                };
+                let Some(AppTab::Map(maptab)) = app.tabs.get(app.current_tab) else { panic!() };
                 let map = &app.loaded_maps.get(&maptab.id).unwrap().data;
                 if map
                     .levels
@@ -98,9 +94,9 @@ impl RoomTweakerWidget {
             Label::new(cx, "X");
             Textbox::new(
                 cx,
-                CurrentRoomLens {}
+                current_room_lens()
                     .then(CelesteMapLevel::bounds)
-                    .then(RectXLens::new()),
+                    .then(rect_x_lens()),
             )
             .on_edit(move |cx, value| {
                 if let Ok(parsed) = value.parse() {
@@ -119,9 +115,9 @@ impl RoomTweakerWidget {
             Label::new(cx, "Y");
             Textbox::new(
                 cx,
-                CurrentRoomLens {}
+                current_room_lens()
                     .then(CelesteMapLevel::bounds)
-                    .then(RectYLens::new()),
+                    .then(rect_y_lens()),
             )
             .on_edit(move |cx, value| {
                 if let Ok(parsed) = value.parse() {
@@ -140,9 +136,9 @@ impl RoomTweakerWidget {
             Label::new(cx, "Width");
             Textbox::new(
                 cx,
-                CurrentRoomLens {}
+                current_room_lens()
                     .then(CelesteMapLevel::bounds)
-                    .then(RectWLens::new()),
+                    .then(rect_w_lens()),
             )
             .on_edit(move |cx, value| {
                 if let Ok(parsed) = value.parse() {
@@ -161,9 +157,9 @@ impl RoomTweakerWidget {
             Label::new(cx, "Height");
             Textbox::new(
                 cx,
-                CurrentRoomLens {}
+                current_room_lens()
                     .then(CelesteMapLevel::bounds)
-                    .then(RectHLens::new()),
+                    .then(rect_h_lens()),
             )
             .on_edit(move |cx, value| {
                 if let Ok(parsed) = value.parse() {
@@ -200,7 +196,7 @@ impl RoomTweakerWidget {
             Label::new(cx, "Music Layers");
             for i in 0..4 {
                 let lens =
-                    CurrentRoomLens {}.then(CelesteMapLevel::music_layers.map(move |x| x[i]));
+                    current_room_lens().then(CelesteMapLevel::music_layers.map(move |x| x[i]));
                 Binding::new(cx, lens, move |cx, lens| {
                     Checkbox::new(cx, lens.clone()).on_toggle(move |cx| {
                         let mut layers = [None; 4];

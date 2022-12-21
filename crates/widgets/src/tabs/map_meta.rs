@@ -3,7 +3,7 @@ use arborio_state::data::app::{AppEvent, AppState};
 use arborio_state::data::project_map::{MapEvent, MapStateData, MapStateUpdate};
 use arborio_state::data::sid::SIDFields;
 use arborio_state::data::{EventPhase, MapID};
-use arborio_state::lenses::{CurrentMapImplLens, StaticerLens};
+use arborio_state::lenses::{current_map_impl_lens, StaticerLens};
 use arborio_utils::vizia::prelude::*;
 use arborio_widgets_common::advanced_tweaker::{
     tweak_attr_check, tweak_attr_text, tweak_attr_text_dropdown,
@@ -308,7 +308,7 @@ macro_rules! edit_text {
         tweak_attr_text(
             $cx,
             $label,
-            CurrentMapImplLens {}.then(MapStateData::$attr),
+            current_map_impl_lens().then(MapStateData::$attr),
             |cx, x| {
                 emit(
                     cx,
@@ -328,7 +328,7 @@ macro_rules! edit_text_dropdown {
         tweak_attr_text_dropdown(
             $cx,
             $label,
-            CurrentMapImplLens {}.then(MapStateData::$attr),
+            current_map_impl_lens().then(MapStateData::$attr),
             StaticerLens::new($options.into_iter().map(|x| x.to_owned()).collect()),
             |cx, x| {
                 emit(
@@ -348,7 +348,7 @@ macro_rules! edit_check {
         tweak_attr_check(
             $cx,
             $label,
-            CurrentMapImplLens {}.then(MapStateData::$attr),
+            current_map_impl_lens().then(MapStateData::$attr),
             |cx, x| {
                 emit(
                     cx,

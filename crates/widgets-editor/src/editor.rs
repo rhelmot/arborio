@@ -86,13 +86,12 @@ impl View for EditorWidget {
                 .data::<AppState>()
                 .expect("EditorWidget must have an AppState in its ancestry");
             let tool = app.current_tool.borrow_mut().take();
-            let events = match tool {
-                Some(mut tool) => {
-                    let r = tool.internal_event(internal_event, cx);
-                    *cx.data::<AppState>().unwrap().current_tool.borrow_mut() = Some(tool);
-                    r
-                }
-                None => vec![],
+            let events = if let Some(mut tool) = tool {
+                let r = tool.internal_event(internal_event, cx);
+                *cx.data::<AppState>().unwrap().current_tool.borrow_mut() = Some(tool);
+                r
+            } else {
+                vec![]
             };
             for event in events {
                 cx.emit(event);
@@ -185,9 +184,7 @@ impl View for EditorWidget {
                 room.data.bounds.min_y() as f32,
             );
             let mut cache = room.cache.borrow_mut();
-            let target = if let Some(target) = cache.render_cache {
-                target
-            } else {
+            let target = cache.render_cache.unwrap_or_else(|| {
                 canvas
                     .create_image_empty(
                         room.data.bounds.width() as usize,
@@ -196,7 +193,7 @@ impl View for EditorWidget {
                         ImageFlags::NEAREST | ImageFlags::FLIP_Y,
                     )
                     .expect("Failed to allocate ")
-            };
+            });
             cache.render_cache = Some(target);
 
             if !cache.render_cache_valid {

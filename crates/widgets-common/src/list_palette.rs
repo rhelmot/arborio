@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 
 use arborio_state::data::app::AppState;
+use arborio_state::lenses::ClosureLens;
 use arborio_state::palette_item::PaletteItem;
 use arborio_utils::vizia::prelude::*;
 use arborio_utils::vizia::resource::FontOrId;
@@ -12,28 +13,9 @@ pub struct PaletteWidget<T, L> {
     filter: String,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct PaletteWidgetFilterLens<T, L> {
-    t: PhantomData<T>,
-    l: PhantomData<L>,
-}
-
-impl<T, L> Default for PaletteWidgetFilterLens<T, L> {
-    fn default() -> Self {
-        Self {
-            t: PhantomData::default(),
-            l: PhantomData::default(),
-        }
-    }
-}
-
-impl<T: 'static + Clone, L: 'static + Clone> Lens for PaletteWidgetFilterLens<T, L> {
-    type Source = PaletteWidget<T, L>;
-    type Target = String;
-
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        map(Some(&source.filter))
-    }
+fn palette_widget_filter_lens<T: 'static, L: 'static>(
+) -> impl Lens<Source = PaletteWidget<T, L>, Target = String> {
+    ClosureLens::new(|source: &PaletteWidget<T, L>| Some(&source.filter))
 }
 
 impl<T: PaletteItem + Send + Sync, LI> PaletteWidget<T, LI>
@@ -73,8 +55,8 @@ where
                         handle.checked(selected == mine);
                     })
                     .bind(
-                        PaletteWidgetFilterLens::default(),
-                        move |handle, filter: PaletteWidgetFilterLens<T, LI>| {
+                        palette_widget_filter_lens::<T, LI>(),
+                        move |handle, filter| {
                             let filter = filter.get(handle.cx);
                             let item = item4.get(handle.cx);
                             let visible = item

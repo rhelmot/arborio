@@ -10,6 +10,7 @@ use nom::sequence::{delimited, pair, separated_pair, terminated, tuple};
 use nom::{IResult, InputTakeAtPosition, Parser};
 use serde::de::Error as SerdeError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
@@ -467,7 +468,7 @@ impl Expression {
                             Ok(Const::Number(Number(n1 + n2)))
                         } else {
                             Ok(Const::String(
-                                child1val.as_string()? + &child2val.as_string()?,
+                                child1val.as_string()?.into_owned() + &child2val.as_string()?,
                             ))
                         }
                     }
@@ -557,10 +558,10 @@ impl Const {
     }
 
     // maybe we want this to be able to fail in the future
-    pub fn as_string(&self) -> Result<String, String> {
+    pub fn as_string(&self) -> Result<Cow<str>, String> {
         match self {
-            Const::Number(n) => Ok(n.0.to_string()),
-            Const::String(s) => Ok(s.clone()), // ummmm
+            Const::Number(n) => Ok(n.0.to_string().into()),
+            Const::String(s) => Ok(s.into()),
         }
     }
 

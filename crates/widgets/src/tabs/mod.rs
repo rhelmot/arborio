@@ -14,27 +14,16 @@ use arborio_utils::vizia::prelude::*;
 pub fn build_tabs(cx: &mut Context) {
     let lens = VecIndexWithLens::new(AppState::tabs, AppState::current_tab);
     Binding::new(cx, lens, move |cx, current_tab| {
-        if let Some(current_tab) = current_tab.get_fallible(cx) {
-            VStack::new(cx, move |cx| match current_tab {
-                AppTab::CelesteOverview => {
-                    installation::build_installation_tab(cx);
-                }
-                AppTab::ProjectOverview(project) => project::build_project_tab(cx, project),
-                AppTab::Map(_) => {
-                    editor::build_editor(cx);
-                }
-                AppTab::ConfigEditor(_) => {
-                    config_editor::build_config_editor(cx);
-                }
-                AppTab::Logs => {
-                    logs::build_logs(cx);
-                }
-                AppTab::MapMeta(id) => {
-                    map_meta::build_map_meta_tab(cx, id);
-                }
-            })
-            .class("tab_container");
-        }
+        let Some(current_tab) = current_tab.get_fallible(cx) else { return };
+        VStack::new(cx, move |cx| match current_tab {
+            AppTab::CelesteOverview => installation::build_installation_tab(cx),
+            AppTab::ProjectOverview(project) => project::build_project_tab(cx, project),
+            AppTab::Map(_) => editor::build_editor(cx),
+            AppTab::ConfigEditor(_) => config_editor::build_config_editor(cx),
+            AppTab::Logs => logs::build_logs(cx),
+            AppTab::MapMeta(id) => map_meta::build_map_meta_tab(cx, id),
+        })
+        .class("tab_container");
     });
 }
 

@@ -1,5 +1,4 @@
-use arborio_state::lenses::StaticerLens;
-use arborio_utils::vizia::prelude::*;
+use arborio_utils::vizia::{prelude::*, state::StaticLens};
 
 #[derive(Debug, Clone, Lens)]
 struct DeleteState {
@@ -47,7 +46,7 @@ pub fn deleter<F1, F2>(
             VStack::new(cx, move |cx| {
                 Label::new(cx, confirm_message);
                 HStack::new(cx, move |cx| {
-                    Textbox::new(cx, StaticerLens::new("")).on_edit(move |cx, value| {
+                    Textbox::new(cx, StaticLens::new(&"")).on_edit(move |cx, value| {
                         let validated = validate_text(cx, &value);
                         cx.emit(DeleteEvent::Validate(validated));
                     });
