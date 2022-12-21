@@ -4,14 +4,6 @@ use quote::quote;
 use quote::ToTokens;
 use syn::{parse_macro_input, Attribute, Fields, ItemStruct};
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
-
 enum BinElAttribute {
     Attributes,
     Children,
