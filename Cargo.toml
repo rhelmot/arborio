@@ -53,7 +53,7 @@ smithay-clipboard = { git = "https://github.com/rhelmot/smithay-clipboard", rev 
 
 [dev-dependencies]
 celeste = "^2"
-confy = "^0.4"
+confy = "^0.5"
 
 [profile.dev]
 opt-level = 0

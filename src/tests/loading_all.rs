@@ -9,7 +9,7 @@ use std::path::Path;
 
 #[test]
 fn test_saving_all_mods() {
-    let cfg: AppConfig = confy::load("arborio").unwrap_or_default();
+    let cfg: AppConfig = confy::load("arborio", None).unwrap_or_default();
     if let Some(root) = &cfg.celeste_root {
         println!("Beginning test.");
         assert!(root.is_dir(), "Arborio is misconfigured");
