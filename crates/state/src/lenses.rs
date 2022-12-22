@@ -200,9 +200,7 @@ impl<T> Clone for AutoSaverLens<T> {
 
 impl<T> AutoSaverLens<T> {
     pub fn new() -> Self {
-        Self {
-            t: PhantomData,
-        }
+        Self { t: PhantomData }
     }
 }
 
