@@ -42,7 +42,7 @@ dependencies = [
  "arborio-walker",
  "arborio-widgets",
  "celeste",
- "confy 0.5.1",
+ "confy",
  "image",
  "log",
 ]
@@ -112,7 +112,7 @@ dependencies = [
  "arborio-modloader",
  "arborio-utils",
  "arborio-walker",
- "confy 0.4.0",
+ "confy",
  "enum-iterator",
  "itertools 0.10.4",
  "lazy_static",
@@ -454,22 +454,11 @@ checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 
 [[package]]
 name = "confy"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2913470204e9e8498a0f31f17f90a0de801ae92c8c5ac18c49af4819e6786697"
-dependencies = [
- "directories 2.0.2",
- "serde",
- "toml",
-]
-
-[[package]]
-name = "confy"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e37668cb35145dcfaa1931a5f37fde375eeae8068b4c0d2f289da28a270b2d2c"
 dependencies = [
- "directories 4.0.1",
+ "directories",
  "serde",
  "thiserror",
  "toml",
@@ -670,16 +659,6 @@ checksum = "736bab36d647d14c985725a57a4110a1182c6852104536cd42f1c97e96d29bf0"
 dependencies = [
  "dirs",
  "rpassword",
-]
-
-[[package]]
-name = "directories"
-version = "2.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "551a778172a450d7fc12e629ca3b0428d00f6afa9a43da1b630d54604e97371c"
-dependencies = [
- "cfg-if 0.1.10",
- "dirs-sys",
 ]
 
 [[package]]

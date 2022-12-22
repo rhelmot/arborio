@@ -218,7 +218,7 @@ impl Default for AppState {
 
 impl AppState {
     pub fn new() -> AppState {
-        let mut cfg: AppConfig = confy::load("arborio").unwrap_or_default();
+        let mut cfg: AppConfig = confy::load("arborio", "arborio").unwrap_or_default();
         if !cfg
             .celeste_root
             .as_ref()
@@ -228,7 +228,7 @@ impl AppState {
             cfg.celeste_root = None;
         }
         let cfg = AutoSaver::new(cfg, |cfg: &mut AppConfig| {
-            confy::store("arborio", cfg)
+            confy::store("arborio", "arborio", cfg)
                 .unwrap_or_else(|e| panic!("Failed to save config file: {e}"));
         });
 
