@@ -18,7 +18,7 @@ pub fn build_installation_tab(cx: &mut Context) {
             .then(UnwrapLens::new()),
         |cx, root| {
             if let Some(root) = root.get_fallible(cx) {
-                Label::new(cx, &format!("Current celeste install is {:?}", root));
+                Label::new(cx, &format!("Current celeste install is {root:?}"));
                 ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
                     VStack::new(cx, move |cx| {
                         Binding::new(cx, AppState::modules_version, move |cx, _| {
@@ -122,7 +122,7 @@ fn build_project_overview_card(cx: &mut Context, module: ModuleID, name: &str, n
         Label::new(cx, name).class("module_title");
         Label::new(
             cx,
-            &format!("{} map{}", num_maps, if num_maps == 1 { "" } else { "s" }),
+            &format!("{num_maps} map{}", if num_maps == 1 { "" } else { "s" }),
         );
     })
     .class("module_overview_card")

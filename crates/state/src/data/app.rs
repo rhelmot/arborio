@@ -230,7 +230,7 @@ impl AppState {
         }
         let cfg = AutoSaver::new(cfg, |cfg: &mut AppConfig| {
             confy::store("arborio", cfg)
-                .unwrap_or_else(|e| panic!("Failed to save config file: {}", e));
+                .unwrap_or_else(|e| panic!("Failed to save config file: {e}"));
         });
 
         AppState {

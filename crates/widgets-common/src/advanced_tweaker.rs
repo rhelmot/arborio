@@ -177,7 +177,7 @@ pub fn advanced_attrs_editor(
                         AttributeType::Bool,
                         AttributeType::Float,
                     ] {
-                        Label::new(cx, &format!("{:?}", ty))
+                        Label::new(cx, &format!("{ty:?}"))
                             .class("dropdown_element")
                             .class("btn_highlight")
                             .on_press(move |cx| {

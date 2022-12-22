@@ -1,4 +1,3 @@
-#![allow(clippy::uninlined_format_args)] // my editor can't handle refactoring these yet
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 use quote::ToTokens;

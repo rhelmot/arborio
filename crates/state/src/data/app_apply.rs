@@ -157,7 +157,7 @@ impl AppState {
             AppEvent::NewMod => {
                 let mut number = 1;
                 'outer: loop {
-                    let name = format!("untitled-{}", number);
+                    let name = format!("untitled-{number}");
                     let path = self
                         .config
                         .celeste_root

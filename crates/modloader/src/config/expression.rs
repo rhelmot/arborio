@@ -97,12 +97,12 @@ pub enum Const {
 impl std::fmt::Display for Const {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Const::Number(n) => write!(f, "{}", n),
+            Const::Number(n) => write!(f, "{n}"),
             Const::String(s) => {
                 if !s.contains('\"') {
-                    write!(f, "\"{}\"", s)
+                    write!(f, "\"{s}\"")
                 } else {
-                    write!(f, "\'{}\'", s)
+                    write!(f, "\'{s}\'")
                 }
             }
         }
@@ -412,23 +412,19 @@ impl Serialize for Expression {
     where
         S: Serializer,
     {
-        format!("{}", self).serialize(s)
+        format!("{self}").serialize(s)
     }
 }
 
 impl std::fmt::Display for Expression {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::Const(c) => write!(f, "{}", c),
-            Expression::Atom(s) => write!(f, "{}", s),
+            Expression::Const(c) => write!(f, "{c}"),
+            Expression::Atom(s) => write!(f, "{s}"),
             // TODO analyze operator precedence to tell if parens are necessary
-            Expression::BinOp(op, children) => write!(
-                f,
-                "({} {} {})",
-                children.as_ref().0,
-                op,
-                children.as_ref().1
-            ),
+            Expression::BinOp(op, children) => {
+                write!(f, "({} {op} {})", children.as_ref().0, children.as_ref().1)
+            }
             Expression::UnOp(op, child) => write!(f, "{}{}", op, child.as_ref()),
             Expression::Match {
                 test,
@@ -437,7 +433,7 @@ impl std::fmt::Display for Expression {
             } => {
                 write!(f, "match {} {{ ", test.as_ref())?;
                 for (matching, expression) in arms {
-                    write!(f, "{} => {}, ", matching, expression)?;
+                    write!(f, "{matching} => {expression}, ")?;
                 }
                 write!(f, "_ => {} }}", default.as_ref())
             }
@@ -456,7 +452,7 @@ impl Expression {
             Expression::Atom(name) => env
                 .get(name.as_str())
                 .cloned()
-                .ok_or_else(|| format!("Name \"{}\" undefined", name)),
+                .ok_or_else(|| format!("Name \"{name}\" undefined")),
             Expression::BinOp(op, children) => {
                 let child1val = children.as_ref().0.evaluate(env)?;
                 let child2val = children.as_ref().1.evaluate(env)?;
@@ -553,7 +549,7 @@ impl Const {
     pub fn as_number(&self) -> Result<Number, String> {
         match self {
             Const::Number(n) => Ok(n.clone()),
-            Const::String(s) => Err(format!("Expected number, found string \"{}\"", s)),
+            Const::String(s) => Err(format!("Expected number, found string \"{s}\"")),
         }
     }
 

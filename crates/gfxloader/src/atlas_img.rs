@@ -207,7 +207,7 @@ pub fn load_data_file(
     } else {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
-            format!("{:?} not found", data_file),
+            format!("{data_file:?} not found"),
         ));
     };
 
@@ -272,7 +272,7 @@ impl MultiAtlas {
         let sprite = self
             .sprites_map
             .get(sprite_path.replace('\\', "/").as_str())
-            .ok_or_else(|| format!("No such texture: {}", sprite_path))?;
+            .ok_or_else(|| format!("No such texture: {sprite_path}"))?;
         let color = color.unwrap_or_else(Color::white);
 
         let justify = justify.unwrap_or_else(|| Vector2D::new(0.5, 0.5));

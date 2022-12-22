@@ -57,7 +57,7 @@ pub enum ConfigSearchType {
 
 impl std::fmt::Display for ConfigSearchType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

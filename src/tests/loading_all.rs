@@ -15,7 +15,7 @@ fn test_saving_all_mods() {
         assert!(root.is_dir(), "Arborio is misconfigured");
         let mut config = FolderSource::new(&root.join("Content")).unwrap();
         for path in config.list_all_files(Path::new("Maps")) {
-            println!("testing Celeste {:?}", path);
+            println!("testing Celeste {path:?}");
 
             let mut reader = config.get_file(&path).unwrap();
             let mut file = vec![];
@@ -32,10 +32,10 @@ fn test_saving_all_mods() {
                         Path::new("Maps/SpringCollab2020/4-Expert/Mun.bin"),
                     ];
                     if brokens.contains(&path.as_path()) {
-                        println!("Skipping {} {:?}", name, path);
+                        println!("Skipping {name} {path:?}");
                         continue;
                     }
-                    println!("testing {} {:?}", name, path);
+                    println!("testing {name} {path:?}");
 
                     let mut reader = config.get_file(&path).unwrap();
                     let mut file = vec![];

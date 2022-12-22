@@ -45,7 +45,7 @@ where
         let i = i as f32;
         let n = n as f32 + 2.0;
         total = n;
-        progress(i / n, format!("Loading {}", name));
+        progress(i / n, format!("Loading {name}"));
         load_into(config, modules);
     });
 

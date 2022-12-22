@@ -98,13 +98,12 @@ impl EverestYaml {
                     Ok(e) => e,
                     Err(e) => {
                         return Err(format!(
-                            "Error parsing {}/everest.yaml: {:?}",
+                            "Error parsing {}/everest.yaml: {e:?}",
                             source
                                 .filesystem_root()
                                 .unwrap()
                                 .to_str()
                                 .unwrap_or("<invalid unicode>"),
-                            e
                         ));
                     }
                 };

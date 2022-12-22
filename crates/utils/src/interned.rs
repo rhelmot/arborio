@@ -62,7 +62,6 @@ pub fn intern_str(s: &str) -> Interned {
 
 pub fn intern_owned(s: impl Into<Box<str>>) -> Interned {
     let s = s.into();
-    #[allow(clippy::redundant_closure)] // false positive
     intern_impl(s, |s| Box::leak(s))
 }
 

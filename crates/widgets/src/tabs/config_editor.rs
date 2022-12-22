@@ -225,7 +225,7 @@ pub fn build_search_settings(cx: &mut Context) {
                         ConfigSearchType::Triggers,
                         ConfigSearchType::Stylegrounds,
                     ] {
-                        Label::new(cx, &format!("{}", target))
+                        Label::new(cx, &format!("{target}"))
                             .class("dropdown_element")
                             .class("btn_highlight")
                             .on_press(move |cx| {
@@ -254,7 +254,7 @@ pub fn build_search_settings(cx: &mut Context) {
                         ConfigSearchFilter::NoAttrConfig,
                         ConfigSearchFilter::NoDrawConfig,
                     ] {
-                        Label::new(cx, &format!("{}", target))
+                        Label::new(cx, &format!("{target}"))
                             .class("dropdown_element")
                             .class("btn_highlight")
                             .on_press(move |cx| {
@@ -659,7 +659,7 @@ pub fn build_item_editor(cx: &mut Context) {
                     .unwrap();
                 if let Some(result) = result {
                     if let Err(e) = std::fs::write(&result, text) {
-                        dialog::Message::new(format!("Could not save file: {}", e))
+                        dialog::Message::new(format!("Could not save file: {e}"))
                             .title("Error")
                             .show()
                             .unwrap();

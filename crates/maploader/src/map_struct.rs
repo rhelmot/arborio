@@ -525,14 +525,14 @@ impl CelesteMapError {
     pub fn missing_child(parent: &str, child: &str) -> CelesteMapError {
         CelesteMapError {
             kind: CelesteMapErrorType::MissingChild,
-            description: format!("Expected child of {}: {} not found", parent, child),
+            description: format!("Expected child of {parent}: {child} not found"),
         }
     }
 
     fn missing_attribute(parent: &str, attr: &str) -> CelesteMapError {
         CelesteMapError {
             kind: CelesteMapErrorType::MissingAttribute,
-            description: format!("Expected attribute of {}: {} not found", parent, attr),
+            description: format!("Expected attribute of {parent}: {attr} not found"),
         }
     }
 }
@@ -681,7 +681,7 @@ pub fn from_reader(mut reader: impl std::io::Read) -> Result<CelesteMap, std::io
     let map = from_binfile(binfile).map_err(|e| {
         std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            format!("Data validation error: {}", e),
+            format!("Data validation error: {e}"),
         )
     })?;
 
@@ -1009,7 +1009,7 @@ fn obj_transform(
         line.split(',').filter(|&s| !s.is_empty()).map(|tile| {
             tile.parse::<i32>().map_err(|_| CelesteMapError {
                 kind: CelesteMapErrorType::ParseError,
-                description: format!("Could not parse {} as int", tile),
+                description: format!("Could not parse {tile} as int"),
             })
         })
     })

@@ -1,4 +1,3 @@
-#![allow(clippy::uninlined_format_args)] // my editor can't handle refactoring these yet
 use enum_dispatch::enum_dispatch;
 use std::fmt::{Display, Formatter};
 use std::io::{BufRead, Seek};

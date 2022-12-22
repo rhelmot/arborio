@@ -398,13 +398,13 @@ pub fn pick_new_name(map: &MapState) -> String {
         .map(|room| &room.data.name)
         .collect::<HashSet<_>>();
     for ch in 'a'..='z' {
-        if !all_names.contains(&format!("{}-00", ch)) {
+        if !all_names.contains(&format!("{ch}-00")) {
             if ch == 'a' {
                 return "a-00".to_string();
             } else {
                 let ch = (ch as u8 - 1) as char;
                 for num in 0..=99 {
-                    let result = format!("{}-{:02}", ch, num);
+                    let result = format!("{ch}-{num:02}");
                     if !all_names.contains(&result) {
                         return result;
                     }
@@ -415,7 +415,7 @@ pub fn pick_new_name(map: &MapState) -> String {
 
     let mut num = 0;
     loop {
-        let result = format!("lvl_{}", num);
+        let result = format!("lvl_{num}");
         if !all_names.contains(&result) {
             break result;
         } else {

@@ -84,7 +84,7 @@ impl Tileset {
             serde_xml_rs::from_str(string.trim_start_matches('\u{FEFF}')).map_err(|e| {
                 io::Error::new(
                     io::ErrorKind::InvalidData,
-                    format!("Cannot open tileset: {:?}", e),
+                    format!("Cannot open tileset: {e:?}"),
                 )
             })?;
         let mut out: HashMap<char, Tileset> = HashMap::new();
@@ -319,13 +319,13 @@ impl TextureTile {
         for piece in text.split(';') {
             let coords: Vec<&str> = piece.split(',').collect();
             if coords.len() != 2 {
-                return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tile declaration (\"{}\") must be semicolon-separated sets of two comma-separated integers", text)));
+                return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tile declaration (\"{text}\") must be semicolon-separated sets of two comma-separated integers")));
             }
 
             let x = coords[0].trim().parse::<u32>();
             let y = coords[1].trim().parse::<u32>();
             if x.is_err() || y.is_err() {
-                return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tile declaration (\"{}\") must be semicolon-separated sets of two comma-separated integers", text)));
+                return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Tile declaration (\"{text}\") must be semicolon-separated sets of two comma-separated integers")));
             }
 
             result.push(TextureTile {

@@ -257,7 +257,7 @@ fn draw_entity_directive(
 
             match tiler.deref() {
                 "repeat" => {
-                    let Some(dim) = palette.gameplay_atlas.sprite_dimensions(&texture) else { return Err(format!("No such gameplay texture: {}", texture)) };
+                    let Some(dim) = palette.gameplay_atlas.sprite_dimensions(&texture) else { return Err(format!("No such gameplay texture: {texture}")) };
                     let dim: Size2D<f32, UnknownUnit> = dim.cast();
                     let slice: Rect<f32, UnknownUnit> = if slice_w == 0.0 {
                         Rect {
@@ -273,12 +273,11 @@ fn draw_entity_directive(
                     draw_tiled(palette, canvas, &texture, &bounds, &slice, color)?;
                 }
                 "9slice" => {
-                    let Some(dim) = palette.gameplay_atlas.sprite_dimensions(&texture) else { return Err(format!("No such gameplay texture: {}", texture)) };
+                    let Some(dim) = palette.gameplay_atlas.sprite_dimensions(&texture) else { return Err(format!("No such gameplay texture: {texture}")) };
                     let dim: Size2D<f32, UnknownUnit> = dim.cast();
                     if dim.width < 17.0 || dim.height < 17.0 {
                         return Err(format!(
-                            "Cannot draw {} as 9slice: must be at least 17x17",
-                            texture
+                            "Cannot draw {texture} as 9slice: must be at least 17x17",
                         ));
                     }
 
@@ -314,8 +313,7 @@ fn draw_entity_directive(
                 _ => {
                     if texture.len() != 1 {
                         return Err(format!(
-                            "Texture for {} tiler ({}) must be one char (for now)",
-                            tiler, texture
+                            "Texture for {tiler} tiler ({texture}) must be one char (for now)",
                         ));
                     }
                     let (tiler, ignore) = if tiler == "fg_ignore" {
@@ -324,8 +322,8 @@ fn draw_entity_directive(
                         (tiler.deref(), false)
                     };
                     let texture = texture.chars().next().unwrap();
-                    let Some(tilemap) = palette.autotilers.get(tiler) else { return Err(format!("No such tiler {}", tiler)) };
-                    let Some(tileset) = tilemap.get(&texture) else { return Err(format!("No such texture {} for tiler {}", texture, tiler)) };
+                    let Some(tilemap) = palette.autotilers.get(tiler) else { return Err(format!("No such tiler {tiler}")) };
+                    let Some(tileset) = tilemap.get(&texture) else { return Err(format!("No such texture {texture} for tiler {tiler}")) };
 
                     let tile_bounds =
                         rect_room_to_tile(&bounds.cast::<i32>().cast_unit::<RoomSpace>());

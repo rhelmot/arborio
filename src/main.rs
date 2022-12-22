@@ -1,4 +1,3 @@
-#![allow(clippy::uninlined_format_args)]
 mod logging;
 #[cfg(test)]
 mod tests;
