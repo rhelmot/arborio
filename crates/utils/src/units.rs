@@ -1,6 +1,3 @@
-#![allow(unused)]
-
-use euclid::*;
 pub use euclid::{Angle, Point2D, Rect, Size2D, Transform2D, UnknownUnit, Vector2D};
 use serde::{Deserialize, Serialize};
 

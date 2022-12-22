@@ -10,7 +10,6 @@ macro_rules! uuid_cls {
     ($name:ident) => {
         #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
         pub struct $name(u32);
-        #[allow(unused)]
         impl $name {
             pub fn new() -> Self {
                 Self($crate::uuid::next_uuid())

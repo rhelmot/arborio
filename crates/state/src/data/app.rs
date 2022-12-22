@@ -196,7 +196,6 @@ pub enum AppEvent {
 
 #[derive(Debug)]
 #[non_exhaustive]
-#[allow(clippy::enum_variant_names)]
 pub enum AppInternalEvent {
     SelectMeEntity { id: i32, trigger: bool },
     SelectMeDecal { id: u32, fg: bool },

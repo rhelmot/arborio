@@ -1,5 +1,3 @@
-#![allow(clippy::new_without_default)]
-
 use arborio_utils::units::*;
 use arborio_utils::vizia::prelude::*;
 use std::collections::HashMap;
@@ -203,8 +201,14 @@ impl<T> Clone for AutoSaverLens<T> {
 impl<T> AutoSaverLens<T> {
     pub fn new() -> Self {
         Self {
-            t: PhantomData::default(),
+            t: PhantomData,
         }
+    }
+}
+
+impl<T> Default for AutoSaverLens<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -284,6 +288,12 @@ pub struct HashMapLenLens<K, V> {
 impl<K, V> HashMapLenLens<K, V> {
     pub fn new() -> Self {
         Self { p: PhantomData }
+    }
+}
+
+impl<K, V> Default for HashMapLenLens<K, V> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
