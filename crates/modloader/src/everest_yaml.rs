@@ -1,6 +1,8 @@
 use itertools::Itertools;
 use serde::de::{Error, Unexpected};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::fmt::{Display, Formatter};
+use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
 
@@ -57,7 +59,7 @@ impl<'de> Deserialize<'de> for EverestModuleVersion {
     {
         let s: String = Deserialize::deserialize(deserializer)?;
         s.parse()
-            .map_err(|e| D::Error::invalid_value(Unexpected::Other(e), &"1.2.3"))
+            .map_err(|e| Error::invalid_value(Unexpected::Other(e), &"1.2.3"))
     }
 }
 
@@ -88,47 +90,46 @@ impl FromStr for EverestModuleVersion {
     }
 }
 
-impl EverestYaml {
-    pub fn from_config(source: &mut ConfigSource) -> Result<Self, String> {
-        if let Some(mut reader) = source.get_file(Path::new("everest.yaml")) {
-            let mut data = String::new();
-            reader.read_to_string(&mut data).unwrap();
-            let everest_yaml: Vec<EverestYaml> =
-                match serde_yaml::from_str(data.trim_start_matches('\u{FEFF}')) {
-                    Ok(e) => e,
-                    Err(e) => {
-                        return Err(format!(
-                            "Error parsing {}/everest.yaml: {e:?}",
-                            source
-                                .filesystem_root()
-                                .unwrap()
-                                .to_str()
-                                .unwrap_or("<invalid unicode>"),
-                        ));
-                    }
-                };
-            if everest_yaml.len() != 1 {
-                return Err(format!(
-                    "Error parsing {}/everest.yaml: {} entries",
-                    source
-                        .filesystem_root()
-                        .unwrap()
-                        .to_str()
-                        .unwrap_or("<invalid unicode>"),
-                    everest_yaml.len()
-                ));
-            }
-            Ok(everest_yaml.into_iter().next().unwrap())
-        } else {
-            Err(format!(
-                "No everest.yaml in {}",
-                source
-                    .filesystem_root()
-                    .unwrap()
-                    .to_str()
-                    .unwrap_or("<invalid unicode>")
-            ))
+pub enum EverestYamlLoadError {
+    ParseError(serde_yaml::Error),
+    NotOneEntry(usize),
+    Missing,
+}
+
+impl Display for EverestYamlLoadError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EverestYamlLoadError::ParseError(e) => e.fmt(f),
+            EverestYamlLoadError::NotOneEntry(n) => write!(f, "found array of {}, expected 1", n),
+            EverestYamlLoadError::Missing => write!(f, "No such file"),
         }
+    }
+}
+
+impl EverestYaml {
+    pub fn from_config(source: &mut ConfigSource) -> Result<Self, EverestYamlLoadError> {
+        for filename in ["everest.yaml", "everest.yml"].into_iter() {
+            if let Some(mut reader) = source.get_file(Path::new(filename)) {
+                return Self::from_reader(&mut reader);
+            }
+        }
+        Err(EverestYamlLoadError::Missing)
+    }
+
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Self, EverestYamlLoadError> {
+        let mut data = String::new();
+        reader.read_to_string(&mut data).unwrap();
+        let everest_yaml: Vec<EverestYaml> =
+            match serde_yaml::from_str(data.trim_start_matches('\u{FEFF}')) {
+                Ok(e) => e,
+                Err(e) => {
+                    return Err(EverestYamlLoadError::ParseError(e));
+                }
+            };
+        if everest_yaml.len() != 1 {
+            return Err(EverestYamlLoadError::NotOneEntry(everest_yaml.len()));
+        }
+        Ok(everest_yaml.into_iter().next().unwrap())
     }
 
     pub fn save(&self, mod_path: &Path) {

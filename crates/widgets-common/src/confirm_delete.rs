@@ -1,4 +1,5 @@
-use arborio_utils::vizia::{prelude::*, state::StaticLens};
+use crate::container_model::{ModelContainer, ModelContainerSetter};
+use arborio_utils::vizia::prelude::*;
 
 #[derive(Debug, Clone, Lens)]
 struct DeleteState {
@@ -46,9 +47,11 @@ pub fn deleter<F1, F2>(
             VStack::new(cx, move |cx| {
                 Label::new(cx, confirm_message);
                 HStack::new(cx, move |cx| {
-                    Textbox::new(cx, StaticLens::new(&"")).on_edit(move |cx, value| {
+                    ModelContainer { val: "".to_owned() }.build(cx);
+                    Textbox::new(cx, ModelContainer::<String>::val).on_edit(move |cx, value| {
                         let validated = validate_text(cx, &value);
                         cx.emit(DeleteEvent::Validate(validated));
+                        cx.emit(ModelContainerSetter::Val(value));
                     });
                     Label::new(cx, btn_text)
                         .class("btn_highlight")

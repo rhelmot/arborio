@@ -18,3 +18,5 @@ serde = { version = "^1.0", features = ["derive"] }  # TODO: how can we not dupl
 itertools = "^0.10"
 log = "0.4.16"
 walkdir = "^2"
+notify = "^5"
+priority-queue = "^1.3"

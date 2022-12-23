@@ -1,18 +1,16 @@
-use crate::data::app::{build_modules_lookup, step_modules_lookup, AppEvent, AppState};
+use crate::data::app::{AppEvent, AppState};
 use crate::data::config_editor::ConfigSearchResult;
 use crate::data::project_map::{MapEvent, MapState};
 use crate::data::tabs::{AppTab, ConfigEditorTab, MapTab};
-use crate::data::{load_map, trigger_module_load, trigger_palette_update, AppConfigSetter, MapID};
+use crate::data::{load_map, AppConfigSetter, MapID};
 use arborio_modloader::aggregate::ModuleAggregate;
+use arborio_modloader::discovery::LoaderThreadMessage;
 use arborio_modloader::everest_yaml::{EverestModuleVersion, EverestYaml};
-use arborio_modloader::module::{CelesteModule, ModuleID};
 use arborio_utils::units::*;
 use arborio_utils::uuid::next_uuid;
 use arborio_utils::vizia::prelude::*;
-use arborio_walker::{ConfigSource, FolderSource};
 use log::Level;
 use std::cell::RefCell;
-use std::ops::DerefMut;
 
 impl AppState {
     pub fn apply(&mut self, cx: &mut EventContext, event: AppEvent) {
@@ -139,20 +137,29 @@ impl AppState {
             }
             AppEvent::EditSettings { setter } => {
                 if let AppConfigSetter::CelesteRoot(Some(root)) = &setter {
-                    trigger_module_load(cx, root.clone());
+                    self.loading_tx
+                        .send(LoaderThreadMessage::SetRoot(root.clone()))
+                        .unwrap();
                 }
                 setter.apply(&mut self.config.borrow_mut());
             }
             AppEvent::SetModules { modules } => {
-                let mut r = modules.lock();
-                std::mem::swap(r.deref_mut(), &mut self.modules);
-                self.modules_lookup = build_modules_lookup(&self.modules);
-                self.modules_version += 1;
-                self.omni_palette = trigger_palette_update(
-                    &self.modules,
-                    &self.modules_lookup,
-                    &mut self.loaded_maps,
-                );
+                self.modules = modules;
+                self.rebuild_modules_bookkeeping();
+            }
+            AppEvent::UpdateModules { modules } => {
+                for (id, module) in modules.into_iter() {
+                    if let Some(module) = module {
+                        if self.sugar_mod.is_some() && self.sugar_mod == module.filesystem_root {
+                            cx.emit(AppEvent::OpenModuleOverviewTab { module: id });
+                            self.sugar_mod = None;
+                        }
+                        self.modules.insert(id, module);
+                    } else {
+                        self.modules.remove(&id);
+                    }
+                }
+                self.rebuild_modules_bookkeeping();
             }
             AppEvent::NewMod => {
                 let mut number = 1;
@@ -183,22 +190,9 @@ impl AppState {
                         break;
                     }
                     everest_data.save(&path);
+                    self.sugar_mod = Some(path);
 
-                    let mut module_src = ConfigSource::Dir(FolderSource::new(&path).unwrap());
-                    let mut module = CelesteModule::new(Some(path), everest_data);
-                    module.load(&mut module_src);
-
-                    let module_id = ModuleID::new();
-                    step_modules_lookup(
-                        &mut self.modules_lookup,
-                        &self.modules,
-                        module_id,
-                        &module,
-                    );
-                    self.modules.insert(module_id, module);
-                    self.modules_version += 1;
-
-                    cx.emit(AppEvent::OpenModuleOverviewTab { module: module_id });
+                    // let hot reload take care of the rest
                     break;
                 }
             }
