@@ -1,7 +1,6 @@
-use crate::container_model::{ModelContainer, ModelEvent};
+use crate::container_model::{ModelContainer, ModelContainerSetter};
 use crate::validator_box::validator_box;
 use arborio_utils::vizia::prelude::*;
-use std::cell::RefCell;
 use std::str::FromStr;
 
 #[derive(Debug, Lens)]
@@ -82,7 +81,7 @@ where
                     ModelContainer::val,
                     move |cx, val| {
                         if validator(cx, &val) {
-                            cx.emit(ModelEvent::Set(RefCell::new(Some(val))));
+                            cx.emit(ModelContainerSetter::Val(val));
                             true
                         } else {
                             false

@@ -1,18 +1,20 @@
 use crate::data::action::{MapAction, RoomAction, StylegroundSelection};
 use arborio_maploader::map_struct::{CelesteMap, CelesteMapEntity};
 use arborio_modloader::aggregate::ModuleAggregate;
+use arborio_modloader::discovery::LoaderThreadMessage;
 use arborio_modloader::module::{CelesteModule, MapPath, ModuleID, CELESTE_MODULE_ID};
 use arborio_modloader::selectable::{
     DecalSelectable, EntitySelectable, TileSelectable, TriggerSelectable,
 };
 use arborio_utils::units::*;
 use arborio_utils::vizia::prelude::*;
-use parking_lot::Mutex;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
+use std::path::PathBuf;
+use std::sync::mpsc::Sender;
 use std::time;
 
 use crate::auto_saver::AutoSaver;
@@ -28,6 +30,8 @@ use crate::tools::{Tool, ToolSpec};
 #[derive(Lens)]
 pub struct AppState {
     pub config: AutoSaver<AppConfig>,
+    pub loading_tx: Sender<LoaderThreadMessage>,
+    pub sugar_mod: Option<PathBuf>,
 
     pub modules: HashMap<ModuleID, CelesteModule>,
     pub modules_lookup: HashMap<String, ModuleID>,
@@ -72,7 +76,10 @@ pub enum AppEvent {
         setter: AppConfigSetter,
     },
     SetModules {
-        modules: Mutex<HashMap<ModuleID, CelesteModule>>,
+        modules: HashMap<ModuleID, CelesteModule>,
+    },
+    UpdateModules {
+        modules: HashMap<ModuleID, Option<CelesteModule>>,
     },
     OpenModuleOverviewTab {
         module: ModuleID,
@@ -210,14 +217,8 @@ impl Model for AppState {
     }
 }
 
-impl Default for AppState {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl AppState {
-    pub fn new() -> AppState {
+    pub fn new(tx: Sender<LoaderThreadMessage>) -> AppState {
         let mut cfg: AppConfig = confy::load("arborio", "arborio").unwrap_or_default();
         if !cfg
             .celeste_root
@@ -234,6 +235,8 @@ impl AppState {
 
         AppState {
             config: cfg,
+            loading_tx: tx,
+            sugar_mod: None,
             current_tab: 0,
             poison_tab: usize::MAX,
             tabs: vec![AppTab::CelesteOverview],
@@ -282,6 +285,29 @@ impl AppState {
         } else {
             panic!("misuse of map_tab_unwrap");
         }
+    }
+
+    pub(crate) fn rebuild_modules_bookkeeping(&mut self) {
+        // bump binding version
+        self.modules_version += 1;
+
+        // rebuild modules lookup
+        self.modules_lookup.clear();
+        for (id, module) in self.modules.iter() {
+            step_modules_lookup(&mut self.modules_lookup, &self.modules, *id, module);
+        }
+
+        // rebuild palettes
+        for state in self.loaded_maps.values_mut() {
+            state.cache.palette = ModuleAggregate::new(
+                &self.modules,
+                &self.modules_lookup,
+                &Some(state.data.clone_meta()),
+                state.cache.path.module,
+                true,
+            );
+        }
+        self.omni_palette = ModuleAggregate::new_omni(&self.modules, false) // discard logs
     }
 
     pub fn current_project_id(&self) -> Option<ModuleID> {
@@ -437,16 +463,6 @@ impl AppState {
     pub fn batch_action_unique(&self, events: impl IntoIterator<Item = MapAction>) -> AppEvent {
         self.batch_action(events, EventPhase::new())
     }
-}
-
-pub fn build_modules_lookup(
-    modules: &HashMap<ModuleID, CelesteModule>,
-) -> HashMap<String, ModuleID> {
-    let mut result = HashMap::new();
-    for (id, module) in modules.iter() {
-        step_modules_lookup(&mut result, modules, *id, module);
-    }
-    result
 }
 
 pub fn step_modules_lookup(

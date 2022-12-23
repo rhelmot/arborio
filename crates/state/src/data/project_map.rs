@@ -8,6 +8,7 @@ use arborio_maploader::map_struct::{
     CelesteMapMetaAudioState, CelesteMapMetaMode, CelesteMapStyleground, FieldEntry,
 };
 use arborio_modloader::aggregate::ModuleAggregate;
+use arborio_modloader::discovery::LoaderThreadMessage;
 use arborio_modloader::everest_yaml::EverestModuleVersion;
 use arborio_modloader::module::CelesteModuleKind;
 use arborio_modloader::module::{MapPath, ModuleID};
@@ -700,7 +701,8 @@ impl AppState {
                     .save(state.filesystem_root.as_ref().unwrap());
             }
             ProjectEvent::SetPath { path } => {
-                if let Err(e) = std::fs::rename(state.filesystem_root.as_ref().unwrap(), &path) {
+                let old_path = state.filesystem_root.as_ref().unwrap();
+                if let Err(e) = std::fs::rename(old_path, &path) {
                     log::error!(
                         "Could not move {} to {}: {}",
                         &state.everest_metadata.name,
@@ -708,6 +710,10 @@ impl AppState {
                         e
                     );
                 } else {
+                    // uhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh race condition or state inconsistency on failure. pick your poison
+                    self.loading_tx
+                        .send(LoaderThreadMessage::Move(old_path.clone(), path.clone()))
+                        .unwrap();
                     state.filesystem_root = Some(path);
                 }
             }

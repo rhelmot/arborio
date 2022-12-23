@@ -9,8 +9,7 @@ use arborio_widgets_common::advanced_tweaker::{
     tweak_attr_check, tweak_attr_text, tweak_attr_text_dropdown,
 };
 use arborio_widgets_common::confirm_delete::deleter;
-use arborio_widgets_common::container_model::{ModelContainer, ModelEvent};
-use std::cell::RefCell;
+use arborio_widgets_common::container_model::{ModelContainer, ModelContainerSetter};
 
 pub fn build_map_meta_tab(cx: &mut Context, map: MapID) {
     ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
@@ -231,7 +230,7 @@ pub fn sid_editor(cx: &mut Context, map: MapID) {
         HStack::new(cx, move |cx| {
             Label::new(cx, "SID").class("label");
             Textbox::new(cx, ModelContainer::<String>::val).on_edit(|cx, val| {
-                cx.emit(ModelEvent::Set(RefCell::new(Some(val))));
+                cx.emit(ModelContainerSetter::Val(Some(val)));
             });
         });
         HStack::new(cx, move |cx| {
