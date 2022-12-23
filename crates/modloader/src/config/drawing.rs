@@ -1,10 +1,11 @@
 use super::{Const, Expression, Rect, Vec2};
+use crate::config::Number;
 use arborio_utils::vizia::vg;
 use serde;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Serialize, Deserialize, Default, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq, Clone)]
 pub struct EntityDraw {
     #[serde(default)]
     pub initial_draw: Vec<DrawElement>,
@@ -13,7 +14,7 @@ pub struct EntityDraw {
 }
 
 #[allow(clippy::large_enum_variant, clippy::enum_variant_names)]
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum DrawElement {
     DrawRect {
         rect: Rect,
@@ -66,9 +67,9 @@ pub enum DrawElement {
         texture: Expression,
         point: Vec2,
         #[serde(default = "half")]
-        justify_x: f32,
+        justify_x: Number,
         #[serde(default = "half")]
-        justify_y: f32,
+        justify_y: Number,
         #[serde(default = "one_one")]
         scale: Vec2,
         #[serde(default)]
@@ -77,13 +78,13 @@ pub enum DrawElement {
         rot: Expression,
     },
     DrawRectCustom {
-        interval: f32,
+        interval: Number,
         rect: Rect,
         draw: Vec<DrawElement>,
     },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Color {
     pub r: Expression,
     pub g: Expression,
@@ -121,8 +122,8 @@ fn one_one() -> Vec2 {
         y: Expression::mk_const(1),
     }
 }
-fn half() -> f32 {
-    0.5
+fn half() -> Number {
+    Number(0.5)
 }
 fn clear() -> Color {
     Color {

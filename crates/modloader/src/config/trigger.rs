@@ -14,7 +14,7 @@ pub struct TriggerConfigV1 {
     pub templates: Vec<EntityTemplate>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
 pub struct TriggerConfigV2 {
     pub trigger_name: String,
     #[serde(default)]

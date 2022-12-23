@@ -138,7 +138,11 @@ impl Lens for CurrentSelectedEntityResizableLens {
             .entity_config
             .get(name.as_str())
             .map(|cfg| (cfg.resizable_x, cfg.resizable_y));
-        map(data.as_ref())
+        let data = data.unwrap_or_else(|| {
+            let config = cmap.cache.palette.entity_config.get("default").unwrap();
+            (config.resizable_x, config.resizable_y)
+        });
+        map(Some(&data))
     }
 }
 

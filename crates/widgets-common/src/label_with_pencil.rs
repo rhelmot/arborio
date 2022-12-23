@@ -36,7 +36,7 @@ pub fn label_with_pencil<L, F1, F2>(
 ) -> Handle<impl View>
 where
     L: Lens,
-    <L as Lens>::Target: ToString + FromStr + PartialEq + Clone + Send + Sync,
+    <L as Lens>::Target: ToString + FromStr + Eq + Clone + Send + Sync,
     F1: 'static + Send + Sync + Clone + Fn(&mut EventContext, &<L as Lens>::Target) -> bool,
     F2: 'static + Send + Sync + Clone + Fn(&mut EventContext, <L as Lens>::Target),
 {

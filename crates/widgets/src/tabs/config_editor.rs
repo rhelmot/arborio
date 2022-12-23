@@ -723,7 +723,7 @@ fn config_editor_textbox<T>(
     lens: impl Copy + Lens<Target = T>,
     on_edit: impl 'static + Send + Sync + Clone + Fn(&mut EventContext, T),
 ) where
-    T: FromStr + std::fmt::Display + PartialEq + Clone,
+    T: FromStr + std::fmt::Display + Eq + Clone,
     <T as FromStr>::Err: ToString,
 {
     let tab = cx.data::<AppState>().unwrap().current_tab;

@@ -1,6 +1,6 @@
 use crate::advanced_tweaker::attr_editor;
 use arborio_maploader::map_struct::Attribute;
-use arborio_modloader::config::{AttributeInfo, AttributeType};
+use arborio_modloader::config::{AttributeInfo, AttributeType, Number};
 use arborio_state::lenses::{hash_map_nth_key_lens, HashMapIndexWithLens, HashMapLenLens};
 use arborio_utils::vizia::fonts::icons_names::DOWN;
 use arborio_utils::vizia::prelude::*;
@@ -117,10 +117,10 @@ pub fn basic_attrs_editor<LA, LC, FS>(
                                 AttributeType::Float => {
                                     attr_editor(
                                         cx,
-                                        lens_attr_val.then(Attribute::float),
+                                        lens_attr_val.then(Attribute::float).into_lens::<Number>(),
                                         lens_attr_key,
                                         move |cx, key, val| {
-                                            setter(cx, key, Attribute::Float(val));
+                                            setter(cx, key, Attribute::Float(val.to_float()));
                                         },
                                         true,
                                     );

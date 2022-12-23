@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arborio_maploader::map_struct::{Attribute, CelesteMapStyleground};
-use arborio_modloader::config::AttributeType;
+use arborio_modloader::config::{AttributeType, Number};
 use arborio_state::data::action::{MapAction, StylegroundSelection};
 use arborio_state::data::app::{AppEvent, AppState};
 use arborio_state::data::project_map::MapStateData;
@@ -24,6 +24,23 @@ macro_rules! edit_text {
             |cx, x| {
                 let mut style = current_styleground_impl_lens().get(cx);
                 style.$attr = x;
+                emit(cx, style);
+                true
+            },
+        );
+    };
+}
+macro_rules! edit_float {
+    ($cx: expr, $label:expr, $attr:ident) => {
+        tweak_attr_text(
+            $cx,
+            $label,
+            current_styleground_impl_lens()
+                .then(CelesteMapStyleground::$attr)
+                .into_lens::<Number>(),
+            |cx, x| {
+                let mut style = current_styleground_impl_lens().get(cx);
+                style.$attr = x.into();
                 emit(cx, style);
                 true
             },
@@ -248,19 +265,19 @@ impl StyleTweakerWidget {
     fn members(cx: &mut Context) {
         edit_text!(cx, "Name", name);
         edit_text!(cx, "Tag", tag);
-        edit_text!(cx, "X", x);
-        edit_text!(cx, "Y", y);
-        edit_text!(cx, "Scroll X", scroll_x);
-        edit_text!(cx, "Scroll Y", scroll_y);
-        edit_text!(cx, "Speed X", speed_x);
-        edit_text!(cx, "Speed Y", speed_y);
+        edit_float!(cx, "X", x);
+        edit_float!(cx, "Y", y);
+        edit_float!(cx, "Scroll X", scroll_x);
+        edit_float!(cx, "Scroll Y", scroll_y);
+        edit_float!(cx, "Speed X", speed_x);
+        edit_float!(cx, "Speed Y", speed_y);
         edit_text!(cx, "Color", color); // TODO real validation
-        edit_text!(cx, "Alpha", alpha);
+        edit_float!(cx, "Alpha", alpha);
         edit_check!(cx, "Flip X", flip_x);
         edit_check!(cx, "Flip Y", flip_y);
         edit_check!(cx, "Loop X", loop_x);
         edit_check!(cx, "Loop Y", loop_y);
-        edit_text!(cx, "Wind", wind);
+        edit_float!(cx, "Wind", wind);
         edit_check!(cx, "Instant In", instant_in);
         edit_check!(cx, "Instant out", instant_out);
         edit_optional_text!(cx, "Show If Flag", flag);
@@ -337,7 +354,7 @@ fn emit(cx: &mut EventContext, style: CelesteMapStyleground) {
     ));
 }
 
-fn tweak_attr_picker<T: 'static + PartialEq + Clone + Send + Sync>(
+fn tweak_attr_picker<T: 'static + Eq + Clone + Send + Sync>(
     // TODO move to common when mature
     cx: &mut Context,
     name: &'static str,

@@ -210,7 +210,7 @@ fn draw_entity_directive(
                 return Ok(());
             }
             let point = point.evaluate_float(env)?.to_point().cast_unit();
-            let justify = Vector2D::new(*justify_x, *justify_y);
+            let justify = Vector2D::new(justify_x.to_float(), justify_y.to_float());
             let color = color.evaluate(env)?;
             let scale = scale.evaluate_float(env)?.to_point().cast_unit();
             let rot = rot.evaluate(env)?.as_number()?.to_float();
@@ -390,7 +390,7 @@ fn draw_entity_directive(
         } => {
             let rect = rect.evaluate_float(env)?;
             let mut env2 = env.clone();
-            for point in rect_point_iter(rect, *interval) {
+            for point in rect_point_iter(rect, interval.to_float()) {
                 env2.insert("customx", Const::Number(Number(point.x as f64)));
                 env2.insert("customy", Const::Number(Number(point.y as f64)));
 

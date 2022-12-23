@@ -14,8 +14,10 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
+use std::num::ParseFloatError;
+use std::str::FromStr;
 
-#[derive(Debug, Clone, PartialEq)] // TODO WHY DO WE NEED CLONE OMG
+#[derive(Debug, Clone, PartialEq, Eq)] // TODO WHY DO WE NEED CLONE OMG
 pub enum Expression {
     Const(Const),
     Atom(String),
@@ -122,9 +124,29 @@ impl Number {
     }
 }
 
+impl From<f32> for Number {
+    fn from(value: f32) -> Self {
+        Self(value as f64)
+    }
+}
+
+impl From<Number> for f32 {
+    fn from(value: Number) -> Self {
+        value.to_float()
+    }
+}
+
 impl std::fmt::Display for Number {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl FromStr for Number {
+    type Err = ParseFloatError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        f64::from_str(s).map(Self)
     }
 }
 
@@ -149,6 +171,25 @@ impl Hash for Number {
         } else {
             self.0.to_bits().hash(state);
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for Number {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s: f64 = Deserialize::deserialize(deserializer)?;
+        Ok(Self(s))
+    }
+}
+
+impl Serialize for Number {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.serialize(s)
     }
 }
 

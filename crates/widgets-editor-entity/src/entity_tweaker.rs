@@ -20,14 +20,22 @@ impl EntityTweakerWidget {
         Self {}
             .build(cx, move |cx| {
                 let entity_lens = current_selected_entity_lens();
-                Binding::new(cx, entity_lens, move |cx, entity| {
-                    if let Some(entity) = entity.get_fallible(cx) {
-                        let msg = format!("{} - {}", entity.name, entity.id);
-                        Label::new(cx, &msg);
-                    } else {
-                        Label::new(cx, "No entity selected");
-                    }
-                });
+                Binding::new(
+                    cx,
+                    entity_lens.then(CelesteMapEntity::name),
+                    move |cx, name| {
+                        Binding::new(cx, entity_lens.then(CelesteMapEntity::id), move |cx, id| {
+                            let name = name.get_fallible(cx);
+                            let id = id.get_fallible(cx);
+                            if let (Some(name), Some(id)) = (name, id) {
+                                let msg = format!("{} - {}", name, id);
+                                Label::new(cx, &msg);
+                            } else {
+                                Label::new(cx, "No entity selected");
+                            }
+                        });
+                    },
+                );
                 Binding::new(cx, IsFailedLens::new(entity_lens), move |cx, failed| {
                     if !failed.get(cx) {
                         ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {

@@ -1,3 +1,4 @@
+use arborio_modloader::config::Number;
 use arborio_state::data::action::MapAction;
 use arborio_state::data::app::{AppEvent, AppState};
 use arborio_state::data::project_map::{MapEvent, MapStateData, MapStateUpdate};
@@ -322,6 +323,28 @@ macro_rules! edit_text {
     };
 }
 
+macro_rules! edit_float {
+    ($cx: expr, $label:expr, $attr:ident) => {
+        tweak_attr_text(
+            $cx,
+            $label,
+            current_map_impl_lens()
+                .then(MapStateData::$attr)
+                .into_lens::<Number>(),
+            |cx, x| {
+                emit(
+                    cx,
+                    MapStateUpdate {
+                        $attr: Some(x.into()),
+                        ..MapStateUpdate::default()
+                    },
+                );
+                true
+            },
+        );
+    };
+}
+
 macro_rules! edit_text_dropdown {
     ($cx: expr, $label:expr, $attr:ident, $options:expr) => {
         tweak_attr_text_dropdown(
@@ -396,9 +419,9 @@ fn meta_tweaker(cx: &mut Context, _map: MapID) {
     edit_text_dropdown!(cx, "Color Grade", color_grade, COLOR_GRADE_OPTIONS);
     edit_check!(cx, "Dreaming", dreaming);
     edit_text_dropdown!(cx, "Intro Type", intro_type, INTRO_TYPE_OPTIONS);
-    edit_text!(cx, "Bloom Base", bloom_base);
-    edit_text!(cx, "Bloom Strength", bloom_strength);
-    edit_text!(cx, "Darkness Alpha", darkness_alpha);
+    edit_float!(cx, "Bloom Base", bloom_base);
+    edit_float!(cx, "Bloom Strength", bloom_strength);
+    edit_float!(cx, "Darkness Alpha", darkness_alpha);
     edit_text_dropdown!(cx, "Core Mode", core_mode, CORE_MODE_OPTIONS);
 
     edit_check!(cx, "Heart Is End", heart_is_end);

@@ -444,13 +444,27 @@ pub enum CelesteMapErrorType {
     OutOfRange,
 }
 
-#[derive(Debug, PartialEq, Clone, Lens, Serialize, Deserialize)]
+#[derive(Debug, Clone, Lens, Serialize, Deserialize)]
 pub enum Attribute {
     Bool(bool),
     Int(i32),
     Float(f32),
     Text(String),
 }
+
+impl PartialEq for Attribute {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Text(s1), Self::Text(s2)) => s1 == s2,
+            (Self::Float(s1), Self::Float(s2)) => s1.to_bits() == s2.to_bits(),
+            (Self::Int(s1), Self::Int(s2)) => s1 == s2,
+            (Self::Bool(s1), Self::Bool(s2)) => s1 == s2,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Attribute {}
 
 impl Default for CelesteMapStyleground {
     fn default() -> Self {
@@ -1066,6 +1080,8 @@ impl PartialEq for RoomGlob {
     }
 }
 
+impl Eq for RoomGlob {}
+
 impl AttrCoercion for RoomGlob {
     const NICE_NAME: &'static str = "room glob";
 
@@ -1078,16 +1094,27 @@ impl AttrCoercion for RoomGlob {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct FadeDirectives(pub Vec<FadeDirective>);
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub struct FadeDirective {
     pub pos_from: f32,
     pub pos_to: f32,
     pub fade_from: f32,
     pub fade_to: f32,
 }
+
+impl PartialEq for FadeDirective {
+    fn eq(&self, other: &Self) -> bool {
+        self.pos_from.to_bits() == other.pos_from.to_bits()
+            && self.pos_to.to_bits() == other.pos_to.to_bits()
+            && self.fade_from.to_bits() == other.fade_from.to_bits()
+            && self.fade_to.to_bits() == other.fade_to.to_bits()
+    }
+}
+
+impl Eq for FadeDirective {}
 
 impl FromStr for FadeDirective {
     type Err = ();

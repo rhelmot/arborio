@@ -5,7 +5,7 @@ use crate::textedit_dropdown::TextboxDropdown;
 use crate::validator_box;
 use crate::validator_box::validator_box;
 use arborio_maploader::map_struct::Attribute;
-use arborio_modloader::config::AttributeType;
+use arborio_modloader::config::{AttributeType, Number};
 use arborio_state::lenses::{
     hash_map_nth_key_lens, HashMapIndexWithLens, HashMapLenLens, IsFailedLens,
 };
@@ -35,7 +35,7 @@ enum NewAttributeDataEvent {
 pub fn tweak_attr_text<L, F>(cx: &mut Context, name: &'static str, lens: L, setter: F)
 where
     L: Lens,
-    <L as Lens>::Target: ToString + FromStr + PartialEq + Clone,
+    <L as Lens>::Target: ToString + FromStr + Eq + Clone,
     F: 'static + Send + Sync + Fn(&mut EventContext, <L as Lens>::Target) -> bool,
 {
     HStack::new(cx, move |cx| {
@@ -123,9 +123,9 @@ pub fn advanced_attrs_editor(
                     let setter2 = setter.clone();
                     attr_editor(
                         cx,
-                        f_value_lens,
+                        f_value_lens.into_lens::<Number>(),
                         key_lens,
-                        move |cx, key, val| setter2(cx, key, Attribute::Float(val)),
+                        move |cx, key, val| setter2(cx, key, Attribute::Float(val.to_float())),
                         false,
                     );
                     Binding::new(cx, IsFailedLens::new(b_value_lens), move |cx, failed| {
@@ -202,7 +202,7 @@ pub fn advanced_attrs_editor(
     });
 }
 
-pub fn attr_editor<T: ToString + FromStr + PartialEq + Clone>(
+pub fn attr_editor<T: ToString + FromStr + Eq + Clone>(
     cx: &mut Context,
     lens: impl Lens<Target = T>,
     key: impl Send + Sync + Lens<Target = String>,
@@ -223,7 +223,7 @@ pub fn attr_editor<T: ToString + FromStr + PartialEq + Clone>(
     }
 }
 
-pub fn attr_editor_inner<T: ToString + FromStr + PartialEq + Clone>(
+pub fn attr_editor_inner<T: ToString + FromStr + Eq + Clone>(
     cx: &mut Context,
     lens: impl Lens<Target = T>,
     key: impl Send + Sync + Lens<Target = String>,

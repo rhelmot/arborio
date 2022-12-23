@@ -32,7 +32,7 @@ pub struct EntityConfigV1 {
     pub templates: Vec<EntityTemplate>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default, Lens)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default, Lens)]
 pub struct EntityConfigV2 {
     pub entity_name: String,
     pub hitboxes: EntityRects,

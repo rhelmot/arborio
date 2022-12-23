@@ -1,4 +1,5 @@
 use arborio_maploader::map_struct::{CelesteMapLevel, CelesteMapLevelUpdate};
+use arborio_modloader::config::Number;
 use arborio_state::data::action::RoomAction;
 use arborio_state::data::app::AppState;
 use arborio_state::data::tabs::AppTab;
@@ -22,6 +23,27 @@ macro_rules! edit_text {
                     cx,
                     CelesteMapLevelUpdate {
                         $attr: Some(x),
+                        ..CelesteMapLevelUpdate::default()
+                    },
+                );
+                true
+            },
+        );
+    };
+}
+macro_rules! edit_float {
+    ($cx: expr, $label:expr, $attr:ident) => {
+        tweak_attr_text(
+            $cx,
+            $label,
+            current_room_lens()
+                .then(CelesteMapLevel::$attr)
+                .into_lens::<Number>(),
+            |cx, x| {
+                emit(
+                    cx,
+                    CelesteMapLevelUpdate {
+                        $attr: Some(x.into()),
                         ..CelesteMapLevelUpdate::default()
                     },
                 );
@@ -176,8 +198,8 @@ impl RoomTweakerWidget {
         });
 
         edit_text!(cx, "Color", color);
-        edit_text!(cx, "Camera Offset X", camera_offset_x);
-        edit_text!(cx, "Camera Offset Y", camera_offset_y);
+        edit_float!(cx, "Camera Offset X", camera_offset_x);
+        edit_float!(cx, "Camera Offset Y", camera_offset_y);
         edit_text!(cx, "Wind Pattern", wind_pattern);
         edit_check!(cx, "Space", space);
         edit_check!(cx, "Underwater", underwater);
