@@ -11,7 +11,7 @@ arborio-utils = { path = "../utils", default-features = false }
 
 Inflector = { version = "^0.11", default-features = false }
 image = { version = "0.24.0", default-features = false, features = ["png"] } # inherit from femtovg
-serde-xml-rs = "^0.5"
+serde-xml-rs = "^0.6"
 byteorder = "^1.4"
 imgref = "1.6.1"  # inherit from femtovg
 rgb = "0.8.20"  # inherit from femtovg
