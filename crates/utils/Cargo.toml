@@ -15,5 +15,5 @@ parking_lot = "^0.12"
 serde = { version = "^1.0", features = ["derive"] }
 lazy_static = "^1.4"
 
-vizia = { path = "../../../../rust/vizia", default-features = false, features = ["winit", "clipboard"] }
-#vizia = {git = "https://github.com/vizia/vizia", rev = "6c76e480fa92c3a80f494b76c87d2a20ed043697", default-features = false, features = ["winit", "clipboard"] }  # feat/textbox_interactions
+#vizia = { path = "../../../../rust/vizia", default-features = false, features = ["winit", "clipboard"] }
+vizia = {git = "https://github.com/vizia/vizia", rev = "a5734e0f814473380ef0973363a8489fc109ef84", default-features = false, features = ["winit", "clipboard"] }  # main
