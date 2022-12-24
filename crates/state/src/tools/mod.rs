@@ -6,12 +6,12 @@ pub mod selection;
 pub mod style;
 
 use arborio_utils::vizia::prelude::*;
-use enum_iterator::IntoEnumIterator;
+use enum_iterator::Sequence;
 
 use crate::data::app::{AppEvent, AppInternalEvent, AppState};
 use arborio_utils::units::*;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, IntoEnumIterator)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Sequence)]
 pub enum ToolSpec {
     Hand,
     Selection,

@@ -1,5 +1,3 @@
-use enum_iterator::IntoEnumIterator;
-
 use arborio_modloader::aggregate::ModuleAggregate;
 use arborio_state::data::app::{AppEvent, AppState};
 use arborio_state::data::{AppConfig, AppConfigSetter, Layer};
@@ -89,7 +87,7 @@ pub fn build_tool_picker(cx: &mut Context) {
             let showme = map.get_fallible(cx).is_some();
             if showme {
                 Binding::new(cx, AppState::current_toolspec, |cx, tool_field| {
-                    for toolspec in ToolSpec::into_enum_iter() {
+                    for toolspec in enum_iterator::all::<ToolSpec>() {
                         let selected = tool_field.map(move |sel| sel == &toolspec);
                         let selected2 = selected.clone();
                         HStack::new(cx, move |cx| {
@@ -109,7 +107,7 @@ pub fn build_tool_picker(cx: &mut Context) {
 
 pub fn build_layer_picker(cx: &mut Context) {
     VStack::new(cx, move |cx| {
-        for layer in Layer::into_enum_iter() {
+        for layer in enum_iterator::all::<Layer>() {
             let selected = AppState::current_layer.map(move |sel| sel == &layer);
             let selected2 = selected.clone();
             HStack::new(cx, move |cx| {

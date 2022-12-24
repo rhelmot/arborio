@@ -54,7 +54,7 @@ impl Default for AppConfig {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, enum_iterator::IntoEnumIterator)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, enum_iterator::Sequence)]
 pub enum Layer {
     FgTiles,
     BgTiles,
