@@ -16,7 +16,7 @@ hitboxes:
         y: 8
 standard_draw:
   node_draw:
-    - DrawCurve:
+    - !DrawCurve
         color:
           r: 0x59
           g: 0x58

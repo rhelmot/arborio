@@ -9,7 +9,7 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"collectables/summitgems/" + gem + "/gem00"'
         point:
           x: x

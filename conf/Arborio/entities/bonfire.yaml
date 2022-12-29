@@ -9,7 +9,7 @@ hitboxes:
         y: 12
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match mode {
                     "unlit" => "objects/campfire/fire00",
                     "Unlit" => "objects/campfire/fire00",
@@ -30,14 +30,14 @@ attribute_info:
   mode:
     ty: String
     default:
-      String: Unlit
+      !String Unlit
     options:
       - name: Unlit
         value:
-          String: Unlit
+          !String Unlit
       - name: Lit
         value:
-          String: Lit
+          !String Lit
       - name: Smoking
         value:
-          String: Smoking
+          !String Smoking

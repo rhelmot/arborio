@@ -16,7 +16,7 @@ hitboxes:
         y: 4
 standard_draw:
   initial_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: match width + height { 0 => x - 4, _ => x }
@@ -35,7 +35,7 @@ standard_draw:
           b: 0x40
           a: 0x80
   node_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: nodex - 2
@@ -55,7 +55,7 @@ standard_draw:
           a: 0xff
 selected_draw:
   node_draw:
-    - DrawLine:
+    - !DrawLine
         start:
           x: prevnodexorbase
           y: prevnodeyorbase

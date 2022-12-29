@@ -9,7 +9,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"G"'
         tiler: '"fg_ignore"'
         bounds:
@@ -21,7 +21,7 @@ standard_draw:
             y: height
 selected_draw:
   node_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"G"'
         tiler: '"fg_ignore"'
         bounds:
@@ -31,7 +31,7 @@ selected_draw:
           size:
             x: width
             y: height
-    - DrawLine:
+    - !DrawLine
         start:
           x: prevnodexorbase
           y: prevnodeyorbase

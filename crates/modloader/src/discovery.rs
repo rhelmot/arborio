@@ -276,7 +276,7 @@ pub fn setup_loader_thread<A0: Any + Send, A1: Any + Send, A2: Any + Send>(
                                 .unwrap()
                                 .to_str()
                                 .unwrap_or("<bad unicode>");
-                            cx.emit(make_progress((i + 1) as f32 / n, format!("Hot-reloading {}", name))).unwrap();
+                            cx.emit(make_progress((i + 1) as f32 / n, format!("Hot-reloading {name}"))).unwrap();
                             match load_into(&mut config, &mut modules, &mut id_lookup) {
                                 Ok(id) => {
                                     result.insert(id, modules.get(&id).cloned());
@@ -284,7 +284,7 @@ pub fn setup_loader_thread<A0: Any + Send, A1: Any + Send, A2: Any + Send>(
                                 Err((id, EverestYamlLoadError::Missing)) => {
                                     result.insert(id, None);
                                 },
-                                Err((_, e)) => log::error!("Failed parsing everest.yaml for {}: {}", config, e),
+                                Err((_, e)) => log::error!("Failed parsing everest.yaml for {config}: {e}"),
                             }
                         }
                     }

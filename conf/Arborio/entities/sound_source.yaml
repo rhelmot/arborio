@@ -11,7 +11,7 @@ hitboxes:
   node_rects: []
 standard_draw:
   initial_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: x - 4
@@ -45,16 +45,16 @@ attribute_info:
     display_name: sound
     ty: String
     default:
-      String: ""
+      !String ""
   originX:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
   originY:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
 keywords: []
 templates:

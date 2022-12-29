@@ -16,7 +16,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: x
@@ -35,7 +35,7 @@ standard_draw:
           b: 255
           a: 255
   node_draw:
-    - DrawLine:
+    - !DrawLine
         start:
           x: x
           y: y
@@ -50,7 +50,7 @@ standard_draw:
           a: 200
 selected_draw:
   node_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: nodex
@@ -79,26 +79,26 @@ attribute_info:
     display_name: Fast Moving
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   oneUse:
     display_name: One Use
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   below:
     display_name: Below
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   originX:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
   originY:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
 keywords:
   - space jam

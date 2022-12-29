@@ -9,7 +9,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: x
@@ -22,7 +22,7 @@ standard_draw:
           g: 0x40
           b: 0x70
           a: 0xff
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/moveBlock/" + match canSteer {
                     0 => "base",
                     _ => match direction {
@@ -45,7 +45,7 @@ standard_draw:
           size:
             x: width
             y: height
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: x + width / 2 - 5
@@ -58,7 +58,7 @@ standard_draw:
           g: 0x40
           b: 0x70
           a: 0xff
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/moveBlock/" + match direction {
                       "left" => "arrow04",
                       "Left" => "arrow04",

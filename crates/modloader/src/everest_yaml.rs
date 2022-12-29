@@ -100,7 +100,7 @@ impl Display for EverestYamlLoadError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             EverestYamlLoadError::ParseError(e) => e.fmt(f),
-            EverestYamlLoadError::NotOneEntry(n) => write!(f, "found array of {}, expected 1", n),
+            EverestYamlLoadError::NotOneEntry(n) => write!(f, "found array of {n}, expected 1"),
             EverestYamlLoadError::Missing => write!(f, "No such file"),
         }
     }

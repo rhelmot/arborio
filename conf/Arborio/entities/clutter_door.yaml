@@ -9,12 +9,12 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/door/ghost_door00"'
         point:
           x: x + 16
           y: y + 16
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/resortclutter/icon_" + match type {
                     "Red" => "red",
                     "Green" => "green",

@@ -9,7 +9,7 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/puffer/idle00"'
         point:
           x: x
@@ -18,7 +18,7 @@ standard_draw:
           x: 'match right { 0 => -1, _ => 1 }'
           y: 1
     # only quadratic beziers here, sorry
-    - DrawEllipse:
+    - !DrawEllipse
         rect:
           topleft:
             x: x - 32
@@ -38,18 +38,18 @@ attribute_info:
   originX:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
   originY:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
   right:
     display_name: Face Right
     ty: Bool
     default:
-      Bool: false
+      !Bool false
 templates:
   - name: Puffer Fish
     attributes: {}

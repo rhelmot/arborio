@@ -9,7 +9,7 @@ hitboxes:
         y: 8
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"scenery/cliffside/flag" + match index {
                     0 => "00",
                     1 => "01",
@@ -36,50 +36,50 @@ attribute_info:
     display_name: Index (texture)
     ty: Int
     default:
-      Int: 0
+      !Int 0
     options:
       - name: 0
         value:
-          Int: 0
+          !Int 0
       - name: 1
         value:
-          Int: 1
+          !Int 1
       - name: 2
         value:
-          Int: 2
+          !Int 2
       - name: 3
         value:
-          Int: 3
+          !Int 3
       - name: 4
         value:
-          Int: 4
+          !Int 4
       - name: 5
         value:
-          Int: 5
+          !Int 5
       - name: 6
         value:
-          Int: 6
+          !Int 6
       - name: 7
         value:
-          Int: 7
+          !Int 7
       - name: 8
         value:
-          Int: 8
+          !Int 8
       - name: 9
         value:
-          Int: 9
+          !Int 9
       - name: 10
         value:
-          Int: 10
+          !Int 10
   originX:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
   originY:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
 templates:
   - name: Cliffside Flag

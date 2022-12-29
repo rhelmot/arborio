@@ -9,12 +9,12 @@ hitboxes:
         y: 8
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"scenery/moon_creatures/tiny05"'
         point:
           x: x
           y: y
-    - DrawCurve:
+    - !DrawCurve
         start:
           x: x
           y: y
@@ -29,7 +29,7 @@ standard_draw:
           g: 0xff
           b: 0xff
           a: 0xff
-    - DrawCurve:
+    - !DrawCurve
         start:
           x: x
           y: y

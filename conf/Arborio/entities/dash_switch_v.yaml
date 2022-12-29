@@ -9,7 +9,7 @@ hitboxes:
         y: 8
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match sprite {
                     "default" => "objects/temple/dashButton00",
                     _ => "objects/temple/dashButtonMirror00"

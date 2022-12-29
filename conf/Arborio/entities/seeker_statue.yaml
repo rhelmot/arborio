@@ -17,7 +17,7 @@ hitboxes:
         y: "4"
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: "\"characters/monsters/predator75\""
         point:
           x: x
@@ -37,7 +37,7 @@ standard_draw:
 selected_draw:
   initial_draw: []
   node_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: (nodex - 2)
@@ -56,7 +56,7 @@ selected_draw:
           b: "0"
           a: "255"
         border_thickness: 1
-    - DrawLine:
+    - !DrawLine
         start:
           x: prevnodexorbase
           y: prevnodeyorbase
@@ -82,27 +82,27 @@ attribute_info:
     display_name: originY
     ty: Int
     default:
-      Int: 0
+      !Int 0
     options: []
     ignore: true
   hatch:
     display_name: Hatch Condition
     ty: String
     default:
-      String: ""
+      !String ""
     options:
       - name: Within Distance
         value:
-          String: Distance
+          !String Distance
       - name: Player on the Right
         value:
-          String: playerRightOfX
+          !String playerRightOfX
     ignore: false
   originX:
     display_name: originX
     ty: Int
     default:
-      Int: 0
+      !Int 0
     options: []
     ignore: true
 keywords: []

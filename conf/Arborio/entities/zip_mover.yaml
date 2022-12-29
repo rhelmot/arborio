@@ -16,7 +16,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: x
@@ -34,7 +34,7 @@ standard_draw:
           g: 0
           b: 0
           a: 255
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/zipmover/block"'
         tiler: '"9slice"'
         bounds:
@@ -44,14 +44,14 @@ standard_draw:
           size:
             x: width
             y: height
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/zipmover/light01"'
         point:
           x: x + width / 2
           y: y
         justify_y: 0
   node_draw:
-    - DrawLine:
+    - !DrawLine
         color:
           r: 0x66
           g: 0x39
@@ -63,14 +63,14 @@ standard_draw:
         end:
           x: nodex + width / 2
           y: nodey + height / 2
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/zipmover/cog"'
         point:
           x: nodex + width / 2
           y: nodey + height / 2
 selected_draw:
   node_draw:
-    - DrawLine:
+    - !DrawLine
         start:
           x: prevnodexorbase
           y: prevnodeyorbase

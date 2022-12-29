@@ -16,7 +16,7 @@ hitboxes:
         y: 32
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"characters/badelineBoss/boss70"'
         point:
           x: x
@@ -25,7 +25,7 @@ standard_draw:
           x: -1
           y: 1
   node_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: nodex - 2
@@ -45,7 +45,7 @@ standard_draw:
           a: 255
 selected_draw:
   node_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"characters/badelineBoss/boss70"'
         point:
           x: nodex
@@ -53,7 +53,7 @@ selected_draw:
         scale:
           x: -1
           y: 1
-    - DrawLine:
+    - !DrawLine
         start:
           x: prevnodexorbase
           y: prevnodeyorbase

@@ -9,19 +9,19 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/Bumper/Idle30"'
         point:
           x: x
           y: y
 selected_draw:
   node_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/Bumper/Idle30"'
         point:
           x: nodex
           y: nodey
-    - DrawLine:
+    - !DrawLine
         start:
           x: x
           y: y

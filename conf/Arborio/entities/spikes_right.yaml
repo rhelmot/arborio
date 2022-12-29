@@ -9,7 +9,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: 'match (match ?type { 1 => type, _ => "default" }) {
                     "tentacles" => "",
                     _ => "danger/spikes/" + (match ?type { 1 => type, _ => "default" }) + "_right00"
@@ -28,7 +28,7 @@ standard_draw:
           size:
             x: 6
             y: 8
-    - DrawRectCustom:
+    - !DrawRectCustom
         interval: 16
         rect:
           topleft:
@@ -38,7 +38,7 @@ standard_draw:
             x: 1
             y: height - 8
         draw:
-          - DrawPointImage:
+          - !DrawPointImage
               texture: 'match (match ?type { 1 => type, _ => "default" }) {
                           "tentacles" => "danger/tentacles00",
                           _ => ""
@@ -48,7 +48,7 @@ standard_draw:
                 y: customy
               rot: 90
               justify_x: 0
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match (match ?type { 1 => type, _ => "default" }) {
                     "tentacles" => match height % 16 {
                       8 => "danger/tentacles00",
@@ -69,20 +69,20 @@ attribute_info:
   type:
     ty: String
     default:
-      String: default
+      !String default
     options:
       - name: Default
         value:
-          String: default
+          !String default
       - name: Outline
         value:
-          String: outline
+          !String outline
       - name: Ridge
         value:
-          String: cliffside
+          !String cliffside
       - name: Reflection
         value:
-          String: reflection
+          !String reflection
       - name: Tentacles
         value:
-          String: tentacles
+          !String tentacles

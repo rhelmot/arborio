@@ -16,7 +16,7 @@ hitboxes:
         y: 8
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match ?moon {
                     1 => match moon {
                       1 => "collectables/moonBerry/normal00",
@@ -34,14 +34,14 @@ standard_draw:
           x: x
           y: y
   node_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"collectables/strawberry/seed00"'
         point:
           x: nodex
           y: nodey
 selected_draw:
   node_draw:
-    - DrawLine:
+    - !DrawLine
         start:
           x: x
           y: y
@@ -61,19 +61,19 @@ attribute_info:
   winged:
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   moon:
     ty: Bool
     default:
-      Bool: false
+      !Bool false
 templates:
   - name: "Strawberry"
     attributes: {}
   - name: "Winged Strawberry"
     attributes:
       winged:
-        Bool: true
+        !Bool true
   - name: "Moon Berry"
     attributes:
       moon:
-        Bool: true
+        !Bool true

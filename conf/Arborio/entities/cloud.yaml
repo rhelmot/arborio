@@ -9,7 +9,7 @@ hitboxes:
         y: 8
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/clouds/" + match (match ?small { 1 => small, _ => 0 }) {
                     0 => match fragile {
                       1 => "fragile00",

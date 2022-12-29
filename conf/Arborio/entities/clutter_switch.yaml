@@ -9,13 +9,13 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/resortclutter/clutter_button00"'
         point:
           x: x + 16
           y: y + 16
         justify_y: 1
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/resortclutter/icon_" + match type {
                     "Red" => "red",
                     "Green" => "green",
@@ -34,14 +34,14 @@ attribute_info:
   type:
     ty: String
     default:
-      String: red
+      !String red
     options:
       - name: Towels
         value:
-          String: red
+          !String red
       - name: Books
         value:
-          String: green
+          !String green
       - name: Chest
         value:
-          String: yellow
+          !String yellow

@@ -9,7 +9,7 @@ hitboxes:
         y: 32
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/door/ghost_door00"'
         point:
           x: x + 16

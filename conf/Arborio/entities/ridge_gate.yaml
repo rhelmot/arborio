@@ -16,7 +16,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/ridgeGate"'
         tiler: '"9slice"'
         bounds:
@@ -28,7 +28,7 @@ standard_draw:
             y: height
 selected_draw:
   node_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/ridgeGate"'
         tiler: '"9slice"'
         bounds:
@@ -38,7 +38,7 @@ selected_draw:
           size:
             x: width
             y: height
-    - DrawLine:
+    - !DrawLine
         start:
           x: x + width / 2
           y: y + height / 2

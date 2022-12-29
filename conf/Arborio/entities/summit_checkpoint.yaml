@@ -9,19 +9,19 @@ hitboxes:
         y: 32
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"scenery/summitcheckpoints/base02"'
         point:
           x: x
           y: y
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"scenery/summitcheckpoints/number0" + ((number / 10) - (number / 10 % 1))'
         point:
           x: x - 1
           y: y + 2
         justify_x: 1
         justify_y: 0
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"scenery/summitcheckpoints/number0" + (number % 10)'
         point:
           x: x

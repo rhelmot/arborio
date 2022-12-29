@@ -9,7 +9,7 @@ hitboxes:
         y: 8
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/crumbleBlock/default"'
         bounds:
           topleft:

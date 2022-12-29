@@ -16,7 +16,7 @@ hitboxes:
         y: 4
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"scenery/bridge"'
         bounds:
           topleft:
@@ -25,7 +25,7 @@ standard_draw:
           size:
             x: firstnodex - x
             y: 60
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"scenery/bridge"'
         bounds:
           topleft:
@@ -35,7 +35,7 @@ standard_draw:
             x: x + width - lastnodex
             y: 60
   node_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: nodex - 2

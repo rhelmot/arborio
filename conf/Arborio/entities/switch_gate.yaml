@@ -16,7 +16,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/switchgate/" + sprite'
         tiler: '"9slice"'
         bounds:
@@ -26,14 +26,14 @@ standard_draw:
           size:
             x: width
             y: height
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/switchgate/icon00"'
         point:
           x: x + width / 2
           y: y + height / 2
 selected_draw:
   node_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/switchgate/" + sprite'
         tiler: '"9slice"'
         bounds:
@@ -43,12 +43,12 @@ selected_draw:
           size:
             x: width
             y: height
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/switchgate/icon00"'
         point:
           x: nodex + width / 2
           y: nodey + height / 2
-    - DrawLine:
+    - !DrawLine
         start:
           x: x + width / 2
           y: y + height / 2
@@ -70,18 +70,18 @@ attribute_info:
   sprite:
     ty: String
     default:
-      String: "block"
+      !String "block"
     options:
       - name: Block
         value:
-          String: "block"
+          !String "block"
       - name: Mirror
         value:
-          String: "mirror"
+          !String "mirror"
       - name: Stars
         value:
-          String: "stars"
+          !String "stars"
       - name: Temple
         value:
-          String: "temple"
+          !String "temple"
 pencil: Node

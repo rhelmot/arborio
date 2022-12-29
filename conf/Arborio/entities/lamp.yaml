@@ -9,7 +9,7 @@ hitboxes:
         y: 80
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"scenery/lamp"'
         bounds:
           topleft:

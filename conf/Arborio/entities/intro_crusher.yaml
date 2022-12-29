@@ -16,7 +16,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"3"'
         tiler: '"fg_ignore"'
         bounds:
@@ -26,7 +26,7 @@ standard_draw:
           size:
             x: width
             y: height
-    - DrawLine:
+    - !DrawLine
         start:
           x: x
           y: y
@@ -41,7 +41,7 @@ standard_draw:
         arrowhead: true
 selected_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"3"'
         tiler: '"fg_ignore"'
         bounds:

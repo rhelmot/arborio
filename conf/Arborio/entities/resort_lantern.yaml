@@ -9,12 +9,12 @@ hitboxes:
         y: 24
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/resortLantern/holder"'
         point:
           x: x
           y: y
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/resortLantern/holder"'
         point:
           x: x
@@ -22,7 +22,7 @@ standard_draw:
         scale:
           x: -1
           y: 1
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/resortLantern/lantern00"'
         point:
           x: x

@@ -16,7 +16,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/temple/breakBlock00"'
         tiler: '"9slice"'
         bounds:

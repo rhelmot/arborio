@@ -16,7 +16,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
                     "moon" => "moon/",
                     "Moon" => "moon/",
@@ -47,7 +47,7 @@ standard_draw:
           g: 0xff
           b: 0xff
           a: 0x80
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
                     "moon" => "moon/",
                     "Moon" => "moon/",
@@ -61,7 +61,7 @@ standard_draw:
           size:
             x: width
             y: height
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
                     "moon" => "moon/",
                     "Moon" => "moon/",
@@ -72,7 +72,7 @@ standard_draw:
           y: y + height / 2
 selected_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
                     "moon" => "moon/",
                     "Moon" => "moon/",
@@ -86,7 +86,7 @@ selected_draw:
           size:
             x: width
             y: height
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
                     "moon" => "moon/",
                     "Moon" => "moon/",

@@ -9,7 +9,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/hanginglamp"'
         bounds:
           topleft:
@@ -25,7 +25,7 @@ standard_draw:
           size:
             x: 8
             y: 8
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/hanginglamp"'
         bounds:
           topleft:
@@ -41,7 +41,7 @@ standard_draw:
           size:
             x: 8
             y: 8
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/hanginglamp"'
         bounds:
           topleft:

@@ -9,13 +9,13 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"scenery/car/body"'
         point:
           x: x
           y: y
         justify_y: 1
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"scenery/car/wheels"'
         point:
           x: x

@@ -9,7 +9,7 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/lookout/lookout05"'
         justify_y: 1
         point:

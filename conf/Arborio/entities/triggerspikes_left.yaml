@@ -9,7 +9,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"danger/spikes/default_left00"'
         bounds:
           topleft:

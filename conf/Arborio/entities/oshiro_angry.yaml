@@ -9,7 +9,7 @@ hitboxes:
         y: 32
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"characters/oshiro/boss12"'
         point:
           x: x

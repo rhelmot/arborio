@@ -16,7 +16,7 @@ hitboxes:
         y: 8
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match (match ?star { 1 => star, _ => 0 }) {
                     1 => "danger/starfish17",
                     _ => match (match ?dust { 1 => dust, _ => 0}) {
@@ -27,7 +27,7 @@ standard_draw:
         point:
           x: x
           y: y
-    - DrawLine:
+    - !DrawLine
         start:
           x: x
           y: y
@@ -41,7 +41,7 @@ standard_draw:
           a: 200
 selected_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match (match ?star { 1 => star, _ => 0 }) {
                     1 => "danger/starfish17",
                     _ => match (match ?dust { 1 => dust, _ => 0}) {
@@ -52,7 +52,7 @@ selected_draw:
         point:
           x: firstnodex + (firstnodex - x)
           y: firstnodey + (firstnodey - y)
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match (match ?star { 1 => star, _ => 0 }) {
                     1 => "danger/starfish17",
                     _ => match (match ?dust { 1 => dust, _ => 0}) {
@@ -63,7 +63,7 @@ selected_draw:
         point:
           x: firstnodex + (firstnodey - y)
           y: firstnodey - (firstnodex - x)
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match (match ?star { 1 => star, _ => 0 }) {
                     1 => "danger/starfish17",
                     _ => match (match ?dust { 1 => dust, _ => 0}) {
@@ -82,19 +82,19 @@ attribute_info:
   star:
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   dust:
     ty: Bool
     default:
-      Bool: false
+      !Bool false
 templates:
   - name: "Track Spinner (Blade)"
     attributes: {}
   - name: "Track Spinner (Dust)"
     attributes:
       dust:
-        Bool: true
+        !Bool true
   - name: "Track Spinner (Star)"
     attributes:
       star:
-        Bool: true
+        !Bool true

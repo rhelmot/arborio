@@ -9,7 +9,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/BumpBlockNew/fire00"'
         tiler: '"9slice"'
         bounds:
@@ -19,7 +19,7 @@ standard_draw:
           size:
             x: width
             y: height
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/BumpBlockNew/fire_center00"'
         point:
           x: x + width / 2

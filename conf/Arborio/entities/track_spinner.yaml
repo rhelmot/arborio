@@ -16,7 +16,7 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match (match ?star { 1 => star, _ => 0 }) {
                     1 => "danger/starfish17",
                     _ => match (match ?dust { 1 => dust, _ => 0}) {
@@ -28,7 +28,7 @@ standard_draw:
           x: x
           y: y
   node_draw:
-    - DrawLine:
+    - !DrawLine
         start:
           x: x
           y: y
@@ -43,7 +43,7 @@ standard_draw:
           a: 200
 selected_draw:
   node_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match (match ?star { 1 => star, _ => 0 }) {
                     1 => "danger/starfish17",
                     _ => match (match ?dust { 1 => dust, _ => 0}) {
@@ -63,41 +63,41 @@ attribute_info:
     display_name: Star
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   dust:
     display_name: Dust
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   startCenter:
     display_name: Start at Center
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   speed:
     display_name: Speed
     ty: String
     default:
-      String: "Slow"
+      !String "Slow"
     options:
       - name: Slow
         value:
-          String: Slow
+          !String Slow
       - name: Normal
         value:
-          String: Normal
+          !String Normal
       - name: Fast
         value:
-          String: Fast
+          !String Fast
   originX:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
   originY:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
 templates:
   - name: "Track Spinner (Blade)"
@@ -105,8 +105,8 @@ templates:
   - name: "Track Spinner (Dust)"
     attributes:
       dust:
-        Bool: true
+        !Bool true
   - name: "Track Spinner (Star)"
     attributes:
       star:
-        Bool: true
+        !Bool true

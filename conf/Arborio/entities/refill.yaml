@@ -9,7 +9,7 @@ hitboxes:
         y: 8
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match (match ?twoDash { 1 => twoDash, _ => 0 }) { 1 => "objects/refillTwo/idle00", _ => "objects/refill/idle00" }'
         point:
           x: x
@@ -21,15 +21,15 @@ attribute_info:
   twoDash:
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   oneUse:
     ty: Bool
     default:
-      Bool: false
+      !Bool false
 templates:
   - name: "Refill"
     attributes: {}
   - name: "Double Refill"
     attributes:
       twoDash:
-        Bool: true
+        !Bool true

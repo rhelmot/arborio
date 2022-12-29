@@ -9,12 +9,12 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"scenery/temple/eye/bg_eye"'
         point:
           x: x
           y: y
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"scenery/temple/eye/bg_pupil"'
         point:
           x: x

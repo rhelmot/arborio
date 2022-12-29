@@ -9,7 +9,7 @@ hitboxes:
         y: 64
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"scenery/summitclouds/cloud01"'
         point:
           x: x

@@ -5,6 +5,7 @@ use arborio_modloader::mapstruct_plus_config::{make_entity_env, make_node_env};
 use arborio_utils::units::*;
 use arborio_utils::vizia::prelude::*;
 use arborio_utils::vizia::vg;
+use itertools::Itertools;
 
 use crate::data::action::{MapAction, RoomAction};
 use crate::data::app::{AppEvent, AppInternalEvent, AppState};
@@ -190,10 +191,9 @@ impl Tool for SelectionTool {
             .transform_point(screen_pos);
         let map_pos = point_lose_precision(&map_pos_precise);
         let room_pos_unsnapped = (map_pos - room.data.bounds.origin).to_point().cast_unit();
-        let tile_pos = point_room_to_tile(&room_pos_unsnapped);
-        let room_pos_snapped = point_tile_to_room(&tile_pos);
         let room_pos = if app.config.snap {
-            room_pos_snapped
+            let tile_pos = point_room_to_tile(&room_pos_unsnapped);
+            point_tile_to_room(&tile_pos)
         } else {
             room_pos_unsnapped
         };
@@ -211,7 +211,7 @@ impl Tool for SelectionTool {
             WindowEvent::MouseDown(MouseButton::Left) => {
                 if self.status == SelectionStatus::None {
                     let got = self.selectable_at(app, room, app.current_layer, room_pos_unsnapped);
-                    if got.is_some() && self.current_selection.contains(&got.unwrap()) {
+                    if matches!(got, Some(got) if self.current_selection.contains(&got)) {
                         self.draw_phase = EventPhase::new();
                         self.status =
                             SelectionStatus::CouldStartDragging(room_pos, room_pos_unsnapped);
@@ -331,10 +331,7 @@ impl Tool for SelectionTool {
 
     fn internal_event(&mut self, event: &AppInternalEvent, cx: &mut EventContext) -> Vec<AppEvent> {
         let app = cx.data::<AppState>().unwrap();
-        let room = match app.current_room_ref() {
-            Some(room) => room,
-            None => return vec![],
-        };
+        let Some(room) = app.current_room_ref() else { return vec![] };
         match event {
             AppInternalEvent::SelectMeEntity { id, trigger } => {
                 self.current_selection
@@ -353,12 +350,9 @@ impl Tool for SelectionTool {
     }
 
     fn switch_off(&mut self, app: &AppState, _cx: &EventContext) -> Vec<AppEvent> {
-        if let Some(room) = app.current_room_ref() {
-            self.clear_selection(app, room)
-                .finalize(app, self.draw_phase)
-        } else {
-            vec![]
-        }
+        let Some(room) = app.current_room_ref() else { return vec![] };
+        self.clear_selection(app, room)
+            .finalize(app, self.draw_phase)
     }
 
     fn draw(&mut self, canvas: &mut Canvas, state: &AppState, cx: &DrawContext) {
@@ -380,10 +374,9 @@ impl Tool for SelectionTool {
             .cast();
         let map_pos = point_lose_precision(&map_pos_precise);
         let room_pos = (map_pos - room.data.bounds.origin).to_point().cast_unit();
-        let tile_pos = point_room_to_tile(&room_pos);
-        let room_pos_snapped = point_tile_to_room(&tile_pos);
         let room_pos = if state.config.snap {
-            room_pos_snapped
+            let tile_pos = point_room_to_tile(&room_pos);
+            point_tile_to_room(&tile_pos)
         } else {
             room_pos
         };
@@ -405,11 +398,7 @@ impl Tool for SelectionTool {
         }
 
         let mut path = vg::Path::new();
-        for selectable in self
-            .pending_selection
-            .iter()
-            .chain(self.current_selection.iter())
-        {
+        for selectable in self.pending_selection.iter().chain(&self.current_selection) {
             for rect in self.rects_of(state, room, *selectable) {
                 path.rect(
                     rect.min_x() as f32,
@@ -479,17 +468,16 @@ impl SelectionTool {
     #[must_use]
     fn notify_selection(&self, app: &AppState) -> AppEventStaging {
         let mut result = AppEventStaging::default();
-        if self.current_selection.len() == 1 {
-            result.push_ind(AppEvent::SelectObject {
-                tab: app.current_tab,
-                selection: Some(*self.current_selection.iter().next().unwrap()),
-            });
+        let selection = if let Some((&selection,)) = &self.current_selection.iter().collect_tuple()
+        {
+            Some(selection)
         } else {
-            result.push_ind(AppEvent::SelectObject {
-                tab: app.current_tab,
-                selection: None,
-            });
-        }
+            None
+        };
+        result.push_ind(AppEvent::SelectObject {
+            tab: app.current_tab,
+            selection,
+        });
         result
     }
 
@@ -508,13 +496,7 @@ impl SelectionTool {
         selectable: AppSelection,
     ) -> Vec<RoomRect> {
         match selectable {
-            AppSelection::FgTile(pt) => {
-                vec![RoomRect::new(point_tile_to_room(&pt), RoomSize::new(8, 8))]
-            }
-            AppSelection::BgTile(pt) => {
-                vec![RoomRect::new(point_tile_to_room(&pt), RoomSize::new(8, 8))]
-            }
-            AppSelection::ObjectTile(pt) => {
+            AppSelection::FgTile(pt) | AppSelection::BgTile(pt) | AppSelection::ObjectTile(pt) => {
                 vec![RoomRect::new(point_tile_to_room(&pt), RoomSize::new(8, 8))]
             }
             AppSelection::FgFloat => {
@@ -572,10 +554,7 @@ impl SelectionTool {
                         .hitboxes
                         .initial_rects
                         .iter()
-                        .filter_map(|r| match r.evaluate_int(&env) {
-                            Ok(r) => Some(r),
-                            Err(_) => None,
-                        })
+                        .filter_map(|r| r.evaluate_int(&env).ok())
                         .collect()
                 } else {
                     vec![]
@@ -1426,30 +1405,17 @@ impl SelectionTool {
         let mut result = self.clear_selection(app, app.current_room_ref().unwrap());
         let mut result_float = LevelFloatState::default();
 
-        let deser: AppSelectable = match serde_yaml::from_str(&data) {
-            Ok(d) => d,
-            Err(_) => return result,
-        };
-        let room = match app.current_room_ref() {
-            Some(room) => room,
-            None => return result,
-        };
-        let clipboard_data = match deser {
-            AppSelectable::InRoom(d) => d,
-            AppSelectable::Rooms(_) => return result,
-        };
+        let Ok(AppSelectable::InRoom(clipboard_data)) = serde_yaml::from_str(&data) else { return result };
+        let Some(room) = app.current_room_ref() else { return result };
         if clipboard_data.is_empty() {
             return result;
         }
         let mut min_tile = TilePoint::new(i32::MAX, i32::MAX);
         let mut max_tile = TilePoint::new(i32::MIN, i32::MIN);
-        for obj in clipboard_data.iter() {
+        for obj in &clipboard_data {
             match obj {
-                AppInRoomSelectable::FgTiles(point, float) => {
-                    min_tile = min_tile.min(*point);
-                    max_tile = max_tile.max(*point + float.size());
-                }
-                AppInRoomSelectable::BgTiles(point, float) => {
+                AppInRoomSelectable::FgTiles(point, float)
+                | AppInRoomSelectable::BgTiles(point, float) => {
                     min_tile = min_tile.min(*point);
                     max_tile = max_tile.max(*point + float.size());
                 }
@@ -1462,37 +1428,32 @@ impl SelectionTool {
                         .current_palette_unwrap()
                         .get_entity_config(&entity.name, *trigger);
                     let env = make_entity_env(entity);
-                    for hitbox in config.hitboxes.initial_rects.iter().filter_map(|r| {
-                        match r.evaluate_int(&env) {
-                            Ok(r) => Some(r),
-                            Err(_) => {
-                                //println!("{}", s);
-                                None
-                            }
-                        }
-                    }) {
+                    for hitbox in config
+                        .hitboxes
+                        .initial_rects
+                        .iter()
+                        .filter_map(|r| r.evaluate_int(&env).ok())
+                    {
                         min_tile = min_tile.min(point_room_to_tile(&hitbox.min()));
                         max_tile = max_tile.max(point_room_to_tile(&hitbox.max()));
                     }
                 }
                 AppInRoomSelectable::Decal(decal, _) => {
-                    if let Some(dim) = app
+                    let Some(dim) = app
                         .current_palette_unwrap()
                         .gameplay_atlas
-                        .sprite_dimensions(&decal_texture(decal))
-                    {
-                        let size = dim
-                            .cast()
-                            .cast_unit()
-                            .to_vector()
-                            .component_mul(Vector2D::new(decal.scale_x, decal.scale_y))
-                            .cast()
-                            .to_size()
-                            .abs();
-                        let hitbox = Rect::new(RoomPoint::new(decal.x, decal.y) - size / 2, size);
-                        min_tile = min_tile.min(point_room_to_tile(&hitbox.min()));
-                        max_tile = max_tile.max(point_room_to_tile(&hitbox.max()));
-                    }
+                        .sprite_dimensions(&decal_texture(decal)) else { continue };
+                    let size = dim
+                        .cast()
+                        .cast_unit()
+                        .to_vector()
+                        .component_mul(Vector2D::new(decal.scale_x, decal.scale_y))
+                        .cast()
+                        .to_size()
+                        .abs();
+                    let hitbox = Rect::new(RoomPoint::new(decal.x, decal.y) - size / 2, size);
+                    min_tile = min_tile.min(point_room_to_tile(&hitbox.min()));
+                    max_tile = max_tile.max(point_room_to_tile(&hitbox.max()));
                 }
             }
         }
@@ -1514,7 +1475,7 @@ impl SelectionTool {
                 AppInRoomSelectable::Entity(mut entity, trigger) => {
                     entity.x += vector_tile_to_room(&offset).x;
                     entity.y += vector_tile_to_room(&offset).y;
-                    for node in entity.nodes.iter_mut() {
+                    for node in &mut entity.nodes {
                         node.x += vector_tile_to_room(&offset).x;
                         node.y += vector_tile_to_room(&offset).y;
                     }
@@ -1582,10 +1543,9 @@ pub(crate) fn add_to_float<T: Copy>(
             let movement = *old_origin - new_origin;
             let dest_start_offset = movement.x + movement.y * new_size.x;
             for line in 0..old_size.y {
-                let src = &old_dat.tiles.as_slice()
-                    [(line * old_size.x) as usize..((line + 1) * old_size.x) as usize];
-                new_dat.tiles.as_mut_slice()[(dest_start_offset + line * new_size.x) as usize
-                    ..(dest_start_offset + line * new_size.x + old_size.x) as usize]
+                let src = &old_dat.tiles[(line * old_size.x) as usize..][..old_size.x as usize];
+                new_dat.tiles[(dest_start_offset + line * new_size.x) as usize..]
+                    [..old_size.x as usize]
                     .clone_from_slice(src);
             }
             *float = Some((new_origin, new_dat));

@@ -9,7 +9,7 @@ hitboxes:
         y: 8
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: 'match (match (match ?texture { 1 => texture, _ => "default" }) { "default" => "wood", _ => texture }) {
                     "cliffside" => "a",
                     "core" => "b",
@@ -31,7 +31,7 @@ standard_draw:
             y: 8
 selected_draw:
   node_draw:
-    - DrawLine:
+    - !DrawLine
         start:
           x: prevnodexorbase
           y: prevnodeyorbase
@@ -54,47 +54,47 @@ attribute_info:
     display_name: Texture
     ty: String
     default:
-      String: default
+      !String default
     options:
       - name: Default
         value:
-          String: default
+          !String default
       - name: Cliffside
         value:
-          String: cliffside
+          !String cliffside
       - name: Core
         value:
-          String: core
+          !String core
       - name: Dream
         value:
-          String: dream
+          !String dream
       - name: Moon
         value:
-          String: moon
+          !String moon
       - name: Reflection
         value:
-          String: reflection
+          !String reflection
       - name: Temple
         value:
-          String: temple
+          !String temple
       - name: Temple B
         value:
-          String: templeB
+          !String templeB
       - name: Wood
         value:
-          String: wood
+          !String wood
   surfaceIndex:
     display_name: Surface Index
     ty: Int
     default:
-      Int: 0
+      !Int 0
   originX:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
   originY:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true

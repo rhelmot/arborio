@@ -4,8 +4,8 @@ attribute_info:
   cameraX:
     ty: Float
     default:
-      Float: 0
+      !Float 0
   cameraY:
     ty: Float
     default:
-      Float: 0
+      !Float 0

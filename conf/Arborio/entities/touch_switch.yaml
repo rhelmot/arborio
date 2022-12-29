@@ -9,12 +9,12 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/touchswitch/container"'
         point:
           x: x
           y: y
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/touchswitch/icon00"'
         point:
           x: x

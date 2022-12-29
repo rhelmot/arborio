@@ -9,12 +9,12 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/glider/idle0"'
         point:
           x: x
           y: y
-    - DrawLine:
+    - !DrawLine
         start:
           x: x - 10
           y: y - 3

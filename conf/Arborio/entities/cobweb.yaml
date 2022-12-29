@@ -16,7 +16,7 @@ hitboxes:
         y: 8
 standard_draw:
   initial_draw:
-    - DrawLine:
+    - !DrawLine
         color:
           r: 0x59
           g: 0x58
@@ -30,7 +30,7 @@ standard_draw:
           x: firstnodex
           y: firstnodey
   node_draw:
-    - DrawCurve:
+    - !DrawCurve
         color:
           r: 0x59
           g: 0x58

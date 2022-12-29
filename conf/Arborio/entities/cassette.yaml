@@ -16,14 +16,14 @@ hitboxes:
         y: 24
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"collectables/cassette/idle00"'
         point:
           x: x
           y: y
 selected_draw:
   node_draw:
-    - DrawCurve:
+    - !DrawCurve
         start:
           x: x
           y: y
@@ -38,7 +38,7 @@ selected_draw:
           g: 255
           b: 0
           a: 255
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"characters/player/bubble"'
         point:
           x: nodex

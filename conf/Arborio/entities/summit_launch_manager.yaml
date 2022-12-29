@@ -9,7 +9,7 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"characters/player/launch02"'
         point:
           x: x

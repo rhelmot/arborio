@@ -16,14 +16,14 @@ hitboxes:
         y: 4
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"characters/monsters/predator00"'
         point:
           x: x
           y: y
 selected_draw:
   node_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: nodex - 2
@@ -41,7 +41,7 @@ selected_draw:
           g: 0
           b: 0
           a: 255
-    - DrawLine:
+    - !DrawLine
         start:
           x: prevnodexorbase
           y: prevnodeyorbase

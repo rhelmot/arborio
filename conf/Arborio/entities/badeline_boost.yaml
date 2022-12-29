@@ -16,13 +16,13 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/badelineboost/idle00"'
         point:
           x: x
           y: y
   node_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: nodex - 2
@@ -42,12 +42,12 @@ standard_draw:
           a: 255
 selected_draw:
   node_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/badelineboost/idle00"'
         point:
           x: nodex
           y: nodey
-    - DrawLine:
+    - !DrawLine
         start:
           x: prevnodexorbase
           y: prevnodeyorbase

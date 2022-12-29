@@ -16,7 +16,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: x + 4
@@ -29,7 +29,7 @@ standard_draw:
           g: 0x10
           b: 0x30
           a: 0xff
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"scenery/templemirror"'
         tiler: '"9slice"'
         bounds:

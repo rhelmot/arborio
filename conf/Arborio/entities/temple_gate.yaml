@@ -9,7 +9,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match sprite {
                     "mirror" => "objects/door/TempleDoorB00",
                     "theo" => "objects/door/TempleDoorC00",
@@ -27,51 +27,51 @@ attribute_info:
     display_name: Sprite
     ty: String
     default:
-      String: default
+      !String default
     options:
       - name: Default
         value:
-          String: default
+          !String default
       - name: Mirror
         value:
-          String: mirror
+          !String mirror
       - name: Theo
         value:
-          String: theo
+          !String theo
   type:
     display_name: Type
     ty: String
     default:
-      String: NearestSwitch
+      !String NearestSwitch
     options:
       - value:
-          String: NearestSwitch
+          !String NearestSwitch
         name: Nearest Switch
       - value:
-          String: CloseBehindPlayer
+          !String CloseBehindPlayer
         name: Close Behind Player
       - value:
-          String: CloseBehindPlayerAlways
+          !String CloseBehindPlayerAlways
         name: Close Behind Player Always
       - value:
-          String: HoldingTheo
+          !String HoldingTheo
         name: Holding Theo
       - value:
-          String: TouchSwitches
+          !String TouchSwitches
         name: Touch Switches
       - value:
-          String: CloseBehindPlayerAndTheo
+          !String CloseBehindPlayerAndTheo
         name: Close Behind Player And Theo
     ignore: false
   originX:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
   originY:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
 templates:
   - name: Temple Gate

@@ -9,7 +9,7 @@ hitboxes:
         y: 500
 standard_draw:
   initial_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: x

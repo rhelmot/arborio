@@ -11,7 +11,7 @@ hitboxes:
   node_rects: []
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: "\"collectables/heartGem/0/00\""
         point:
           x: x
@@ -43,28 +43,28 @@ attribute_info:
     display_name: originY
     ty: Int
     default:
-      Int: 0
+      !Int 0
     options: []
     ignore: true
   removeCameraTriggers:
     display_name: removeCameraTriggers
     ty: Bool
     default:
-      Bool: false
+      !Bool false
     options: []
     ignore: false
   fake:
     display_name: Fake
     ty: Bool
     default:
-      Bool: false
+      !Bool false
     options: []
     ignore: false
   originX:
     display_name: originX
     ty: Int
     default:
-      Int: 0
+      !Int 0
     options: []
     ignore: true
 keywords: []

@@ -9,7 +9,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"objects/resortclutter/green_00"'
         bounds:
           topleft:
@@ -34,16 +34,16 @@ attribute_info:
     display_name: Inverted
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   originY:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
   originX:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
 templates:
   - name: 'Clutter (books)'

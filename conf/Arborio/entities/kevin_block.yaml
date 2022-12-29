@@ -9,7 +9,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: x
@@ -22,7 +22,7 @@ standard_draw:
           g: 0x22
           b: 0x2b
           a: 0xff
-    - DrawRectImage:
+    - !DrawRectImage
         texture: 'match axes {
                     "horizontal" => "objects/crushblock/block01",
                     "Horizontal" => "objects/crushblock/block01",
@@ -38,7 +38,7 @@ standard_draw:
           size:
             x: width
             y: height
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match ((width >= 48) + (height >= 48) + chillout) {
                     3 => "objects/crushblock/giant_block00",
                     _ => "objects/crushblock/idle_face"

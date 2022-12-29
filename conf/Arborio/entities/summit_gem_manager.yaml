@@ -16,7 +16,7 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawRect:
+    - !DrawRect
         rect:
           topleft:
             x: x-4
@@ -35,7 +35,7 @@ standard_draw:
           b: 0
           a: 0xff
   node_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"collectables/summitgems/" + nodeidx + "/gem00"'
         point:
           x: nodex

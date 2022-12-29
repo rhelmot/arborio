@@ -9,7 +9,7 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/coreFlipSwitch/switch00"'
         point:
           x: x
@@ -22,26 +22,26 @@ attribute_info:
     display_name: Only Fire
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   onlyIce:
     display_name: Only Ice
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   persistent:
     display_name: Persistent
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   originX:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
   originY:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
 templates:
   - name: Core Switch

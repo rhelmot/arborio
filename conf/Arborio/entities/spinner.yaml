@@ -9,7 +9,7 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match (match ?dust { 1 => dust, _ => 0 }) {
                     1 => "danger/dustcreature/base00",
                     _ => match (match ?color { 1 => color, _ => "blue" }) {
@@ -32,7 +32,7 @@ standard_draw:
           g: 'match (match ?color { 1 => color, _ => "blue" }) { "core" => 0x40, "rainbow" => 0xc0, _ => 0xff }'
           b: 'match (match ?color { 1 => color, _ => "blue" }) { "core" => 0x30, "rainbow" => 0xff, _ => 0xff }'
           a: '0xff'
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match (match ?dust { 1 => dust, _ => 0 }) { 1 => "danger/dustcreature/center00", _ => "" }'
         point:
           x: x
@@ -45,89 +45,89 @@ attribute_info:
   dust:
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   color:
     ty: String
     default:
-      String: blue
+      !String blue
     options:
       - name: Blue
         value:
-          String: blue
+          !String blue
       - name: Red
         value:
-          String: red
+          !String red
       - name: Purple
         value:
-          String: purple
+          !String purple
       - name: Core
         value:
-          String: core
+          !String core
       - name: Rainbow
         value:
-          String: rainbow
+          !String rainbow
   attachToSolid:
     ty: Bool
     default:
-      Bool: false
+      !Bool false
 templates:
   - name: Crystal Spinner (Blue)
     attributes:
       color:
-        String: blue
+        !String blue
   - name: Crystal Spinner (Blue, Attached)
     attributes:
       color:
-        String: blue
+        !String blue
       attachToSolid:
-        Bool: true
+        !Bool true
   - name: Crystal Spinner (Red)
     attributes:
       color:
-        String: red
+        !String red
   - name: Crystal Spinner (Red, Attached)
     attributes:
       color:
-        String: red
+        !String red
       attachToSolid:
-        Bool: true
+        !Bool true
   - name: Crystal Spinner (Purple)
     attributes:
       color:
-        String: purple
+        !String purple
   - name: Crystal Spinner (Purple, Attached)
     attributes:
       color:
-        String: purple
+        !String purple
       attachToSolid:
-        Bool: true
+        !Bool true
   - name: Crystal Spinner (Core)
     attributes:
       color:
-        String: core
+        !String core
   - name: Crystal Spinner (Core, Attached)
     attributes:
       color:
-        String: core
+        !String core
       attachToSolid:
-        Bool: true
+        !Bool true
   - name: Crystal Spinner (Rainbow)
     attributes:
       color:
-        String: rainbow
+        !String rainbow
   - name: Crystal Spinner (Rainbow, Attached)
     attributes:
       color:
-        String: rainbow
+        !String rainbow
       attachToSolid:
-        Bool: true
+        !Bool true
   - name: Dust Creature
     attributes:
       dust:
-        Bool: true
+        !Bool true
   - name: Dust Creature (Attached)
     attributes:
       dust:
-        Bool: true
+        !Bool true
       attachToSolid:
-        Bool: true
+        !Bool true

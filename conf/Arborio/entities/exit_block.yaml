@@ -9,7 +9,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: 'match ?tileType { 1 => tileType, _ => "3" }'
         tiler: '"fg"'
         bounds:
@@ -29,5 +29,5 @@ attribute_info:
   tiletype:
     ty: String
     default:
-      String: "3"
+      !String "3"
       # TODO: fgtiles options

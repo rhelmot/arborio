@@ -16,18 +16,18 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/fireball/fireball00"'
         point:
           x: x
           y: y
   node_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"objects/fireball/fireball00"'
         point:
           x: nodex
           y: nodey
-    - DrawLine:
+    - !DrawLine
         start:
           x: prevnodexorbase
           y: prevnodeyorbase
@@ -49,31 +49,31 @@ attribute_info:
     display_name: Offset
     ty: Float
     default:
-      Float: 0.0
+      !Float 0.0
   notCoreMode:
     display_name: Not Core Mode
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   amount:
     display_name: Amount
     ty: Int
     default:
-      Int: 0
+      !Int 0
   speed:
     display_name: Speed
     ty: Float
     default:
-      Float: 0.0
+      !Float 0.0
   originX:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
   originY:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
 templates:
   - name: Fireball/Iceball

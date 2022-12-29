@@ -9,7 +9,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         tiler: '"cassette"'
         texture: "'a'"
         bounds:
@@ -34,38 +34,38 @@ attribute_info:
   index:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     options:
       - name: Blue
         value:
-          Int: 0
+          !Int 0
       - name: Red
         value:
-          Int: 1
+          !Int 1
       - name: Yellow
         value:
-          Int: 2
+          !Int 2
       - name: Green
         value:
-          Int: 3
+          !Int 3
   tempo:
     ty: Float
     default:
-      Float: 1.0
+      !Float 1.0
 templates:
   - name: Cassette Block (Blue)
     attributes:
       index:
-        Int: 0
+        !Int 0
   - name: Cassette Block (Red)
     attributes:
       index:
-        Int: 1
+        !Int 1
   - name: Cassette Block (Yellow)
     attributes:
       index:
-        Int: 2
+        !Int 2
   - name: Cassette Block (Green)
     attributes:
       index:
-        Int: 3
+        !Int 3

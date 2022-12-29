@@ -9,7 +9,7 @@ hitboxes:
         y: 8
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match startLit {
                     0 => "objects/temple/torch00",
                     _ => "objects/temple/litTorch08"

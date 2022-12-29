@@ -16,19 +16,19 @@ hitboxes:
         y: 16
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"characters/bird/Throw00"'
         point:
           x: x
           y: y
 selected_draw:
   node_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"characters/bird/fly01"'
         point:
           x: nodex
           y: nodey
-    - DrawLine:
+    - !DrawLine
         start:
           x: prevnodexorbase
           y: prevnodeyorbase

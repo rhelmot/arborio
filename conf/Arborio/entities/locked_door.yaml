@@ -9,7 +9,7 @@ hitboxes:
         y: 32
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: 'match sprite {
                     "moon" => "objects/door/moonDoor11",
                     "temple_a" => "objects/door/lockdoorTempleA00",
@@ -26,25 +26,25 @@ attribute_info:
   sprite:
     ty: String
     default:
-      String: 'wood'
+      !String 'wood'
     options:
       - name: Wood
         value:
-          String: wood
+          !String wood
       - name: Temple A
         value:
-          String: temple_a
+          !String temple_a
       - name: Temple B
         value:
-          String: temple_b
+          !String temple_b
       - name: Moon
         value:
-          String: moon
+          !String moon
   stepMusicProgress:
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   unlock_sfx:
     ty: String
     default:
-      String: ""
+      !String ""

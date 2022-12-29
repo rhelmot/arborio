@@ -9,7 +9,7 @@ hitboxes:
         y: height
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: 'match ?tiletype { 1 => tiletype, _ => "m" }'
         tiler: 'match blendin { 1 => "fg", _ => "fg_ignore" }'
         bounds:
@@ -29,27 +29,27 @@ attribute_info:
   tiletype:
     ty: String
     default:
-      String: "3"
+      !String "3"
       # TODO: fgtiles options
   persistent:
     display_name: Persistent
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   blendin:
     display_name: Blend In
     ty: Bool
     default:
-      Bool: false
+      !Bool false
   originX:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
   originY:
     ty: Int
     default:
-      Int: 0
+      !Int 0
     ignore: true
 templates:
   - name: Rumble Crumble Block

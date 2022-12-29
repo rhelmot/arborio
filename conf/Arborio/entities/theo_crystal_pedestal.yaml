@@ -9,7 +9,7 @@ hitboxes:
         y: 24
 standard_draw:
   initial_draw:
-    - DrawPointImage:
+    - !DrawPointImage
         texture: '"characters/theoCrystal/pedestal"'
         point:
           x: x

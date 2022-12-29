@@ -16,7 +16,7 @@ hitboxes:
         y: 8
 standard_draw:
   initial_draw:
-    - DrawLine:
+    - !DrawLine
         start:
           x: x + width / 2
           y: y
@@ -29,7 +29,7 @@ standard_draw:
           b: 0x23
           a: 0xff
         thickness: 3
-    - DrawLine:
+    - !DrawLine
         start:
           x: x + width / 2
           y: y
@@ -42,7 +42,7 @@ standard_draw:
           b: 0x12
           a: 0xff
         thickness: 1
-    - DrawRectImage:
+    - !DrawRectImage
         texture: 'match (match ?texture { 1 => texture, _ => "default" }) {
                     "cliffside" => "b",
                     _ => "a"
@@ -55,7 +55,7 @@ standard_draw:
           size:
             x: width
             y: 8
-    - DrawRectImage:
+    - !DrawRectImage
         texture: 'match (match ?texture { 1 => texture, _ => "default" }) {
                     "cliffside" => "objects/woodPlatform/cliffside",
                     _ => "objects/woodPlatform/default"
@@ -76,7 +76,7 @@ standard_draw:
             y: 8
 selected_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: 'match (match ?texture { 1 => texture, _ => "default" }) {
                     "cliffside" => "b",
                     _ => "a"
@@ -89,7 +89,7 @@ selected_draw:
           size:
             x: width
             y: 8
-    - DrawRectImage:
+    - !DrawRectImage
         texture: 'match (match ?texture { 1 => texture, _ => "default" }) {
                     "cliffside" => "objects/woodPlatform/cliffside",
                     _ => "objects/woodPlatform/default"

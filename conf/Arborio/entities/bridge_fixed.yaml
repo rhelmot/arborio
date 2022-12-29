@@ -9,7 +9,7 @@ hitboxes:
         y: width
 standard_draw:
   initial_draw:
-    - DrawRectImage:
+    - !DrawRectImage
         texture: '"scenery/bridge_fixed"'
         bounds:
           topleft:
