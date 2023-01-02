@@ -11,7 +11,7 @@ use itertools::Itertools;
 use std::fmt::Debug;
 use std::sync::Arc;
 
-pub trait PaletteItem: 'static + Copy + Clone + PartialEq + Debug + Send {
+pub trait PaletteItem: 'static + Copy + Data + Debug + Send {
     fn search_text(&self, app: &AppState) -> String;
     fn display_name(&self, app: &AppState) -> String;
     const CAN_DRAW: bool = true;

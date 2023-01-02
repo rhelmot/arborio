@@ -25,6 +25,9 @@ impl Log for ViziaLogger {
         if metadata.level() == Level::Debug && !metadata.target().starts_with("arborio") {
             return false;
         }
+        if metadata.level() >= Level::Warn && metadata.target() == "cosmic_text::font::fallback" {
+            return false;
+        }
         #[cfg(debug_assertions)]
         {
             metadata.level() <= Level::Debug

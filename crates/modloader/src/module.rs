@@ -8,6 +8,7 @@ use arborio_gfxloader::autotiler::{Autotiler, Tileset};
 use arborio_maploader::map_struct::{from_reader, save_as, CelesteMap};
 use arborio_utils::interned::{intern_str, InternedMap};
 use arborio_utils::uuid_cls;
+use arborio_utils::vizia::prelude::Data;
 use arborio_walker::ConfigSourceTrait;
 use arborio_walker::{open_module, ConfigSource};
 
@@ -28,7 +29,7 @@ pub struct CelesteModule {
 
 uuid_cls!(ModuleID);
 
-#[derive(Eq, PartialEq, Hash, Debug, Clone)]
+#[derive(Eq, PartialEq, Hash, Debug, Clone, Data)]
 pub struct MapPath {
     pub module: ModuleID,
     pub sid: String,

@@ -9,6 +9,7 @@ use arborio_state::lenses::{
     current_selected_entity_lens, AutoSaverLens, CurrentSelectedEntityConfigAttributesLens,
     CurrentSelectedEntityResizableLens, IsFailedLens,
 };
+use arborio_utils::vizia::fonts::icons_names::MINUS;
 use arborio_utils::vizia::prelude::*;
 use arborio_widgets_common::advanced_tweaker::advanced_attrs_editor;
 use arborio_widgets_common::basic_tweaker::basic_attrs_editor;
@@ -106,7 +107,7 @@ pub fn build_tweaker(cx: &mut Context) {
                 Textbox::new(cx, item.map(|pair| pair.y)).on_edit(move |cx, text| {
                     edit_node_y(cx, idx, text);
                 });
-                Label::new(cx, "\u{e15b}")
+                Label::new(cx, MINUS)
                     .class("icon")
                     .class("remove_btn")
                     .on_press(move |cx| {

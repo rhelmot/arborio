@@ -42,12 +42,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         cx.add_stylesheet("src/style.css")
             .expect("Could not load stylesheet. Are you running me in the right directory?");
 
-        cx.add_font_mem("monospace", DROID_SANS_MONO);
-        cx.add_font_mem("celeste", RENOGARE);
+        cx.add_fonts_mem(&[DROID_SANS_MONO, RENOGARE]);
 
         main_widget(cx);
     })
-    .text_shaping_run_cache(10000)
     .title("Arborio")
     .icon(icon_img.into_bytes(), width, height)
     .ignore_default_theme();

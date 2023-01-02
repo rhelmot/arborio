@@ -19,5 +19,11 @@ macro_rules! uuid_cls {
                 return Self(0);
             }
         }
+
+        impl $crate::vizia::prelude::Data for $name {
+            fn same(&self, other: &Self) -> bool {
+                self == other
+            }
+        }
     };
 }

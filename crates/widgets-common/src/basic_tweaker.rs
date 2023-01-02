@@ -69,7 +69,9 @@ pub fn basic_attrs_editor<LA, LC, FS>(
                                             cx,
                                             found_lbl.as_ref().map_or("weh", |a| a.as_str()),
                                         );
-                                        Label::new(cx, DOWN).font("icons");
+                                        Label::new(cx, DOWN).font_family(vec![FamilyOwned::Name(
+                                            "Entypo".to_owned(),
+                                        )]);
                                     })
                                     .width(Units::Stretch(1.0))
                                 },

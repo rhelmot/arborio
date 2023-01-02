@@ -1,4 +1,5 @@
 use super::{AttributeInfo, EntityTemplate};
+use arborio_utils::vizia::prelude::Data;
 use serde;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -14,7 +15,7 @@ pub struct TriggerConfigV1 {
     pub templates: Vec<EntityTemplate>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default, Data)]
 pub struct TriggerConfigV2 {
     pub trigger_name: String,
     #[serde(default)]

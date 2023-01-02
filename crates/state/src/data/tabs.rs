@@ -11,7 +11,7 @@ use arborio_utils::uuid::next_uuid;
 use arborio_utils::vizia::prelude::*;
 
 #[allow(clippy::large_enum_variant)] // this is very rarely passed around by value
-#[derive(PartialEq, Eq, Debug, Lens, Clone)]
+#[derive(PartialEq, Eq, Debug, Lens, Clone, Data)]
 pub enum AppTab {
     CelesteOverview,
     ProjectOverview(ModuleID),
@@ -67,6 +67,12 @@ impl PartialEq for ConfigEditorTab {
     }
 }
 
+impl Data for ConfigEditorTab {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
 impl Eq for ConfigEditorTab {}
 
 #[derive(Clone, Debug, Lens)]
@@ -83,6 +89,12 @@ pub struct MapTab {
 impl PartialEq for MapTab {
     fn eq(&self, other: &Self) -> bool {
         self.nonce == other.nonce
+    }
+}
+
+impl Data for MapTab {
+    fn same(&self, other: &Self) -> bool {
+        self == other
     }
 }
 

@@ -1,6 +1,7 @@
 use arborio_utils::interned::Interned;
+use arborio_utils::vizia::prelude::*;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Data)]
 pub struct TileSelectable {
     pub id: char,
     pub name: &'static str,
@@ -25,7 +26,7 @@ impl PartialEq for TileSelectable {
 
 impl Eq for TileSelectable {}
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Data)]
 pub struct EntitySelectable {
     pub entity: Interned,
     pub template: usize,
@@ -40,7 +41,7 @@ impl Default for EntitySelectable {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Data)]
 pub struct TriggerSelectable {
     pub trigger: Interned,
     pub template: usize,
@@ -55,7 +56,7 @@ impl Default for TriggerSelectable {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Data)]
 pub struct DecalSelectable(pub Interned);
 
 impl Default for DecalSelectable {

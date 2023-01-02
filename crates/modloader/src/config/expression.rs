@@ -1,4 +1,5 @@
 use arborio_maploader::map_struct::Attribute;
+use arborio_utils::vizia::prelude::*;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{one_of, space0};
@@ -15,7 +16,7 @@ use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
 
-#[derive(Debug, Clone, PartialEq)] // TODO WHY DO WE NEED CLONE OMG
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     Const(Const),
     Atom(String),
@@ -26,6 +27,12 @@ pub enum Expression {
         arms: HashMap<Const, Expression>,
         default: Box<Expression>,
     },
+}
+
+impl Data for Expression {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

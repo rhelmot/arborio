@@ -10,7 +10,7 @@ use arborio_state::lenses::{
     current_map_impl_lens, current_map_lens, current_styleground_impl_lens,
     current_styleground_lens, IsFailedLens, StylegroundNameLens,
 };
-use arborio_utils::vizia::fonts::icons_names::DOWN;
+use arborio_utils::vizia::fonts::icons_names::{DOWN, MINUS, PLUS, UP};
 use arborio_utils::vizia::prelude::*;
 use arborio_utils::vizia::state::UnwrapLens;
 use arborio_widgets_common::advanced_tweaker::*;
@@ -142,7 +142,7 @@ impl StyleTweakerWidget {
                                 ));
                             }
                         },
-                        |cx| Label::new(cx, "\u{e145}").class("icon"),
+                        |cx| Label::new(cx, PLUS).class("icon"),
                     );
                     Button::new(
                         cx,
@@ -156,7 +156,7 @@ impl StyleTweakerWidget {
                                 ));
                             }
                         },
-                        |cx| Label::new(cx, "\u{e15b}").class("icon"),
+                        |cx| Label::new(cx, MINUS).class("icon"),
                     );
                     Button::new(
                         cx,
@@ -190,7 +190,7 @@ impl StyleTweakerWidget {
                                 styleground: Some(target),
                             })
                         },
-                        |cx| Label::new(cx, "\u{e5ce}").class("icon"),
+                        |cx| Label::new(cx, DOWN).class("icon"),
                     );
                     Button::new(
                         cx,
@@ -227,7 +227,7 @@ impl StyleTweakerWidget {
                                 styleground: Some(target),
                             })
                         },
-                        |cx| Label::new(cx, "\u{e5cf}").class("icon"),
+                        |cx| Label::new(cx, UP).class("icon"),
                     );
                 });
                 ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
@@ -337,7 +337,7 @@ fn emit(cx: &mut EventContext, style: CelesteMapStyleground) {
     ));
 }
 
-fn tweak_attr_picker<T: 'static + PartialEq + Clone + Send + Sync>(
+fn tweak_attr_picker<T: 'static + Data + Send + Sync>(
     // TODO move to common when mature
     cx: &mut Context,
     name: &'static str,

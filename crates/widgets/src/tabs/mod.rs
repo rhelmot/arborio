@@ -9,6 +9,7 @@ use arborio_state::data::app::AppEvent;
 use arborio_state::data::app::AppState;
 use arborio_state::data::tabs::AppTab;
 use arborio_state::lenses::{TabTextLens, VecIndexWithLens};
+use arborio_utils::vizia::fonts::icons_names::CANCEL;
 use arborio_utils::vizia::prelude::*;
 
 pub fn build_tabs(cx: &mut Context) {
@@ -31,7 +32,7 @@ pub fn build_tab_bar(cx: &mut Context) {
     List::new(cx, AppState::tabs, move |cx, tab_index, _tab| {
         HStack::new(cx, move |cx| {
             Label::new(cx, TabTextLens(tab_index));
-            Label::new(cx, "\u{e5cd}")
+            Label::new(cx, CANCEL)
                 .class("icon")
                 .class("close_btn")
                 .on_press(move |cx| {

@@ -9,7 +9,7 @@ pub struct TextboxDropdown<T> {
 impl<T> TextboxDropdown<T> {
     pub fn new<L, LL, F>(cx: &mut Context, lens: L, options: LL, callback: F) -> Handle<'_, Self>
     where
-        T: 'static + ToString + PartialEq + Clone + Send + Sync,
+        T: 'static + ToString + Data + Send + Sync,
         L: Lens<Target = T>,
         LL: Send + Sync + Lens<Target = Vec<T>>,
         <LL as Lens>::Source: Model,

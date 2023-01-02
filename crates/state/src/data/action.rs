@@ -8,6 +8,7 @@ use arborio_maploader::map_struct::{
     CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapLevelUpdate,
     CelesteMapStyleground,
 };
+use arborio_utils::vizia::prelude::Data;
 
 // HERE LIVES THE UNDO/REDOABLES
 // guidelines:
@@ -424,7 +425,7 @@ pub fn pick_new_name(map: &MapState) -> String {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Data)]
 pub struct StylegroundSelection {
     pub fg: bool,
     pub idx: usize,

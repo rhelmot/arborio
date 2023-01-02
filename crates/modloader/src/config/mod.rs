@@ -23,7 +23,7 @@ pub use expression::*;
 pub use styleground::*;
 pub use trigger::*;
 
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Data)]
 pub enum PencilBehavior {
     // TODO: Place
     Line,
@@ -37,7 +37,7 @@ impl Default for PencilBehavior {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Lens)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Lens, Data)]
 pub struct AttributeInfo {
     #[serde(default, skip_serializing_if = "is_default")]
     pub display_name: Option<String>,
@@ -49,13 +49,13 @@ pub struct AttributeInfo {
     pub ignore: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Data)]
 pub struct AttributeOption {
     pub name: String,
     pub value: AttributeValue,
 }
 
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Data)]
 pub enum AttributeType {
     String,
     Float,
@@ -63,7 +63,7 @@ pub enum AttributeType {
     Bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Data)]
 pub enum AttributeValue {
     String(String),
     Float(f32),
@@ -82,7 +82,7 @@ impl AttributeValue {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Data)]
 pub struct EntityTemplate {
     pub name: Interned,
     #[serde(default, skip_serializing_if = "is_default")]
@@ -90,7 +90,7 @@ pub struct EntityTemplate {
     pub attributes: HashMap<Interned, AttributeValue>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Default, Data)]
 pub struct EntityRects {
     #[serde(default)]
     pub initial_rects: Vec<Rect>,
@@ -98,13 +98,13 @@ pub struct EntityRects {
     pub node_rects: Vec<Rect>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Data)]
 pub struct Rect {
     pub topleft: Vec2,
     pub size: Vec2,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Data)]
 pub struct Vec2 {
     pub x: Expression,
     pub y: Expression,

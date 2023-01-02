@@ -4,8 +4,7 @@ use arborio_state::data::app::AppState;
 use arborio_state::lenses::ClosureLens;
 use arborio_state::palette_item::PaletteItem;
 use arborio_utils::vizia::prelude::*;
-use arborio_utils::vizia::resource::FontOrId;
-use arborio_utils::vizia::vg::{Baseline, Paint, Path};
+use arborio_utils::vizia::vg::{Paint, Path};
 
 pub struct PaletteWidget<T, L> {
     lens: L,
@@ -52,7 +51,7 @@ where
                     .bind(selected.clone(), move |handle, selected| {
                         let mine = item3.get(handle.cx);
                         let selected = selected.get(handle.cx);
-                        handle.checked(selected == mine);
+                        handle.checked(selected.same(&mine));
                     })
                     .bind(
                         palette_widget_filter_lens::<T, LI>(),
@@ -111,8 +110,8 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
                 0.0,
                 0.0,
                 100.0 * dpi,
-                Color::black().into(),
                 Color::blue().into(),
+                Color::black().into(),
             ),
         );
 
@@ -120,29 +119,7 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
         data.draw(cx.data::<AppState>().unwrap(), canvas);
         canvas.restore();
 
-        let default_font = cx
-            .resource_manager
-            .fonts
-            .get(cx.default_font())
-            .and_then(|font| match font {
-                FontOrId::Id(id) => Some(id),
-                _ => None,
-            })
-            .expect("Failed to find default font");
-        let text_paint = Paint::color(Color::white().into())
-            .with_font_size(10.0 * dpi)
-            .with_font(&[*default_font])
-            .with_text_baseline(Baseline::Bottom);
-        let text_black = text_paint.clone().with_color(Color::black().into());
-        canvas
-            .fill_text(11.0 * dpi, 91.0 * dpi, &self.filter, &text_black)
-            .expect("Could not draw text");
-        canvas
-            .fill_text(9.0 * dpi, 89.0 * dpi, &self.filter, &text_black)
-            .expect("Could not draw text");
-        canvas
-            .fill_text(10.0 * dpi, 90.0 * dpi, &self.filter, &text_paint)
-            .expect("Could not draw text");
+        cx.draw_text(canvas, (10. * dpi, 100. * dpi), (0., 1.));
 
         canvas.restore();
     }
@@ -163,6 +140,7 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
                     }
                     _ => {}
                 }
+                cx.text_context.set_text(cx.current(), &self.filter);
             }
             WindowEvent::MouseDown(MouseButton::Left) => {
                 cx.focus();

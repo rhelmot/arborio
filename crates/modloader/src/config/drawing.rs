@@ -1,10 +1,11 @@
 use super::{Const, Expression, Rect, Vec2};
+use arborio_utils::vizia::prelude::Data;
 use arborio_utils::vizia::vg;
 use serde;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Serialize, Deserialize, Default, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Default, PartialEq, Clone, Data)]
 pub struct EntityDraw {
     #[serde(default)]
     pub initial_draw: Vec<DrawElement>,
@@ -13,7 +14,7 @@ pub struct EntityDraw {
 }
 
 #[allow(clippy::large_enum_variant, clippy::enum_variant_names)]
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Data)]
 pub enum DrawElement {
     DrawRect {
         rect: Rect,
@@ -83,7 +84,7 @@ pub enum DrawElement {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Data)]
 pub struct Color {
     pub r: Expression,
     pub g: Expression,

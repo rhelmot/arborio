@@ -127,7 +127,7 @@ menubutton:over {
 
 .module_category {
     top: 20px;
-    font: "roboto-bold";
+    font-weight: bold;
     color: white;
     left: 35px;
 }
@@ -360,7 +360,7 @@ style_list list {
     width: 1s;
     height: 1s;
     min-height: 50px;
-    font: "monospace";
+    font-family: "Droid Sans Mono", monospace;
 }
 
 /* logs */
@@ -461,10 +461,12 @@ textbox:checked {
     selection-color: #a44301;
 }
 
+/*
 label {
     caret-color: #dddddd;
     selection-color: #a44301;
 }
+*/
 
 .close_btn {
     background-color: #ffc0c0;

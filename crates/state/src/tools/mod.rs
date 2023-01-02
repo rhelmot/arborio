@@ -11,7 +11,7 @@ use enum_iterator::Sequence;
 use crate::data::app::{AppEvent, AppInternalEvent, AppState};
 use arborio_utils::units::*;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Sequence)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Sequence, Data)]
 pub enum ToolSpec {
     Hand,
     Selection,

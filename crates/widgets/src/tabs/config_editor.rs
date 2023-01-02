@@ -1,4 +1,4 @@
-use arborio_utils::vizia::fonts::icons_names::DOWN;
+use arborio_utils::vizia::fonts::icons_names::{DOWN, MINUS};
 use arborio_utils::vizia::prelude::*;
 use dialog::DialogBox;
 use std::collections::hash_map::Entry;
@@ -723,7 +723,7 @@ fn config_editor_textbox<T>(
     lens: impl Copy + Lens<Target = T>,
     on_edit: impl 'static + Send + Sync + Clone + Fn(&mut EventContext, T),
 ) where
-    T: FromStr + std::fmt::Display + PartialEq + Clone,
+    T: FromStr + std::fmt::Display + Data,
     <T as FromStr>::Err: ToString,
 {
     let tab = cx.data::<AppState>().unwrap().current_tab;
@@ -859,7 +859,7 @@ fn build_entity_tweaker(cx: &mut Context) {
                 Textbox::new(cx, item.map(|pair| pair.y)).on_edit(move |cx, text| {
                     edit_node_y(cx, idx, text);
                 });
-                Label::new(cx, "\u{e15b}")
+                Label::new(cx, MINUS)
                     .class("icon")
                     .class("remove_btn")
                     .on_press(move |cx| {

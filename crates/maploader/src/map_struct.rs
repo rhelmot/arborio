@@ -313,7 +313,7 @@ impl CelesteMapLevel {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, TryFromBinEl, Lens, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, TryFromBinEl, Lens, Serialize, Deserialize, Data)]
 pub struct CelesteMapEntity {
     pub id: i32,
     #[name]
@@ -330,7 +330,7 @@ pub struct CelesteMapEntity {
     pub nodes: Vec<Node>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, TryFromBinEl, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, TryFromBinEl, Serialize, Deserialize, Data)]
 #[name("node")]
 pub struct Node {
     pub x: i32,
@@ -342,7 +342,7 @@ impl From<(i32, i32)> for Node {
     }
 }
 
-#[derive(Debug, Clone, TryFromBinEl, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, TryFromBinEl, PartialEq, Serialize, Deserialize, Data)]
 #[name("decal")]
 pub struct CelesteMapDecal {
     #[generate(next_uuid())]
@@ -444,7 +444,7 @@ pub enum CelesteMapErrorType {
     OutOfRange,
 }
 
-#[derive(Debug, PartialEq, Clone, Lens, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Lens, Serialize, Deserialize, Data)]
 pub enum Attribute {
     Bool(bool),
     Int(i32),
@@ -1023,9 +1023,10 @@ fn parse_object_tiles(
     parse_tiles(elem, width, height, obj_transform, -1)
 }
 
-#[derive(Debug, Clone, Lens)]
+#[derive(Debug, Clone, Lens, Data)]
 pub struct RoomGlob {
     text: String,
+    #[data(ignore)]
     regex: regex::RegexSet,
 }
 
@@ -1078,10 +1079,10 @@ impl AttrCoercion for RoomGlob {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Clone, Data)]
 pub struct FadeDirectives(pub Vec<FadeDirective>);
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Data)]
 pub struct FadeDirective {
     pub pos_from: f32,
     pub pos_to: f32,

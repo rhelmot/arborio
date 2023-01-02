@@ -1,5 +1,7 @@
 use crate::container_model::{ModelContainer, ModelContainerSetter};
 use crate::validator_box::validator_box;
+use arborio_utils::vizia::fonts::icons_names::{CANCEL, CHECK};
+use arborio_utils::vizia::fonts::material_names::PENCIL;
 use arborio_utils::vizia::prelude::*;
 use std::str::FromStr;
 
@@ -36,7 +38,7 @@ pub fn label_with_pencil<L, F1, F2>(
 ) -> Handle<impl View>
 where
     L: Lens,
-    <L as Lens>::Target: ToString + FromStr + PartialEq + Clone + Send + Sync,
+    <L as Lens>::Target: ToString + FromStr + Data + Send + Sync,
     F1: 'static + Send + Sync + Clone + Fn(&mut EventContext, &<L as Lens>::Target) -> bool,
     F2: 'static + Send + Sync + Clone + Fn(&mut EventContext, <L as Lens>::Target),
 {
@@ -54,8 +56,8 @@ where
             let lens = lens.clone();
             if editing {
                 ModelContainer { val: lens.get(cx) }.build(cx);
-                Label::new(cx, "\u{e5ca}")
-                    .font("material")
+                Label::new(cx, CHECK)
+                    .font_family(vec![FamilyOwned::Name("Entypo".to_owned())])
                     .class("btn_highlight")
                     .class("pencil_icon")
                     .on_press(move |cx| {
@@ -69,8 +71,8 @@ where
                         let val = lens.get(handle.cx);
                         handle.toggle_class("disabled", val);
                     });
-                Label::new(cx, "\u{e5cd}")
-                    .font("material")
+                Label::new(cx, CANCEL)
+                    .font_family(vec![FamilyOwned::Name("Entypo".to_owned())])
                     .class("btn_highlight")
                     .class("pencil_icon")
                     .on_press(|cx| {
@@ -94,8 +96,8 @@ where
                 );
             } else {
                 if editable {
-                    Label::new(cx, "\u{e150}")
-                        .font("material")
+                    Label::new(cx, PENCIL)
+                        .font_family(vec![FamilyOwned::Name("Material Icons".to_owned())])
                         .class("btn_highlight")
                         .class("pencil_icon")
                         .on_press(move |cx| cx.emit(EditingStateEvent::Start));

@@ -1,7 +1,7 @@
 use super::drawing::EntityDraw;
 use super::EntityRects;
 use crate::config::{AttributeInfo, EntityTemplate, PencilBehavior};
-use arborio_utils::vizia::prelude::Lens;
+use arborio_utils::vizia::prelude::{Data, Lens};
 use serde;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -32,7 +32,7 @@ pub struct EntityConfigV1 {
     pub templates: Vec<EntityTemplate>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default, Lens)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default, Lens, Data)]
 pub struct EntityConfigV2 {
     pub entity_name: String,
     pub hitboxes: EntityRects,

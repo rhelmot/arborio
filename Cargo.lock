@@ -36,6 +36,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ahash"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
+dependencies = [
+ "getrandom 0.2.7",
+ "once_cell",
+ "version_check 0.9.4",
+]
+
+[[package]]
+name = "aho-corasick"
+version = "0.7.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc936419f96fa211c1b9166887b38e5e40b19958e5b895be7c1f93adec7071ac"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "aliasable"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -589,6 +609,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "cosmic-text"
+version = "0.6.0"
+source = "git+https://github.com/rhelmot/cosmic-text?rev=3e355f0cfc9cebcf958c88c48cbe12a3ac672ac7#3e355f0cfc9cebcf958c88c48cbe12a3ac672ac7"
+dependencies = [
+ "fontdb",
+ "libm",
+ "log",
+ "ouroboros",
+ "rangemap",
+ "rustybuzz",
+ "swash",
+ "sys-locale",
+ "unicode-bidi",
+ "unicode-linebreak",
+ "unicode-script",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -683,16 +722,6 @@ checksum = "dfae75de57f2b2e85e8768c3ea840fd159c8f33e2b6522c7835b7abac81be16e"
 dependencies = [
  "quote 1.0.21",
  "syn 1.0.99",
-]
-
-[[package]]
-name = "cstr_core"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd98742e4fdca832d40cab219dc2e3048de17d873248f83f17df47c1bea70956"
-dependencies = [
- "cty",
- "memchr",
 ]
 
 [[package]]
@@ -908,7 +937,7 @@ dependencies = [
 [[package]]
 name = "femtovg"
 version = "0.4.0"
-source = "git+https://github.com/femtovg/femtovg?rev=20dc7ef142004736f1ba1c626dd9c5bb556dde14#20dc7ef142004736f1ba1c626dd9c5bb556dde14"
+source = "git+https://github.com/rhelmot/femtovg?rev=e1f3f05cc050c0ed69ca702b368bb5d4eb2cabff#e1f3f05cc050c0ed69ca702b368bb5d4eb2cabff"
 dependencies = [
  "bitflags",
  "fnv",
@@ -988,6 +1017,17 @@ name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+
+[[package]]
+name = "fontdb"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8131752b3f3b876a20f42b3d08233ad177d6e7ec6d18aaa6954489a201071be5"
+dependencies = [
+ "log",
+ "memmap2",
+ "ttf-parser",
+]
 
 [[package]]
 name = "foreign-types"
@@ -1202,6 +1242,9 @@ name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
+dependencies = [
+ "ahash",
+]
 
 [[package]]
 name = "heck"
@@ -1456,6 +1499,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "libm"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "348108ab3fba42ec82ff6e9564fc4ca0247bdccdc68dd8af9764bbc79c3c8ffb"
+
+[[package]]
 name = "lock_api"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1549,7 +1598,7 @@ dependencies = [
 [[package]]
 name = "morphorm"
 version = "0.3.0"
-source = "git+https://github.com/vizia/morphorm?rev=c14e888b1d66719fc3f13ccdb1ea01a10368ef9e#c14e888b1d66719fc3f13ccdb1ea01a10368ef9e"
+source = "git+https://github.com/vizia/morphorm?rev=3d74358fe976249738f58724854270aa2f0fdb4a#3d74358fe976249738f58724854270aa2f0fdb4a"
 dependencies = [
  "bitflags",
  "smallvec",
@@ -2103,6 +2152,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rangemap"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fa20df61fa7daf0ecf0735b9841ced4a0d25962d1b1eb2dd28dcdd37bb688f2"
+
+[[package]]
 name = "raw-window-handle"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2146,6 +2201,8 @@ version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4c4eb3267174b8c6c2f654116623910a0fef09c4753f8dd83db29c48a0df988b"
 dependencies = [
+ "aho-corasick",
+ "memchr",
  "regex-syntax",
 ]
 
@@ -2154,6 +2211,12 @@ name = "regex-syntax"
 version = "0.6.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3f87b73ce11b1619a3c6332f45341e0047173771e8b8b73f87bfeefb7b56244"
+
+[[package]]
+name = "replace_with"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3a8614ee435691de62bcffcf4a66d91b3594bf1428a5722e79103249a095690"
 
 [[package]]
 name = "rgb"
@@ -2195,6 +2258,7 @@ checksum = "ab9e34ecf6900625412355a61bda0bd68099fe674de707c67e5e4aed2c05e489"
 dependencies = [
  "bitflags",
  "bytemuck",
+ "libm",
  "smallvec",
  "ttf-parser",
  "unicode-bidi-mirroring",
@@ -2418,6 +2482,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
+name = "swash"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bb18e5888a9b5f0a89ea3ebdf6883dc479347ca9183b6c51a8f9cf2041f23a0"
+dependencies = [
+ "yazi",
+ "zeno",
+]
+
+[[package]]
 name = "syn"
 version = "0.15.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2441,12 +2515,10 @@ dependencies = [
 
 [[package]]
 name = "sys-locale"
-version = "0.2.1"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "658ee915b6c7b73ec4c1ffcd838506b5c5a4087eadc1ec8f862f1066cf2c8132"
+checksum = "3358acbb4acd4146138b9bda219e904a6bb5aaaa237f8eed06f4d6bc1580ecee"
 dependencies = [
- "cc",
- "cstr_core",
  "js-sys",
  "libc",
  "wasm-bindgen",
@@ -2611,6 +2683,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcc811dc4066ac62f84f11307873c4850cb653bfa9b1719cee2bd2204a4bc5dd"
 
 [[package]]
+name = "unicode-linebreak"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c5faade31a542b8b35855fff6e8def199853b2da8da256da52f52f1316ee3137"
+dependencies = [
+ "hashbrown",
+ "regex",
+]
+
+[[package]]
 name = "unicode-script"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2661,7 +2743,6 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=a5734e0f814473380ef0973363a8489fc109ef84#a5734e0f814473380ef0973363a8489fc109ef84"
 dependencies = [
  "vizia_core",
  "vizia_winit",
@@ -2670,10 +2751,10 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=a5734e0f814473380ef0973363a8489fc109ef84#a5734e0f814473380ef0973363a8489fc109ef84"
 dependencies = [
  "bitflags",
  "copypasta",
+ "cosmic-text",
  "cssparser",
  "femtovg",
  "fluent-bundle",
@@ -2683,6 +2764,9 @@ dependencies = [
  "image",
  "instant",
  "morphorm",
+ "ouroboros",
+ "replace_with",
+ "swash",
  "sys-locale",
  "unic-langid",
  "unicode-bidi",
@@ -2698,7 +2782,6 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=a5734e0f814473380ef0973363a8489fc109ef84#a5734e0f814473380ef0973363a8489fc109ef84"
 dependencies = [
  "proc-macro2 1.0.43",
  "quote 1.0.21",
@@ -2708,12 +2791,10 @@ dependencies = [
 [[package]]
 name = "vizia_id"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=a5734e0f814473380ef0973363a8489fc109ef84#a5734e0f814473380ef0973363a8489fc109ef84"
 
 [[package]]
 name = "vizia_input"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=a5734e0f814473380ef0973363a8489fc109ef84#a5734e0f814473380ef0973363a8489fc109ef84"
 dependencies = [
  "bitflags",
  "keyboard-types",
@@ -2723,7 +2804,6 @@ dependencies = [
 [[package]]
 name = "vizia_storage"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=a5734e0f814473380ef0973363a8489fc109ef84#a5734e0f814473380ef0973363a8489fc109ef84"
 dependencies = [
  "morphorm",
  "vizia_id",
@@ -2732,7 +2812,6 @@ dependencies = [
 [[package]]
 name = "vizia_window"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=a5734e0f814473380ef0973363a8489fc109ef84#a5734e0f814473380ef0973363a8489fc109ef84"
 dependencies = [
  "morphorm",
  "vizia_input",
@@ -2741,7 +2820,6 @@ dependencies = [
 [[package]]
 name = "vizia_winit"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=a5734e0f814473380ef0973363a8489fc109ef84#a5734e0f814473380ef0973363a8489fc109ef84"
 dependencies = [
  "console_error_panic_hook",
  "copypasta",
@@ -3156,6 +3234,18 @@ name = "xml-rs"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2d7d3948613f75c98fd9328cfdcc45acc4d360655289d0a7d4ec931392200a3"
+
+[[package]]
+name = "yazi"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c03b3e19c937b5b9bd8e52b1c88f30cce5c0d33d676cf174866175bb794ff658"
+
+[[package]]
+name = "zeno"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c110ba09c9b3a43edd4803d570df0da2414fed6e822e22b976a4e3ef50860701"
 
 [[package]]
 name = "zip"

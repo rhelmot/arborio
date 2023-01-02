@@ -49,7 +49,7 @@ impl Default for AppConfig {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, enum_iterator::Sequence)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, enum_iterator::Sequence, Data)]
 pub enum Layer {
     FgTiles,
     BgTiles,
@@ -76,7 +76,7 @@ impl Layer {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Data)]
 pub struct Progress {
     pub progress: i32,
     pub status: String,

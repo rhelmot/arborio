@@ -9,7 +9,7 @@ use arborio_modloader::config::AttributeType;
 use arborio_state::lenses::{
     hash_map_nth_key_lens, HashMapIndexWithLens, HashMapLenLens, IsFailedLens,
 };
-use arborio_utils::vizia::fonts::icons_names::DOWN;
+use arborio_utils::vizia::fonts::icons_names::{CANCEL, DOWN, PLUS};
 use arborio_utils::vizia::prelude::*;
 
 #[derive(Lens)]
@@ -35,7 +35,7 @@ enum NewAttributeDataEvent {
 pub fn tweak_attr_text<L, F>(cx: &mut Context, name: &'static str, lens: L, setter: F)
 where
     L: Lens,
-    <L as Lens>::Target: ToString + FromStr + PartialEq + Clone,
+    <L as Lens>::Target: ToString + FromStr + Data,
     F: 'static + Send + Sync + Fn(&mut EventContext, <L as Lens>::Target) -> bool,
 {
     HStack::new(cx, move |cx| {
@@ -138,7 +138,7 @@ pub fn advanced_attrs_editor(
                         }
                     });
 
-                    Label::new(cx, "\u{e15b}")
+                    Label::new(cx, CANCEL)
                         .class("icon")
                         .class("remove_btn")
                         .on_press(move |cx| {
@@ -188,7 +188,7 @@ pub fn advanced_attrs_editor(
                 });
             },
         );
-        Label::new(cx, "\u{e145}")
+        Label::new(cx, PLUS)
             .class("icon")
             .class("add_btn")
             .on_press(move |cx| {
@@ -202,7 +202,7 @@ pub fn advanced_attrs_editor(
     });
 }
 
-pub fn attr_editor<T: ToString + FromStr + PartialEq + Clone>(
+pub fn attr_editor<T: ToString + FromStr + Data>(
     cx: &mut Context,
     lens: impl Lens<Target = T>,
     key: impl Send + Sync + Lens<Target = String>,
@@ -223,7 +223,7 @@ pub fn attr_editor<T: ToString + FromStr + PartialEq + Clone>(
     }
 }
 
-pub fn attr_editor_inner<T: ToString + FromStr + PartialEq + Clone>(
+pub fn attr_editor_inner<T: ToString + FromStr + Data>(
     cx: &mut Context,
     lens: impl Lens<Target = T>,
     key: impl Send + Sync + Lens<Target = String>,
