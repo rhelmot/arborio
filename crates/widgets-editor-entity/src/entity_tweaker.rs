@@ -62,7 +62,7 @@ pub fn build_tweaker(cx: &mut Context) {
             cx,
             CurrentSelectedEntityResizableLens {},
             move |cx, resizable| {
-                let (rx, ry) = resizable.get(cx);
+                let (rx, ry) = resizable.get_fallible(cx).unwrap_or((true, true));
                 if advanced || rx {
                     HStack::new(cx, move |cx| {
                         Label::new(cx, "width");
