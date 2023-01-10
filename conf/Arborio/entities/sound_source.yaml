@@ -44,17 +44,14 @@ attribute_info:
   sound:
     display_name: sound
     ty: String
-    default:
-      !String ""
+    default: ""
   originX:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   originY:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
 keywords: []
 templates:

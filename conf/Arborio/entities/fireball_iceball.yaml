@@ -48,32 +48,26 @@ attribute_info:
   offset:
     display_name: Offset
     ty: Float
-    default:
-      !Float 0.0
+    default: 0.0
   notCoreMode:
     display_name: Not Core Mode
     ty: Bool
-    default:
-      !Bool false
+    default: false
   amount:
     display_name: Amount
     ty: Int
-    default:
-      !Int 0
+    default: 0
   speed:
     display_name: Speed
     ty: Float
-    default:
-      !Float 0.0
+    default: 0.0
   originX:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   originY:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
 templates:
   - name: Fireball/Iceball

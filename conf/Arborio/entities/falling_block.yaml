@@ -28,28 +28,23 @@ pencil: Rect
 attribute_info:
   tiletype:
     ty: String
-    default:
-      !String "3"
+    default: "3"
       # TODO: fgtiles options
   climbFall:
     display_name: Climb Fall
     ty: Bool
-    default:
-      !Bool true
+    default: true
   behind:
     display_name: Behind
     ty: Bool
-    default:
-      !Bool false
+    default: false
   originX:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   originY:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
 templates:
   - name: Falling Block

@@ -11,6 +11,7 @@ arborio-maploader = { path = "../maploader", default-features = false }
 arborio-walker = { path = "../walker", default-features = false }
 arborio-gfxloader = { path = "../gfxloader", default-features = false }
 
+concat-idents = "^1.1"
 lazy_static = "^1.4"
 serde_yaml = "^0.9"
 nom = "^7.1"

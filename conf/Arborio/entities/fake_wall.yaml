@@ -28,6 +28,5 @@ pencil: Rect
 attribute_info:
   tiletype:
     ty: String
-    default:
-      !String "3"
+    default: "3"
       # TODO: fgtiles options

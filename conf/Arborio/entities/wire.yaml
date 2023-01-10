@@ -40,17 +40,14 @@ attribute_info:
   above:
     display_name: Above
     ty: Bool
-    default:
-      !Bool false
+    default: false
   originX:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   originY:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
 templates:
   - name: Wire

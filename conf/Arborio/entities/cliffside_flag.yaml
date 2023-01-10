@@ -35,51 +35,37 @@ attribute_info:
   index:
     display_name: Index (texture)
     ty: Int
-    default:
-      !Int 0
+    default: 0
     options:
       - name: 0
-        value:
-          !Int 0
+        value: 0
       - name: 1
-        value:
-          !Int 1
+        value: 1
       - name: 2
-        value:
-          !Int 2
+        value: 2
       - name: 3
-        value:
-          !Int 3
+        value: 3
       - name: 4
-        value:
-          !Int 4
+        value: 4
       - name: 5
-        value:
-          !Int 5
+        value: 5
       - name: 6
-        value:
-          !Int 6
+        value: 6
       - name: 7
-        value:
-          !Int 7
+        value: 7
       - name: 8
-        value:
-          !Int 8
+        value: 8
       - name: 9
-        value:
-          !Int 9
+        value: 9
       - name: 10
-        value:
-          !Int 10
+        value: 10
   originX:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   originY:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
 templates:
   - name: Cliffside Flag

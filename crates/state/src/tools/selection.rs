@@ -495,55 +495,35 @@ impl SelectionTool {
         room: &LevelState,
         selectable: AppSelection,
     ) -> Vec<RoomRect> {
+        fn rects_of_layer<T: Copy + Eq>(
+            layer: Option<&(Point2D<i32, TileSpace>, TileGrid<T>)>,
+            nil: T,
+        ) -> Vec<RoomRect> {
+            if let Some((origin, grid)) = layer {
+                rect_point_iter(TileRect::new(TilePoint::zero(), grid.size()), 1)
+                    .filter_map(|pt| {
+                        let tile = grid.get(pt);
+                        if *tile.unwrap() != nil {
+                            Some(RoomRect::new(
+                                point_tile_to_room(&(*origin + pt.to_vector())),
+                                RoomSize::new(8, 8),
+                            ))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            } else {
+                vec![]
+            }
+        }
         match selectable {
             AppSelection::FgTile(pt) | AppSelection::BgTile(pt) | AppSelection::ObjectTile(pt) => {
                 vec![RoomRect::new(point_tile_to_room(&pt), RoomSize::new(8, 8))]
             }
-            AppSelection::FgFloat => {
-                let mut res = vec![];
-                if let Some((origin, grid)) = &room.floats.fg {
-                    for pt in rect_point_iter(TileRect::new(TilePoint::zero(), grid.size()), 1) {
-                        let tile = grid.get(pt);
-                        if *tile.unwrap() != '\0' {
-                            res.push(RoomRect::new(
-                                point_tile_to_room(&(*origin + pt.to_vector())),
-                                RoomSize::new(8, 8),
-                            ));
-                        }
-                    }
-                }
-                res
-            }
-            AppSelection::BgFloat => {
-                let mut res = vec![];
-                if let Some((origin, grid)) = &room.floats.bg {
-                    for pt in rect_point_iter(TileRect::new(TilePoint::zero(), grid.size()), 1) {
-                        let tile = grid.get(pt);
-                        if *tile.unwrap() != '\0' {
-                            res.push(RoomRect::new(
-                                point_tile_to_room(&(*origin + pt.to_vector())),
-                                RoomSize::new(8, 8),
-                            ));
-                        }
-                    }
-                }
-                res
-            }
-            AppSelection::ObjFloat => {
-                let mut res = vec![];
-                if let Some((origin, grid)) = &room.floats.obj {
-                    for pt in rect_point_iter(TileRect::new(TilePoint::zero(), grid.size()), 1) {
-                        let tile = grid.get(pt);
-                        if *tile.unwrap() != -2 {
-                            res.push(RoomRect::new(
-                                point_tile_to_room(&(*origin + pt.to_vector())),
-                                RoomSize::new(8, 8),
-                            ));
-                        }
-                    }
-                }
-                res
-            }
+            AppSelection::FgFloat => rects_of_layer(room.floats.fg.as_ref(), '\0'),
+            AppSelection::BgFloat => rects_of_layer(room.floats.bg.as_ref(), '\0'),
+            AppSelection::ObjFloat => rects_of_layer(room.floats.obj.as_ref(), -2),
             AppSelection::EntityBody(id, trigger) => {
                 if let Some(entity) = room.entity(id, trigger) {
                     let config = app
@@ -570,13 +550,7 @@ impl SelectionTool {
                         .hitboxes
                         .node_rects
                         .iter()
-                        .filter_map(|r| match r.evaluate_int(&env) {
-                            Ok(r) => Some(r),
-                            Err(_) => {
-                                //println!("{}", s);
-                                None
-                            }
-                        })
+                        .filter_map(|r| r.evaluate_int(&env).ok())
                         .collect()
                 } else {
                     vec![]
@@ -640,7 +614,7 @@ impl SelectionTool {
             room.data.bounds.size.cast_unit(),
         ));
 
-        if layer == Layer::FgDecals || layer == Layer::All {
+        if let Layer::FgDecals | Layer::All = layer {
             for (idx, decal) in room.data.fg_decals.iter().enumerate().rev() {
                 room.cache_decal_idx(idx);
                 let sel = AppSelection::Decal(decal.id, true);
@@ -653,7 +627,12 @@ impl SelectionTool {
             if let Some(room_rect_cropped) = room_rect_cropped {
                 for tile_pos_unaligned in rect_point_iter(room_rect_cropped, 8) {
                     let tile_pos = point_room_to_tile(&tile_pos_unaligned);
-                    if room.data.object_tiles.get(tile_pos).cloned().unwrap_or(-1) != -1 {
+                    if room
+                        .data
+                        .object_tiles
+                        .get(tile_pos)
+                        .map_or(false, |&tile| tile != -1)
+                    {
                         result.insert(AppSelection::ObjectTile(tile_pos));
                     }
                 }
@@ -664,7 +643,10 @@ impl SelectionTool {
                 {
                     for tile_pos_unaligned in rect_point_iter(float_rect_cropped, 8) {
                         let tile_pos = point_room_to_tile(&tile_pos_unaligned);
-                        if grid.get(tile_pos - pt.to_vector()).copied().unwrap_or(-2) != -2 {
+                        if grid
+                            .get(tile_pos - pt.to_vector())
+                            .map_or(false, |tile| *tile != -2)
+                        {
                             result.insert(AppSelection::ObjFloat);
                             break;
                         }
@@ -748,8 +730,9 @@ impl SelectionTool {
             if let Some(float_rect_cropped) =
                 rect_tile_to_room(&TileRect::new(*pt, grid.size())).intersection(&room_rect)
             {
-                for tile_pos_unaligned in rect_point_iter(float_rect_cropped, 8) {
-                    let tile_pos = point_room_to_tile(&tile_pos_unaligned);
+                for tile_pos in
+                    rect_point_iter(float_rect_cropped, 8).map(|point| point_room_to_tile(&point))
+                {
                     if grid.get(tile_pos - pt.to_vector()).copied().unwrap_or('\0') != '\0' {
                         result.insert(AppSelection::BgFloat);
                         break;

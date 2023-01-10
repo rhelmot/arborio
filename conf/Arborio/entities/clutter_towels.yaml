@@ -33,17 +33,14 @@ attribute_info:
   inverted:
     display_name: Inverted
     ty: Bool
-    default:
-      !Bool false
+    default: false
   originY:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   originX:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
 templates:
   - name: 'Clutter (towels)'

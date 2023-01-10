@@ -68,21 +68,15 @@ pencil: Rect
 attribute_info:
   type:
     ty: String
-    default:
-      !String default
+    default: default
     options:
       - name: Default
-        value:
-          !String default
+        value: default
       - name: Outline
-        value:
-          !String outline
+        value: outline
       - name: Ridge
-        value:
-          !String cliffside
+        value: cliffside
       - name: Reflection
-        value:
-          !String reflection
+        value: reflection
       - name: Tentacles
-        value:
-          !String tentacles
+        value: tentacles

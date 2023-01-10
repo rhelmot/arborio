@@ -33,39 +33,29 @@ pencil: Rect
 attribute_info:
   index:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     options:
       - name: Blue
-        value:
-          !Int 0
+        value: 0
       - name: Red
-        value:
-          !Int 1
+        value: 1
       - name: Yellow
-        value:
-          !Int 2
+        value: 2
       - name: Green
-        value:
-          !Int 3
+        value: 3
   tempo:
     ty: Float
-    default:
-      !Float 1.0
+    default: 1.0
 templates:
   - name: Cassette Block (Blue)
     attributes:
-      index:
-        !Int 0
+      index: 0
   - name: Cassette Block (Red)
     attributes:
-      index:
-        !Int 1
+      index: 1
   - name: Cassette Block (Yellow)
     attributes:
-      index:
-        !Int 2
+      index: 2
   - name: Cassette Block (Green)
     attributes:
-      index:
-        !Int 3
+      index: 3

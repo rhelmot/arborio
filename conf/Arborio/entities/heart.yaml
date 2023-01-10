@@ -42,29 +42,25 @@ attribute_info:
   originY:
     display_name: originY
     ty: Int
-    default:
-      !Int 0
+    default: 0
     options: []
     ignore: true
   removeCameraTriggers:
     display_name: removeCameraTriggers
     ty: Bool
-    default:
-      !Bool false
+    default: false
     options: []
     ignore: false
   fake:
     display_name: Fake
     ty: Bool
-    default:
-      !Bool false
+    default: false
     options: []
     ignore: false
   originX:
     display_name: originX
     ty: Int
-    default:
-      !Int 0
+    default: 0
     options: []
     ignore: true
 keywords: []

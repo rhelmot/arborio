@@ -4,7 +4,9 @@ pub mod expression;
 pub mod styleground;
 pub mod trigger;
 
-use serde;
+use core::fmt;
+use serde::de::VariantAccess;
+use serde::{self, de};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Formatter;
@@ -63,12 +65,108 @@ pub enum AttributeType {
     Bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Data)]
+#[derive(Clone, Debug, PartialEq, Data)]
 pub enum AttributeValue {
     String(String),
     Float(f32),
     Int(i32),
     Bool(bool),
+}
+
+impl Serialize for AttributeValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            AttributeValue::Bool(v) => serializer.serialize_bool(*v),
+            AttributeValue::Int(v) => serializer.serialize_i32(*v),
+            AttributeValue::Float(v) => serializer.serialize_f32(*v),
+            AttributeValue::String(v) => serializer.serialize_str(v),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for AttributeValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(AttributeVisitor)
+    }
+}
+
+macro_rules! visit {
+    () => {};
+    ($type:tt => |$param:ident| $body:expr $(,$($remaining:tt)*)?) => {
+        visit!($type => |self, $param: $type| $body $(,$($remaining)*)?);
+    };
+    ($name:tt => |$param:ident: $type:ty| $body:expr $(,$($remaining:tt)*)?) => {
+        visit!($name => |self, $param: $type| $body $(,$($remaining)*)?);
+    };
+    ($name:tt => |$self:ident, $param:ident| $body:expr, $($remaining:tt)*) => {
+        visit!($name => |$self, $param| $body);
+        visit!($($remaining)*);
+    };
+    ($name:tt => |$self:ident, $param:ident: $type:ty| $body:expr, $($remaining:tt)*) => {
+        visit!($name => |$self, $param: $type| $body);
+        visit!($($remaining)*);
+    };
+    (($($type:ident)|+) => |$self:ident, $param:ident| $body:expr) => {
+        $(visit!($type => |$self, $param: $type| $body);)+
+    };
+    ($type:ident => |$self:ident, $param:ident| $body:expr) => {
+        visit!($type => |$self, $param: $type| $body);
+    };
+    ($name:ident => |$self:ident, $param:ident: $type:ty| $body:expr) => {
+        concat_idents::concat_idents!(visit_name = visit_, $name {
+            fn visit_name<E>($self, $param: $type) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                $body
+            }
+        });
+    };
+}
+
+struct AttributeVisitor;
+
+impl<'de> de::Visitor<'de> for AttributeVisitor {
+    type Value = AttributeValue;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "a String, Float, Int, or Bool")
+    }
+
+    visit! {
+        bool => |v| Ok(AttributeValue::Bool(v)),
+        i32 => |v| Ok(AttributeValue::Int(v)),
+        f32 => |v| Ok(AttributeValue::Float(v)),
+        string => |v: String| Ok(AttributeValue::String(v)),
+        (i64 | u64) => |self, v| {
+            if let Ok(v) = v.try_into() {
+                self.visit_i32(v)
+            } else {
+                self.visit_f32(v as f32)
+            }
+        },
+        f64 => |self, v| self.visit_f32(v as f32),
+        str => |self, v: &str| self.visit_string(v.to_owned()),
+    }
+
+    fn visit_enum<A>(self, data: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::EnumAccess<'de>,
+    {
+        let (value, contents) = data.variant::<AttributeType>()?;
+        Ok(match value {
+            AttributeType::Bool => AttributeValue::Bool(contents.newtype_variant()?),
+            AttributeType::Int => AttributeValue::Int(contents.newtype_variant()?),
+            AttributeType::Float => AttributeValue::Float(contents.newtype_variant()?),
+            AttributeType::String => AttributeValue::String(contents.newtype_variant()?),
+        })
+    }
 }
 
 impl AttributeValue {

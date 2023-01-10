@@ -51,22 +51,18 @@ attribute_info:
   left:
     display_name: Left
     ty: Bool
-    default:
-      !Bool false
+    default: false
   notCoreMode:
     display_name: Not Core Mode
     ty: Bool
-    default:
-      !Bool false
+    default: false
   originX:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   originY:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
 keywords:
   - waterfall

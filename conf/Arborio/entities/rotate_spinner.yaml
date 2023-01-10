@@ -81,20 +81,16 @@ pencil: Node
 attribute_info:
   star:
     ty: Bool
-    default:
-      !Bool false
+    default: false
   dust:
     ty: Bool
-    default:
-      !Bool false
+    default: false
 templates:
   - name: "Track Spinner (Blade)"
     attributes: {}
   - name: "Track Spinner (Dust)"
     attributes:
-      dust:
-        !Bool true
+      dust: true
   - name: "Track Spinner (Star)"
     attributes:
-      star:
-        !Bool true
+      star: true

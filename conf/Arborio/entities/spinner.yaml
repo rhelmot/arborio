@@ -44,90 +44,64 @@ pencil: Line
 attribute_info:
   dust:
     ty: Bool
-    default:
-      !Bool false
+    default: false
   color:
     ty: String
-    default:
-      !String blue
+    default: blue
     options:
       - name: Blue
-        value:
-          !String blue
+        value: blue
       - name: Red
-        value:
-          !String red
+        value: red
       - name: Purple
-        value:
-          !String purple
+        value: purple
       - name: Core
-        value:
-          !String core
+        value: core
       - name: Rainbow
-        value:
-          !String rainbow
+        value: rainbow
   attachToSolid:
     ty: Bool
-    default:
-      !Bool false
+    default: false
 templates:
   - name: Crystal Spinner (Blue)
     attributes:
-      color:
-        !String blue
+      color: blue
   - name: Crystal Spinner (Blue, Attached)
     attributes:
-      color:
-        !String blue
-      attachToSolid:
-        !Bool true
+      color: blue
+      attachToSolid: true
   - name: Crystal Spinner (Red)
     attributes:
-      color:
-        !String red
+      color: red
   - name: Crystal Spinner (Red, Attached)
     attributes:
-      color:
-        !String red
-      attachToSolid:
-        !Bool true
+      color: red
+      attachToSolid: true
   - name: Crystal Spinner (Purple)
     attributes:
-      color:
-        !String purple
+      color: purple
   - name: Crystal Spinner (Purple, Attached)
     attributes:
-      color:
-        !String purple
-      attachToSolid:
-        !Bool true
+      color: purple
+      attachToSolid: true
   - name: Crystal Spinner (Core)
     attributes:
-      color:
-        !String core
+      color: core
   - name: Crystal Spinner (Core, Attached)
     attributes:
-      color:
-        !String core
-      attachToSolid:
-        !Bool true
+      color: core
+      attachToSolid: true
   - name: Crystal Spinner (Rainbow)
     attributes:
-      color:
-        !String rainbow
+      color: rainbow
   - name: Crystal Spinner (Rainbow, Attached)
     attributes:
-      color:
-        !String rainbow
-      attachToSolid:
-        !Bool true
+      color: rainbow
+      attachToSolid: true
   - name: Dust Creature
     attributes:
-      dust:
-        !Bool true
+      dust: true
   - name: Dust Creature (Attached)
     attributes:
-      dust:
-        !Bool true
-      attachToSolid:
-        !Bool true
+      dust: true
+      attachToSolid: true

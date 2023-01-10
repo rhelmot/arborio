@@ -25,26 +25,19 @@ nodes: false
 attribute_info:
   sprite:
     ty: String
-    default:
-      !String 'wood'
+    default: 'wood'
     options:
       - name: Wood
-        value:
-          !String wood
+        value: wood
       - name: Temple A
-        value:
-          !String temple_a
+        value: temple_a
       - name: Temple B
-        value:
-          !String temple_b
+        value: temple_b
       - name: Moon
-        value:
-          !String moon
+        value: moon
   stepMusicProgress:
     ty: Bool
-    default:
-      !Bool false
+    default: false
   unlock_sfx:
     ty: String
-    default:
-      !String ""
+    default: ""

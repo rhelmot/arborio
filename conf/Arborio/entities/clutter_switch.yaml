@@ -33,15 +33,11 @@ pencil: Line
 attribute_info:
   type:
     ty: String
-    default:
-      !String red
+    default: red
     options:
       - name: Towels
-        value:
-          !String red
+        value: red
       - name: Books
-        value:
-          !String green
+        value: green
       - name: Chest
-        value:
-          !String yellow
+        value: yellow

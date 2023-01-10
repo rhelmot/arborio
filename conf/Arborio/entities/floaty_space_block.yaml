@@ -28,21 +28,17 @@ pencil: Rect
 attribute_info:
   tiletype:
     ty: String
-    default:
-      !String "3"
+    default: "3"
       # TODO: fgtiles options
   disableSpawnOffset:
     display_name: Disable Spawn Offset
     ty: Bool
-    default:
-      !Bool false
+    default: false
   originX:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   originY:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true

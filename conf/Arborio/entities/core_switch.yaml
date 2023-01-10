@@ -21,27 +21,22 @@ attribute_info:
   onlyFire:
     display_name: Only Fire
     ty: Bool
-    default:
-      !Bool false
+    default: false
   onlyIce:
     display_name: Only Ice
     ty: Bool
-    default:
-      !Bool false
+    default: false
   persistent:
     display_name: Persistent
     ty: Bool
-    default:
-      !Bool false
+    default: false
   originX:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   originY:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
 templates:
   - name: Core Switch

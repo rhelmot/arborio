@@ -20,16 +20,13 @@ nodes: false
 attribute_info:
   twoDash:
     ty: Bool
-    default:
-      !Bool false
+    default: false
   oneUse:
     ty: Bool
-    default:
-      !Bool false
+    default: false
 templates:
   - name: "Refill"
     attributes: {}
   - name: "Double Refill"
     attributes:
-      twoDash:
-        !Bool true
+      twoDash: true

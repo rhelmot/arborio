@@ -60,20 +60,16 @@ nodes: true
 attribute_info:
   winged:
     ty: Bool
-    default:
-      !Bool false
+    default: false
   moon:
     ty: Bool
-    default:
-      !Bool false
+    default: false
 templates:
   - name: "Strawberry"
     attributes: {}
   - name: "Winged Strawberry"
     attributes:
-      winged:
-        !Bool true
+      winged: true
   - name: "Moon Berry"
     attributes:
-      moon:
-        !Bool true
+      moon: true

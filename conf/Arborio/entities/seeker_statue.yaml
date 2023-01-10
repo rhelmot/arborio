@@ -81,28 +81,23 @@ attribute_info:
   originY:
     display_name: originY
     ty: Int
-    default:
-      !Int 0
+    default: 0
     options: []
     ignore: true
   hatch:
     display_name: Hatch Condition
     ty: String
-    default:
-      !String ""
+    default: ""
     options:
       - name: Within Distance
-        value:
-          !String Distance
+        value: Distance
       - name: Player on the Right
-        value:
-          !String playerRightOfX
+        value: playerRightOfX
     ignore: false
   originX:
     display_name: originX
     ty: Int
-    default:
-      !Int 0
+    default: 0
     options: []
     ignore: true
 keywords: []

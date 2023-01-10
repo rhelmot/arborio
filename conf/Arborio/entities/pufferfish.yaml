@@ -37,19 +37,16 @@ nodes: false
 attribute_info:
   originX:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   originY:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   right:
     display_name: Face Right
     ty: Bool
-    default:
-      !Bool false
+    default: false
 templates:
   - name: Puffer Fish
     attributes: {}

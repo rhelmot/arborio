@@ -26,52 +26,39 @@ attribute_info:
   sprite:
     display_name: Sprite
     ty: String
-    default:
-      !String default
+    default: default
     options:
       - name: Default
-        value:
-          !String default
+        value: default
       - name: Mirror
-        value:
-          !String mirror
+        value: mirror
       - name: Theo
-        value:
-          !String theo
+        value: theo
   type:
     display_name: Type
     ty: String
-    default:
-      !String NearestSwitch
+    default: NearestSwitch
     options:
-      - value:
-          !String NearestSwitch
+      - value: NearestSwitch
         name: Nearest Switch
-      - value:
-          !String CloseBehindPlayer
+      - value: CloseBehindPlayer
         name: Close Behind Player
-      - value:
-          !String CloseBehindPlayerAlways
+      - value: CloseBehindPlayerAlways
         name: Close Behind Player Always
-      - value:
-          !String HoldingTheo
+      - value: HoldingTheo
         name: Holding Theo
-      - value:
-          !String TouchSwitches
+      - value: TouchSwitches
         name: Touch Switches
-      - value:
-          !String CloseBehindPlayerAndTheo
+      - value: CloseBehindPlayerAndTheo
         name: Close Behind Player And Theo
     ignore: false
   originX:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   originY:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
 templates:
   - name: Temple Gate

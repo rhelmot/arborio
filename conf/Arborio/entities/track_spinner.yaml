@@ -62,51 +62,40 @@ attribute_info:
   star:
     display_name: Star
     ty: Bool
-    default:
-      !Bool false
+    default: false
   dust:
     display_name: Dust
     ty: Bool
-    default:
-      !Bool false
+    default: false
   startCenter:
     display_name: Start at Center
     ty: Bool
-    default:
-      !Bool false
+    default: false
   speed:
     display_name: Speed
     ty: String
-    default:
-      !String "Slow"
+    default: "Slow"
     options:
       - name: Slow
-        value:
-          !String Slow
+        value: Slow
       - name: Normal
-        value:
-          !String Normal
+        value: Normal
       - name: Fast
-        value:
-          !String Fast
+        value: Fast
   originX:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   originY:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
 templates:
   - name: "Track Spinner (Blade)"
     attributes: {}
   - name: "Track Spinner (Dust)"
     attributes:
-      dust:
-        !Bool true
+      dust: true
   - name: "Track Spinner (Star)"
     attributes:
-      star:
-        !Bool true
+      star: true

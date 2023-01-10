@@ -29,15 +29,11 @@ nodes: false
 attribute_info:
   mode:
     ty: String
-    default:
-      !String Unlit
+    default: Unlit
     options:
       - name: Unlit
-        value:
-          !String Unlit
+        value: Unlit
       - name: Lit
-        value:
-          !String Lit
+        value: Lit
       - name: Smoking
-        value:
-          !String Smoking
+        value: Smoking

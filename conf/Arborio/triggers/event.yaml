@@ -3,9 +3,7 @@ nodes: true
 attribute_info:
   event:
     ty: String
-    default:
-      !String ''
+    default: ''
   onSpawn:
     ty: Bool
-    default:
-      !Bool false
+    default: false

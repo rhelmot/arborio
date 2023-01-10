@@ -37,22 +37,18 @@ attribute_info:
   perLevel:
     display_name: Per-Level
     ty: Bool
-    default:
-      !Bool false
+    default: false
   moveTime:
     display_name: Move Time
     ty: Int
-    default:
-      !Int 0
+    default: 0
   originX:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   originY:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
 templates:
   - name: Lightning

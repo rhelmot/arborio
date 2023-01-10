@@ -78,27 +78,22 @@ attribute_info:
   fastMoving:
     display_name: Fast Moving
     ty: Bool
-    default:
-      !Bool false
+    default: false
   oneUse:
     display_name: One Use
     ty: Bool
-    default:
-      !Bool false
+    default: false
   below:
     display_name: Below
     ty: Bool
-    default:
-      !Bool false
+    default: false
   originX:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
   originY:
     ty: Int
-    default:
-      !Int 0
+    default: 0
     ignore: true
 keywords:
   - space jam

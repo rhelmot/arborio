@@ -69,19 +69,14 @@ nodes: true
 attribute_info:
   sprite:
     ty: String
-    default:
-      !String "block"
+    default: "block"
     options:
       - name: Block
-        value:
-          !String "block"
+        value: "block"
       - name: Mirror
-        value:
-          !String "mirror"
+        value: "mirror"
       - name: Stars
-        value:
-          !String "stars"
+        value: "stars"
       - name: Temple
-        value:
-          !String "temple"
+        value: "temple"
 pencil: Node
