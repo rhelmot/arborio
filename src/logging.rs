@@ -6,9 +6,13 @@ use std::sync::mpsc::{sync_channel, SyncSender};
 
 pub fn setup_logger_thread(cx: &mut Context) {
     let (tx, rx) = sync_channel(1000);
-    let logger = Box::leak(Box::new(ViziaLogger { pipe: tx }));
-    set_logger(logger).unwrap();
+    let logger_vizia = ViziaLogger { pipe: tx };
     set_max_level(LevelFilter::Debug);
+    let logger_stderr = env_logger::builder()
+        .filter_level(LevelFilter::Info)
+        .build();
+    let logger = multi_log::MultiLogger::new(vec![Box::new(logger_vizia), Box::new(logger_stderr)]);
+    set_logger(Box::leak(Box::new(logger))).unwrap();
 
     cx.spawn(move |cx| loop {
         let message = rx.recv().unwrap();
