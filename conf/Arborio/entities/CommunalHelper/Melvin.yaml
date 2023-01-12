@@ -1,0 +1,68 @@
+entity_name: CommunalHelper/Melvin
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x
+        y: y
+      size:
+        x: width
+        y: height
+standard_draw:
+  initial_draw:
+    - !DrawRect
+        rect:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+        color:
+          r: 0x62
+          g: 0x22
+          b: 0x2b
+          a: 0xff
+    - !DrawRectImage
+        texture: '"objects/crushblock/block03"'
+        tiler: '"9slice"'
+        bounds:
+          topleft:
+            x: x
+            y: y
+          size:
+            x: width
+            y: height
+        color:
+          r: "255"
+          g: "100"
+          b: "100"
+          a: "255"
+    - !DrawPointImage
+        texture: '"objects/crushblock/idle_face"'
+        point:
+          x: x + width / 2
+          y: y + height / 2
+        color:
+          r: "255"
+          g: "100"
+          b: "100"
+          a: "255"
+resizable_x: true
+resizable_y: true
+minimum_size_x: 16
+minimum_size_y: 16
+nodes: false
+pencil: Rect
+attributes:
+  weakTop:
+    ty: Bool
+    default: !Bool false
+  weakBottom:
+    ty: Bool
+    default: !Bool false
+  weakLeft:
+    ty: Bool
+    default: !Bool false
+  weakRight:
+    ty: Bool
+    default: !Bool false

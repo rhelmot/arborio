@@ -1,0 +1,94 @@
+entity_name: killbox
+hitboxes:
+  initial_rects:
+  - topleft:
+      x: match (width + height) { 0 => (x - 4), _ => x }
+      y: match (width + height) { 0 => (y - 4), _ => y }
+    size:
+      x: match width { 0 => 8, _ => width }
+      y: match height { 0 => 8, _ => height }
+  node_rects:
+  - topleft:
+      x: (nodex - 2)
+      y: (nodey - 2)
+    size:
+      x: '4'
+      y: '4'
+standard_draw:
+  initial_draw:
+  - !DrawRect
+    rect:
+      topleft:
+        x: match (width + height) { 0 => (x - 4), _ => x }
+        y: match (width + height) { 0 => (y - 4), _ => y }
+      size:
+        x: match width { 0 => 8, _ => width }
+        y: match height { 0 => 8, _ => height }
+    color:
+      r: '255'
+      g: '50'
+      b: '50'
+      a: '255'
+    border_color:
+      r: '255'
+      g: '0'
+      b: '0'
+      a: '255'
+    border_thickness: 1
+  node_draw:
+  - !DrawRect
+    rect:
+      topleft:
+        x: (nodex - 2)
+        y: (nodey - 2)
+      size:
+        x: '4'
+        y: '4'
+    color:
+      r: '255'
+      g: '50'
+      b: '50'
+      a: '255'
+    border_color:
+      r: '255'
+      g: '0'
+      b: '0'
+      a: '255'
+    border_thickness: 1
+selected_draw:
+  initial_draw: []
+  node_draw:
+  - !DrawLine
+    start:
+      x: prevnodexorbase
+      y: prevnodeyorbase
+    end:
+      x: nodex
+      y: nodey
+    color:
+      r: '255'
+      g: '255'
+      b: '0'
+      a: '200'
+    arrowhead: true
+    thickness: 1
+minimum_size_x: 8
+minimum_size_y: 0
+resizable_x: true
+resizable_y: false
+nodes: false
+pencil: Rect
+solid: false
+attribute_info:
+  originY:
+    display_name: originY
+    ty: Int
+    default: !Int 0
+    ignore: true
+  originX:
+    display_name: originX
+    ty: Int
+    default: !Int 0
+    ignore: true
+keywords: []
+templates: []

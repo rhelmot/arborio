@@ -1,0 +1,41 @@
+entity_name: FrostHelper/PlusOneRefill
+hitboxes:
+  initial_rects:
+    - topleft:
+        x: x-4
+        y: y-4
+      size:
+        x: 8
+        y: 8
+standard_draw:
+  initial_draw:
+    - !DrawPointImage
+        texture: '"objects/FrostHelper/plusOneRefill/idle00"'
+        point:
+          x: x
+          y: y
+resizable_x: false
+resizable_y: false
+nodes: false
+attribute_info:
+  oneUse:
+    ty: Bool
+    default: !Bool false
+  directory:
+    ty: String
+    default: !String "objects/FrostHelper/plusOneRefill"
+  dashCount:
+    ty: Int
+    default: !Int 1
+  respawnTime:
+    ty: Float
+    default: !Float 2.5
+  particleColor:
+    ty: String
+    default: !String ffffff
+  recoverStamina:
+    ty: Bool
+    default: !Bool false
+templates:
+  - name: "Plus One Refill (Frost Helper)"
+    attributes: {}

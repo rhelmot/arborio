@@ -1,0 +1,71 @@
+entity_name: outback/portal
+hitboxes:
+  initial_rects:
+  - topleft:
+      x: x - 6
+      y: y - 6
+    size:
+      x: '12'
+      y: '12'
+  node_rects: []
+standard_draw:
+  initial_draw:
+  - !DrawRect
+    rect:
+      topleft:
+        x: x - 6
+        y: y - 6
+      size:
+        x: "12"
+        y: "12"
+    color:
+      r: '255'
+      g: '40'
+      b: '40'
+      a: '255'
+  node_draw: []
+selected_draw:
+  initial_draw: []
+  node_draw: []
+minimum_size_x: 8
+minimum_size_y: 8
+resizable_x: false
+resizable_y: false
+nodes: false
+pencil: Line
+solid: false
+attribute_info:
+  direction:
+    name: Direction
+    ty: String
+    default: !String None
+    options:
+      - name: None
+        value: !String None
+      - name: Up
+        value: !String Up
+      - name: Down
+        value: !String Down
+      - name: Left
+        value: !String Left
+      - name: Right
+        value: !String Right
+  readyColor:
+    name: Ready Color
+    ty: String
+    default: !String Purple
+    options:
+      - name: Purple
+        value: !String Purple
+      - name: Blue
+        value: !String Blue
+      - name: Red
+        value: !String Red
+      - name: Yellow
+        value: !String Yellow
+      - name: Green
+        value: !String Green
+keywords: []
+templates:
+- name: Portal (Outback)
+  attributes: {}

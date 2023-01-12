@@ -7,7 +7,7 @@ use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
 
-use arborio_walker::{ConfigSource, ConfigSourceTrait};
+use arborio_walker::{ConfigSource, ConfigSourceTrait, EmbeddedSource};
 
 pub fn celeste_module_yaml() -> EverestYaml {
     EverestYaml {
@@ -19,15 +19,7 @@ pub fn celeste_module_yaml() -> EverestYaml {
 }
 
 pub fn arborio_module_yaml() -> EverestYaml {
-    EverestYaml {
-        name: "Arborio".to_string(),
-        version: EverestModuleVersion(vec![0, 1, 0]),
-        dll: None,
-        dependencies: vec![EverestYamlDependency {
-            name: "Celeste".to_string(),
-            version: EverestModuleVersion(vec![1, 4, 0, 0]),
-        }],
-    }
+    EverestYaml::from_config(&mut EmbeddedSource().into()).unwrap()
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -91,6 +83,7 @@ impl FromStr for EverestModuleVersion {
     }
 }
 
+#[derive(Debug)]
 pub enum EverestYamlLoadError {
     ParseError(serde_yaml::Error),
     NotOneEntry(usize),

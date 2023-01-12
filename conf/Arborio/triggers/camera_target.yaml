@@ -1,0 +1,50 @@
+trigger_name: cameraTargetTrigger
+nodes: true
+attribute_info:
+  xOnly:
+    display_name: Y Only
+    ty: Bool
+    default: !Bool false
+  positionMode:
+    display_name: Position Mode
+    ty: String
+    default: !String NoEffect
+    options:
+    - name: No Effect
+      value: !String NoEffect
+    - name: Horizontal Center
+      value: !String HorizontalCenter
+    - name: Vertical Center
+      value: !String VerticalCenter
+    - name: Top to Bottom
+      value: !String TopToBottom
+    - name: Bottom to Top
+      value: !String BottomToTop
+    - name: Left to Right
+      value: !String LeftToRight
+    - name: Right to Left
+      value: !String RightToLeft
+  deleteFlag:
+    display_name: Delete Flag
+    ty: String
+    default: !String ''
+  originX:
+    display_name: originX
+    ty: Int
+    default: !Int 0
+    ignore: true
+  yOnly:
+    display_name: X Only
+    ty: Bool
+    default: !Bool false
+  originY:
+    display_name: originY
+    ty: Int
+    default: !Int 0
+    ignore: true
+  lerpStrength:
+    display_name: Interpolation Strength
+    ty: Float
+    default: !Float 0.0
+keywords: []
+templates: []

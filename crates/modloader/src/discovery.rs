@@ -77,16 +77,34 @@ where
         r.load(&mut source.into());
         r
     });
-    progress(
-        (total + 1.0) / (total + 2.0),
-        "Loading built-in config".to_owned(),
-    );
-    modules.insert(*ARBORIO_MODULE_ID, {
-        let source = EmbeddedSource();
-        let mut r = CelesteModule::new(None, arborio_module_yaml());
-        r.load(&mut source.into());
-        r
-    });
+    if let Some(mut source) = var("ARBORIO_BUILTIN")
+        .as_ref()
+        .ok()
+        .map(Path::new)
+        .and_then(FolderSource::new)
+    {
+        progress(
+            (total + 1.0) / (total + 2.0),
+            "Loading built-in config (folder)".to_owned(),
+        );
+        id_lookup.insert(source.filesystem_root().unwrap(), *ARBORIO_MODULE_ID);
+        modules.insert(*ARBORIO_MODULE_ID, {
+            let mut r = CelesteModule::new(None, arborio_module_yaml());
+            r.load(&mut source.into());
+            r
+        });
+    } else {
+        progress(
+            (total + 1.0) / (total + 2.0),
+            "Loading built-in config".to_owned(),
+        );
+        modules.insert(*ARBORIO_MODULE_ID, {
+            let source = EmbeddedSource();
+            let mut r = CelesteModule::new(None, arborio_module_yaml());
+            r.load(&mut source.into());
+            r
+        });
+    }
     (modules, id_lookup)
 }
 
@@ -239,6 +257,9 @@ pub fn setup_loader_thread<A0: Any + Send, A1: Any + Send, A2: Any + Send>(
                     cx.emit(make_reset(modules.clone())).unwrap();
                     cx.emit(make_progress(1., "".to_owned())).unwrap();
                     watcher.watch(&new_path, notify::RecursiveMode::Recursive).unwrap();
+                    if let Ok(path) = var("ARBORIO_BUILTIN").as_ref().map(Path::new) {
+                        watcher.watch(path, notify::RecursiveMode::Recursive).unwrap();
+                    }
                     root = Some(new_path);
                 }
                 LoaderThreadInternalMessage::Move(old_path, new_path) => {
@@ -260,6 +281,11 @@ pub fn setup_loader_thread<A0: Any + Send, A1: Any + Send, A2: Any + Send>(
                         if let Ok(suffix) = path.strip_prefix(&mods_path) {
                             if let Some(modname) = suffix.iter().next() {
                                 worklist.insert(mods_path.join(modname));
+                            }
+                        }
+                        if let Some(broot) = var("ARBORIO_BUILTIN").as_ref().ok().map(Path::new) {
+                            if path.strip_prefix(broot).is_ok() {
+                                worklist.insert(broot.to_owned());
                             }
                         }
                         for (watchpoint, mod_folder) in link_points.iter() {

@@ -58,8 +58,8 @@ impl ConfigSourceTrait for FolderSource {
                 .min_depth(1)
                 .into_iter()
                 .filter_map(Result::ok)
-                .map(move |e| e.path().strip_prefix(&start).unwrap().to_path_buf())
-                .filter(|p| !p.is_dir()),
+                .filter(|e| !e.path().is_dir())
+                .map(move |e| e.path().strip_prefix(&start).unwrap().to_path_buf()),
         )
     }
 
