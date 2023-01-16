@@ -1045,6 +1045,8 @@ fn merge_events(dst: &mut Vec<MapAction>, src: Vec<MapAction>, dst_priority: boo
             merged = true;
             break;
         }
+        // what the hell was I thinking when I wrote this. what is this a whitelist of??
+        // hypothesis: these are the events which are allowed to be merged. WHY IS
         if !merged
             && matches!(
                 &src,
@@ -1056,6 +1058,9 @@ fn merge_events(dst: &mut Vec<MapAction>, src: Vec<MapAction>, dst_priority: boo
                     ..
                 } | MapAction::RoomAction {
                     event: RoomAction::EntityRemove { .. },
+                    ..
+                } | MapAction::RoomAction {
+                    event: RoomAction::EntityUpdate { .. },
                     ..
                 }
             )

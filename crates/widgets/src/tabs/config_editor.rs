@@ -20,7 +20,10 @@ use arborio_state::data::config_editor::{
 };
 use arborio_state::data::tabs::{AppTab, ConfigEditorTab};
 use arborio_state::data::AppConfigSetter;
-use arborio_state::lenses::{current_tab_impl_lens, IsFailedLens};
+use arborio_state::lenses::{
+    current_tab_impl_lens, hash_map_nth_key_lens, HashMapIndexWithLens, HashMapLenLens,
+    IsFailedLens,
+};
 use arborio_state::rendering::draw_entity;
 use arborio_utils::interned::intern_str;
 use arborio_utils::units::TileGrid;
@@ -838,10 +841,23 @@ fn build_entity_tweaker(cx: &mut Context) {
         },
     );
 
+    let config_attrs_lens = config_lens.then(EntityConfig::attribute_info);
     basic_attrs_editor(
         cx,
-        attributes_lens,
-        config_lens.then(EntityConfig::attribute_info),
+        config_attrs_lens.then(HashMapLenLens::new()),
+        move |idx| {
+            (
+                config_attrs_lens.then(hash_map_nth_key_lens(idx)),
+                HashMapIndexWithLens::new(
+                    attributes_lens,
+                    config_attrs_lens.then(hash_map_nth_key_lens(idx)),
+                ),
+                HashMapIndexWithLens::new(
+                    config_attrs_lens,
+                    config_attrs_lens.then(hash_map_nth_key_lens(idx)),
+                ),
+            )
+        },
         edit_attribute,
     );
 

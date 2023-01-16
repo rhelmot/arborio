@@ -9,6 +9,7 @@ use arborio_modloader::module::ModuleID;
 use arborio_utils::units::{MapPointStrict, MapToScreen};
 use arborio_utils::uuid::next_uuid;
 use arborio_utils::vizia::prelude::*;
+use std::collections::HashSet;
 
 #[allow(clippy::large_enum_variant)] // this is very rarely passed around by value
 #[derive(PartialEq, Eq, Debug, Lens, Clone, Data)]
@@ -80,7 +81,7 @@ pub struct MapTab {
     pub id: MapID,
     pub nonce: u32,
     pub current_room: usize,
-    pub current_selected: Option<AppSelection>,
+    pub current_selected: HashSet<AppSelection>,
     pub styleground_selected: Option<StylegroundSelection>,
     pub transform: MapToScreen,
     pub preview_pos: MapPointStrict,

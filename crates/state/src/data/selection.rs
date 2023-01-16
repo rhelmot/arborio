@@ -15,6 +15,18 @@ pub enum AppSelection {
     Decal(u32, bool),
 }
 
+impl AppSelection {
+    pub fn entity_info(&self) -> Option<(i32, bool)> {
+        if let AppSelection::EntityBody(entity_id, trigger)
+        | AppSelection::EntityNode(entity_id, _, trigger) = self
+        {
+            Some((*entity_id, *trigger))
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub enum AppSelectable {
     InRoom(Vec<AppInRoomSelectable>),

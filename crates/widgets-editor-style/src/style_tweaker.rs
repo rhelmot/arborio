@@ -8,7 +8,8 @@ use arborio_state::data::project_map::MapStateData;
 use arborio_state::data::EventPhase;
 use arborio_state::lenses::{
     current_map_impl_lens, current_map_lens, current_styleground_impl_lens,
-    current_styleground_lens, IsFailedLens, StylegroundNameLens,
+    current_styleground_lens, hash_map_nth_key_lens, HashMapIndexWithLens, HashMapLenLens,
+    IsFailedLens, StylegroundNameLens,
 };
 use arborio_utils::vizia::fonts::icons_names::{DOWN, MINUS, PLUS, UP};
 use arborio_utils::vizia::prelude::*;
@@ -291,9 +292,12 @@ impl StyleTweakerWidget {
         edit_text!(cx, "Fade X", fade_x);
         edit_text!(cx, "Fade Y", fade_y);
 
+        let attrs_lens = current_styleground_impl_lens().then(CelesteMapStyleground::attributes);
         advanced_attrs_editor(
             cx,
-            current_styleground_impl_lens().then(CelesteMapStyleground::attributes),
+            attrs_lens.then(HashMapLenLens::new()),
+            move |idx| attrs_lens.then(hash_map_nth_key_lens(idx)),
+            move |key| HashMapIndexWithLens::new(attrs_lens, key),
             |cx, key, value| {
                 let mut current = current_styleground_impl_lens().get(cx);
                 current.attributes.insert(key, value);

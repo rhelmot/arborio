@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::str::FromStr;
 
 use crate::textedit_dropdown::TextboxDropdown;
@@ -6,9 +5,7 @@ use crate::validator_box;
 use crate::validator_box::validator_box;
 use arborio_maploader::map_struct::Attribute;
 use arborio_modloader::config::AttributeType;
-use arborio_state::lenses::{
-    hash_map_nth_key_lens, HashMapIndexWithLens, HashMapLenLens, IsFailedLens,
-};
+use arborio_state::lenses::IsFailedLens;
 use arborio_utils::vizia::fonts::icons_names::{CANCEL, DOWN, PLUS};
 use arborio_utils::vizia::prelude::*;
 
@@ -79,76 +76,86 @@ where
     });
 }
 
-pub fn advanced_attrs_editor(
+pub fn advanced_attrs_editor<
+    LS: Clone + Send + Sync + Lens<Target = String>,
+    LA: Clone + Send + Sync + Lens<Target = Attribute>,
+>(
     cx: &mut Context,
-    attributes_lens: impl Lens<Target = HashMap<String, Attribute>> + Copy + Send + Sync,
+    num_attributes_lens: impl Lens<Target = usize> + Send + Sync,
+    attribute_keys_lens: impl 'static + Clone + Send + Sync + Fn(usize) -> LS,
+    attribute_vals_lens: impl 'static + Clone + Send + Sync + Fn(LS) -> LA,
     setter: impl 'static + Clone + Send + Sync + Fn(&mut EventContext, String, Attribute),
     adder: impl 'static + Send + Sync + Fn(&mut EventContext, String, AttributeType),
     remover: impl 'static + Clone + Send + Sync + Fn(&mut EventContext, String),
 ) {
-    Binding::new(
-        cx,
-        attributes_lens.then(HashMapLenLens::new()),
-        move |cx, len| {
-            let len = len.get_fallible(cx).unwrap_or(0);
-            for i in 0..len {
-                let setter = setter.clone();
-                let remover = remover.clone();
-                let key_lens = attributes_lens.then(hash_map_nth_key_lens(i));
-                HStack::new(cx, move |cx| {
-                    Label::new(cx, key_lens);
+    Binding::new(cx, num_attributes_lens, move |cx, len| {
+        let len = len.get_fallible(cx).unwrap_or(0);
+        for i in 0..len {
+            let setter = setter.clone();
+            let remover = remover.clone();
+            let key_lens = attribute_keys_lens(i);
+            let attr_value_lens = attribute_vals_lens(key_lens.clone());
+            HStack::new(cx, move |cx| {
+                Label::new(cx, key_lens.clone());
 
-                    let attr_value_lens = HashMapIndexWithLens::new(attributes_lens, key_lens);
-                    let s_value_lens = attr_value_lens.then(Attribute::text);
-                    let i_value_lens = attr_value_lens.then(Attribute::int);
-                    let f_value_lens = attr_value_lens.then(Attribute::float);
-                    let b_value_lens = attr_value_lens.then(Attribute::bool);
+                let s_value_lens = attr_value_lens.clone().then(Attribute::text);
+                let i_value_lens = attr_value_lens.clone().then(Attribute::int);
+                let f_value_lens = attr_value_lens.clone().then(Attribute::float);
+                let b_value_lens = attr_value_lens.clone().then(Attribute::bool);
 
-                    let setter2 = setter.clone();
-                    attr_editor(
+                let setter2 = setter.clone();
+                attr_editor(
+                    cx,
+                    s_value_lens,
+                    key_lens.clone(),
+                    move |cx, key, val| setter2(cx, key, Attribute::Text(val)),
+                    false,
+                );
+                let setter2 = setter.clone();
+                attr_editor(
+                    cx,
+                    i_value_lens,
+                    key_lens.clone(),
+                    move |cx, key, val| setter2(cx, key, Attribute::Int(val)),
+                    false,
+                );
+                let setter2 = setter.clone();
+                attr_editor(
+                    cx,
+                    f_value_lens,
+                    key_lens.clone(),
+                    move |cx, key, val| setter2(cx, key, Attribute::Float(val)),
+                    false,
+                );
+                {
+                    let key_lens = key_lens.clone();
+                    Binding::new(
                         cx,
-                        s_value_lens,
-                        key_lens,
-                        move |cx, key, val| setter2(cx, key, Attribute::Text(val)),
-                        false,
+                        IsFailedLens::new(b_value_lens.clone()),
+                        move |cx, failed| {
+                            if !failed.get(cx) {
+                                let setter2 = setter.clone();
+                                let b_value_lens = b_value_lens.clone();
+                                let key_lens = key_lens.clone();
+                                Checkbox::new(cx, b_value_lens.clone()).on_toggle(move |cx| {
+                                    let b = b_value_lens.get(cx);
+                                    setter2(cx, key_lens.get(cx), Attribute::Bool(!b));
+                                });
+                            }
+                        },
                     );
-                    let setter2 = setter.clone();
-                    attr_editor(
-                        cx,
-                        i_value_lens,
-                        key_lens,
-                        move |cx, key, val| setter2(cx, key, Attribute::Int(val)),
-                        false,
-                    );
-                    let setter2 = setter.clone();
-                    attr_editor(
-                        cx,
-                        f_value_lens,
-                        key_lens,
-                        move |cx, key, val| setter2(cx, key, Attribute::Float(val)),
-                        false,
-                    );
-                    Binding::new(cx, IsFailedLens::new(b_value_lens), move |cx, failed| {
-                        if !failed.get(cx) {
-                            let setter2 = setter.clone();
-                            Checkbox::new(cx, b_value_lens).on_toggle(move |cx| {
-                                let b = b_value_lens.get(cx);
-                                setter2(cx, key_lens.get(cx), Attribute::Bool(!b));
-                            });
-                        }
+                }
+
+                Label::new(cx, CANCEL)
+                    .class("icon")
+                    .class("remove_btn")
+                    .on_press(move |cx| {
+                        let keyed = key_lens.get(cx);
+                        remover(cx.as_mut(), keyed);
                     });
-
-                    Label::new(cx, CANCEL)
-                        .class("icon")
-                        .class("remove_btn")
-                        .on_press(move |cx| {
-                            let keyed = key_lens.get(cx);
-                            remover(cx.as_mut(), keyed);
-                        });
-                });
-            }
-        },
-    );
+            });
+        }
+    });
     HStack::new(cx, move |cx| {
         NewAttributeData {
             name: "".to_string(),

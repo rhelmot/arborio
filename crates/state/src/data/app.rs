@@ -187,9 +187,9 @@ pub enum AppEvent {
     SelectPaletteDecal {
         decal: DecalSelectable,
     },
-    SelectObject {
+    SelectObjects {
         tab: usize,
-        selection: Option<AppSelection>,
+        selection: HashSet<AppSelection>,
     },
     MapEvent {
         map: Option<MapID>,

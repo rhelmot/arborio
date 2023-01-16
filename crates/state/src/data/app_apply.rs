@@ -11,6 +11,7 @@ use arborio_utils::uuid::next_uuid;
 use arborio_utils::vizia::prelude::*;
 use log::Level;
 use std::cell::RefCell;
+use std::collections::HashSet;
 
 impl AppState {
     pub fn apply(&mut self, cx: &mut EventContext, event: AppEvent) {
@@ -112,7 +113,7 @@ impl AppState {
                             nonce: next_uuid(),
                             id,
                             current_room: 0,
-                            current_selected: None,
+                            current_selected: HashSet::new(),
                             styleground_selected: None,
                             transform: MapToScreen::identity(),
                             preview_pos: MapPointStrict::zero(),
@@ -286,7 +287,7 @@ impl AppState {
                     }
                 }
             }
-            AppEvent::SelectObject { tab, selection } => {
+            AppEvent::SelectObjects { tab, selection } => {
                 if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(tab) {
                     map_tab.current_selected = selection;
                     if let Some(room) = self.current_room_ref() {

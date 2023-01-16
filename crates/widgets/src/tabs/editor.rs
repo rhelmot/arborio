@@ -79,6 +79,26 @@ fn build_tool_settings(cx: &mut Context) {
         let show = spec == ToolSpec::Pencil;
         handle.display(show);
     });
+
+    HStack::new(cx, move |cx| {
+        Label::new(cx, "Advanced Tweaker").describing("tool_settings_advanced");
+        let lens = AppState::config
+            .then(AutoSaverLens::new())
+            .then(AppConfig::advanced);
+        Checkbox::new(cx, lens)
+            .on_toggle(move |cx| {
+                let val = !lens.get(cx);
+                cx.emit(AppEvent::EditSettings {
+                    setter: AppConfigSetter::Advanced(val),
+                });
+            })
+            .id("tool_settings_advanced");
+    })
+    .bind(AppState::current_toolspec, move |handle, spec| {
+        let spec = spec.get(handle.cx);
+        let show = spec == ToolSpec::Selection;
+        handle.display(show);
+    });
 }
 
 pub fn build_tool_picker(cx: &mut Context) {

@@ -562,11 +562,13 @@ pub fn draw_entities(
     palette: &ModuleAggregate,
     canvas: &mut Canvas,
     room: &CelesteMapLevel,
-    selection: Option<AppSelection>,
+    selection: &HashSet<AppSelection>,
 ) {
     let field = room.occupancy_field();
     for entity in &room.entities {
-        let selected = matches!(selection, Some(AppSelection::EntityBody(id, false)) | Some(AppSelection::EntityNode(id, _, false)) if id == entity.id);
+        let selected = selection.contains(&AppSelection::EntityBody(entity.id, false))
+            || (0..entity.nodes.len())
+                .any(|i| selection.contains(&AppSelection::EntityNode(entity.id, i, false)));
         draw_entity(
             palette.get_entity_config(&entity.name, false),
             palette,
@@ -583,10 +585,12 @@ pub fn draw_triggers(
     palette: &ModuleAggregate,
     canvas: &mut Canvas,
     room: &CelesteMapLevel,
-    selection: Option<AppSelection>,
+    selection: &HashSet<AppSelection>,
 ) {
     for trigger in &room.triggers {
-        let selected = matches!(selection, Some(AppSelection::EntityBody(id, true)) | Some(AppSelection::EntityNode(id, _, true)) if id == trigger.id);
+        let selected = selection.contains(&AppSelection::EntityBody(trigger.id, true))
+            || (0..trigger.nodes.len())
+                .any(|i| selection.contains(&AppSelection::EntityNode(trigger.id, i, true)));
         draw_entity(
             palette.get_entity_config(&trigger.name, true),
             palette,

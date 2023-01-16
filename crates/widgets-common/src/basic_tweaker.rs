@@ -1,50 +1,55 @@
 use crate::advanced_tweaker::attr_editor;
 use arborio_maploader::map_struct::Attribute;
 use arborio_modloader::config::{AttributeInfo, AttributeType};
-use arborio_state::lenses::{hash_map_nth_key_lens, HashMapIndexWithLens, HashMapLenLens};
 use arborio_utils::vizia::fonts::icons_names::DOWN;
 use arborio_utils::vizia::prelude::*;
-use std::collections::{HashMap, HashSet};
 
-pub fn basic_attrs_editor<LA, LC, FS>(
+pub fn basic_attrs_editor<LN, F, LK, LA, LC, FS>(
     cx: &mut Context,
-    lens_attributes: LA,
-    lens_config: LC,
+    lens_count: LN,
+    index_func: F,
     setter: FS,
 ) where
-    LA: Copy + Send + Sync + Lens<Target = HashMap<String, Attribute>>,
-    LC: Copy
-        + Send
-        + Sync
-        + Lens<Target = HashMap<String, AttributeInfo>, Source = <LA as Lens>::Source>,
-    FS: 'static + Copy + Send + Sync + Fn(&mut EventContext, String, Attribute),
+    LN: Clone + Send + Sync + Lens<Target = usize>,
+    F: 'static + Clone + Send + Sync + Fn(usize) -> (LK, LA, LC),
+    LK: Send + Sync + Lens<Target = String>,
+    LA: Send + Sync + Lens<Target = Attribute>,
+    LC: Send + Sync + Lens<Target = AttributeInfo>,
+    FS: 'static + Clone + Send + Sync + Fn(&mut EventContext, String, Attribute),
 {
-    let info_len_lens = lens_config.then(HashMapLenLens::new());
-    Binding::new(cx, info_len_lens, move |cx, info_len| {
+    Binding::new(cx, lens_count, move |cx, info_len| {
         let info_len = info_len.get_fallible(cx).unwrap_or_default();
 
         for idx in 0..info_len {
-            let lens_attr_key = lens_config.then(hash_map_nth_key_lens(idx));
-            let lens_attr_info = HashMapIndexWithLens::new(lens_config, lens_attr_key);
-            let lens_attr_type = lens_attr_info.then(AttributeInfo::ty);
-            let lens_attr_name = lens_attr_info.then(AttributeInfo::display_name);
-            let lens_attr_val = HashMapIndexWithLens::new(lens_attributes, lens_attr_key);
-            let lens_attr_opts = lens_attr_info.then(AttributeInfo::options);
+            let (lens_attr_key, lens_attr_val, lens_attr_info) = index_func(idx);
+            let lens_attr_type = lens_attr_info.clone().then(AttributeInfo::ty);
+            let lens_attr_name = lens_attr_info.clone().then(AttributeInfo::display_name);
+            let lens_attr_opts = lens_attr_info.clone().then(AttributeInfo::options);
 
             if lens_attr_info.then(AttributeInfo::ignore).get(cx) {
                 continue;
             }
 
+            let setter = setter.clone();
             HStack::new(cx, move |cx| {
-                Binding::new(cx, lens_attr_key, move |cx, lens_attr_key| {
-                    let attr_key = lens_attr_key.get(cx);
-                    Binding::new(cx, lens_attr_name, move |cx, lens_attr_name| {
-                        let attr_name = lens_attr_name.get(cx);
-                        let name = attr_name.as_ref().unwrap_or(&attr_key);
-                        Label::new(cx, name);
+                {
+                    let lens_attr_key = lens_attr_key.clone();
+                    let lens_attr_name = lens_attr_name.clone();
+                    Binding::new(cx, lens_attr_key, move |cx, lens_attr_key| {
+                        let attr_key = lens_attr_key.get(cx);
+                        let lens_attr_name = lens_attr_name.clone();
+                        Binding::new(cx, lens_attr_name, move |cx, lens_attr_name| {
+                            let attr_name = lens_attr_name.get(cx);
+                            let name = attr_name.as_ref().unwrap_or(&attr_key);
+                            Label::new(cx, name);
+                        });
                     });
-                });
+                }
+                let lens_attr_val = lens_attr_val.clone();
                 Binding::new(cx, lens_attr_opts, move |cx, lens_attr_opts| {
+                    let lens_attr_val = lens_attr_val.clone();
+                    let lens_attr_key = lens_attr_key.clone();
+                    let setter = setter.clone();
                     let opts_len =
                         lens_attr_opts.view(cx.data().unwrap(), |opts| opts.map_or(0, |x| x.len()));
                     if opts_len != 0 {
@@ -60,6 +65,9 @@ pub fn basic_attrs_editor<LA, LC, FS>(
                                     }
                                     (None, None)
                                 });
+                            let lens_attr_opts = lens_attr_opts.clone();
+                            let lens_attr_key = lens_attr_key.clone();
+                            let setter = setter.clone();
                             Dropdown::new(
                                 cx,
                                 move |cx| {
@@ -73,11 +81,13 @@ pub fn basic_attrs_editor<LA, LC, FS>(
                                             "Entypo".to_owned(),
                                         )]);
                                     })
-                                    .width(Units::Stretch(1.0))
+                                    .width(Stretch(1.0))
                                 },
                                 move |cx| {
                                     for idx in 0..opts_len {
-                                        let opt = lens_attr_opts.index(idx).get(cx);
+                                        let opt = lens_attr_opts.clone().index(idx).get(cx);
+                                        let lens_attr_key = lens_attr_key.clone();
+                                        let setter = setter.clone();
                                         Label::new(cx, &opt.name)
                                             .class("dropdown_element")
                                             .toggle_class("checked", Some(idx) == found_idx)
@@ -91,7 +101,10 @@ pub fn basic_attrs_editor<LA, LC, FS>(
                             );
                         });
                     } else {
-                        Binding::new(cx, lens_attr_type, move |cx, attr_type| {
+                        Binding::new(cx, lens_attr_type.clone(), move |cx, attr_type| {
+                            let lens_attr_val = lens_attr_val.clone();
+                            let lens_attr_key = lens_attr_key.clone();
+                            let setter = setter.clone();
                             let attr_type = attr_type.get(cx);
                             match attr_type {
                                 AttributeType::String => {
@@ -128,10 +141,11 @@ pub fn basic_attrs_editor<LA, LC, FS>(
                                     );
                                 }
                                 AttributeType::Bool => {
-                                    Checkbox::new(cx, lens_attr_val.then(Attribute::bool))
+                                    Checkbox::new(cx, lens_attr_val.clone().then(Attribute::bool))
                                         .on_toggle(move |cx| {
                                             let key = lens_attr_key.get(cx);
                                             let val = !lens_attr_val
+                                                .clone()
                                                 .then(Attribute::bool)
                                                 .get_fallible(cx)
                                                 .unwrap_or(false);
@@ -145,30 +159,30 @@ pub fn basic_attrs_editor<LA, LC, FS>(
             });
         }
 
-        let attrs_len_lens = lens_attributes.then(HashMapLenLens::new());
-        Binding::new(cx, attrs_len_lens, move |cx, _| {
-            let keys_attributes = lens_attributes.view(cx.data().unwrap(), |val| {
-                val.map_or(HashSet::default(), |x| {
-                    x.keys().cloned().collect::<HashSet<String>>()
-                })
-            });
-            let keys_config = lens_config.view(cx.data().unwrap(), |val| {
-                val.map_or(HashSet::default(), |x| {
-                    x.keys().cloned().collect::<HashSet<String>>()
-                })
-            });
-            let difference = keys_attributes.difference(&keys_config).count();
-            if difference != 0 {
-                Label::new(
-                    cx,
-                    &format!(
-                        "{} attribute{} are not configured.",
-                        difference,
-                        if difference == 1 { "s" } else { "" }
-                    ),
-                );
-                Label::new(cx, "Do you need to use advanced mode?");
-            }
-        })
+        // let attrs_len_lens = lens_attributes.then(HashMapLenLens::new());
+        // Binding::new(cx, attrs_len_lens, move |cx, _| {
+        //     let keys_attributes = lens_attributes.view(cx.data().unwrap(), |val| {
+        //         val.map_or(HashSet::default(), |x| {
+        //             x.keys().cloned().collect::<HashSet<String>>()
+        //         })
+        //     });
+        //     let keys_config = lens_config.view(cx.data().unwrap(), |val| {
+        //         val.map_or(HashSet::default(), |x| {
+        //             x.keys().cloned().collect::<HashSet<String>>()
+        //         })
+        //     });
+        //     let difference = keys_attributes.difference(&keys_config).count();
+        //     if difference != 0 {
+        //         Label::new(
+        //             cx,
+        //             &format!(
+        //                 "{} attribute{} are not configured.",
+        //                 difference,
+        //                 if difference == 1 { "s" } else { "" }
+        //             ),
+        //         );
+        //         Label::new(cx, "Do you need to use advanced mode?");
+        //     }
+        // })
     })
 }

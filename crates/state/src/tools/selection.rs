@@ -5,7 +5,6 @@ use arborio_modloader::mapstruct_plus_config::{make_entity_env, make_node_env};
 use arborio_utils::units::*;
 use arborio_utils::vizia::prelude::*;
 use arborio_utils::vizia::vg;
-use itertools::Itertools;
 
 use crate::data::action::{MapAction, RoomAction};
 use crate::data::app::{AppEvent, AppInternalEvent, AppState};
@@ -468,15 +467,9 @@ impl SelectionTool {
     #[must_use]
     fn notify_selection(&self, app: &AppState) -> AppEventStaging {
         let mut result = AppEventStaging::default();
-        let selection = if let Some((&selection,)) = &self.current_selection.iter().collect_tuple()
-        {
-            Some(selection)
-        } else {
-            None
-        };
-        result.push_ind(AppEvent::SelectObject {
+        result.push_ind(AppEvent::SelectObjects {
             tab: app.current_tab,
-            selection,
+            selection: self.current_selection.iter().copied().collect(),
         });
         result
     }

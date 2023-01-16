@@ -1,10 +1,11 @@
 use arborio_utils::units::*;
 use arborio_utils::vizia::prelude::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::Deref;
+use std::sync::Arc;
 
 use crate::auto_saver::AutoSaver;
 use crate::data::action::StylegroundSelection;
@@ -89,9 +90,13 @@ pub fn current_selected_entity_lens(
         let AppTab::Map(MapTab {
             id: map_id,
             current_room,
-            current_selected: Some(AppSelection::EntityBody(entity_id, trigger) | AppSelection::EntityNode(entity_id, _, trigger)),
+            current_selected,
             ..
         }) = source.tabs.get(source.current_tab)? else { return None };
+        let mut ii = current_selected.iter();
+        let first = ii.next();
+        let second = ii.next();
+        let (Some(AppSelection::EntityBody(entity_id, trigger) | AppSelection::EntityNode(entity_id, _, trigger)), None) = (first, second) else { return None };
 
         source
             .loaded_maps
@@ -102,6 +107,169 @@ pub fn current_selected_entity_lens(
             .entity(*entity_id, *trigger)
     })
 }
+
+#[derive(Clone)]
+pub enum CurrentSelectedEntitiesAllLens<T> {
+    F1(Arc<dyn 'static + Send + Sync + Fn(&AppState, &CelesteMapEntity) -> Option<T>>),
+    F2(
+        Arc<
+            dyn 'static
+                + Send
+                + Sync
+                + for<'a> Fn(&'a AppState, &'a CelesteMapEntity) -> Option<&'a T>,
+        >,
+    ),
+    //L(Lens<Source=CelesteMapEntity, Target=T>>),
+}
+
+impl<T: 'static + PartialEq + Clone> CurrentSelectedEntitiesAllLens<T> {
+    pub fn new_computed<
+        F: 'static + Send + Sync + Clone + Fn(&AppState, &CelesteMapEntity) -> Option<T>,
+    >(
+        f: F,
+    ) -> Self {
+        Self::F1(Arc::new(f))
+    }
+
+    pub fn new_referenced<
+        F: 'static
+            + Send
+            + Sync
+            + Clone
+            + for<'a> Fn(&'a AppState, &'a CelesteMapEntity) -> Option<&'a T>,
+    >(
+        f: F,
+    ) -> Self {
+        Self::F2(Arc::new(f))
+    }
+
+    // pub fn new_lensed<L: Lens<Source=CelesteMapEntity, Target=T>>(l: L) -> Self {
+    //     Self::L(Rc::new(l))
+    // }
+}
+
+impl<T: 'static + PartialEq + Clone> Lens for CurrentSelectedEntitiesAllLens<T> {
+    type Source = AppState;
+    type Target = T;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        let Some(AppTab::Map(MapTab {
+                                 id: map_id,
+                                 current_room,
+                                 current_selected,
+                                 ..
+                             })) = source.tabs.get(source.current_tab) else { return map(None) };
+        let Some(room) = source.loaded_maps.get(map_id).and_then(|map| map.data.levels.get(*current_room)) else { return map(None); };
+
+        let mut ent_iter = current_selected
+            .iter()
+            .filter_map(AppSelection::entity_info)
+            .filter_map(|(eid, trigger)| room.entity(eid, trigger));
+        let Some(ent_first) = ent_iter.next() else { return map(None) };
+        match self {
+            CurrentSelectedEntitiesAllLens::F1(f) => {
+                let res_first = f(source, ent_first);
+                if ent_iter.all(|ent| res_first == f(source, ent)) {
+                    map(res_first.as_ref())
+                } else {
+                    map(None)
+                }
+            }
+            CurrentSelectedEntitiesAllLens::F2(f) => {
+                let res_first = f(source, ent_first);
+                if ent_iter.all(|ent| res_first == f(source, ent)) {
+                    map(res_first)
+                } else {
+                    map(None)
+                }
+            } // CurrentSelectedEntitiesAllLens::L(l) => {
+              //     l.view(ent_first, |res_first| {
+              //         if ent_iter.all(|ent| l.view(ent, |res| res == res_first)) {
+              //             map(res_first)
+              //         } else {
+              //             map(None)
+              //         }
+              //     })
+              // }
+        }
+    }
+}
+
+pub enum CurrentSelectedEntitiesAttributesLens<T> {
+    F1(Arc<dyn 'static + Send + Sync + Fn(&AppState, &HashSet<&String>) -> Option<T>>),
+    F2(
+        Arc<
+            dyn 'static
+                + Send
+                + Sync
+                + for<'a> Fn(&'a AppState, &'a HashSet<&'a String>) -> Option<&'a T>,
+        >,
+    ),
+}
+
+impl<T> Clone for CurrentSelectedEntitiesAttributesLens<T> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::F1(f) => Self::F1(f.clone()),
+            Self::F2(f) => Self::F2(f.clone()),
+        }
+    }
+}
+
+impl<T: 'static> CurrentSelectedEntitiesAttributesLens<T> {
+    pub fn new_computed<
+        F: 'static + Send + Sync + Fn(&AppState, &HashSet<&String>) -> Option<T>,
+    >(
+        f: F,
+    ) -> Self {
+        Self::F1(Arc::new(f))
+    }
+
+    pub fn new_referenced<
+        F: 'static + Send + Sync + for<'a> Fn(&'a AppState, &'a HashSet<&'a String>) -> Option<&'a T>,
+    >(
+        f: F,
+    ) -> Self {
+        Self::F2(Arc::new(f))
+    }
+}
+
+impl<T: 'static> Lens for CurrentSelectedEntitiesAttributesLens<T> {
+    type Source = AppState;
+    type Target = T;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        let tab = source.tabs.get(source.current_tab);
+        let Some(AppTab::Map(MapTab {
+                            id: map_id,
+                            current_room,
+                            current_selected,
+                            ..
+                        })) = tab else { return map(None); };
+
+        let Some(cmap) = source.loaded_maps.get(map_id) else { return map(None); };
+        let Some(room) = cmap.data.levels.get(*current_room) else { return map(None); };
+        let mut counter = HashSet::new();
+
+        for sel in current_selected {
+            if let AppSelection::EntityBody(entity_id, trigger)
+            | AppSelection::EntityNode(entity_id, _, trigger) = sel
+            {
+                if let Some(entity) = room.entity(*entity_id, *trigger) {
+                    for key in entity.attributes.keys() {
+                        counter.insert(key);
+                    }
+                }
+            }
+        }
+
+        match self {
+            CurrentSelectedEntitiesAttributesLens::F1(f) => map(f(source, &counter).as_ref()),
+            CurrentSelectedEntitiesAttributesLens::F2(f) => map(f(source, &counter)),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct CurrentSelectedEntityResizableLens {}
 
@@ -114,31 +282,105 @@ impl Lens for CurrentSelectedEntityResizableLens {
         let Some(AppTab::Map(MapTab {
             id: map_id,
             current_room,
-            current_selected: Some(AppSelection::EntityBody(entity_id, trigger) | AppSelection::EntityNode(entity_id, _, trigger)),
+            current_selected,
             ..
         })) = tab else { return map(None) };
-        if *trigger {
-            return map(Some(&(true, true)));
-        }
         let Some(cmap) = source.loaded_maps.get(map_id) else {
             return map(None);
         };
-        let Some(name) = cmap
+        let Some(room) = cmap
             .data
             .levels
             .get(*current_room)
-            .and_then(|room| room.entity(*entity_id, *trigger))
-            .map(|entity| &entity.name)
          else {
             return map(None);
         };
-        let data = cmap
-            .cache
-            .palette
-            .entity_config
-            .get(name.as_str())
-            .map(|cfg| (cfg.resizable_x, cfg.resizable_y));
-        map(data.as_ref())
+        let mut result = (true, true);
+        for sel in current_selected {
+            if let AppSelection::EntityBody(entity_id, trigger)
+            | AppSelection::EntityNode(entity_id, _, trigger) = sel
+            {
+                let Some(name) = room
+                    .entity(*entity_id, *trigger)
+                    .map(|entity| &entity.name) else { return map(None); };
+                if !*trigger {
+                    if let Some((dx, dy)) = cmap
+                        .cache
+                        .palette
+                        .entity_config
+                        .get(name.as_str())
+                        .map(|cfg| (cfg.resizable_x, cfg.resizable_y))
+                    {
+                        result.0 &= dx;
+                        result.1 &= dy;
+                    } else {
+                        return map(None);
+                    }
+                }
+            }
+        }
+        map(Some(&result))
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct CurrentSelectedEntityHasNodesLens {}
+
+impl Lens for CurrentSelectedEntityHasNodesLens {
+    type Source = AppState;
+    type Target = bool;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        let tab = source.tabs.get(source.current_tab);
+        let Some(AppTab::Map(MapTab {
+                                 id: map_id,
+                                 current_room,
+                                 current_selected,
+                                 ..
+                             })) = tab else { return map(None) };
+        let Some(cmap) = source.loaded_maps.get(map_id) else {
+            return map(None);
+        };
+        let Some(room) = cmap
+            .data
+            .levels
+            .get(*current_room)
+            else {
+                return map(None);
+            };
+        let mut result = true;
+        for sel in current_selected {
+            if let AppSelection::EntityBody(entity_id, trigger)
+            | AppSelection::EntityNode(entity_id, _, trigger) = sel
+            {
+                let Some(name) = room.entity(*entity_id, *trigger)
+                    .map(|entity| &entity.name) else { return map(None); };
+                if !*trigger {
+                    if let Some(d) = cmap
+                        .cache
+                        .palette
+                        .entity_config
+                        .get(name.as_str())
+                        .map(|cfg| cfg.nodes)
+                    {
+                        result &= d;
+                    } else {
+                        return map(None);
+                    }
+                } else if let Some(d) = cmap
+                    .cache
+                    .palette
+                    .trigger_config
+                    .get(name.as_str())
+                    .map(|cfg| cfg.nodes)
+                {
+                    result &= d;
+                } else {
+                    return map(None);
+                }
+            }
+        }
+        map(Some(&result))
     }
 }
 
@@ -152,6 +394,7 @@ pub fn current_palette_lens() -> impl Lens<Source = AppState, Target = ModuleAgg
         Some(&source.loaded_maps.get(map_id)?.cache.palette)
     })
 }
+
 #[derive(Debug, Copy, Clone)]
 pub struct CurrentSelectedEntityConfigAttributesLens {}
 
@@ -160,30 +403,24 @@ impl Lens for CurrentSelectedEntityConfigAttributesLens {
     type Target = HashMap<String, AttributeInfo>;
 
     fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let Some(AppTab::Map(MapTab {
-            current_selected: Some(AppSelection::EntityBody(_, trigger) | AppSelection::EntityNode(_, _, trigger)), ..
-        })) = source.tabs.get(source.current_tab) else { return map(None) };
-
-        current_selected_entity_lens()
-            .then(CelesteMapEntity::name)
-            .view(source, |entity| {
+        CurrentSelectedEntitiesAllLens::new_referenced(|_, ent| Some(&ent.name)).view(
+            source,
+            |entity| {
                 let Some(entity) = entity else { return map(None) };
                 current_palette_lens().view(source, |palette| {
+                    // TODO UGHHHHHHHHHHH have to do something complex to get each trigger status
+                    // maybe easy now??
                     let Some(palette) = palette else { return map(None) };
-                    let info = if *trigger {
-                        palette
-                            .trigger_config
-                            .get(entity.as_str())
-                            .map(|c| &c.attribute_info)
+                    if let Some(cfg) = palette.entity_config.get(entity.as_str()) {
+                        map(Some(&cfg.attribute_info))
+                    } else if let Some(cfg) = palette.trigger_config.get(entity.as_str()) {
+                        map(Some(&cfg.attribute_info))
                     } else {
-                        palette
-                            .entity_config
-                            .get(entity.as_str())
-                            .map(|c| &c.attribute_info)
-                    };
-                    map(info)
+                        map(None)
+                    }
                 })
-            })
+            },
+        )
     }
 }
 
@@ -279,6 +516,40 @@ impl<T: 'static> Lens for VecLenLens<T> {
 }
 
 #[derive(Debug)]
+pub struct HashSetLenLens<T> {
+    p: PhantomData<T>,
+}
+
+impl<T> Clone for HashSetLenLens<T> {
+    fn clone(&self) -> Self {
+        Self { p: PhantomData }
+    }
+}
+
+impl<T> Copy for HashSetLenLens<T> {}
+
+impl<T> HashSetLenLens<T> {
+    pub fn new() -> Self {
+        Self { p: PhantomData }
+    }
+}
+
+impl<T> Default for HashSetLenLens<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T: 'static> Lens for HashSetLenLens<T> {
+    type Source = HashSet<T>;
+    type Target = usize;
+
+    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
+        map(Some(&source.len()))
+    }
+}
+
+#[derive(Debug)]
 pub struct HashMapLenLens<K, V> {
     p: PhantomData<(K, V)>,
 }
@@ -314,9 +585,19 @@ impl<K: 'static, V: 'static> Lens for HashMapLenLens<K, V> {
 
 pub fn hash_map_nth_key_lens<K: Ord + 'static, V: 'static>(
     idx: usize,
-) -> impl Lens<Source = HashMap<K, V>, Target = K> + Copy {
+) -> impl Lens<Source = HashMap<K, V>, Target = K> + Copy + Send + Sync {
     ClosureLens::new(move |source: &HashMap<K, V>| {
         let mut keys = source.keys().collect::<Vec<_>>();
+        keys.sort();
+        keys.get(idx).copied()
+    })
+}
+
+pub fn hash_set_nth_key_lens<K: Ord + 'static>(
+    idx: usize,
+) -> impl Lens<Source = HashSet<K>, Target = K> + Copy {
+    ClosureLens::new(move |source: &HashSet<K>| {
+        let mut keys = source.iter().collect::<Vec<_>>();
         keys.sort();
         keys.get(idx).copied()
     })

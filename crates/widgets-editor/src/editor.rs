@@ -210,14 +210,15 @@ impl View for EditorWidget {
                 );
                 rendering::draw_tiles(app.current_palette_unwrap(), canvas, room, false);
                 rendering::draw_decals(app.current_palette_unwrap(), canvas, &room.data, false);
+                let nil = HashSet::new();
                 rendering::draw_triggers(
                     app.current_palette_unwrap(),
                     canvas,
                     &room.data,
                     if idx == app.map_tab_unwrap().current_room {
-                        app.map_tab_unwrap().current_selected
+                        &app.map_tab_unwrap().current_selected
                     } else {
-                        None
+                        &nil
                     },
                 );
                 rendering::draw_entities(
@@ -225,9 +226,9 @@ impl View for EditorWidget {
                     canvas,
                     &room.data,
                     if idx == app.map_tab_unwrap().current_room {
-                        app.map_tab_unwrap().current_selected
+                        &app.map_tab_unwrap().current_selected
                     } else {
-                        None
+                        &nil
                     },
                 );
                 rendering::draw_tiles(app.current_palette_unwrap(), canvas, room, true);
