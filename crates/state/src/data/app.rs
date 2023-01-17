@@ -187,7 +187,14 @@ pub enum AppEvent {
     SelectPaletteDecal {
         decal: DecalSelectable,
     },
+    ClearSelection {
+        tab: usize,
+    },
     SelectObjects {
+        tab: usize,
+        selection: HashSet<AppSelection>,
+    },
+    DeselectObjects {
         tab: usize,
         selection: HashSet<AppSelection>,
     },

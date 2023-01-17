@@ -36,7 +36,7 @@ impl ToolSpec {
     pub fn switch_on(&self, app: &AppState) -> Box<dyn Tool> {
         match self {
             ToolSpec::Hand => Box::new(hand::HandTool::new()),
-            ToolSpec::Selection => Box::new(selection::SelectionTool::new(app)),
+            ToolSpec::Selection => Box::new(selection::SelectionTool::new()),
             ToolSpec::Pencil => Box::new(pencil::PencilTool::new()),
             ToolSpec::Room => Box::new(room::RoomTool::new(app)),
             ToolSpec::Style => Box::new(style::StyleTool::new(app)),

@@ -1,6 +1,6 @@
 use crate::data::action::{apply_map_action, MapAction, RoomAction};
 use crate::data::app::{step_modules_lookup, AppEvent, AppState};
-use crate::data::tabs::AppTab;
+use crate::data::tabs::{AppTab, MapTab};
 use crate::data::{save, EventPhase, MapID, UNDO_BUFFER_SIZE};
 use crate::tools::selection::{add_float_to_float, drop_float};
 use arborio_maploader::map_struct::{
@@ -450,10 +450,24 @@ impl AppState {
             log::error!("Internal error: loaded map referring to unloaded module");
             return
         };
+        let selection_option = if let Some(AppTab::Map(MapTab {
+            id,
+            current_selected,
+            ..
+        })) = self.tabs.get_mut(self.current_tab)
+        {
+            if *id == map {
+                Some(current_selected)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
         match event {
             MapEvent::Action { event, merge_phase } => {
-                match apply_map_action(state, event) {
+                match apply_map_action(state, event, selection_option) {
                     Ok(undo) => {
                         cx.needs_redraw();
                         state.cache.dirty = true;
@@ -479,7 +493,10 @@ impl AppState {
             }
             MapEvent::Undo => {
                 if let Some(event) = state.cache.undo_buffer.pop_back() {
-                    match apply_map_action(state, event) {
+                    // if let Some(sels) = selection_option {
+                    //     sels.clear();
+                    // }
+                    match apply_map_action(state, event, selection_option) {
                         Ok(mut opposite) => {
                             for room_idx in opposite
                                 .iter()
@@ -494,14 +511,14 @@ impl AppState {
                                 .into_iter()
                             {
                                 if let Some(room) = state.data.levels.get_mut(room_idx) {
-                                    let defloat = drop_float(room)
+                                    let defloat = drop_float(&room.floats)
                                         .into_iter()
                                         .map(|ra| MapAction::RoomAction {
                                             idx: room_idx,
                                             event: ra,
                                         })
                                         .collect();
-                                    match apply_map_action(state, defloat) {
+                                    match apply_map_action(state, defloat, None) {
                                         Ok(inverse) => {
                                             // ?????????????????????????
                                             merge_events(&mut opposite, inverse.clone(), true);
@@ -534,7 +551,10 @@ impl AppState {
             }
             MapEvent::Redo => {
                 if let Some(event) = state.cache.redo_buffer.pop_back() {
-                    match apply_map_action(state, event) {
+                    // if let Some(sels) = selection_option {
+                    //     sels.clear();
+                    // }
+                    match apply_map_action(state, event, selection_option) {
                         Ok(mut opposite) => {
                             for room_idx in opposite
                                 .iter()
@@ -549,14 +569,14 @@ impl AppState {
                                 .into_iter()
                             {
                                 if let Some(room) = state.data.levels.get_mut(room_idx) {
-                                    let defloat = drop_float(room)
+                                    let defloat = drop_float(&room.floats)
                                         .into_iter()
                                         .map(|ra| MapAction::RoomAction {
                                             idx: room_idx,
                                             event: ra,
                                         })
                                         .collect();
-                                    match apply_map_action(state, defloat) {
+                                    match apply_map_action(state, defloat, None) {
                                         Ok(inverse) => {
                                             merge_events(&mut opposite, inverse.clone(), true); // NOTE: these true/false values are based on literally nothing. I'm not even sure the calls are right.
                                             if let Some(next_back) =

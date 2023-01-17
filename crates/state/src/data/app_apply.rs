@@ -289,7 +289,27 @@ impl AppState {
             }
             AppEvent::SelectObjects { tab, selection } => {
                 if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(tab) {
-                    map_tab.current_selected = selection;
+                    for x in selection.into_iter() {
+                        map_tab.current_selected.insert(x);
+                    }
+                    if let Some(room) = self.current_room_ref() {
+                        room.cache.borrow_mut().render_cache_valid = false;
+                    }
+                }
+            }
+            AppEvent::DeselectObjects { tab, selection } => {
+                if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(tab) {
+                    for x in selection.into_iter() {
+                        map_tab.current_selected.remove(&x);
+                    }
+                    if let Some(room) = self.current_room_ref() {
+                        room.cache.borrow_mut().render_cache_valid = false;
+                    }
+                }
+            }
+            AppEvent::ClearSelection { tab } => {
+                if let Some(AppTab::Map(map_tab)) = self.tabs.get_mut(tab) {
+                    map_tab.current_selected.clear();
                     if let Some(room) = self.current_room_ref() {
                         room.cache.borrow_mut().render_cache_valid = false;
                     }

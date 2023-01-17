@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 
 use crate::data::project_map::{LevelState, MapState, MapStateUpdate};
+use crate::data::selection::AppSelection;
 use arborio_maploader::map_struct::{
     CelesteMapDecal, CelesteMapEntity, CelesteMapLevel, CelesteMapLevelUpdate,
     CelesteMapStyleground,
@@ -22,6 +23,7 @@ use arborio_utils::vizia::prelude::Data;
 pub fn apply_map_action(
     map: &mut MapState,
     event: Vec<MapAction>,
+    selection_option: Option<&mut HashSet<AppSelection>>,
 ) -> Result<Vec<MapAction>, String> {
     let mut result: Result<Vec<MapAction>, String> = event
         .into_iter()
@@ -125,6 +127,43 @@ pub fn apply_map_action(
         })
         .collect();
     result.as_mut().map(|result| result.reverse()).ok();
+    if let Some(sels) = selection_option {
+        if let Ok(acts) = &result {
+            for action in acts {
+                match action {
+                    MapAction::RoomAction {
+                        event: RoomAction::EntityRemove { id, trigger },
+                        ..
+                    } => {
+                        sels.insert(AppSelection::EntityBody(*id, *trigger));
+                    }
+                    MapAction::RoomAction {
+                        event: RoomAction::DecalRemove { id, fg },
+                        ..
+                    } => {
+                        sels.insert(AppSelection::Decal(*id, *fg));
+                    }
+                    MapAction::RoomAction {
+                        event: RoomAction::TileFloatSet { fg, float: None },
+                        ..
+                    } => {
+                        if *fg {
+                            sels.insert(AppSelection::FgFloat);
+                        } else {
+                            sels.insert(AppSelection::BgFloat);
+                        }
+                    }
+                    MapAction::RoomAction {
+                        event: RoomAction::ObjFloatSet { float: None },
+                        ..
+                    } => {
+                        sels.insert(AppSelection::ObjFloat);
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
     result
 }
 
