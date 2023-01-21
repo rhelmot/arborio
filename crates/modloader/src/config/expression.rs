@@ -27,6 +27,10 @@ pub enum Expression {
         arms: HashMap<Const, Expression>,
         default: Box<Expression>,
     },
+    Call {
+        func: BuiltinFunction,
+        args: Vec<Expression>,
+    },
 }
 
 impl Data for Expression {
@@ -95,10 +99,49 @@ impl std::fmt::Display for UnOp {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Data)]
+pub enum BuiltinFunction {
+    Lower,
+    Upper,
+}
+
+impl BuiltinFunction {
+    fn as_str(&self) -> &'static str {
+        match self {
+            BuiltinFunction::Lower => "Lower",
+            BuiltinFunction::Upper => "Upper",
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub enum Const {
     Number(Number),
     String(String),
+}
+
+impl Const {
+    pub fn ty(&self) -> ConstTy {
+        match self {
+            Const::Number(_) => ConstTy::Number,
+            Const::String(_) => ConstTy::String,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
+pub enum ConstTy {
+    Number,
+    String,
+}
+
+impl ConstTy {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ConstTy::Number => "number",
+            ConstTy::String => "string",
+        }
+    }
 }
 
 impl std::fmt::Display for Const {
@@ -318,6 +361,25 @@ fn match_expr(input: &str) -> IResult<&str, Expression> {
     })(input)
 }
 
+fn call_expr(input: &str) -> IResult<&str, Expression> {
+    map(
+        pair(
+            function,
+            delimited(
+                tuple((space0, tag("("), space0)),
+                separated_list0(delimited(space0, tag(","), space0), expression_4),
+                tuple((space0, tag(")"), space0)),
+            ),
+        ),
+        |(func, args)| Expression::Call { func, args },
+    )
+    .parse(input)
+}
+
+fn func_name(func: BuiltinFunction) -> impl FnMut(&str) -> IResult<&str, BuiltinFunction> {
+    move |input| map(tag(func.as_str()), move |_| func)(input)
+}
+
 fn bin_op(op: BinOp) -> impl FnMut(&str) -> IResult<&str, BinOp> {
     move |input| map(tag(op.as_str()), move |_| op)(input)
 }
@@ -356,6 +418,11 @@ fn operator_4(input: &str) -> IResult<&str, BinOp> {
     ))(input)
 }
 
+fn function(input: &str) -> IResult<&str, BuiltinFunction> {
+    use BuiltinFunction::*;
+    alt((func_name(Lower), func_name(Upper)))(input)
+}
+
 fn expression_4(input: &str) -> IResult<&str, Expression> {
     bin_expression(operator_4, expression_3)(input)
 }
@@ -392,7 +459,7 @@ fn expression_1(input: &str) -> IResult<&str, Expression> {
 
 fn expression_0(input: &str) -> IResult<&str, Expression> {
     // match must go first in the list since it could be interpreted as an atom
-    alt((match_expr, const_expression, atom, parenthetical))(input)
+    alt((match_expr, call_expr, const_expression, atom, parenthetical))(input)
 }
 
 fn expression(input: &str) -> IResult<&str, Expression> {
@@ -443,6 +510,13 @@ impl std::fmt::Display for Expression {
                     write!(f, "{matching} => {expression}, ")?;
                 }
                 write!(f, "_ => {} }}", default.as_ref())
+            }
+            Expression::Call { func, args } => {
+                write!(f, "{}(", func.as_str())?;
+                for param in args {
+                    write!(f, "{}, ", param)?;
+                }
+                write!(f, ")")
             }
         }
     }
@@ -548,6 +622,24 @@ impl Expression {
                 let resulting_expr = arms.get(&expr_val).unwrap_or(default);
                 resulting_expr.evaluate(env)
             }
+            Expression::Call { func, args } => {
+                let args_eval = args
+                    .iter()
+                    .map(|arg| arg.evaluate(env))
+                    .collect::<Result<Vec<_>, _>>()?;
+                match func {
+                    BuiltinFunction::Lower => {
+                        let [arg] = args_eval.as_slice() else { return Err(format!("Lower: expected 1 argument, got {}", args_eval.len()))};
+                        let Const::String(str_arg) = arg else { return Err(format!("Lower: expected string argument, got {}", arg.ty().as_str()))};
+                        Ok(Const::String(str_arg.to_lowercase()))
+                    }
+                    BuiltinFunction::Upper => {
+                        let [arg] = args_eval.as_slice() else { return Err(format!("Upper: expected 1 argument, got {}", args_eval.len()))};
+                        let Const::String(str_arg) = arg else { return Err(format!("Uppser: expected string argument, got {}", arg.ty().as_str()))};
+                        Ok(Const::String(str_arg.to_uppercase()))
+                    }
+                }
+            }
         }
     }
 }
@@ -627,6 +719,15 @@ mod test {
     fn test_match() {
         let expr = expression("match 1 + 1 { 2 => 'yeah', _ => 'what' }");
         assert!(expr.is_ok());
+    }
+
+    #[test]
+    fn test_call() {
+        let expr = expression("Lower('A')").unwrap().1;
+        assert_eq!(
+            expr.evaluate(&HashMap::new()).unwrap(),
+            Const::String("a".to_owned())
+        );
     }
 
     #[test]

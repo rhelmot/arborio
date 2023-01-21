@@ -23,11 +23,9 @@ standard_draw:
           b: 0x2b
           a: 0xff
     - !DrawRectImage
-        texture: 'match axes {
+        texture: 'match Lower(axes) {
                     "horizontal" => "objects/crushblock/block01",
-                    "Horizontal" => "objects/crushblock/block01",
                     "vertical" => "objects/crushblock/block02",
-                    "Vertical" => "objects/crushblock/block02",
                     _ => "objects/crushblock/block03"
                   }'
         tiler: '"9slice"'

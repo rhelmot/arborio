@@ -12,15 +12,11 @@ standard_draw:
     - !DrawPointImage
         texture: 'match (match ?dust { 1 => dust, _ => 0 }) {
                     1 => "danger/dustcreature/base00",
-                    _ => match (match ?color { 1 => color, _ => "blue" }) {
+                    _ => match (match ?color { 1 => Lower(color), _ => "blue" }) {
                       "purple" => "danger/crystal/fg_purple00",
-                      "Purple" => "danger/crystal/fg_purple00",
                       "red" => "danger/crystal/fg_red00",
-                      "Red" => "danger/crystal/fg_red00",
-                      "Core" => "danger/crystal/fg_white00",
                       "core" => "danger/crystal/fg_white00",
                       "rainbow" => "danger/crystal/fg_white00",
-                      "Rainbow" => "danger/crystal/fg_white00",
                       _ => "danger/crystal/fg_blue00"
                     }
                   }'

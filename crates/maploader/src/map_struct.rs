@@ -452,6 +452,18 @@ pub enum Attribute {
     Text(String),
 }
 
+impl Attribute {
+    pub fn eq_insensitive(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Attribute::Text(s), Attribute::Text(s2)) => s.eq_ignore_ascii_case(s2),
+            (Attribute::Float(f), Attribute::Float(f2)) => f == f2,
+            (Attribute::Int(i), Attribute::Int(i2)) => i == i2,
+            (Attribute::Bool(b), Attribute::Bool(b2)) => b == b2,
+            _ => false,
+        }
+    }
+}
+
 impl Default for CelesteMapStyleground {
     fn default() -> Self {
         Self {

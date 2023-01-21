@@ -17,9 +17,8 @@ hitboxes:
 standard_draw:
   initial_draw:
     - !DrawRectImage
-        texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
+        texture: '"objects/swapblock/" + match (match ?theme { 1 => Lower(theme), _ => "normal" }) {
                     "moon" => "moon/",
-                    "Moon" => "moon/",
                     _ => ""
                   } + "target"'
         tiler: '"9slice"'
@@ -48,9 +47,8 @@ standard_draw:
           b: 0xff
           a: 0x80
     - !DrawRectImage
-        texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
+        texture: '"objects/swapblock/" + match (match ?theme { 1 => Lower(theme), _ => "normal" }) {
                     "moon" => "moon/",
-                    "Moon" => "moon/",
                     _ => ""
                   } + "blockRed"'
         tiler: '"9slice"'
@@ -62,9 +60,8 @@ standard_draw:
             x: width
             y: height
     - !DrawPointImage
-        texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
+        texture: '"objects/swapblock/" + match (match ?theme { 1 => Lower(theme), _ => "normal" }) {
                     "moon" => "moon/",
-                    "Moon" => "moon/",
                     _ => ""
                   } + "midBlockRed00"'
         point:
@@ -73,9 +70,8 @@ standard_draw:
 selected_draw:
   initial_draw:
     - !DrawRectImage
-        texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
+        texture: '"objects/swapblock/" + match (match ?theme { 1 => Lower(theme), _ => "normal" }) {
                     "moon" => "moon/",
-                    "Moon" => "moon/",
                     _ => ""
                   } + "blockRed"'
         tiler: '"9slice"'
@@ -87,14 +83,13 @@ selected_draw:
             x: width
             y: height
     - !DrawPointImage
-        texture: '"objects/swapblock/" + match (match ?moon { 1 => moon, _ => "normal" }) {
+        texture: '"objects/swapblock/" + match (match ?theme { 1 => Lower(theme), _ => "normal" }) {
                     "moon" => "moon/",
-                    "Moon" => "moon/",
                     _ => ""
                   } + "midBlockRed00"'
         point:
           x: firstnodex + width / 2
-          y: firstnodey
+          y: firstnodey + height / 2
 resizable_x: true
 resizable_y: true
 minimum_size_x: 16

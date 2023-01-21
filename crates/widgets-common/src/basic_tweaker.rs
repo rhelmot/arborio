@@ -59,8 +59,10 @@ pub fn basic_attrs_editor<LN, F, LK, LA, LC, FS>(
                             let (found_idx, found_lbl) =
                                 lens_attr_opts.view(cx.data().unwrap(), |opts| {
                                     for (idx, opt) in opts.unwrap().iter().enumerate() {
-                                        if Some(opt.value.to_binel()) == attr_val {
-                                            return (Some(idx), Some(opt.name.clone()));
+                                        if let Some(attr_val) = &attr_val {
+                                            if opt.value.to_binel().eq_insensitive(attr_val) {
+                                                return (Some(idx), Some(opt.name.clone()));
+                                            }
                                         }
                                     }
                                     (None, None)

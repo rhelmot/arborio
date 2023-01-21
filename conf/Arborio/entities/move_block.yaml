@@ -25,15 +25,11 @@ standard_draw:
     - !DrawRectImage
         texture: '"objects/moveBlock/" + match canSteer {
                     0 => "base",
-                    _ => match direction {
+                    _ => match Lower(direction) {
                             "left" => "base_h",
-                            "Left" => "base_h",
                             "right" => "base_h",
-                            "Right" => "base_h",
                             "up" => "base_v",
-                            "Up" => "base_v",
                             "down" => "base_v",
-                            "Down" => "base_v",
                             _ => "base"
                           }
                   }'
@@ -59,15 +55,11 @@ standard_draw:
           b: 0x70
           a: 0xff
     - !DrawPointImage
-        texture: '"objects/moveBlock/" + match direction {
+        texture: '"objects/moveBlock/" + match Lower(direction) {
                       "left" => "arrow04",
-                      "Left" => "arrow04",
                       "right" => "arrow00",
-                      "Right" => "arrow00",
                       "up" => "arrow02",
-                      "Up" => "arrow02",
                       "down" => "arrow06",
-                      "Down" => "arrow06",
                       _ => "base"
                   }'
         point:
