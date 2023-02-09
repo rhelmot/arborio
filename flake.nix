@@ -26,24 +26,22 @@
           xorg.libXrandr
         ]);
         buildInputs = with pkgs; [ gnome.zenity xorg.libxcb pkg-config fontconfig ];
-        #naersk-lib = naersk.lib."${system}".override {
-        #  cargo = rust;
-        #  rustc = rust;
-        #};
+        pname = "arborio";
       in
         rec {
           # `nix build`
           packages.arborio = naersk-lib.buildPackage {
-            pname = "arborio";
+            inherit pname;
             gitAllRefs = true;
             root = ./.;
-            #nativeBuildInputs = pkgs.cmake;
-            buildInputs = buildInputs ++ [ pkgs.makeWrapper ];
+            buildInputs = buildInputs ++ [ pkgs.cmake pkgs.makeWrapper ];
+            #nativeBuildInputs = [ pkgs.breakpointHook ];
             overrideMain = (self: self // {
               postFixup = self.postFixup or '''' + ''
                 wrapProgram $out/bin/arborio --set LD_LIBRARY_PATH "${LD_LIBRARY_PATH}"
               '';
             });
+            cargoBuildOptions = x: x ++ ["--package" "${pname}"];
           };
           packages.default = packages.arborio;
 

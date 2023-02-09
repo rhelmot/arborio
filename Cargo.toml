@@ -20,6 +20,7 @@ members = [
     "crates/widgets",
     "crates/state",
     "crates/utils",
+    "crates/walker",
     "crates/widgets-common",
     "crates/widgets-editor",
     "crates/widgets-editor-room",
