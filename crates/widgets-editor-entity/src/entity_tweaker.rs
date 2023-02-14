@@ -164,7 +164,9 @@ pub fn build_tweaker(cx: &mut Context) {
                 cx,
                 CurrentSelectedEntityHasNodesLens {},
                 move |cx, has_nodes| {
-                    if !failed.get(cx) && has_nodes.get_fallible(cx).unwrap_or_default() {
+                    if !failed.get(cx)
+                        && (advanced || has_nodes.get_fallible(cx).unwrap_or_default())
+                    {
                         Label::new(cx, "Nodes");
                         List::new(
                             cx,

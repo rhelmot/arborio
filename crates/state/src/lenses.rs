@@ -93,10 +93,18 @@ pub fn current_selected_entity_lens(
             current_selected,
             ..
         }) = source.tabs.get(source.current_tab)? else { return None };
-        let mut ii = current_selected.iter();
+        let which_guys = current_selected
+            .iter()
+            .filter_map(|sel| match sel {
+                AppSelection::EntityBody(id, trigger) => Some((*id, *trigger)),
+                AppSelection::EntityNode(id, _, trigger) => Some((*id, *trigger)),
+                _ => None,
+            })
+            .collect::<HashSet<_>>();
+        let mut ii = which_guys.iter();
         let first = ii.next();
         let second = ii.next();
-        let (Some(AppSelection::EntityBody(entity_id, trigger) | AppSelection::EntityNode(entity_id, _, trigger)), None) = (first, second) else { return None };
+        let (Some((entity_id, trigger)), None) = (first, second) else { return None };
 
         source
             .loaded_maps
