@@ -166,6 +166,8 @@ pub fn build_palette_widgets(cx: &mut Context) {
         |cx, tile| {
             cx.emit(AppEvent::SelectPaletteTile { fg: true, tile });
         },
+        AppState::current_fg_tile_other,
+        |cx, other| cx.emit(AppEvent::SelectPaletteTileOther { fg: true, other }),
     )
     .bind(pair, |handle, pair| {
         let (toolspec, layer) = pair.get(handle.cx);
@@ -180,6 +182,8 @@ pub fn build_palette_widgets(cx: &mut Context) {
         current_palette_lens().then(ModuleAggregate::bg_tiles_palette),
         AppState::current_bg_tile,
         |cx, tile| cx.emit(AppEvent::SelectPaletteTile { fg: false, tile }),
+        AppState::current_bg_tile_other,
+        |cx, other| cx.emit(AppEvent::SelectPaletteTileOther { fg: false, other }),
     )
     .bind(pair, |handle, pair| {
         let (toolspec, layer) = pair.get(handle.cx);
@@ -194,6 +198,8 @@ pub fn build_palette_widgets(cx: &mut Context) {
         current_palette_lens().then(ModuleAggregate::entities_palette),
         AppState::current_entity,
         |cx, entity| cx.emit(AppEvent::SelectPaletteEntity { entity }),
+        AppState::current_entity_other,
+        |cx, other| cx.emit(AppEvent::SelectPaletteEntityOther { other }),
     )
     .bind(pair, |handle, pair| {
         let (toolspec, layer) = pair.get(handle.cx);
@@ -205,6 +211,8 @@ pub fn build_palette_widgets(cx: &mut Context) {
         current_palette_lens().then(ModuleAggregate::triggers_palette),
         AppState::current_trigger,
         |cx, trigger| cx.emit(AppEvent::SelectPaletteTrigger { trigger }),
+        AppState::current_trigger_other,
+        |cx, other| cx.emit(AppEvent::SelectPaletteTriggerOther { other }),
     )
     .bind(pair, |handle, pair| {
         let (toolspec, layer) = pair.get(handle.cx);
@@ -216,6 +224,8 @@ pub fn build_palette_widgets(cx: &mut Context) {
         current_palette_lens().then(ModuleAggregate::decals_palette),
         AppState::current_decal,
         |cx, decal| cx.emit(AppEvent::SelectPaletteDecal { decal }),
+        AppState::current_decal_other,
+        |cx, other| cx.emit(AppEvent::SelectPaletteDecalOther { other }),
     )
     .bind(pair, |handle, pair| {
         let (toolspec, layer) = pair.get(handle.cx);
@@ -232,10 +242,10 @@ pub fn build_palette_widgets(cx: &mut Context) {
             let (toolspec, layer) = pair.get(handle.cx);
             handle.display(layer == Layer::ObjectTiles && toolspec == ToolSpec::Pencil);
         })
-        .min_height(Units::Pixels(100.0))
-        .min_width(Units::Pixels(100.0))
-        .height(Units::Stretch(1.0))
-        .width(Units::Stretch(1.0));
+        .min_height(Pixels(100.0))
+        .min_width(Pixels(100.0))
+        .height(Stretch(1.0))
+        .width(Stretch(1.0));
     });
 }
 

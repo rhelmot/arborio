@@ -4,10 +4,13 @@ use arborio_utils::vizia::vg::{Color, Paint, Path};
 use crate::data::action::RoomAction;
 use crate::data::app::{AppEvent, AppState};
 use crate::data::{EventPhase, Layer};
-use crate::palette_item::{get_entity_config, instantiate_entity, instantiate_trigger};
+use crate::palette_item::{
+    get_entity_config, instantiate_decal, instantiate_entity, instantiate_trigger,
+};
 use crate::rendering;
+use crate::rendering::draw_decal;
 use crate::tools::{generic_nav, Tool};
-use arborio_maploader::map_struct::{CelesteMapDecal, CelesteMapEntity, Node};
+use arborio_maploader::map_struct::{CelesteMapEntity, Node};
 use arborio_modloader::config::PencilBehavior;
 use arborio_modloader::selectable::{EntitySelectable, TriggerSelectable};
 use arborio_utils::units::*;
@@ -151,22 +154,18 @@ impl Tool for PencilTool {
                 );
             }
             Layer::FgDecals | Layer::BgDecals => {
-                let texture = format!("decals/{}", state.current_decal.0);
                 if cx.mouse.left.state == MouseButtonState::Released {
                     canvas.set_global_alpha(0.5);
                 }
-                if let Err(e) = state.current_palette_unwrap().gameplay_atlas.draw_sprite(
-                    canvas,
-                    &texture,
-                    room_pos.cast().cast_unit(),
-                    None,
-                    None,
-                    None,
-                    None,
-                    0.0,
-                ) {
-                    log::error!("{}", e);
-                }
+                let decal = instantiate_decal(
+                    &state.current_decal,
+                    &state.current_decal_other,
+                    room_pos.x,
+                    room_pos.y,
+                    1.0,
+                    1.0,
+                );
+                draw_decal(state.current_palette_unwrap(), canvas, &decal);
             }
             _ => {}
         }
@@ -231,6 +230,15 @@ impl PencilTool {
                 } else {
                     app.current_bg_tile
                 };
+                let other = if fg {
+                    &app.current_fg_tile_other
+                } else {
+                    &app.current_bg_tile_other
+                }
+                .chars()
+                .next()
+                .unwrap_or('0');
+                let ch_id = if ch.id == '\0' { other } else { ch.id };
                 if let Some(start) = self.reference_point {
                     let mut result = vec![];
                     for step in steps(point_room_to_tile(&start), tile_pos, 1) {
@@ -239,7 +247,7 @@ impl PencilTool {
                                 fg,
                                 offset: step,
                                 data: TileGrid {
-                                    tiles: vec![ch.id],
+                                    tiles: vec![ch_id],
                                     stride: 1,
                                 },
                             },
@@ -255,7 +263,7 @@ impl PencilTool {
                             fg,
                             offset: tile_pos,
                             data: TileGrid {
-                                tiles: vec![ch.id],
+                                tiles: vec![ch_id],
                                 stride: 1,
                             },
                         },
@@ -357,14 +365,14 @@ impl PencilTool {
                 vec![app.room_action(
                     RoomAction::DecalAdd {
                         fg: app.current_layer == Layer::FgDecals,
-                        decal: Box::new(CelesteMapDecal {
-                            id: 0,
-                            x: room_pos.x,
-                            y: room_pos.y,
-                            scale_x: 1.0,
-                            scale_y: 1.0,
-                            texture: app.current_decal.0.to_string(),
-                        }),
+                        decal: Box::new(instantiate_decal(
+                            &app.current_decal,
+                            &app.current_decal_other,
+                            room_pos.x,
+                            room_pos.y,
+                            1.0,
+                            1.0,
+                        )),
                         genid: true,
                     },
                     self.draw_phase,
@@ -383,9 +391,11 @@ impl PencilTool {
         room_pos: RoomPoint,
     ) -> CelesteMapEntity {
         let config = get_entity_config(&selectable, app);
+        let other = &app.current_entity_other;
         match config.pencil {
             PencilBehavior::Line => instantiate_entity(
                 &selectable,
+                other,
                 app,
                 room_pos.x,
                 room_pos.y,
@@ -397,6 +407,7 @@ impl PencilTool {
                 let ref_pos = self.reference_point.unwrap_or(room_pos);
                 instantiate_entity(
                     &selectable,
+                    other,
                     app,
                     ref_pos.x,
                     ref_pos.y,
@@ -413,6 +424,7 @@ impl PencilTool {
                 let diff = room_pos - ref_pos;
                 instantiate_entity(
                     &selectable,
+                    other,
                     app,
                     ref_pos.x,
                     ref_pos.y,
@@ -434,6 +446,7 @@ impl PencilTool {
         let diff = room_pos - ref_pos;
         instantiate_trigger(
             &selectable,
+            &app.current_trigger_other,
             app,
             ref_pos.x,
             ref_pos.y,

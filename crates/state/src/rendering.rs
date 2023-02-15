@@ -474,20 +474,37 @@ pub fn draw_decals(
 ) {
     let decals = if fg { &room.fg_decals } else { &room.bg_decals };
     for decal in decals {
-        let texture = decal_texture(decal);
-        let scale = Point2D::new(decal.scale_x, decal.scale_y);
-        if let Err(e) = palette.gameplay_atlas.draw_sprite(
-            canvas,
-            &texture,
-            Point2D::new(decal.x, decal.y).cast(),
-            None,
-            None,
-            Some(scale),
-            None,
-            0.0,
-        ) {
-            log::error!("Failed drawing decal: {}", e);
-        }
+        draw_decal(palette, canvas, decal);
+    }
+}
+
+pub fn draw_decal(palette: &ModuleAggregate, canvas: &mut Canvas, decal: &CelesteMapDecal) {
+    let texture = decal_texture(decal);
+    let scale = Point2D::new(decal.scale_x, decal.scale_y);
+    if let Err(e) = palette.gameplay_atlas.draw_sprite(
+        canvas,
+        &texture,
+        Point2D::new(decal.x, decal.y).cast(),
+        None,
+        None,
+        Some(scale),
+        None,
+        0.0,
+    ) {
+        log::warn!("Failed drawing decal: {}", e);
+        palette
+            .gameplay_atlas
+            .draw_sprite(
+                canvas,
+                "__fallback",
+                Point2D::new(decal.x, decal.y).cast(),
+                None,
+                None,
+                Some(scale),
+                None,
+                0.0,
+            )
+            .unwrap();
     }
 }
 

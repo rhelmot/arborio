@@ -48,10 +48,15 @@ pub struct AppState {
     pub current_tool: RefCell<Option<Box<dyn Tool>>>,
     pub current_layer: Layer,
     pub current_fg_tile: TileSelectable,
+    pub current_fg_tile_other: String,
     pub current_bg_tile: TileSelectable,
+    pub current_bg_tile_other: String,
     pub current_entity: EntitySelectable,
+    pub current_entity_other: String,
     pub current_trigger: TriggerSelectable,
+    pub current_trigger_other: String,
     pub current_decal: DecalSelectable,
+    pub current_decal_other: String,
     pub current_objtile: u32,
     pub objtiles_transform: MapToScreen,
 
@@ -175,17 +180,30 @@ pub enum AppEvent {
         fg: bool,
         tile: TileSelectable,
     },
+    SelectPaletteTileOther {
+        fg: bool,
+        other: String,
+    },
     SelectPaletteObjectTile {
         tile: u32,
     },
     SelectPaletteEntity {
         entity: EntitySelectable,
     },
+    SelectPaletteEntityOther {
+        other: String,
+    },
     SelectPaletteTrigger {
         trigger: TriggerSelectable,
     },
+    SelectPaletteTriggerOther {
+        other: String,
+    },
     SelectPaletteDecal {
         decal: DecalSelectable,
+    },
+    SelectPaletteDecalOther {
+        other: String,
     },
     ClearSelection {
         tab: usize,
@@ -252,10 +270,15 @@ impl AppState {
             current_toolspec: ToolSpec::Selection,
             current_tool: RefCell::new(None),
             current_fg_tile: TileSelectable::default(),
+            current_fg_tile_other: "".to_owned(),
             current_bg_tile: TileSelectable::default(),
+            current_bg_tile_other: "".to_owned(),
             current_entity: EntitySelectable::default(),
+            current_entity_other: "".to_owned(),
             current_trigger: TriggerSelectable::default(),
+            current_trigger_other: "".to_owned(),
             current_decal: DecalSelectable::default(),
+            current_decal_other: "".to_owned(),
             last_draw: RefCell::new(time::Instant::now()),
             current_layer: Layer::FgTiles,
             current_objtile: 0,

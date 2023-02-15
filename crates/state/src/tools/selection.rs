@@ -549,23 +549,20 @@ impl SelectionTool {
             }
             AppSelection::Decal(id, fg) => {
                 if let Some(decal) = room.decal(id, fg) {
-                    if let Some(dim) = app
+                    let dim = app
                         .current_palette_unwrap()
                         .gameplay_atlas
                         .sprite_dimensions(&decal_texture(decal))
-                    {
-                        let size = dim
-                            .cast()
-                            .cast_unit()
-                            .to_vector()
-                            .component_mul(Vector2D::new(decal.scale_x, decal.scale_y))
-                            .cast()
-                            .to_size()
-                            .abs();
-                        vec![Rect::new(RoomPoint::new(decal.x, decal.y) - size / 2, size)]
-                    } else {
-                        vec![]
-                    }
+                        .unwrap_or(Size2D::new(16, 16));
+                    let size = dim
+                        .cast()
+                        .cast_unit()
+                        .to_vector()
+                        .component_mul(Vector2D::new(decal.scale_x, decal.scale_y))
+                        .cast()
+                        .to_size()
+                        .abs();
+                    vec![Rect::new(RoomPoint::new(decal.x, decal.y) - size / 2, size)]
                 } else {
                     vec![]
                 }
@@ -910,41 +907,39 @@ impl SelectionTool {
                 }
                 AppSelection::Decal(id, fg) => {
                     let mut d = room.decal(*id, *fg).unwrap().clone();
-                    if let Some(dim) = app
+                    let dim = app
                         .current_palette_unwrap()
                         .gameplay_atlas
                         .sprite_dimensions(&decal_texture(&d))
-                    {
-                        let texture_size = dim.cast().cast_unit();
-                        let start_rect = dragging
-                            .map(|d| *d.selection_reference_sizes.get(sel).unwrap())
-                            .unwrap_or_else(|| {
-                                let size = texture_size
-                                    .to_vector()
-                                    .component_mul(Vector2D::new(d.scale_x, d.scale_y))
-                                    .cast()
-                                    .to_size();
-                                RoomRect::new(RoomPoint::new(d.x, d.y) - size / 2, size)
-                            });
-                        let new_rect = RoomRect::new(
-                            start_rect.origin + pos_vec,
-                            start_rect.size + size_vec.to_size(),
-                        );
-                        let new_stretch = new_rect
-                            .size
-                            .to_vector()
-                            .cast::<f32>()
-                            .component_div(texture_size.to_vector().cast());
-                        d.x = new_rect.center().x;
-                        d.y = new_rect.center().y;
-                        d.scale_x = new_stretch.x;
-                        d.scale_y = new_stretch.y;
-                        result.push_room(RoomAction::DecalUpdate {
-                            fg: *fg,
-                            decal: Box::new(d),
-                        })
-                    }
-                    // TODO what happens if we try to resize an untextured decal?
+                        .unwrap_or(Size2D::new(16, 16));
+                    let texture_size = dim.cast().cast_unit();
+                    let start_rect = dragging
+                        .map(|d| *d.selection_reference_sizes.get(sel).unwrap())
+                        .unwrap_or_else(|| {
+                            let size = texture_size
+                                .to_vector()
+                                .component_mul(Vector2D::new(d.scale_x, d.scale_y))
+                                .cast()
+                                .to_size();
+                            RoomRect::new(RoomPoint::new(d.x, d.y) - size / 2, size)
+                        });
+                    let new_rect = RoomRect::new(
+                        start_rect.origin + pos_vec,
+                        start_rect.size + size_vec.to_size(),
+                    );
+                    let new_stretch = new_rect
+                        .size
+                        .to_vector()
+                        .cast::<f32>()
+                        .component_div(texture_size.to_vector().cast());
+                    d.x = new_rect.center().x;
+                    d.y = new_rect.center().y;
+                    d.scale_x = new_stretch.x;
+                    d.scale_y = new_stretch.y;
+                    result.push_room(RoomAction::DecalUpdate {
+                        fg: *fg,
+                        decal: Box::new(d),
+                    })
                 }
             }
         }
@@ -1135,28 +1130,22 @@ impl SelectionTool {
                     }
                     AppSelection::Decal(id, fg) => {
                         if let Some(decal) = room.decal(*id, *fg) {
-                            if let Some(dim) = app
+                            let dim = app
                                 .current_palette_unwrap()
                                 .gameplay_atlas
                                 .sprite_dimensions(&decal_texture(decal))
-                            {
-                                let size = dim
-                                    .cast()
-                                    .cast_unit()
-                                    .to_vector()
-                                    .component_mul(Vector2D::new(decal.scale_x, decal.scale_y))
-                                    .cast()
-                                    .to_size();
-                                Some((
-                                    *sel,
-                                    RoomRect::new(
-                                        RoomPoint::new(decal.x, decal.y) - size / 2,
-                                        size,
-                                    ),
-                                ))
-                            } else {
-                                None
-                            }
+                                .unwrap_or(Size2D::new(16, 16));
+                            let size = dim
+                                .cast()
+                                .cast_unit()
+                                .to_vector()
+                                .component_mul(Vector2D::new(decal.scale_x, decal.scale_y))
+                                .cast()
+                                .to_size();
+                            Some((
+                                *sel,
+                                RoomRect::new(RoomPoint::new(decal.x, decal.y) - size / 2, size),
+                            ))
                         } else {
                             None
                         }
@@ -1394,10 +1383,11 @@ impl SelectionTool {
                     }
                 }
                 AppInRoomSelectable::Decal(decal, _) => {
-                    let Some(dim) = app
+                    let dim = app
                         .current_palette_unwrap()
                         .gameplay_atlas
-                        .sprite_dimensions(&decal_texture(decal)) else { continue };
+                        .sprite_dimensions(&decal_texture(decal))
+                        .unwrap_or(Size2D::new(16, 16));
                     let size = dim
                         .cast()
                         .cast_unit()

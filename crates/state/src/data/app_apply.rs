@@ -216,17 +216,33 @@ impl AppState {
                     self.current_bg_tile = tile;
                 }
             }
+            AppEvent::SelectPaletteTileOther { fg, other } => {
+                if fg {
+                    self.current_fg_tile_other = other;
+                } else {
+                    self.current_bg_tile_other = other;
+                }
+            }
             AppEvent::SelectPaletteObjectTile { tile } => {
                 self.current_objtile = tile;
             }
             AppEvent::SelectPaletteEntity { entity } => {
                 self.current_entity = entity;
             }
+            AppEvent::SelectPaletteEntityOther { other } => {
+                self.current_entity_other = other;
+            }
             AppEvent::SelectPaletteTrigger { trigger } => {
                 self.current_trigger = trigger;
             }
+            AppEvent::SelectPaletteTriggerOther { other } => {
+                self.current_trigger_other = other;
+            }
             AppEvent::SelectPaletteDecal { decal } => {
                 self.current_decal = decal;
+            }
+            AppEvent::SelectPaletteDecalOther { other } => {
+                self.current_decal_other = other;
             }
             AppEvent::PanObjectTiles { delta } => {
                 // TODO limits

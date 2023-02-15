@@ -275,6 +275,7 @@ tile_palette {
 
 palette {
     width: 100%;
+    color: white;
 }
 
 palette list {

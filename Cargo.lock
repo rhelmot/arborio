@@ -2784,7 +2784,6 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=03655f43864bdd6d73b5e35dc90a4dd578248bbd#03655f43864bdd6d73b5e35dc90a4dd578248bbd"
 dependencies = [
  "vizia_core",
  "vizia_winit",
@@ -2793,7 +2792,6 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=03655f43864bdd6d73b5e35dc90a4dd578248bbd#03655f43864bdd6d73b5e35dc90a4dd578248bbd"
 dependencies = [
  "bitflags",
  "copypasta",
@@ -2825,7 +2823,6 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=03655f43864bdd6d73b5e35dc90a4dd578248bbd#03655f43864bdd6d73b5e35dc90a4dd578248bbd"
 dependencies = [
  "proc-macro2 1.0.51",
  "quote 1.0.23",
@@ -2835,12 +2832,10 @@ dependencies = [
 [[package]]
 name = "vizia_id"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=03655f43864bdd6d73b5e35dc90a4dd578248bbd#03655f43864bdd6d73b5e35dc90a4dd578248bbd"
 
 [[package]]
 name = "vizia_input"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=03655f43864bdd6d73b5e35dc90a4dd578248bbd#03655f43864bdd6d73b5e35dc90a4dd578248bbd"
 dependencies = [
  "bitflags",
  "keyboard-types",
@@ -2850,7 +2845,6 @@ dependencies = [
 [[package]]
 name = "vizia_storage"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=03655f43864bdd6d73b5e35dc90a4dd578248bbd#03655f43864bdd6d73b5e35dc90a4dd578248bbd"
 dependencies = [
  "morphorm",
  "vizia_id",
@@ -2859,7 +2853,6 @@ dependencies = [
 [[package]]
 name = "vizia_window"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=03655f43864bdd6d73b5e35dc90a4dd578248bbd#03655f43864bdd6d73b5e35dc90a4dd578248bbd"
 dependencies = [
  "morphorm",
  "vizia_input",
@@ -2868,7 +2861,6 @@ dependencies = [
 [[package]]
 name = "vizia_winit"
 version = "0.1.0"
-source = "git+https://github.com/vizia/vizia?rev=03655f43864bdd6d73b5e35dc90a4dd578248bbd#03655f43864bdd6d73b5e35dc90a4dd578248bbd"
 dependencies = [
  "console_error_panic_hook",
  "copypasta",

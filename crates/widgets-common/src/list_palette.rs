@@ -6,35 +6,47 @@ use arborio_state::palette_item::PaletteItem;
 use arborio_utils::vizia::prelude::*;
 use arborio_utils::vizia::vg::{Paint, Path};
 
-pub struct PaletteWidget<T, L> {
+pub struct PaletteWidget<T, L, L2> {
     lens: L,
+    other_lens: L2,
     marker: PhantomData<T>,
     filter: String,
 }
 
-fn palette_widget_filter_lens<T: 'static, L: 'static>(
-) -> impl Lens<Source = PaletteWidget<T, L>, Target = String> {
-    ClosureLens::new(|source: &PaletteWidget<T, L>| Some(&source.filter))
+fn palette_widget_filter_lens<T: 'static, L: 'static, L2: 'static>(
+) -> impl Lens<Source = PaletteWidget<T, L, L2>, Target = String> {
+    ClosureLens::new(|source: &PaletteWidget<T, L, L2>| Some(&source.filter))
 }
 
-impl<T: PaletteItem + Send + Sync, LI> PaletteWidget<T, LI>
+impl<T: PaletteItem + Send + Sync, LI, LO> PaletteWidget<T, LI, LO>
 where
     LI: Lens<Target = T>,
+    LO: Lens<Target = String>,
 {
-    pub fn new<F, LL>(cx: &mut Context, items: LL, selected: LI, callback: F) -> Handle<Self>
+    pub fn new<F, F2, LL>(
+        cx: &mut Context,
+        items: LL,
+        selected: LI,
+        callback: F,
+        other_lens: LO,
+        other_callback: F2,
+    ) -> Handle<Self>
     where
         F: 'static + Send + Sync + Fn(&mut EventContext, T) + Copy,
+        F2: 'static + Send + Sync + Fn(&mut EventContext, String) + Copy,
         LL: Send + Sync + Lens<Target = Vec<T>>,
         <LI as Lens>::Source: Model,
         <LL as Lens>::Source: Model,
     {
         let result = Self {
             lens: selected.clone(),
+            other_lens: other_lens.clone(),
             marker: PhantomData {},
             filter: "".to_owned(),
         }
         .build(cx, move |cx| {
             ScrollView::new(cx, 0.0, 0.0, false, true, move |cx| {
+                let selected2 = selected.clone();
                 List::new(cx, items, move |cx, _, item| {
                     let item2 = item.clone();
                     let item3 = item.clone();
@@ -54,7 +66,7 @@ where
                         handle.checked(selected.same(&mine));
                     })
                     .bind(
-                        palette_widget_filter_lens::<T, LI>(),
+                        palette_widget_filter_lens::<T, LI, LO>(),
                         move |handle, filter| {
                             let filter = filter.get(handle.cx);
                             let item = item4.get(handle.cx);
@@ -70,18 +82,40 @@ where
                         (callback)(cx.as_mut(), item);
                     });
                 });
+                HStack::new(cx, move |cx| {
+                    Label::new(cx, "Other...");
+                })
+                .class("palette_item")
+                .class("list_highlight")
+                .bind(selected2.clone(), move |handle, selected| {
+                    let selected = selected.get(handle.cx);
+                    handle.checked(selected.same(&T::other()));
+                })
+                .on_press(move |cx| {
+                    let item = T::other();
+                    (callback)(cx.as_mut(), item);
+                });
+                Textbox::new(cx, other_lens).on_edit(other_callback).bind(
+                    selected2,
+                    move |handle, selected| {
+                        let selected = selected.get(handle.cx);
+                        handle.display(selected.same(&T::other()));
+                    },
+                );
             });
         });
 
         if T::CAN_DRAW {
-            result.child_top(Units::Pixels(100.0))
+            result.child_top(Pixels(100.0))
         } else {
             result
         }
     }
 }
 
-impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
+impl<T: PaletteItem, L: Lens<Target = T>, LO: Lens<Target = String>> View
+    for PaletteWidget<T, L, LO>
+{
     fn element(&self) -> Option<&'static str> {
         Some("palette")
     }
@@ -95,6 +129,7 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
         let data = self
             .lens
             .view(cx.data::<<L as Lens>::Source>().unwrap(), |x| *x.unwrap());
+        let other = self.other_lens.get(cx);
 
         canvas.save();
         canvas.translate(bounds.x, bounds.y);
@@ -116,9 +151,10 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
         );
 
         canvas.save();
-        data.draw(cx.data::<AppState>().unwrap(), canvas);
+        data.draw(cx.data::<AppState>().unwrap(), canvas, &other);
         canvas.restore();
 
+        cx.sync_text_styles();
         cx.draw_text(canvas, (10. * dpi, 100. * dpi), (0., 1.));
 
         canvas.restore();
@@ -127,6 +163,9 @@ impl<T: PaletteItem, L: Lens<Target = T>> View for PaletteWidget<T, L> {
     fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
         event.map(|window_event, _| match window_event {
             WindowEvent::CharInput(ch) => {
+                if cx.focused() != cx.current() {
+                    return;
+                }
                 cx.needs_redraw();
                 match *ch {
                     '\u{1b}' => self.filter.clear(),
