@@ -1,7 +1,7 @@
 use super::drawing::EntityDraw;
 use super::EntityRects;
 use crate::config::{AttributeInfo, EntityTemplate, PencilBehavior};
-use arborio_utils::vizia::prelude::{Data, Lens};
+use arborio_utils::vizia::prelude::{Data, Lens, Wrapper};
 use serde;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
