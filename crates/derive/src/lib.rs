@@ -28,7 +28,7 @@ impl BinElAttribute {
                 "generate" => Some(BinElAttribute::Generate(attr.tokens.clone())),
                 "name" => Some(BinElAttribute::Name(attr.tokens.clone())),
                 "optional" => Some(BinElAttribute::Optional),
-                s => panic!("unrecognized attribute \"{}\"", s),
+                _ => None,
             }
         })
     }
@@ -210,7 +210,7 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
 
     let impl_ = quote! {
         impl crate::from_binel::TryFromBinEl for #ident {
-            fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
+            fn try_from_bin_el(elem: &crate::binel::BinEl) -> Result<Self, CelesteMapError> {
                 #assertion
                 let names_list = [#(#field_names),*];
                 #(let #fields = #field_values;)*
@@ -224,8 +224,8 @@ pub fn try_from_bin_el(item: proc_macro::TokenStream) -> proc_macro::TokenStream
 
                 Ok(struct_)
             }
-            fn to_binel(&self) -> BinEl {
-                let mut binel = BinEl::new(#name);
+            fn to_binel(&self) -> crate::binel::BinEl {
+                let mut binel = crate::binel::BinEl::new(#name);
 
                 #(#into_values)*
 

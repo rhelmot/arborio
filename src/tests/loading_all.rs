@@ -1,9 +1,9 @@
+use arborio_maploader::binel::{self, BinEl};
 use arborio_maploader::from_binel::{bin_el_fuzzy_equal, TryFromBinEl};
 use arborio_maploader::map_struct::CelesteMap;
 use arborio_modloader::discovery;
 use arborio_state::data::AppConfig;
 use arborio_walker::{ConfigSourceTrait, FolderSource};
-use celeste::binel::BinEl;
 use std::ffi::OsStr;
 use std::path::Path;
 
@@ -20,7 +20,7 @@ fn test_saving_all_mods() {
             let mut reader = config.get_file(&path).unwrap();
             let mut file = vec![];
             reader.read_to_end(&mut file).unwrap();
-            let (_, binfile) = celeste::binel::parser::take_file(file.as_slice()).unwrap();
+            let (_, binfile) = binel::parser::take_file(file.as_slice()).unwrap();
 
             test_saving_one_mod(&binfile.root);
         }
@@ -40,7 +40,7 @@ fn test_saving_all_mods() {
                     let mut reader = config.get_file(&path).unwrap();
                     let mut file = vec![];
                     reader.read_to_end(&mut file).unwrap();
-                    let (_, binfile) = celeste::binel::parser::take_file(file.as_slice()).unwrap();
+                    let (_, binfile) = binel::parser::take_file(file.as_slice()).unwrap();
 
                     test_saving_one_mod(&binfile.root);
                 }

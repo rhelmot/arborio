@@ -55,7 +55,6 @@ multi_log = "0.1.2"
 smithay-clipboard = { git = "https://github.com/rhelmot/smithay-clipboard", rev = "f2b003a3d35e4c050d989cc2a3492cef6762740f" }
 
 [dev-dependencies]
-celeste = "^2"
 confy = "^0.5"
 
 [profile.dev]

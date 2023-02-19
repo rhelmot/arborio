@@ -1,6 +1,6 @@
 #![allow(unused_parens)] // TODO: ???
 
-use celeste::binel::*;
+use arborio_utils::vizia::prelude::{Data, Lens};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -16,6 +16,8 @@ use arborio_utils::units::*;
 use arborio_utils::uuid::next_uuid;
 use arborio_utils::vizia::prelude::*;
 
+use crate::binel::parser::take_file;
+use crate::binel::{BinEl, BinElAttr, BinFile};
 use crate::from_binel::{GetAttrOrChild, TryFromBinEl, TwoWayConverter};
 
 #[derive(Clone, Debug, TryFromBinEl)]
@@ -252,64 +254,48 @@ pub struct CelesteMapLevelUpdate {
     pub delay_alt_music_fade: Option<bool>,
 }
 
+macro_rules! optional_field_swap {
+    ($a:expr, $b:expr, [$($field:ident),*]) => {
+        $(
+            if let Some(x) = &mut $b.$field {
+                swap(&mut $a.$field, x);
+            }
+        )*
+    };
+    ($a:expr, $b:expr, [$($field:ident,)*]) => {
+        optional_field_swap!($a, $b, [$($field),*])
+    };
+}
+
 impl CelesteMapLevel {
     pub fn apply(&mut self, update: &mut CelesteMapLevelUpdate) {
-        if let Some(x) = &mut update.name {
-            swap(&mut self.name, x);
-        }
-        if let Some(x) = &mut update.color {
-            swap(&mut self.color, x);
-        }
-        if let Some(x) = &mut update.camera_offset_x {
-            swap(&mut self.camera_offset_x, x);
-        };
-        if let Some(x) = &mut update.camera_offset_y {
-            swap(&mut self.camera_offset_y, x);
-        };
-        if let Some(x) = &mut update.wind_pattern {
-            swap(&mut self.wind_pattern, x);
-        };
-        if let Some(x) = &mut update.space {
-            swap(&mut self.space, x);
-        };
-        if let Some(x) = &mut update.underwater {
-            swap(&mut self.underwater, x);
-        };
-        if let Some(x) = &mut update.whisper {
-            swap(&mut self.whisper, x);
-        };
-        if let Some(x) = &mut update.dark {
-            swap(&mut self.dark, x);
-        };
-        if let Some(x) = &mut update.disable_down_transition {
-            swap(&mut self.disable_down_transition, x);
-        };
-        if let Some(x) = &mut update.enforce_dash_number {
-            swap(&mut self.enforce_dash_number, x);
-        };
-        if let Some(x) = &mut update.music {
-            swap(&mut self.music, x);
-        };
-        if let Some(x) = &mut update.alt_music {
-            swap(&mut self.alt_music, x);
-        };
-        if let Some(x) = &mut update.ambience {
-            swap(&mut self.ambience, x);
-        };
+        optional_field_swap!(
+            self,
+            update,
+            [
+                name,
+                camera_offset_x,
+                camera_offset_y,
+                wind_pattern,
+                space,
+                underwater,
+                whisper,
+                dark,
+                disable_down_transition,
+                enforce_dash_number,
+                music,
+                alt_music,
+                ambience,
+                music_progress,
+                ambience_progress,
+                delay_alt_music_fade,
+            ]
+        );
         for i in 0..4 {
             if let Some(x) = &mut update.music_layers[i] {
                 swap(&mut self.music_layers[i], x);
             };
         }
-        if let Some(x) = &mut update.music_progress {
-            swap(&mut self.music_progress, x);
-        };
-        if let Some(x) = &mut update.ambience_progress {
-            swap(&mut self.ambience_progress, x);
-        };
-        if let Some(x) = &mut update.enforce_dash_number {
-            swap(&mut self.enforce_dash_number, x);
-        };
     }
 }
 
@@ -353,7 +339,6 @@ pub struct CelesteMapDecal {
     pub scale_x: f32,
     #[name("scaleY")]
     pub scale_y: f32,
-    #[convert_with(ParenFlipper)]
     pub texture: String,
 }
 
@@ -509,6 +494,17 @@ impl From<BinElAttr> for Attribute {
     }
 }
 
+impl<'a> From<&'a Attribute> for BinElAttr {
+    fn from(s: &'a Attribute) -> Self {
+        match s {
+            Attribute::Bool(b) => BinElAttr::Bool(*b),
+            Attribute::Int(i) => BinElAttr::Int(*i),
+            Attribute::Float(f) => BinElAttr::Float(*f),
+            Attribute::Text(s) => BinElAttr::Text(s.clone()),
+        }
+    }
+}
+
 #[allow(clippy::from_over_into)]
 impl Into<BinElAttr> for Attribute {
     fn into(self) -> BinElAttr {
@@ -580,20 +576,20 @@ impl CelesteMapStyleground {
     }
 }
 
-struct ParenFlipper;
-impl TwoWayConverter<String> for ParenFlipper {
-    type BinType = BinElAttr;
+// struct ParenFlipper;
+// impl TwoWayConverter<String> for ParenFlipper {
+//     type BinType = BinElAttr;
 
-    fn try_parse(elem: &Self::BinType) -> Result<String, CelesteMapError> {
-        DefaultConverter::try_parse(elem)
-    }
+//     fn try_parse(elem: &Self::BinType) -> Result<String, CelesteMapError> {
+//         DefaultConverter::try_parse(elem)
+//     }
 
-    fn serialize(val: &String) -> Self::BinType {
-        //assert!(!val.contains('\\'));
-        //BinElAttr::Text(val.replace('/', "\\"))
-        BinElAttr::Text(val.clone())
-    }
-}
+//     fn serialize(val: &String) -> Self::BinType {
+//         //assert!(!val.contains('\\'));
+//         //BinElAttr::Text(val.replace('/', "\\"))
+//         BinElAttr::Text(val.clone())
+//     }
+// }
 
 impl CelesteMapLevel {
     pub fn tile(&self, pt: TilePoint, foreground: bool) -> Option<char> {
@@ -688,7 +684,7 @@ impl CelesteMap {
 pub fn from_reader(mut reader: impl std::io::Read) -> Result<CelesteMap, std::io::Error> {
     let mut file = vec![];
     reader.read_to_end(&mut file)?;
-    let (_, binfile) = celeste::binel::parser::take_file(file.as_slice())
+    let (_, binfile) = take_file(file.as_slice())
         .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "Not a Celeste map"))?;
     let map = from_binfile(binfile).map_err(|e| {
         std::io::Error::new(
@@ -724,7 +720,7 @@ pub fn save_to<W: io::Write>(
         package: package.to_owned(),
     };
 
-    celeste::binel::writer::put_file(writer, &file)
+    crate::binel::writer::put_file(writer, &file)
 }
 
 impl TryFromBinEl for CelesteMapLevel {
@@ -998,7 +994,7 @@ where
     let height: usize = height.try_into().map_err(|_| exc)?;
     let mut data: Vec<T> = vec![default; width * height];
 
-    let text: &str = elem.text().map(|s| s.as_str()).unwrap_or_default();
+    let text: &str = elem.text().unwrap_or_default();
     for (y, line) in transform(text).enumerate() {
         for (x, num) in line.enumerate() {
             let num = num?;
@@ -1160,7 +1156,7 @@ impl AttrCoercion for FadeDirectives {
     const NICE_NAME: &'static str = "fade directive";
 
     fn try_coerce(attr: &BinElAttr) -> Option<Self> {
-        String::try_coerce(attr).and_then(|s| s.as_str().parse().ok())
+        String::try_coerce(attr).and_then(|s| s.parse().ok())
     }
 
     fn serialize(&self) -> BinElAttr {
@@ -1169,14 +1165,10 @@ impl AttrCoercion for FadeDirectives {
 }
 
 fn parse_n_number(text: &str) -> Option<f32> {
-    if let Some(first) = text.chars().next() {
-        if first == 'n' {
-            text[1..].parse().ok().map(|x: f32| -x)
-        } else {
-            text.parse().ok()
-        }
+    if let Some(remaining) = text.strip_prefix('n') {
+        Some(-remaining.parse().ok()?)
     } else {
-        None
+        text.parse().ok()
     }
 }
 
@@ -1189,7 +1181,10 @@ fn format_n_number(f: f32) -> String {
 }
 
 struct DefaultConverter;
-impl<T: TryFromBinEl> TwoWayConverter<T> for DefaultConverter {
+impl<T> TwoWayConverter<T> for DefaultConverter
+where
+    T: TryFromBinEl,
+{
     type BinType = BinEl;
 
     fn try_parse(elem: &Self::BinType) -> Result<T, CelesteMapError> {
@@ -1288,13 +1283,11 @@ impl<T: Copy + TryFrom<i32> + TryInto<i32>> TwoWayConverter<T> for MapComponentC
 // }
 
 pub fn get_optional_child<'a>(elem: &'a BinEl, name: &str) -> Option<&'a BinEl> {
-    let children_of_name = elem.get(name);
-    if let [ref child] = children_of_name.as_slice() {
-        // if there is exactly one child
-        Some(child)
-    } else {
-        None
-    }
+    // if there is exactly one child
+    let [ref child] = elem.get(name) else {
+        return None
+    };
+    Some(child)
 }
 
 fn get_child<'a>(elem: &'a BinEl, name: &str) -> Result<&'a BinEl, CelesteMapError> {
@@ -1306,31 +1299,23 @@ pub fn get_child_mut<'a>(elem: &'a mut BinEl, name: &str) -> &'a mut BinEl {
     if children.is_empty() {
         children.push(BinEl::new(name));
     }
-    match children.as_mut_slice() {
-        [ref mut child] => child,
-        [] => {
-            unreachable!()
-        }
-        _ => todo!(),
-    }
+    let [child] = children.as_mut_slice() else { panic!() };
+    child
 }
 
 fn get_optional_attr<T>(elem: &BinEl, name: &str) -> Result<Option<T>, CelesteMapError>
 where
     T: AttrCoercion,
 {
-    if let Some(attr) = elem.attributes.get(name) {
-        if let Some(coerced) = T::try_coerce(attr) {
-            Ok(Some(coerced))
-        } else {
-            Err(CelesteMapError {
+    elem.attributes
+        .get(name)
+        .map(|attr| {
+            T::try_coerce(attr).ok_or_else(|| CelesteMapError {
                 kind: CelesteMapErrorType::BadAttrType,
                 description: format!("Expected {nice}, found {:?}", attr, nice = T::NICE_NAME),
             })
-        }
-    } else {
-        Ok(None)
-    }
+        })
+        .transpose()
 }
 
 fn get_attr<T>(elem: &BinEl, name: &str) -> Result<T, CelesteMapError>

@@ -18,9 +18,14 @@
 
         naersk-lib = pkgs.callPackage naersk {};
         LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (with pkgs; [
+          brotli
+          expat
           libGL
+          libpng
           xorg.libX11
+          xorg.libXau
           xorg.libXcursor
+          xorg.libXdmcp
           xorg.libxcb
           xorg.libXi
           xorg.libXrandr

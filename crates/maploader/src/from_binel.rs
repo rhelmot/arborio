@@ -1,9 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::map_struct::{get_child_mut, get_optional_child, CelesteMapError};
+use crate::{
+    binel::{BinEl, BinElAttr},
+    map_struct::{get_child_mut, get_optional_child, CelesteMapError},
+};
 pub use arborio_derive::TryFromBinEl;
-use celeste::binel::{BinEl, BinElAttr};
 use itertools::Itertools;
+use once_cell::sync::Lazy;
 
 macro_rules! expect_elem {
     ($elem:expr, $name:expr) => {
@@ -48,7 +51,7 @@ where
 }
 
 impl TryFromBinEl for BinEl {
-    fn try_from_bin_el(elem: &BinEl) -> Result<Self, CelesteMapError> {
+    fn try_from_bin_el(elem: &Self) -> Result<Self, CelesteMapError> {
         Ok(elem.clone())
     }
 
@@ -58,8 +61,8 @@ impl TryFromBinEl for BinEl {
 }
 
 pub trait GetAttrOrChild: Sized {
-    fn attr_or_child<'a>(elem: &'a BinEl, key: &str) -> Option<&'a Self>;
-    fn nested_attr_or_child<'a>(elem: &'a BinEl, key: &str) -> Option<&'a Self> {
+    fn attr_or_child<'b>(elem: &'b BinEl, key: &str) -> Option<&'b Self>;
+    fn nested_attr_or_child<'b>(elem: &'b BinEl, key: &str) -> Option<&'b Self> {
         if let Some((first, remaining)) = key.split_once('/') {
             Self::nested_attr_or_child(get_optional_child(elem, first)?, remaining)
         } else {
@@ -77,12 +80,9 @@ pub trait GetAttrOrChild: Sized {
 }
 
 impl GetAttrOrChild for BinEl {
-    fn attr_or_child<'a>(elem: &'a BinEl, key: &str) -> Option<&'a Self> {
-        if let Some((x,)) = elem.get(key).iter().collect_tuple() {
-            Some(x)
-        } else {
-            None
-        }
+    fn attr_or_child<'b>(elem: &'b BinEl, key: &str) -> Option<&'b Self> {
+        let (x,) = elem.get(key).iter().collect_tuple()?;
+        Some(x)
     }
 
     fn apply_attr_or_child(elem: &mut BinEl, key: &str, mut value: Self) {
@@ -94,7 +94,7 @@ impl GetAttrOrChild for BinEl {
 }
 
 impl GetAttrOrChild for BinElAttr {
-    fn attr_or_child<'a>(elem: &'a BinEl, key: &str) -> Option<&'a Self> {
+    fn attr_or_child<'b>(elem: &'b BinEl, key: &str) -> Option<&'b Self> {
         elem.attributes.get(key)
     }
     fn apply_attr_or_child(elem: &mut BinEl, key: &str, value: Self) {
@@ -118,15 +118,15 @@ pub trait TwoWayConverter<T> {
         let got = GetAttrOrChild::nested_attr_or_child(elem, key);
         got.map(Self::try_parse).transpose()
     }
-    fn set_bin_el(elem: &mut BinEl, key: &str, value: &T) {
+    fn set_bin_el<'a>(elem: &mut BinEl, key: &'a str, value: &'a T) {
         GetAttrOrChild::nested_apply_attr_or_child(elem, key, Self::serialize(value));
     }
-    fn set_bin_el_optional(elem: &mut BinEl, key: &str, value: &Option<T>) {
+    fn set_bin_el_optional<'a>(elem: &mut BinEl, key: &'a str, value: &'a Option<T>) {
         if let Some(value) = value {
             Self::set_bin_el(elem, key, value);
         }
     }
-    fn set_bin_el_default(elem: &mut BinEl, key: &str, value: &T)
+    fn set_bin_el_default<'a>(elem: &mut BinEl, key: &'a str, value: &'a T)
     where
         T: Default + PartialEq,
     {
@@ -136,9 +136,9 @@ pub trait TwoWayConverter<T> {
     }
 }
 
-lazy_static::lazy_static! {
-    // entires in this list are not parsed by celeste.exe
-    static ref ATTRS_IGNORE: HashSet<(&'static str, &'static str)> = HashSet::from([
+// entires in this list are not parsed by celeste.exe
+static ATTRS_IGNORE: Lazy<HashSet<(&'static str, &'static str)>> = Lazy::new(|| {
+    HashSet::from([
         ("meta", "Name"),
         ("meta", "SID"),
         ("meta", "CompleteScreenName"),
@@ -149,10 +149,11 @@ lazy_static::lazy_static! {
         ("bgtiles", "tileset"),
         ("fgtiles", "tileset"),
         ("objtiles", "tileset"),
-    ]);
-
-    // entries in this list are made default when missing by celeste.exe
-    static ref ATTRS_OPTIONAL: HashSet<(&'static str, &'static str)> = HashSet::from([
+    ])
+});
+// entries in this list are made default when missing by celeste.exe
+static ATTRS_OPTIONAL: Lazy<HashSet<(&'static str, &'static str)>> = Lazy::new(|| {
+    HashSet::from([
         ("level", "music"),
         ("level", "alt_music"),
         ("level", "ambience"),
@@ -235,17 +236,13 @@ lazy_static::lazy_static! {
         ("Backgrounds", "instantOut"),
         ("Backgrounds", "fadex"),
         ("Backgrounds", "fadey"),
-    ]);
+    ])
+});
 
-    // entries in this list have arbitrary child names and should thusly be looked up by their
-    // parent name
-    static ref PARENT_OVERRIDES: HashSet<&'static str> = HashSet::from([
-        "entities",
-        "triggers",
-        "Backgrounds",
-        "Foregrounds",
-    ]);
-}
+// entries in this list have arbitrary child names and should thusly be looked up by their
+// parent name
+static PARENT_OVERRIDES: Lazy<HashSet<&'static str>> =
+    Lazy::new(|| HashSet::from(["entities", "triggers", "Backgrounds", "Foregrounds"]));
 
 fn fuzzy_ignore(_one: Option<&BinElAttr>, _two: Option<&BinElAttr>) -> bool {
     true
@@ -332,15 +329,16 @@ pub fn bin_el_fuzzy_equal(parent: &str, first: &BinEl, second: &BinEl) -> bool {
         .collect::<Vec<_>>();
 
     for key in children {
-        if first.name == "Map" && ["audiostate", "mode"].contains(&key.as_str()) {
+        let key = key.as_str();
+        if first.name == "Map" && ["audiostate", "mode"].contains(&key) {
             // cruor what the HELL are you doing
             continue;
         }
         if first.name == "level"
-            && ["bg", "solids"].contains(&key.as_ref())
+            && ["bg", "solids"].contains(&key)
             && [
-                Some(&BinElAttr::Text("lvl_credits-resort".to_string())),
-                Some(&BinElAttr::Text("lvl_14".to_string())),
+                Some(&BinElAttr::Text("lvl_credits-resort".into())),
+                Some(&BinElAttr::Text("lvl_14".into())),
             ]
             .contains(&first.attributes.get("name"))
         {
@@ -353,7 +351,7 @@ pub fn bin_el_fuzzy_equal(parent: &str, first: &BinEl, second: &BinEl) -> bool {
                 compare(&first.name, one, two);
             }
         } else if first.name == "level"
-            && ["objtiles", "fgtiles", "bgtiles", "bgdecals", "fgdecals"].contains(&key.as_str())
+            && ["objtiles", "fgtiles", "bgtiles", "bgdecals", "fgdecals"].contains(&key)
         {
             // older versions of ahorn do not serialize objtiles, fgtiles, bgtiles
             // older versions of vanilla editor do not serialize bgdecals
