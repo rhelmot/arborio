@@ -26,7 +26,11 @@ pub fn basic_attrs_editor<LN, F, LK, LA, LC, FS>(
             let lens_attr_name = lens_attr_info.clone().then(AttributeInfo::display_name);
             let lens_attr_opts = lens_attr_info.clone().then(AttributeInfo::options);
 
-            if lens_attr_info.then(AttributeInfo::ignore).get(cx) {
+            if lens_attr_info
+                .then(AttributeInfo::ignore)
+                .get_fallible(cx)
+                .unwrap()
+            {
                 continue;
             }
 
@@ -36,10 +40,10 @@ pub fn basic_attrs_editor<LN, F, LK, LA, LC, FS>(
                     let lens_attr_key = lens_attr_key.clone();
                     let lens_attr_name = lens_attr_name.clone();
                     Binding::new(cx, lens_attr_key, move |cx, lens_attr_key| {
-                        let attr_key = lens_attr_key.get(cx);
+                        let attr_key = lens_attr_key.get_fallible(cx).unwrap();
                         let lens_attr_name = lens_attr_name.clone();
                         Binding::new(cx, lens_attr_name, move |cx, lens_attr_name| {
-                            let attr_name = lens_attr_name.get(cx);
+                            let attr_name = lens_attr_name.get_fallible(cx).unwrap();
                             let name = attr_name.as_ref().unwrap_or(&attr_key);
                             Label::new(cx, name);
                         });
@@ -50,23 +54,22 @@ pub fn basic_attrs_editor<LN, F, LK, LA, LC, FS>(
                     let lens_attr_val = lens_attr_val.clone();
                     let lens_attr_key = lens_attr_key.clone();
                     let setter = setter.clone();
-                    let opts_len =
-                        lens_attr_opts.view(cx.data().unwrap(), |opts| opts.map_or(0, |x| x.len()));
+                    let opts_len = lens_attr_opts
+                        .view(cx.data().unwrap())
+                        .map_or(0, |x| x.len());
                     if opts_len != 0 {
                         // ugh... the placement of this binding is nontrivial
                         Binding::new(cx, lens_attr_val, move |cx, lens_attr_val| {
                             let attr_val = lens_attr_val.get_fallible(cx);
-                            let (found_idx, found_lbl) =
-                                lens_attr_opts.view(cx.data().unwrap(), |opts| {
-                                    for (idx, opt) in opts.unwrap().iter().enumerate() {
-                                        if let Some(attr_val) = &attr_val {
-                                            if opt.value.to_binel().eq_insensitive(attr_val) {
-                                                return (Some(idx), Some(opt.name.clone()));
-                                            }
-                                        }
-                                    }
-                                    (None, None)
-                                });
+                            let opts = lens_attr_opts.view(cx.data().unwrap()).unwrap();
+                            let (found_idx, found_opt) = if let Some(attr_val) = &attr_val {
+                                opts.iter().enumerate().find(|(_, opt)| {
+                                    opt.value.to_binel().eq_insensitive(attr_val)
+                                })
+                            } else {
+                                None
+                            }.unzip();
+                            let found_lbl = found_opt.map(|opt| opt.name.clone());
                             let lens_attr_opts = lens_attr_opts.clone();
                             let lens_attr_key = lens_attr_key.clone();
                             let setter = setter.clone();
@@ -77,7 +80,7 @@ pub fn basic_attrs_editor<LN, F, LK, LA, LC, FS>(
                                     HStack::new(cx, move |cx| {
                                         Label::new(
                                             cx,
-                                            found_lbl.as_ref().map_or("weh", |a| a.as_str()),
+                                            found_lbl.as_ref().map_or("weh", |a| a),
                                         );
                                         Label::new(cx, DOWN).font_family(vec![FamilyOwned::Name(
                                             "Entypo".to_owned(),
@@ -87,14 +90,18 @@ pub fn basic_attrs_editor<LN, F, LK, LA, LC, FS>(
                                 },
                                 move |cx| {
                                     for idx in 0..opts_len {
-                                        let opt = lens_attr_opts.clone().index(idx).get(cx);
+                                        let opt = lens_attr_opts
+                                            .clone()
+                                            .index(idx)
+                                            .get_fallible(cx)
+                                            .unwrap();
                                         let lens_attr_key = lens_attr_key.clone();
                                         let setter = setter.clone();
                                         Label::new(cx, &opt.name)
                                             .class("dropdown_element")
                                             .toggle_class("checked", Some(idx) == found_idx)
                                             .on_press(move |cx| {
-                                                let key = lens_attr_key.get(cx);
+                                                let key = lens_attr_key.get_fallible(cx).unwrap();
                                                 setter(cx.as_mut(), key, opt.value.to_binel());
                                                 cx.emit(PopupEvent::Close);
                                             });

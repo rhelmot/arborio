@@ -588,9 +588,8 @@ fn build_search_results(cx: &mut Context) {
             cx,
             ctab.then(ConfigEditorTab::search_results),
             move |cx, idx, item| {
-                let display = item.view(cx.data().unwrap(), |item| {
-                    item.map(|item| item.display_list()).unwrap_or_default()
-                });
+                let item = item.view(cx.data().unwrap());
+                let display = item.map(|item| item.display_list()).unwrap_or_default();
                 Label::new(cx, &display)
                     .class("list_highlight")
                     .bind(
@@ -641,9 +640,13 @@ pub fn build_item_editor(cx: &mut Context) {
             cx,
             move |cx| {
                 let app = cx.data::<AppState>().unwrap();
-                let config = ctab.view(app, |ctab| {
-                    ctab.unwrap().editing_config.as_ref().unwrap().clone()
-                });
+                let config = ctab
+                    .view(app)
+                    .unwrap()
+                    .editing_config
+                    .as_ref()
+                    .unwrap()
+                    .clone();
                 let text = match config {
                     AnyConfig::Entity(e) => e.to_string(),
                     AnyConfig::Trigger(e) => e.to_string(),
@@ -702,13 +705,12 @@ pub fn build_item_editor(cx: &mut Context) {
                 let mut config: AnyConfig = config_lens.get(cx);
                 let attrs = ctab.then(ConfigEditorTab::attribute_filter).get(cx);
                 let attrs = attrs.split(',').collect::<HashSet<_>>();
-                let result = ctab.view(app, |ctab| {
-                    ctab.unwrap()
-                        .search_results
-                        .get(ctab.unwrap().selected_result)
-                        .unwrap()
-                        .clone()
-                });
+                let ctab = ctab.view(app).unwrap();
+                let result = ctab
+                    .search_results
+                    .get(ctab.selected_result)
+                    .unwrap()
+                    .clone();
                 analyze_uses(&mut config, &result, &attrs);
                 cx.emit(AppEvent::EditConfig {
                     tab,
@@ -941,58 +943,44 @@ where
 
         canvas.scale(cx.style.dpi_factor as f32, cx.style.dpi_factor as f32);
 
-        self.config.view(cx.data().unwrap(), |config| {
-            if let Some(config) = config {
-                self.entity.view(cx.data().unwrap(), |entity| {
-                    if let Some(entity) = entity {
-                        draw_entity(
-                            config,
-                            &cx.data::<AppState>().unwrap().omni_palette,
-                            canvas,
-                            entity,
-                            &TileGrid::empty(),
-                            EntityConfigPreviewModel::show_selected.get(cx),
-                            &TileGrid::empty(),
-                        );
+        let config = self.config.view(cx.data().unwrap());
+        if let Some(config) = config {
+            let entity = self.entity.view(cx.data().unwrap());
+            if let Some(entity) = entity {
+                draw_entity(
+                    &config,
+                    &cx.data::<AppState>().unwrap().omni_palette,
+                    canvas,
+                    &entity,
+                    &TileGrid::empty(),
+                    EntityConfigPreviewModel::show_selected.get(cx),
+                    &TileGrid::empty(),
+                );
 
-                        if EntityConfigPreviewModel::show_boxes.get(cx) {
-                            let env = make_entity_env(entity);
-                            let mut path = PPath::new();
-                            for rect in config.hitboxes.initial_rects.iter() {
-                                if let Ok(rect) = rect.evaluate_float(&env) {
-                                    path.rect(
-                                        rect.min_x(),
-                                        rect.min_y(),
-                                        rect.width(),
-                                        rect.height(),
-                                    );
-                                }
-                            }
-                            for idx in 0..entity.nodes.len() {
-                                let env = make_node_env(entity, env.clone(), idx);
-                                for rect in config.hitboxes.node_rects.iter() {
-                                    if let Ok(rect) = rect.evaluate_float(&env) {
-                                        path.rect(
-                                            rect.min_x(),
-                                            rect.min_y(),
-                                            rect.width(),
-                                            rect.height(),
-                                        );
-                                    }
-                                }
-                            }
-
-                            canvas.fill_path(
-                                &mut path,
-                                &Paint::color(arborio_utils::vizia::vg::Color::rgba(
-                                    255, 255, 0, 128,
-                                )),
-                            );
+                if EntityConfigPreviewModel::show_boxes.get(cx) {
+                    let env = make_entity_env(&entity);
+                    let mut path = PPath::new();
+                    for rect in config.hitboxes.initial_rects.iter() {
+                        if let Ok(rect) = rect.evaluate_float(&env) {
+                            path.rect(rect.min_x(), rect.min_y(), rect.width(), rect.height());
                         }
                     }
-                })
+                    for idx in 0..entity.nodes.len() {
+                        let env = make_node_env(&entity, env.clone(), idx);
+                        for rect in config.hitboxes.node_rects.iter() {
+                            if let Ok(rect) = rect.evaluate_float(&env) {
+                                path.rect(rect.min_x(), rect.min_y(), rect.width(), rect.height());
+                            }
+                        }
+                    }
+
+                    canvas.fill_path(
+                        &mut path,
+                        &Paint::color(arborio_utils::vizia::vg::Color::rgba(255, 255, 0, 128)),
+                    );
+                }
             }
-        });
+        }
         canvas.restore();
     }
 }

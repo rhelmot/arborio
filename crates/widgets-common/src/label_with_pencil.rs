@@ -55,7 +55,10 @@ where
             let editing = editing_lens.get(cx);
             let lens = lens.clone();
             if editing {
-                ModelContainer { val: lens.get(cx) }.build(cx);
+                ModelContainer {
+                    val: lens.get_fallible(cx),
+                }
+                .build(cx);
                 Label::new(cx, CHECK)
                     .font_family(vec![FamilyOwned::Name("Entypo".to_owned())])
                     .class("btn_highlight")

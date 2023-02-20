@@ -126,9 +126,8 @@ pub fn build_tweaker(cx: &mut Context) {
                 },
                 |key_lens| {
                     CurrentSelectedEntitiesAllLens::new_referenced(move |app, ent| {
-                        key_lens.view(app, |key| {
-                            key.and_then(|key| ent.attributes.get(key.as_str()))
-                        })
+                        let key = key_lens.view(app)?;
+                        ent.attributes.get(key.as_str())
                     })
                 },
                 edit_attribute,
@@ -144,9 +143,9 @@ pub fn build_tweaker(cx: &mut Context) {
                     (
                         config_lens.then(hash_map_nth_key_lens(idx)),
                         CurrentSelectedEntitiesAllLens::new_referenced(move |source, ent| {
-                            config_lens
-                                .then(hash_map_nth_key_lens(idx))
-                                .view(source, |key| key.and_then(|key| ent.attributes.get(key)))
+                            let lens = config_lens.then(hash_map_nth_key_lens(idx));
+                            let key = lens.view(source)?;
+                            ent.attributes.get(&*key)
                         }),
                         HashMapIndexWithLens::new(
                             config_lens,

@@ -17,7 +17,7 @@ lazy_static = "^1.4"
 
 [dependencies.vizia]
 # path = "../../../VIZIA"
-git = "https://github.com/vizia/vizia"
-rev = "9ced143047216636cb7d21c4e2de8adbb2247ed6"
+git = "https://github.com/rhelmot/vizia"
+rev = "94a83a5f1e76ce9faf4ba67141af5890c30f67cf"
 default-features = true
 features = ["winit", "clipboard", "embedded_fonts"] # main

@@ -170,7 +170,7 @@ pub fn advanced_attrs_editor<
             |cx| {
                 HStack::new(cx, |cx| {
                     Label::new(cx, "").bind(NewAttributeData::ty, |handle, ty| {
-                        let text = format!("{:?}", ty.get(handle.cx));
+                        let text = format!("{:?}", ty.get_fallible(handle.cx));
                         handle.text(&text);
                     });
                     Label::new(cx, DOWN).class("icon").class("dropdown_icon");

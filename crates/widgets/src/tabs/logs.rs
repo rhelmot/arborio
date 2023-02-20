@@ -9,19 +9,18 @@ pub fn build_logs(cx: &mut Context) {
         Binding::new(cx, AppState::logs.map(|logs| logs.len()), |cx, _| {
             let mut annotated: Vec<(usize, ArborioRecord)> = vec![];
 
-            AppState::logs.view(cx.data().unwrap(), |logs| {
-                let mut count = HashMap::new();
-                if let Some(logs) = logs {
-                    for message in logs.iter() {
-                        *count.entry(message).or_insert(0) += 1;
-                    }
-                    for message in logs.iter() {
-                        if let Some(ct) = count.remove(message) {
-                            annotated.push((ct, message.clone()));
-                        }
+            let logs = AppState::logs.view(cx.data().unwrap());
+            let mut count = HashMap::new();
+            if let Some(logs) = logs {
+                for message in logs.iter() {
+                    *count.entry(message).or_insert(0) += 1;
+                }
+                for message in logs.iter() {
+                    if let Some(ct) = count.remove(message) {
+                        annotated.push((ct, message.clone()));
                     }
                 }
-            });
+            }
 
             for (count, message) in annotated {
                 let count_string;

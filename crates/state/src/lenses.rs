@@ -1,5 +1,6 @@
 use arborio_utils::units::*;
 use arborio_utils::vizia::prelude::*;
+use arborio_utils::vizia::state::StatelessLens;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -18,7 +19,7 @@ use arborio_maploader::map_struct::{
     Attribute, CelesteMapEntity, CelesteMapLevel, CelesteMapStyleground,
 };
 use arborio_modloader::aggregate::ModuleAggregate;
-use arborio_modloader::config::AttributeInfo;
+use arborio_modloader::config::{AttributeInfo, EntityConfigV2};
 
 pub fn current_map_lens() -> impl Lens<Source = AppState, Target = MapID> {
     ClosureLens::new(|state: &AppState| {
@@ -45,7 +46,7 @@ impl<T, U, F> ClosureLens<T, U, F>
 where
     F: Fn(&T) -> Option<&U> + Clone,
 {
-    pub fn new(f: F) -> Self {
+    pub const fn new(f: F) -> Self {
         Self(f, PhantomData)
     }
 }
@@ -56,8 +57,17 @@ where
 {
     type Source = T;
     type Target = U;
-    fn view<O, F1: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F1) -> O {
-        map((self.0)(source))
+    fn view<'a>(&self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        self.view_stateless(source)
+    }
+}
+
+impl<T, U, F> StatelessLens for ClosureLens<T, U, F>
+where
+    F: (Fn(&T) -> Option<&U>) + Clone + 'static,
+{
+    fn view_stateless<'a>(&self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        Some(LensValue::Borrowed((self.0)(source)?))
     }
 }
 
@@ -160,45 +170,40 @@ impl<T: 'static + PartialEq + Clone> Lens for CurrentSelectedEntitiesAllLens<T> 
     type Source = AppState;
     type Target = T;
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let Some(AppTab::Map(MapTab {
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        let AppTab::Map(MapTab {
                                  id: map_id,
                                  current_room,
                                  current_selected,
                                  ..
-                             })) = source.tabs.get(source.current_tab) else { return map(None) };
-        let Some(room) = source.loaded_maps.get(map_id).and_then(|map| map.data.levels.get(*current_room)) else { return map(None); };
+                             }) = source.tabs.get(source.current_tab)? else { return None };
+        let room = source
+            .loaded_maps
+            .get(map_id)
+            .and_then(|map| map.data.levels.get(*current_room))?;
 
         let mut ent_iter = current_selected
             .iter()
             .filter_map(AppSelection::entity_info)
             .filter_map(|(eid, trigger)| room.entity(eid, trigger));
-        let Some(ent_first) = ent_iter.next() else { return map(None) };
+        let ent_first = ent_iter.next()?;
         match self {
             CurrentSelectedEntitiesAllLens::F1(f) => {
                 let res_first = f(source, ent_first);
                 if ent_iter.all(|ent| res_first == f(source, ent)) {
-                    map(res_first.as_ref())
+                    Some(res_first?.into())
                 } else {
-                    map(None)
+                    None
                 }
             }
             CurrentSelectedEntitiesAllLens::F2(f) => {
-                let res_first = f(source, ent_first);
-                if ent_iter.all(|ent| res_first == f(source, ent)) {
-                    map(res_first)
+                let res_first = f(source, ent_first)?;
+                if ent_iter.all(|ent| Some(res_first) == f(source, ent)) {
+                    Some(res_first.into())
                 } else {
-                    map(None)
+                    None
                 }
-            } // CurrentSelectedEntitiesAllLens::L(l) => {
-              //     l.view(ent_first, |res_first| {
-              //         if ent_iter.all(|ent| l.view(ent, |res| res == res_first)) {
-              //             map(res_first)
-              //         } else {
-              //             map(None)
-              //         }
-              //     })
-              // }
+            }
         }
     }
 }
@@ -210,7 +215,7 @@ pub enum CurrentSelectedEntitiesAttributesLens<T> {
             dyn 'static
                 + Send
                 + Sync
-                + for<'a> Fn(&'a AppState, &'a HashSet<&'a String>) -> Option<&'a T>,
+                + for<'a> Fn(&'a AppState, &HashSet<&'a String>) -> Option<&'a T>,
         >,
     ),
 }
@@ -234,7 +239,7 @@ impl<T: 'static> CurrentSelectedEntitiesAttributesLens<T> {
     }
 
     pub fn new_referenced<
-        F: 'static + Send + Sync + for<'a> Fn(&'a AppState, &'a HashSet<&'a String>) -> Option<&'a T>,
+        F: 'static + Send + Sync + for<'a> Fn(&'a AppState, &HashSet<&'a String>) -> Option<&'a T>,
     >(
         f: F,
     ) -> Self {
@@ -246,17 +251,17 @@ impl<T: 'static> Lens for CurrentSelectedEntitiesAttributesLens<T> {
     type Source = AppState;
     type Target = T;
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let tab = source.tabs.get(source.current_tab);
-        let Some(AppTab::Map(MapTab {
-                            id: map_id,
-                            current_room,
-                            current_selected,
-                            ..
-                        })) = tab else { return map(None); };
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        let tab = source.tabs.get(source.current_tab)?;
+        let AppTab::Map(MapTab {
+            id: map_id,
+            current_room,
+            current_selected,
+            ..
+        }) = tab else { return None };
 
-        let Some(cmap) = source.loaded_maps.get(map_id) else { return map(None); };
-        let Some(room) = cmap.data.levels.get(*current_room) else { return map(None); };
+        let cmap = source.loaded_maps.get(map_id)?;
+        let room = cmap.data.levels.get(*current_room)?;
         let mut counter = HashSet::new();
 
         for sel in current_selected {
@@ -271,10 +276,12 @@ impl<T: 'static> Lens for CurrentSelectedEntitiesAttributesLens<T> {
             }
         }
 
-        match self {
-            CurrentSelectedEntitiesAttributesLens::F1(f) => map(f(source, &counter).as_ref()),
-            CurrentSelectedEntitiesAttributesLens::F2(f) => map(f(source, &counter)),
-        }
+        Some(match self {
+            CurrentSelectedEntitiesAttributesLens::F1(f) => LensValue::Owned(f(source, &counter)?),
+            CurrentSelectedEntitiesAttributesLens::F2(f) => {
+                LensValue::Borrowed(f(source, &counter)?)
+            }
+        })
     }
 }
 
@@ -285,49 +292,35 @@ impl Lens for CurrentSelectedEntityResizableLens {
     type Source = AppState;
     type Target = (bool, bool);
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let tab = source.tabs.get(source.current_tab);
-        let Some(AppTab::Map(MapTab {
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        let tab = source.tabs.get(source.current_tab)?;
+        let AppTab::Map(MapTab {
             id: map_id,
             current_room,
             current_selected,
             ..
-        })) = tab else { return map(None) };
-        let Some(cmap) = source.loaded_maps.get(map_id) else {
-            return map(None);
-        };
-        let Some(room) = cmap
-            .data
-            .levels
-            .get(*current_room)
-         else {
-            return map(None);
-        };
+        }) = tab else { return None };
+        let cmap = source.loaded_maps.get(map_id)?;
+        let room = cmap.data.levels.get(*current_room)?;
         let mut result = (true, true);
         for sel in current_selected {
             if let AppSelection::EntityBody(entity_id, trigger)
             | AppSelection::EntityNode(entity_id, _, trigger) = sel
             {
-                let Some(name) = room
-                    .entity(*entity_id, *trigger)
-                    .map(|entity| &entity.name) else { return map(None); };
+                let name = room.entity(*entity_id, *trigger)?.name.as_str();
                 if !*trigger {
-                    if let Some((dx, dy)) = cmap
-                        .cache
-                        .palette
-                        .entity_config
-                        .get(name.as_str())
-                        .map(|cfg| (cfg.resizable_x, cfg.resizable_y))
-                    {
-                        result.0 &= dx;
-                        result.1 &= dy;
-                    } else {
-                        return map(None);
-                    }
+                    let cfg = cmap.cache.palette.entity_config.get(name)?;
+                    let EntityConfigV2 {
+                        resizable_x: dx,
+                        resizable_y: dy,
+                        ..
+                    } = cfg.as_ref();
+                    result.0 &= dx;
+                    result.1 &= dy;
                 }
             }
         }
-        map(Some(&result))
+        Some(result.into())
     }
 }
 
@@ -338,61 +331,36 @@ impl Lens for CurrentSelectedEntityHasNodesLens {
     type Source = AppState;
     type Target = bool;
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let tab = source.tabs.get(source.current_tab);
-        let Some(AppTab::Map(MapTab {
-                                 id: map_id,
-                                 current_room,
-                                 current_selected,
-                                 ..
-                             })) = tab else { return map(None) };
-        let Some(cmap) = source.loaded_maps.get(map_id) else {
-            return map(None);
-        };
-        let Some(room) = cmap
-            .data
-            .levels
-            .get(*current_room)
-            else {
-                return map(None);
-            };
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        let tab = source.tabs.get(source.current_tab)?;
+        let AppTab::Map(MapTab {
+                id: map_id,
+                current_room,
+                current_selected,
+                ..
+            }) = tab else { return None };
+        let cmap = source.loaded_maps.get(map_id)?;
+        let room = cmap.data.levels.get(*current_room)?;
         let mut result = true;
         for sel in current_selected {
             if let AppSelection::EntityBody(entity_id, trigger)
             | AppSelection::EntityNode(entity_id, _, trigger) = sel
             {
-                let Some(name) = room.entity(*entity_id, *trigger)
-                    .map(|entity| &entity.name) else { return map(None); };
-                if !*trigger {
-                    if let Some(d) = cmap
-                        .cache
-                        .palette
-                        .entity_config
-                        .get(name.as_str())
-                        .map(|cfg| cfg.nodes)
-                    {
-                        result &= d;
-                    } else {
-                        return map(None);
-                    }
-                } else if let Some(d) = cmap
-                    .cache
-                    .palette
-                    .trigger_config
-                    .get(name.as_str())
-                    .map(|cfg| cfg.nodes)
-                {
-                    result &= d;
+                let name = room.entity(*entity_id, *trigger)?.name.as_str();
+                let d = if !*trigger {
+                    cmap.cache.palette.entity_config.get(name)?.nodes
                 } else {
-                    return map(None);
-                }
+                    cmap.cache.palette.trigger_config.get(name)?.nodes
+                };
+                result &= d;
             }
         }
-        map(Some(&result))
+        Some(LensValue::Owned(result))
     }
 }
 
-pub fn current_palette_lens() -> impl Lens<Source = AppState, Target = ModuleAggregate> {
+pub fn current_palette_lens(
+) -> impl StatelessLens<Source = AppState, Target = ModuleAggregate> + 'static {
     ClosureLens::new(|source: &AppState| {
         let tab = source.tabs.get(source.current_tab)?;
         let AppTab::Map(MapTab { id: map_id, .. }) = tab else {
@@ -410,25 +378,26 @@ impl Lens for CurrentSelectedEntityConfigAttributesLens {
     type Source = AppState;
     type Target = HashMap<String, AttributeInfo>;
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        CurrentSelectedEntitiesAllLens::new_referenced(|_, ent| Some(&ent.name)).view(
-            source,
-            |entity| {
-                let Some(entity) = entity else { return map(None) };
-                current_palette_lens().view(source, |palette| {
-                    // TODO UGHHHHHHHHHHH have to do something complex to get each trigger status
-                    // maybe easy now??
-                    let Some(palette) = palette else { return map(None) };
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        let lens = CurrentSelectedEntitiesAllLens::new_referenced(|_, ent| Some(&ent.name));
+        let entity = lens.view(source)?;
+        let palette = current_palette_lens().view_stateless(source)?;
+        match palette {
+            LensValue::Borrowed(palette) => {
+                // TODO UGHHHHHHHHHHH have to do something complex to get each trigger status
+                // maybe easy now??
+                Some(
                     if let Some(cfg) = palette.entity_config.get(entity.as_str()) {
-                        map(Some(&cfg.attribute_info))
-                    } else if let Some(cfg) = palette.trigger_config.get(entity.as_str()) {
-                        map(Some(&cfg.attribute_info))
+                        &cfg.attribute_info
                     } else {
-                        map(None)
+                        let cfg = palette.trigger_config.get(entity.as_str())?;
+                        &cfg.attribute_info
                     }
-                })
-            },
-        )
+                    .into(),
+                )
+            }
+            LensValue::Owned(_) => todo!(),
+        }
     }
 }
 
@@ -461,8 +430,8 @@ impl<T: 'static + Debug> Lens for AutoSaverLens<T> {
     type Source = AutoSaver<T>;
     type Target = T;
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        map(Some(source.deref()))
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        Some(source.deref().into())
     }
 }
 
@@ -518,8 +487,8 @@ impl<T: 'static> Lens for VecLenLens<T> {
     type Source = Vec<T>;
     type Target = usize;
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        map(Some(&source.len()))
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        Some(source.len().into())
     }
 }
 
@@ -552,8 +521,8 @@ impl<T: 'static> Lens for HashSetLenLens<T> {
     type Source = HashSet<T>;
     type Target = usize;
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        map(Some(&source.len()))
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        Some(source.len().into())
     }
 }
 
@@ -586,8 +555,8 @@ impl<K: 'static, V: 'static> Lens for HashMapLenLens<K, V> {
     type Source = HashMap<K, V>;
     type Target = usize;
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        map(Some(&source.len()))
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        Some(source.len().into())
     }
 }
 
@@ -611,42 +580,39 @@ pub fn hash_set_nth_key_lens<K: Ord + 'static>(
     })
 }
 
-#[derive(Debug)]
-pub struct VecIndexWithLens<L1, L2, T> {
+#[derive(Debug, Clone, Copy)]
+pub struct VecIndexWithLens<L1, L2> {
     l1: L1,
     l2: L2,
-    t: PhantomData<T>,
 }
 
-impl<L1, L2, T> VecIndexWithLens<L1, L2, T> {
+impl<L1, L2> VecIndexWithLens<L1, L2> {
     pub fn new(l1: L1, l2: L2) -> Self {
-        Self {
-            l1,
-            l2,
-            t: PhantomData,
-        }
+        Self { l1, l2 }
     }
 }
 
-impl<L1: Clone, L2: Clone, T> Clone for VecIndexWithLens<L1, L2, T> {
-    fn clone(&self) -> Self {
-        Self::new(self.l1.clone(), self.l2.clone())
-    }
-}
-
-impl<L1: Copy, L2: Copy, T> Copy for VecIndexWithLens<L1, L2, T> {}
-
-impl<L1, L2, T: 'static + Debug> Lens for VecIndexWithLens<L1, L2, T>
+impl<L1, L2, T: 'static + Debug> Lens for VecIndexWithLens<L1, L2>
 where
-    L1: Lens<Target = Vec<T>>,
+    L1: StatelessLens<Target = Vec<T>>,
     L2: Lens<Source = <L1 as Lens>::Source, Target = usize>,
 {
     type Source = <L1 as Lens>::Source;
     type Target = T;
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let Some(index) = self.l2.view(source, |s| s.copied()) else { return map(None) };
-        self.l1.view(source, |s| map(s.and_then(|s| s.get(index))))
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        let index = self.l2.view(source)?;
+        let vec = self.l1.view_stateless(source)?;
+        match vec {
+            LensValue::Borrowed(vec) => Some(vec.get(*index)?.into()),
+            LensValue::Owned(mut vec) => {
+                if vec.len() >= *index {
+                    None
+                } else {
+                    Some(vec.swap_remove(*index).into())
+                }
+            }
+        }
     }
 }
 
@@ -684,12 +650,11 @@ where
     type Source = <L1 as Lens>::Source;
     type Target = T;
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        self.l2.view(source, |idx| {
-            self.l1.view(source, |hashmap| {
-                map(hashmap.zip(idx).and_then(|(x, y)| x.get(y)))
-            })
-        })
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        let idx = self.l2.view(source)?;
+        let hashmap = self.l1.view(source)?;
+        let LensValue::Borrowed(hashmap) = hashmap else { panic!() };
+        Some(hashmap.get(&idx)?.into())
     }
 }
 
@@ -708,8 +673,8 @@ impl<L: 'static + Lens> Lens for IsFailedLens<L> {
     type Source = L::Source;
     type Target = bool;
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        map(Some(&self.lens.view(source, |opt| opt.is_none())))
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        Some(self.lens.view(source).is_none().into())
     }
 }
 
@@ -720,12 +685,9 @@ impl Lens for RoomTweakerScopeLens {
     type Source = AppState;
     type Target = (MapID, usize);
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        let Some(AppTab::Map(maptab)) = source.tabs.get(source.current_tab) else {
-            return map(None);
-        };
-
-        map(Some(&(maptab.id, maptab.current_room)))
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        let AppTab::Map(maptab) = source.tabs.get(source.current_tab)? else { return None };
+        Some((maptab.id, maptab.current_room).into())
     }
 }
 
@@ -751,20 +713,14 @@ where
     type Source = L1::Source;
     type Target = (L1::Target, L2::Target);
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        self.one.view(source, |one| {
-            if let Some(one) = one {
-                self.two.view(source, |two| {
-                    if let Some(two) = two {
-                        map(Some(&(one.clone(), two.clone())))
-                    } else {
-                        map(None)
-                    }
-                })
-            } else {
-                map(None)
-            }
-        })
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        Some(
+            (
+                self.one.view(source)?.into_owned(),
+                self.two.view(source)?.into_owned(),
+            )
+                .into(),
+        )
     }
 }
 
@@ -787,20 +743,21 @@ impl Lens for StylegroundNameLens {
     type Source = CelesteMapStyleground;
     type Target = String;
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        if source.name == "parallax" {
-            map(Some(&source.attributes.get("texture").map_or(
-                "".to_owned(),
-                |t| match t {
-                    Attribute::Bool(b) => b.to_string(),
-                    Attribute::Int(i) => i.to_string(),
-                    Attribute::Float(f) => f.to_string(),
-                    Attribute::Text(s) => s.to_owned(),
-                },
-            )))
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        const EMPTY: &String = &String::new();
+        Some(if source.name == "parallax" {
+            source
+                .attributes
+                .get("texture")
+                .map_or(LensValue::Borrowed(EMPTY), |t| match t {
+                    Attribute::Bool(b) => b.to_string().into(),
+                    Attribute::Int(i) => i.to_string().into(),
+                    Attribute::Float(f) => f.to_string().into(),
+                    Attribute::Text(s) => s.into(),
+                })
         } else {
-            map(Some(&source.name))
-        }
+            LensValue::Borrowed(&source.name)
+        })
     }
 }
 
@@ -836,8 +793,8 @@ impl<T: Clone> Lens for StaticerLens<T> {
     type Source = ();
     type Target = T;
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, _: &Self::Source, map: F) -> O {
-        map(Some(&self.data))
+    fn view<'a>(&'a self, (): &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        Some((&self.data).into())
     }
 }
 
@@ -854,44 +811,37 @@ impl Lens for TabTextLens {
     type Source = AppState;
     type Target = String;
 
-    fn view<O, F: FnOnce(Option<&Self::Target>) -> O>(&self, source: &Self::Source, map: F) -> O {
-        if let Some(tab) = source.tabs.get(self.0) {
-            map(Some(&match tab {
-                AppTab::CelesteOverview => "All Mods".to_owned(),
-                AppTab::ProjectOverview(s) => source
-                    .modules
-                    .get(s)
+    fn view<'a>(&'a self, source: &'a Self::Source) -> Option<LensValue<'a, Self::Target>> {
+        let tab = source.tabs.get(self.0)?;
+        Some(match tab {
+            AppTab::CelesteOverview => "All Mods".to_owned().into(),
+            AppTab::ProjectOverview(s) => {
+                (&source.modules.get(s).unwrap().everest_metadata.name).into()
+            }
+            AppTab::Map(maptab) => {
+                let mut name = source
+                    .loaded_maps
+                    .get(&maptab.id)
                     .unwrap()
-                    .everest_metadata
-                    .name
-                    .to_string(),
-                AppTab::Map(maptab) => {
-                    let mut name = source
-                        .loaded_maps
-                        .get(&maptab.id)
-                        .unwrap()
-                        .cache
-                        .path
-                        .sid
-                        .clone();
-                    if source.loaded_maps.get(&maptab.id).unwrap().cache.dirty {
-                        name.insert(0, '*');
-                    }
-                    name
+                    .cache
+                    .path
+                    .sid
+                    .clone();
+                if source.loaded_maps.get(&maptab.id).unwrap().cache.dirty {
+                    name.insert(0, '*');
                 }
-                AppTab::ConfigEditor(_) => "Config Editor".to_owned(),
-                AppTab::Logs => "Logs".to_owned(),
-                AppTab::MapMeta(id) => {
-                    let mut name = source.loaded_maps.get(id).unwrap().cache.path.sid.clone();
-                    if source.loaded_maps.get(id).unwrap().cache.dirty {
-                        name.insert(0, '*');
-                    }
-                    name.push_str(" - Meta");
-                    name
+                name.into()
+            }
+            AppTab::ConfigEditor(_) => "Config Editor".to_owned().into(),
+            AppTab::Logs => "Logs".to_owned().into(),
+            AppTab::MapMeta(id) => {
+                let mut name = source.loaded_maps.get(id).unwrap().cache.path.sid.clone();
+                if source.loaded_maps.get(id).unwrap().cache.dirty {
+                    name.insert(0, '*');
                 }
-            }))
-        } else {
-            map(None)
-        }
+                name.push_str(" - Meta");
+                name.into()
+            }
+        })
     }
 }

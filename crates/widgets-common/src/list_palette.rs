@@ -128,7 +128,8 @@ impl<T: PaletteItem, L: Lens<Target = T>, LO: Lens<Target = String>> View
         let bounds = cx.bounds();
         let data = self
             .lens
-            .view(cx.data::<<L as Lens>::Source>().unwrap(), |x| *x.unwrap());
+            .view(cx.data::<<L as Lens>::Source>().unwrap())
+            .unwrap();
         let other = self.other_lens.get(cx);
 
         canvas.save();
